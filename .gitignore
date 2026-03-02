@@ -97,3 +97,10 @@ ai-cli-crash-capture/
 
 # Sync artifacts
 sync_report*.txt
+
+# Idris2 build artifacts
+src/abi/build/
+
+# Zig cache
+ffi/zig/.zig-cache/
+ffi/zig/zig-out/
