@@ -1,22 +1,80 @@
 // SPDX-License-Identifier: PMPL-1.0-or-later
-= YOUR Template Repo Roadmap
+= Bundle of Joy Server — Roadmap
+:toc:
 
-== Current Status
+== Vision
 
-Initial development phase.
+A distributed, formally verified catalogue of developer server capabilities. AI goes to ONE place instead of hunting across dozens of MCP/LSP/etc servers. Community-hosted nodes share the load.
+
+== Current Status: Phase 1 Complete
+
+The core catalogue is built and verified. Three cartridges prove the pattern end-to-end.
 
 == Milestones
 
-=== v0.1.0 - Foundation
-* [ ] Core functionality
-* [ ] Basic documentation
-* [ ] CI/CD pipeline
+=== v0.1.0 — Foundation (Phase 0+1) ✓
 
-=== v1.0.0 - Stable Release
-* [ ] Full feature set
-* [ ] Comprehensive tests
-* [ ] Production ready
+* [x] Fresh repo from rsr-template-repo (17 mandatory workflows)
+* [x] Idris2 ABI: Catalogue, Protocol, Domain, Menu, Federation
+* [x] `IsUnbreakable` proof type (only Ready cartridges can mount)
+* [x] Zig FFI: catalogue mount/unmount with safety gate
+* [x] C header: `boj_catalogue.h` from Idris2 encodings
+* [x] Teranga menu (`menu.a2ml`) with three tiers
+* [x] Order-ticket protocol (`order-ticket.scm`)
+* [x] Three cartridges: database-mcp, nesy-mcp, fleet-mcp
+* [x] Cultural respect documentation (Teranga/Umoja/Ayo)
+* [x] Federation design (Umoja gossip, hash attestation)
+
+=== v0.2.0 — Live Cartridges (Phase 2-3)
+
+* [ ] Zig FFI: dynamic cartridge loader with hash verification
+* [ ] V-lang triple adapter: REST (9000) + gRPC (9001) + GraphQL (9002)
+* [ ] First working MCP endpoint (database-mcp)
+* [ ] First working LSP endpoint (database-mcp)
+* [ ] Order-ticket flow end-to-end (read menu → place order → get endpoints)
+* [ ] Stapeln container image (Chainguard base, Podman)
+
+=== v0.3.0 — Umoja Network (Phase 5)
+
+* [ ] Gossip protocol implementation (IPv6, node discovery)
+* [ ] Hash attestation (binary verification for community nodes)
+* [ ] Seed node setup (4 family nodes across 4 continents)
+* [ ] Load-aware routing (requests to healthiest node)
+* [ ] Auto-SDP (Software Defined Perimeter for nodes)
+* [ ] DoQ/DoH for encrypted DNS resolution
+
+=== v0.4.0 — Community (Phase 5+)
+
+* [ ] PanLL panel (BoJ matrix display, menu browser, order placement)
+* [ ] IndieWeb integration (Webmention, self-hosted node discovery)
+* [ ] Community cartridge submission process (Ayo menu)
+* [ ] Wiki with guides for node operators
+* [ ] Project board for cartridge development tracking
+
+=== v0.5.0 — Shield (Security)
+
+* [ ] SDP cartridge (auto-SDP for community nodes)
+* [ ] DNS Shield cartridge (DoQ/DoH/oDNS)
+* [ ] Container hash state monitoring (vordr integration)
+* [ ] PMPL provenance chain verification
+
+=== v1.0.0 — Matrix Fill (Phase 6)
+
+* [ ] Remaining MCP cartridges (Cloud, Container, K8s, Git, Secrets, Queues, IaC, Observe, SSG, Proof)
+* [ ] LSP cartridges for key domains
+* [ ] DAP cartridges where relevant
+* [ ] polystack deprecation (Phase 7)
 
 == Future Directions
 
-_To be determined based on community feedback._
+* **oDNS relay**: Distributed Oblivious DNS as a network service (research problem)
+* **Aerie integration**: Dynamic threat response via BoJ cartridges
+* **Cross-network federation**: BoJ nodes discovering other federated networks
+* **Mobile nodes**: Tauri/Dioxus-based node management app
+
+== How to Contribute
+
+* **Propose a cartridge**: Open a Discussion using the "Cartridge Proposal" template
+* **Host a node**: Open a Discussion using the "Hosting" template
+* **Build a cartridge**: See `docs/DEVELOPERS.md`
+* **Give feedback**: Open a Discussion or Issue

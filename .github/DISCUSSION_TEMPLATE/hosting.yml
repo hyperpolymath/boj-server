@@ -1,0 +1,60 @@
+# SPDX-License-Identifier: PMPL-1.0-or-later
+labels: [umoja-network]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Interested in hosting a BoJ node on the Umoja network? Welcome!
+        Nodes are like Tor relays — you volunteer compute time during your uptime.
+        No always-on requirement. No hosting costs. Just Podman and IPv6.
+  - type: dropdown
+    attributes:
+      label: Region
+      description: Where would your node be located?
+      options:
+        - Europe West (UK, France, etc.)
+        - Europe Central (Germany, Austria, etc.)
+        - Europe East
+        - Americas (US, Canada)
+        - Americas (South America)
+        - Oceania (Australia, NZ)
+        - Asia East (Japan, Korea)
+        - Asia South (India)
+        - Africa
+        - Other
+    validations:
+      required: true
+  - type: dropdown
+    attributes:
+      label: Availability
+      description: How much time would your node be online?
+      options:
+        - Daytime only (8-12 hours)
+        - Most of the day (12-18 hours)
+        - Always on (server/VPS)
+        - Weekends only
+        - Varies
+    validations:
+      required: true
+  - type: checkboxes
+    attributes:
+      label: Cartridges you'd host
+      description: Which cartridges would you want to serve?
+      options:
+        - label: All available (full mirror)
+        - label: MCP servers only
+        - label: LSP servers only
+        - label: MCP + LSP combo
+        - label: Specific cartridges (list below)
+  - type: textarea
+    attributes:
+      label: Additional details
+      description: Anything else? Bandwidth, hardware, specific interests?
+  - type: checkboxes
+    attributes:
+      label: Agreement
+      options:
+        - label: I agree to run the canonical (unmodified) BoJ binary
+          required: true
+        - label: I agree to the Community Node Policy (no illegal use)
+          required: true

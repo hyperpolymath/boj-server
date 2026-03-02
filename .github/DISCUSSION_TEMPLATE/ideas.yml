@@ -1,13 +1,35 @@
 # SPDX-License-Identifier: PMPL-1.0-or-later
 labels: [enhancement]
 body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for sharing your idea! BoJ is a community project — every suggestion helps shape the catalogue.
   - type: textarea
     attributes:
       label: Idea
-      description: Describe your idea
+      description: Describe your idea for BoJ — a new cartridge, protocol support, federation feature, community tool, etc.
     validations:
       required: true
   - type: textarea
     attributes:
       label: Motivation
-      description: Why would this be useful?
+      description: What problem does this solve? Who benefits?
+    validations:
+      required: true
+  - type: dropdown
+    attributes:
+      label: Area
+      description: Which part of BoJ does this relate to?
+      options:
+        - New cartridge (capability domain)
+        - Protocol support (MCP, LSP, DAP, etc.)
+        - Umoja network (federation/hosting)
+        - Teranga menu (UX/discovery)
+        - Shield (security/privacy)
+        - Stapeln (container/deployment)
+        - PanLL integration
+        - Documentation
+        - Other
+    validations:
+      required: true

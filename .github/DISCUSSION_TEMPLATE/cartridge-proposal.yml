@@ -1,0 +1,58 @@
+# SPDX-License-Identifier: PMPL-1.0-or-later
+labels: [cartridge-proposal]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Proposing a new cartridge for the Ayo (community) menu? Tell us about it!
+        Cartridges follow the three-layer stack: Idris2 ABI + Zig FFI + V-lang Adapter.
+        See docs/DEVELOPERS.md for the full guide.
+  - type: input
+    attributes:
+      label: Cartridge name
+      description: "e.g. terraform-mcp, redis-lsp"
+      placeholder: "domain-protocol"
+    validations:
+      required: true
+  - type: dropdown
+    attributes:
+      label: Capability domain (row)
+      description: What does this cartridge do?
+      options:
+        - Cloud
+        - Container
+        - Database
+        - Kubernetes
+        - Git/VCS
+        - Secrets
+        - Queues
+        - IaC
+        - Observability
+        - SSG
+        - Proof
+        - Fleet
+        - NeSy
+        - New domain (describe below)
+    validations:
+      required: true
+  - type: checkboxes
+    attributes:
+      label: Protocol support (columns)
+      description: Which protocols will this cartridge expose?
+      options:
+        - label: MCP (Model Context Protocol)
+        - label: LSP (Language Server Protocol)
+        - label: DAP (Debug Adapter Protocol)
+        - label: BSP (Build Server Protocol)
+        - label: gRPC
+        - label: REST
+  - type: textarea
+    attributes:
+      label: Description
+      description: What will this cartridge do? What existing tools/APIs does it wrap?
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Willingness to contribute
+      description: Are you interested in building this? Would you host a node for it?

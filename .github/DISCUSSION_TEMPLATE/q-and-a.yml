@@ -1,13 +1,31 @@
 # SPDX-License-Identifier: PMPL-1.0-or-later
 labels: [question]
 body:
+  - type: markdown
+    attributes:
+      value: |
+        Ask anything about BoJ — architecture, cartridge development, hosting, the Umoja network,
+        or how to integrate with your existing tools. No question is too basic.
   - type: textarea
     attributes:
       label: Question
       description: What would you like to know?
     validations:
       required: true
+  - type: dropdown
+    attributes:
+      label: Topic
+      options:
+        - Getting started
+        - Cartridge development
+        - Hosting a node
+        - Federation / Umoja network
+        - Security (SDP, DoQ, attestation)
+        - PanLL integration
+        - IndieWeb
+        - License (PMPL)
+        - Other
   - type: textarea
     attributes:
       label: Context
-      description: Any relevant background
+      description: Any relevant background (your setup, what you've tried, etc.)
