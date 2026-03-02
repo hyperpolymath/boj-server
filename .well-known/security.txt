@@ -1,0 +1,11 @@
+# SPDX-License-Identifier: PMPL-1.0-or-later
+# RFC 9116 - security.txt
+# https://securitytxt.org/
+
+Contact: mailto:j.d.a.jewell@open.ac.uk
+Expires: 2026-12-31T23:59:59.000Z
+Encryption: TODO
+Preferred-Languages: en
+Canonical: https://github.com/hyperpolymath/boj-server/.well-known/security.txt
+Policy: https://github.com/hyperpolymath/boj-server/blob/main/SECURITY.md
+Hiring: https://https://github.com/hyperpolymath/boj-server/careers

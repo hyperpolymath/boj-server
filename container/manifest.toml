@@ -1,0 +1,62 @@
+# SPDX-License-Identifier: PMPL-1.0-or-later
+#
+# Cerro Torre manifest for Bundle of Joy Server .ctp bundle
+#
+# This manifest describes the container image for verified
+# container packaging. Used by `ct pack` to create .ctp bundles.
+
+[metadata]
+name = "boj-server"
+version = "0.1.0"
+revision = 1
+summary = "Unified server capability catalogue with formally verified cartridges, distributed community hosting, and the Teranga menu system"
+description = """
+Bundle of Joy Server — containerised service packaged as a verified
+cerro-torre .ctp bundle with Ed25519 signing and full provenance
+tracking.
+"""
+license = "PMPL-1.0-or-later"
+homepage = "https://github.com/hyperpolymath/boj-server"
+maintainer = "Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>"
+
+[provenance]
+upstream = "https://github.com/hyperpolymath/boj-server"
+import_date = 2026-03-02T00:00:00Z
+
+[dependencies]
+runtime = ["ca-certificates", "curl"]
+build = []
+
+[build]
+system = "podman"
+
+[build.environment]
+APP_HOST = "[::]"
+APP_PORT = "9000"
+
+[outputs]
+primary = "boj-server"
+split = []
+
+[attestations]
+require = ["source-signature", "sbom-complete"]
+recommend = ["security-audit", "reproducible-build"]
+
+# Runtime security profile
+[security]
+user = "appuser"
+group = "appuser"
+read_only_root = false
+no_new_privileges = true
+
+[security.capabilities]
+drop = ["ALL"]
+add = ["NET_BIND_SERVICE"]
+
+[security.network]
+listen_tcp = [9000]
+
+[security.filesystem]
+read = ["/app/", "/data/"]
+write = ["/data/", "/tmp/"]
+execute = ["/app/entrypoint.sh"]

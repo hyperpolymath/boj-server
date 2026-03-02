@@ -1,0 +1,48 @@
+# SPDX-License-Identifier: PMPL-1.0-or-later
+# Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+#
+# ECOSYSTEM.a2ml — Bundle of Joy Server ecosystem position
+
+[metadata]
+version = "0.1.0"
+last-updated = "2026-03-02"
+
+[project]
+name = "Bundle of Joy Server"
+purpose = "Unified server capability catalogue with formally verified cartridges, distributed community hosting, and the Teranga menu system. Solves the combinatoric explosion of developer server protocols — AI goes to ONE place instead of hunting across dozens of MCP/LSP/etc servers."
+role = "service"
+
+[position-in-ecosystem]
+tier = "infrastructure"
+
+[related-projects]
+projects = [
+  { name = "proven-servers", relationship = "dependency", notes = "108 components (94 protocols + 8 core primitives + 6 connectors). BoJ imports proven-mcp types, dbconn, authconn, etc. All zero believe_me." },
+  { name = "polystack", relationship = "supersedes", notes = "BoJ replaces polystack's 13 components. poly-cloud/container/db/k8s/git/iac/secret/queue/observability/proof/ssg become cartridges in the BoJ matrix." },
+  { name = "PanLL", relationship = "primary-consumer", notes = "PanLL is the primary consumer. Panels need diverse capabilities dynamically — the BoJ catalogue tells them what's available." },
+  { name = "hypatia", relationship = "integration", notes = "Hypatia scans cartridges for security. SafeReasoning harmonizes Neural (Hypatia) + Symbolic (Echidna) verdicts." },
+  { name = "gitbot-fleet", relationship = "integration", notes = "SafeFleet enforces 6-bot gate policy. FleetCertified proof type requires all gates passed." },
+  { name = "stapeln", relationship = "dependency", notes = "Container supply chain for node hosting. Chainguard base images, selur-compose, vordr, svalinn, cerro-torre." },
+  { name = "language-bridges", relationship = "sibling-standard", notes = "Same Idris2/Zig/V-lang stack. BoJ follows the ABI-FFI universal standard." },
+  { name = "rsr-template-repo", relationship = "origin", notes = "BoJ was bootstrapped from rsr-template-repo. All 17 mandatory workflows present." },
+]
+
+[integration-points]
+integrations = [
+  { system = "PanLL", direction = "outbound", protocol = "a2ml_menu", notes = "PanLL reads menu.a2ml for capability discovery" },
+  { system = "gitbot-fleet", direction = "bidirectional", protocol = "mcp", notes = "Fleet cartridge controls gitbot-fleet; fleet validates cartridges" },
+  { system = "hypatia", direction = "inbound", protocol = "ci_workflow", notes = "Hypatia scans via hypatia-scan.yml" },
+  { system = "Umoja network", direction = "bidirectional", protocol = "gossip_ipv6", notes = "Federated node discovery and attestation" },
+  { system = "IndieWeb", direction = "outbound", protocol = "webmention", notes = "IndieWeb community integration for distributed hosting" },
+]
+
+[distribution-model]
+type = "community-hosted"
+description = "Volunteer nodes host BoJ servers, like Tor/IPFS. Hash attestation ensures integrity — tampered nodes are excluded from the community network but can still run locally."
+seed-nodes = [
+  { region = "Europe-West", operator = "hyperpolymath", notes = "Primary development node" },
+  { region = "Europe-Central", operator = "family", notes = "Son's node" },
+  { region = "Oceania", operator = "family", notes = "Brother's node (Australia)" },
+  { region = "Americas", operator = "family", notes = "US node" },
+]
+federation-protocol = "Umoja gossip (IPv6, Byzantine fault tolerance)"

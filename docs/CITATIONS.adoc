@@ -1,0 +1,36 @@
+= Bundle of Joy Server - Citation Guide
+:toc:
+
+== BibTeX
+
+[source,bibtex]
+----
+@software{Bundle of Joy Server_2026,
+  author = {Jewell, Jonathan D.A.},
+  title = {Bundle of Joy Server},
+  year = {2026},
+  url = {https://github.com/hyperpolymath/Bundle of Joy Server},
+  license = {PMPL-1.0-or-later}
+}
+----
+
+== Harvard Style
+
+Jewell, J. (2026) _Bundle of Joy Server_ [Computer software]. Available at: https://github.com/hyperpolymath/Bundle of Joy Server
+
+== OSCOLA
+
+Jonathan D.A. Jewell, 'Bundle of Joy Server' (2026) <https://github.com/hyperpolymath/Bundle of Joy Server>
+
+== MLA
+
+Jewell, Jonathan D.A. "Bundle of Joy Server." 2026, github.com/hyperpolymath/Bundle of Joy Server.
+
+== APA 7
+
+Jewell, J. (2026). _Bundle of Joy Server_ [Computer software]. GitHub. https://github.com/hyperpolymath/Bundle of Joy Server
+
+== See Also
+
+* link:../CITATION.cff[CITATION.cff]
+* link:../codemeta.json[codemeta.json]

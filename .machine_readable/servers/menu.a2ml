@@ -1,0 +1,181 @@
+# SPDX-License-Identifier: PMPL-1.0-or-later
+# Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+#
+# BoJ Server: The Teranga Menu
+#
+# This menu is the public face of the Bundle of Joy server.
+# AI agents act as the "Maitre D'" — presenting available capabilities
+# to users as honoured guests (Teranga = hospitality in Wolof).
+#
+# The menu is organised into three tiers:
+#   - Teranga: Core cartridges maintained by the project
+#   - Shield: Privacy and security cartridges
+#   - Ayo: Community-contributed cartridges (joy)
+
+@canonical-location: `.machine_readable/servers/menu.a2ml`
+@generated-from: `src/abi/Catalogue.idr` (IsUnbreakable proof required for Ready status)
+
+# ═══════════════════════════════════════════════════════════════════════════
+# The 2D Capability Matrix
+# ═══════════════════════════════════════════════════════════════════════════
+#
+#              MCP    LSP    DAP    BSP    NeSy   Agent  Fleet  gRPC   REST
+#           ┌──────┬──────┬──────┬──────┬──────┬──────┬──────┬──────┬──────┐
+# Cloud     │      │      │      │      │      │      │      │      │      │
+# Container │      │      │      │      │      │      │      │      │      │
+# Database  │  ●   │  ●   │      │      │      │      │      │      │      │
+# K8s       │      │      │      │      │      │      │      │      │      │
+# Git       │      │      │      │      │      │      │      │      │      │
+# Secrets   │      │      │      │      │      │      │      │      │      │
+# Queues    │      │      │      │      │      │      │      │      │      │
+# IaC       │      │      │      │      │      │      │      │      │      │
+# Observe   │      │      │      │      │      │      │      │      │      │
+# SSG       │      │      │      │      │      │      │      │      │      │
+# Proof     │      │      │      │      │      │      │      │      │      │
+# Fleet     │  ●   │      │      │      │      │      │  ●   │  ●   │      │
+# NeSy      │  ●   │  ●   │      │      │  ●   │      │      │  ●   │      │
+#           └──────┴──────┴──────┴──────┴──────┴──────┴──────┴──────┴──────┘
+#
+# ● = cartridge present (may be Development, Ready, or Faulty)
+# Empty = no cartridge yet (future work)
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Teranga Selection (Core)
+# ═══════════════════════════════════════════════════════════════════════════
+#
+# These cartridges are maintained by the hyperpolymath project.
+# Each has passed or is working towards the IsUnbreakable proof.
+
+@section(id="teranga", label="The Teranga Selection"):
+
+@cartridge(id="database-mcp"):
+  name       = "database-mcp"
+  version    = "0.1.0"
+  status     = Development
+  tier       = Teranga
+  domain     = Database
+  protocols  = [MCP, LSP]
+  hash       = ""
+  depends-on = ["proven-mcp", "proven-dbconn"]
+  notes      = "Database operations via MCP and LSP. Imports proven-servers dbconn connector."
+@end
+
+@cartridge(id="fleet-mcp"):
+  name       = "fleet-mcp"
+  version    = "0.1.0"
+  status     = Development
+  tier       = Teranga
+  domain     = Fleet
+  protocols  = [MCP, Fleet, GRPC]
+  hash       = ""
+  depends-on = ["proven-mcp", "gitbot-fleet"]
+  notes      = "Gitbot fleet orchestration. 6-bot gate policy (Rhodibot, Echidnabot, Sustainabot, Panicbot, Glambot, Seambot)."
+@end
+
+@cartridge(id="nesy-mcp"):
+  name       = "nesy-mcp"
+  version    = "0.1.0"
+  status     = Development
+  tier       = Teranga
+  domain     = NeSy
+  protocols  = [MCP, LSP, NeSy, GRPC]
+  hash       = ""
+  depends-on = ["proven-mcp", "proven-neurosym"]
+  notes      = "Neurosymbolic reasoning. Harmonization law: Symbolic truth always overrides Neural probability."
+@end
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Shield Selection (Privacy & Security)
+# ═══════════════════════════════════════════════════════════════════════════
+#
+# Advanced networking for self-hosters who require strong security.
+# SDP, DoQ/DoH, oDNS — reassuringly locked down.
+
+@section(id="shield", label="Shield & Privacy"):
+
+@cartridge(id="sdp-shield"):
+  name       = "sdp-shield"
+  version    = "0.1.0"
+  status     = Development
+  tier       = Shield
+  domain     = Secrets
+  protocols  = [MCP]
+  hash       = ""
+  depends-on = []
+  notes      = "Software Defined Perimeter. Auto-SDP for community nodes — invisible infrastructure, zero exposed ports until authenticated."
+@end
+
+@cartridge(id="dns-shield"):
+  name       = "dns-shield"
+  version    = "0.1.0"
+  status     = Development
+  tier       = Shield
+  domain     = Observe
+  protocols  = [MCP]
+  hash       = ""
+  depends-on = []
+  notes      = "DNS over QUIC (DoQ) and DNS over HTTPS (DoH). Encrypted DNS resolution for all BoJ traffic. Oblivious DNS (oDNS) relay for privacy."
+@end
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Ayo Selection (Community Joy)
+# ═══════════════════════════════════════════════════════════════════════════
+#
+# Community-contributed cartridges. If you build a cartridge that
+# meets the spec and passes the IsUnbreakable proof, it goes here.
+# Your name is honoured, your contribution celebrated.
+
+@section(id="ayo", label="The Ayo Selection"):
+
+# No community cartridges yet — the door is open.
+# See docs/DEVELOPERS.md for how to contribute a cartridge.
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Umoja Network (Community Nodes)
+# ═══════════════════════════════════════════════════════════════════════════
+#
+# The distributed hosting network. Nodes volunteer compute time.
+# Hash attestation ensures integrity — tampered nodes are excluded
+# from the community network but can still run locally.
+#
+# Like Tor or IPFS, but for developer server infrastructure.
+
+@section(id="umoja", label="The Umoja Network"):
+
+@seed-nodes:
+  - id: "node-eu-west-01"
+    ipv6: "TODO"
+    region: EuropeWest
+    operator: "hyperpolymath"
+    notes: "Primary development node (UK)"
+
+  - id: "node-eu-central-01"
+    ipv6: "TODO"
+    region: EuropeCentral
+    operator: "family"
+    notes: "Central Europe node"
+
+  - id: "node-oceania-01"
+    ipv6: "TODO"
+    region: Oceania
+    operator: "family"
+    notes: "Australia node"
+
+  - id: "node-americas-01"
+    ipv6: "TODO"
+    region: Americas
+    operator: "family"
+    notes: "US node"
+@end
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Menu Attestation
+# ═══════════════════════════════════════════════════════════════════════════
+
+@attestation:
+  format    = "PMPL-provenance-v1"
+  algorithm = "Ed25519+Dilithium5"
+  signature = "PLACEHOLDER"
+  timestamp = "2026-03-02T00:00:00Z"
+  canonical = "boj-server/.machine_readable/servers/menu.a2ml"
+@end

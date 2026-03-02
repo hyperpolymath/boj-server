@@ -1,0 +1,21 @@
+-- SPDX-License-Identifier: PMPL-1.0-or-later
+-- Idris2 package file for the BoJ Server ABI layer.
+
+package boj
+
+authors    = "Jonathan D.A. Jewell"
+version    = 0.1.0
+license    = "PMPL-1.0-or-later"
+brief      = "Formally verified cartridge catalogue for the Bundle of Joy server"
+readme     = "../../README.adoc"
+
+sourcedir  = "."
+
+modules = Boj.Protocol
+        , Boj.Domain
+        , Boj.Catalogue
+        , Boj.Menu
+        , Boj.Federation
+
+depends = base
+        , contrib
