@@ -1,12 +1,12 @@
 # SPDX-License-Identifier: PMPL-1.0-or-later
 # =============================================================================
-# A2ML Trustfile Example (Fully Populated Reference)
-# This is the complete example. The blank template is Trustfile.a2ml.
+# A2ML Trustfile — Bundle of Joy Server
+# Formally verified capability catalogue for developer server protocols.
 # =============================================================================
 
 ---
 ### [META]
-id: "did:web:example.com"
+id: "did:web:github.com:hyperpolymath:boj-server"
 version: "2026.2.5-final"
 context:
   - "https://a2ml.org/ns/v2"
@@ -23,8 +23,8 @@ meta:
       -----BEGIN HYBRID SIGNATURE-----
       BASE64_Ed448+Dilithium5_SIGNATURE_OF_THIS_FILE
       -----END HYBRID SIGNATURE-----
-    signedBy: "did:web:example.com#primary-sig"
-    proof: "https://example.com/proofs/meta.lean"
+    signedBy: "did:web:github.com:hyperpolymath:boj-server#primary-sig"
+    proof: "https://github.com/hyperpolymath/boj-server/proofs/meta.lean"
   fallbackSignature:
     algorithm: "SPHINCS+"
     value: |
@@ -36,9 +36,9 @@ meta:
     shake256: "BASE32_SHAKE256_OF_THIS_FILE"
     zonemd: "2026021601;SHA512;BASE64_SHA512_OF_ZONE;SHAKE256;BASE32_SHAKE256_OF_ZONE"
   ci_cd:
-    github_actions: "https://github.com/hyperpolymath/example.com/blob/main/.github/workflows/trustfile.yml"
-    gitbot_fleet: "https://gitbot-fleet.example.com/hooks/trustfile"
-    hypatia_scan: "https://hypatia.scans/repos/example.com"
+    github_actions: "https://github.com/hyperpolymath/boj-server/blob/main/.github/workflows/trustfile.yml"
+    gitbot_fleet: "https://gitbot-fleet.hyperpolymath.dev/hooks/trustfile"
+    hypatia_scan: "https://hypatia.scans/repos/boj-server"
   automation:
     hashing: ["SHA3-512", "SHAKE256", "BLAKE3"]
     diffing: "alert-on-unexpected-changes"
@@ -93,8 +93,8 @@ adversaries:
 dnssec:
   enabled: true
   algorithm: "ECDSAP256SHA256"
-  ds_record: "{{DS_RECORD}}"
-  key_tag: "{{KEY_TAG}}"
+  ds_record: "PENDING"
+  key_tag: "PENDING"
   digest_type: "SHA-256"
   policy: "DNSSEC MUST be enabled on all zones. DS records propagated to registrar."
   security:
@@ -102,7 +102,7 @@ dnssec:
     ci_cd: "verify-dnssec-propagation"
 soa:
   mname: "ns1.cloudflare.com."
-  rname: "admin.example.com."
+  rname: "admin.hyperpolymath.dev."
   serial: 2026021601
   refresh: 10800
   retry: 3600
@@ -141,7 +141,7 @@ records:
       proof: "DNS.SVCB.lean"
   - type: "TXT"
     name: "@"
-    value: '"v=DMARC1; p=reject; rua=mailto:dmarc@example.com; ruf=mailto:dmarc@example.com"'
+    value: '"v=DMARC1; p=reject; rua=mailto:j.d.a.jewell@open.ac.uk; ruf=mailto:j.d.a.jewell@open.ac.uk"'
     ttl: 3600
     security:
       proof: "Email.DMARC.lean"
@@ -155,7 +155,7 @@ records:
     ttl: 3600
   - type: "CAA"
     name: "@"
-    value: '0 iodef "mailto:security@example.com"'
+    value: '0 iodef "mailto:j.d.a.jewell@open.ac.uk"'
     ttl: 3600
   - type: "TLSA"
     name: "_443._tcp"
@@ -174,13 +174,13 @@ records:
       proof: "Psychological.Warfare.lean"
   - type: "TXT"
     name: "_capabilities"
-    value: '"v=OCAP1; endpoint=https://example.com/cap"'
+    value: '"v=OCAP1; endpoint=https://github.com/hyperpolymath/boj-server/cap"'
     ttl: 3600
     security:
       proof: "HTTP.Capabilities.lean"
   - type: "TXT"
     name: "_consent"
-    value: '"v=CAdRE1; endpoint=https://example.com/.well-known/consent"'
+    value: '"v=CAdRE1; endpoint=https://github.com/hyperpolymath/boj-server/.well-known/consent"'
     ttl: 3600
     security:
       proof: "HTTP.Consent.lean"
@@ -195,7 +195,7 @@ records:
       proof: "Email.SPF.lean"
   - type: "TXT"
     name: "_dmarc"
-    value: '"v=DMARC1; p=reject; sp=reject; adkim=s; aspf=s; rua=mailto:dmarc@example.com; ruf=mailto:dmarc@example.com; fo=1"'
+    value: '"v=DMARC1; p=reject; sp=reject; adkim=s; aspf=s; rua=mailto:j.d.a.jewell@open.ac.uk; ruf=mailto:j.d.a.jewell@open.ac.uk; fo=1"'
     ttl: 3600
     notes: "Strict alignment. Reject all unauthenticated. Forensic reports on any failure."
     security:
@@ -210,12 +210,12 @@ records:
       proof: "Email.DKIM.lean"
   - type: "TXT"
     name: "_mta-sts"
-    value: '"v=STSv1; id={{MTA_STS_ID}}"'
+    value: '"v=STSv1; id=20260302"'
     ttl: 3600
     notes: "MTA-STS policy ID. Rotate on policy change."
   - type: "TXT"
     name: "_smtp._tls"
-    value: '"v=TLSRPTv1; rua=mailto:tls-reports@example.com"'
+    value: '"v=TLSRPTv1; rua=mailto:j.d.a.jewell@open.ac.uk"'
     ttl: 3600
     notes: "SMTP TLS Reporting (RFC 8460). Receive reports on TLS failures."
 
@@ -252,7 +252,7 @@ security:
 
 ---
 ### [TRUSTFILE]
-issuer: "did:web:example.com"
+issuer: "did:web:github.com:hyperpolymath:boj-server"
 keys:
   - id: "#primary-sig"
     type: "HybridKey2024"
@@ -330,35 +330,35 @@ github_actions:
       steps:
         - uses: "actions/checkout@v4"
         - name: "Validate A2ML"
-          run: "a2ml validate example.com.trustfile.a2ml"
+          run: "a2ml validate Trustfile.a2ml"
         - name: "Run LEAN4 Proofs"
           run: "lake build && lake exectest"
         - name: "Hypatia Scan"
           run: "hypatia scan --config hypatia.yml"
         - name: "GitBot-Fleet Passover"
-          run: "gitbot-fleet passover --file example.com.trustfile.a2ml"
+          run: "gitbot-fleet passover --file Trustfile.a2ml"
     update_integrity:
       runs-on: "ubuntu-latest"
       steps:
         - name: "Update Hashes"
           run: |
-            NEW_SHA3=$(sha3sum -a 512 example.com.trustfile.a2ml | awk '{print $1}')
-            NEW_SHAKE=$(shake256sum example.com.trustfile.a2ml | awk '{print $1}' | base32)
-            sed -i "s|sha3-512:.*|sha3-512: \"$NEW_SHA3\"|" example.com.trustfile.a2ml
-            sed -i "s|shake256:.*|shake256: \"$NEW_SHAKE\"|" example.com.trustfile.a2ml
+            NEW_SHA3=$(sha3sum -a 512 Trustfile.a2ml | awk '{print $1}')
+            NEW_SHAKE=$(shake256sum Trustfile.a2ml | awk '{print $1}' | base32)
+            sed -i "s|sha3-512:.*|sha3-512: \"$NEW_SHA3\"|" Trustfile.a2ml
+            sed -i "s|shake256:.*|shake256: \"$NEW_SHAKE\"|" Trustfile.a2ml
         - name: "Commit and Push"
           run: |
             git config --global user.name "GitBot-Fleet"
-            git config --global user.email "gitbot@example.com"
-            git add example.com.trustfile.a2ml
+            git config --global user.email "gitbot@hyperpolymath.dev"
+            git add Trustfile.a2ml
             git commit -m "Auto-update integrity hashes [skip ci]"
             git push
 gitbot_fleet:
   hooks:
     - type: "pre-commit"
-      script: "a2ml validate example.com.trustfile.a2ml"
+      script: "a2ml validate Trustfile.a2ml"
     - type: "post-merge"
-      script: "gitbot-fleet diff --file example.com.trustfile.a2ml"
+      script: "gitbot-fleet diff --file Trustfile.a2ml"
 hypatia:
   config: "hypatia.yml"
   scans:
@@ -468,7 +468,7 @@ services:
 ---
 ### [TRANSPARENCY_LOG]
 rfc9162:
-  uri: "https://example.com/log/transparency.json"
+  uri: "https://github.com/hyperpolymath/boj-server/log/transparency.json"
   entries:
     - timestamp: "2026-02-16T00:00:00Z"
       data: "BASE64_ENCODED_THIS_FILE"
@@ -546,13 +546,13 @@ waf:
     ci_cd: "validate-waf-rulesets"
 workers:
   - name: "consent-aware-http"
-    script: "https://example.com/workers/consent.js"
+    script: "https://github.com/hyperpolymath/boj-server/workers/consent.js"
     routes:
-      - "example.com/.well-known/consent*"
+      - "boj-server/.well-known/consent*"
   - name: "capability-gateway"
-    script: "https://example.com/workers/cap.js"
+    script: "https://github.com/hyperpolymath/boj-server/workers/cap.js"
     routes:
-      - "example.com/cap*"
+      - "boj-server/cap*"
 
 ---
 ### [CLOUDFLARE_EDGE_SECURITY]
@@ -645,11 +645,11 @@ security_txt:
   enabled: true
   contact: "mailto:j.d.a.jewell@open.ac.uk"
   preferred_languages: "en"
-  expires: "{{SECURITY_TXT_EXPIRES}}"
-  policy: "https://{{DOMAIN}}/.well-known/security-policy"
-  acknowledgments: "https://{{DOMAIN}}/.well-known/security-acknowledgments"
-  encryption: "https://{{DOMAIN}}/.well-known/pgp-key.txt"
-  canonical: "https://{{DOMAIN}}/.well-known/security.txt"
+  expires: "2027-03-02T00:00:00Z"
+  policy: "https://github.com/hyperpolymath/boj-server/.well-known/security-policy"
+  acknowledgments: "https://github.com/hyperpolymath/boj-server/.well-known/security-acknowledgments"
+  encryption: "https://github.com/hyperpolymath/boj-server/.well-known/pgp-key.txt"
+  canonical: "https://github.com/hyperpolymath/boj-server/.well-known/security.txt"
   notes: |
     RFC 9116 compliant. Served by Cloudflare at /.well-known/security.txt.
     Contact is the author's university email. Expiry set to 1 year from
@@ -879,7 +879,7 @@ primary:
     -----BEGIN HYBRID SIGNATURE-----
     BASE64_Ed448+Dilithium5_SIGNATURE_OF_THIS_FILE
     -----END HYBRID SIGNATURE-----
-  signedBy: "did:web:example.com#primary-sig"
+  signedBy: "did:web:github.com:hyperpolymath:boj-server#primary-sig"
   lean_proof: "Signature.Primary.lean"
 fallback:
   algorithm: "SPHINCS+"

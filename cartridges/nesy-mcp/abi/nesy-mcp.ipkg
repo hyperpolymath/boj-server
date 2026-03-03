@@ -1,0 +1,11 @@
+-- SPDX-License-Identifier: PMPL-1.0-or-later
+package nesymcp
+
+authors    = "Jonathan D.A. Jewell"
+version    = 0.1.0
+license    = "PMPL-1.0-or-later"
+brief      = "Neurosymbolic harmonizer cartridge — Symbolic > Neural"
+
+sourcedir  = "."
+modules    = NesyMcp.SafeReasoning
+depends    = base

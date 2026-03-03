@@ -88,7 +88,7 @@ output = "stdout"
 # Uncomment and configure to receive alerts via webhook or email.
 
 # [notifications.webhook]
-# url = "https://example.com/hooks/vordr"
+# url = "https://github.com/hyperpolymath/boj-server/hooks/vordr"
 # method = "POST"
 # headers = { "Content-Type" = "application/json" }
 # on = ["failure", "recovery", "resource_critical"]

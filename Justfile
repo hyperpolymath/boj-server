@@ -258,41 +258,32 @@ init:
 # BUILD & COMPILE
 # ═══════════════════════════════════════════════════════════════════════════════
 
-# Build the project (debug mode)
+# Build all Zig FFI layers (catalogue + cartridges)
 build *args:
-    @echo "Building boj_server (debug)..."
-    # TODO: Replace with your build command
-    # Examples:
-    #   cargo build {{args}}                    # Rust
-    #   mix compile {{args}}                    # Elixir
-    #   zig build {{args}}                      # Zig
-    #   deno task build {{args}}                # Deno/ReScript
+    @echo "Building BoJ catalogue FFI..."
+    cd ffi/zig && zig build {{args}}
+    @echo "Building cartridge FFIs..."
+    cd cartridges/fleet-mcp/ffi && zig build {{args}}
+    cd cartridges/nesy-mcp/ffi && zig build {{args}}
+    cd cartridges/database-mcp/ffi && zig build {{args}}
+    cd cartridges/agent-mcp/ffi && zig build {{args}}
     @echo "Build complete"
 
 # Build in release mode with optimizations
 build-release *args:
-    @echo "Building boj_server (release)..."
-    # TODO: Replace with your release build command
-    # Examples:
-    #   cargo build --release {{args}}
-    #   MIX_ENV=prod mix compile {{args}}
-    #   zig build -Doptimize=ReleaseFast {{args}}
-    @echo "Release build complete"
+    just build -Doptimize=ReleaseFast {{args}}
 
-# Build and watch for changes (requires entr or similar)
+# Build and watch for changes (requires entr)
 build-watch:
-    @echo "Watching for changes..."
-    # TODO: Customize file patterns for your language
-    # Examples:
-    #   find src -name '*.rs' | entr -c just build
-    #   mix compile --force --warnings-as-errors
-    #   deno task dev
+    find ffi/ cartridges/ -name '*.zig' | entr -c just build
 
 # Clean build artifacts [reversible: rebuild with `just build`]
 clean:
     @echo "Cleaning..."
-    # TODO: Customize for your build system
-    rm -rf target/ _build/ build/ dist/ out/ obj/ bin/
+    rm -rf ffi/zig/.zig-cache ffi/zig/zig-out
+    rm -rf cartridges/*/ffi/.zig-cache cartridges/*/ffi/zig-out
+    rm -rf src/abi/build cartridges/*/abi/build
+    rm -rf target/ _build/ build/ dist/ out/
 
 # Deep clean including caches [reversible: rebuild]
 clean-all: clean
@@ -302,26 +293,34 @@ clean-all: clean
 # TEST & QUALITY
 # ═══════════════════════════════════════════════════════════════════════════════
 
-# Run all tests
+# Run all Zig FFI tests
 test *args:
-    @echo "Running tests..."
-    # TODO: Replace with your test command
-    # Examples:
-    #   cargo test {{args}}
-    #   mix test {{args}}
-    #   zig build test {{args}}
-    #   deno test {{args}}
-    @echo "Tests passed!"
+    @echo "Running catalogue FFI tests..."
+    cd ffi/zig && zig build test
+    @echo "Running fleet-mcp FFI tests..."
+    cd cartridges/fleet-mcp/ffi && zig build test
+    @echo "Running nesy-mcp FFI tests..."
+    cd cartridges/nesy-mcp/ffi && zig build test
+    @echo "Running database-mcp FFI tests..."
+    cd cartridges/database-mcp/ffi && zig build test
+    @echo "Running agent-mcp FFI tests..."
+    cd cartridges/agent-mcp/ffi && zig build test
+    @echo "All tests passed!"
 
 # Run tests with verbose output
 test-verbose:
-    @echo "Running tests (verbose)..."
-    # TODO: Replace with verbose test command
+    cd ffi/zig && zig build test -- --verbose
+    cd cartridges/fleet-mcp/ffi && zig build test -- --verbose
+    cd cartridges/nesy-mcp/ffi && zig build test -- --verbose
+    cd cartridges/database-mcp/ffi && zig build test -- --verbose
+    cd cartridges/agent-mcp/ffi && zig build test -- --verbose
 
-# Smoke test
+# Smoke test — type-check core ABI + run one FFI test
 test-smoke:
     @echo "Smoke test..."
-    # TODO: Add basic sanity checks
+    cd src/abi && idris2 --check Boj/Catalogue.idr
+    cd ffi/zig && zig build test
+    @echo "Smoke test passed!"
 
 # Run all quality checks
 quality: fmt-check lint test
@@ -337,64 +336,108 @@ fix: fmt
 
 # Format all source files [reversible: git checkout]
 fmt:
-    @echo "Formatting source files..."
-    # TODO: Replace with your formatter
-    # Examples:
-    #   cargo fmt
-    #   mix format
-    #   gleam format
-    #   deno fmt
+    @echo "Zig format..."
+    find ffi/ cartridges/ -name '*.zig' -exec zig fmt {} +
 
 # Check formatting without changes
 fmt-check:
-    @echo "Checking formatting..."
-    # TODO: Replace with your format check
-    # Examples:
-    #   cargo fmt --check
-    #   mix format --check-formatted
-    #   gleam format --check
+    @echo "Checking Zig formatting..."
+    find ffi/ cartridges/ -name '*.zig' -exec zig fmt --check {} +
 
-# Run linter
-lint:
-    @echo "Linting source files..."
-    # TODO: Replace with your linter
-    # Examples:
-    #   cargo clippy -- -D warnings
-    #   mix credo --strict
-    #   gleam check
+# Lint — verify zero believe_me + type-check all ABI files
+lint: verify-no-believe-me typecheck
+    @echo "Lint passed!"
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# BOJ-SPECIFIC — Idris2 ABI & Verification
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# Type-check all Idris2 ABI files
+typecheck:
+    @echo "Type-checking core ABI..."
+    cd src/abi && idris2 --check --package boj boj.ipkg
+    @echo "Type-checking cartridge ABIs..."
+    cd cartridges/fleet-mcp/abi && idris2 --check fleet-mcp.ipkg
+    cd cartridges/nesy-mcp/abi && idris2 --check nesy-mcp.ipkg
+    cd cartridges/database-mcp/abi && idris2 --check database-mcp.ipkg
+    cd cartridges/agent-mcp/abi && idris2 --check agent-mcp.ipkg
+    @echo "All ABI files type-check!"
+
+# Verify zero believe_me in all Idris2 sources
+verify-no-believe-me:
+    #!/usr/bin/env bash
+    echo "Scanning for believe_me..."
+    FOUND=$(grep -rn 'believe_me\|assert_total\|assert_smaller' --include='*.idr' src/ cartridges/ 2>/dev/null | grep -v -- '--.*believe_me' | grep -v '|||.*believe_me' | grep -v -- '--.*Admitted' | grep -v '|||.*Admitted' || true)
+    if [ -n "$FOUND" ]; then
+        echo "CRITICAL: Found unsound constructs:"
+        echo "$FOUND"
+        exit 1
+    fi
+    echo "Zero believe_me — all proofs genuine!"
+
+# Full verification suite: type-check + zero believe_me + build + test
+verify: typecheck verify-no-believe-me build test
+    @echo "Full verification passed!"
+
+# Show the BoJ capability matrix status
+matrix:
+    #!/usr/bin/env bash
+    echo "═══════════════════════════════════════════════════"
+    echo "  BoJ Capability Matrix"
+    echo "═══════════════════════════════════════════════════"
+    echo ""
+    echo "  Cartridge         ABI    FFI    Tests"
+    echo "  ─────────────────────────────────────────"
+    for cart in database-mcp fleet-mcp nesy-mcp agent-mcp; do
+        ABI="✗"; FFI="✗"; TESTS="✗"
+        [ -f "cartridges/$cart/abi"/*/*.idr ] 2>/dev/null && ABI="✓"
+        [ -f "cartridges/$cart/ffi"/*_ffi.zig ] 2>/dev/null && FFI="✓"
+        [ -f "cartridges/$cart/ffi/build.zig" ] 2>/dev/null && TESTS="✓"
+        printf "  %-20s %s      %s      %s\n" "$cart" "$ABI" "$FFI" "$TESTS"
+    done
+    echo ""
+    echo "  Core catalogue:    ffi/zig/src/catalogue.zig"
+    echo "  Menu:              .machine_readable/servers/menu.a2ml"
+    echo ""
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # RUN & EXECUTE
 # ═══════════════════════════════════════════════════════════════════════════════
 
-# Run the application
+# Run the BoJ server (Phase 3 — V-lang adapter required)
 run *args: build
-    # TODO: Replace with your run command
-    echo "Run not configured yet"
+    @echo "BoJ server requires V-lang adapter (Phase 3)"
+    @echo "Current status: ABI + FFI layers complete"
+    @echo "Run 'just matrix' to see cartridge status"
 
 # Run with verbose output
 run-verbose *args: build
-    # TODO: Replace with verbose run command
-    echo "Run not configured yet"
+    just run {{args}}
 
 # Install to user path
 install: build-release
-    @echo "Installing boj_server..."
-    # TODO: Replace with your install command
+    @echo "Installing boj-server..."
+    @echo "Phase 3 required for installable binary"
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # DEPENDENCIES
 # ═══════════════════════════════════════════════════════════════════════════════
 
-# Install/check all dependencies
+# Check all required toolchain dependencies
 deps:
-    @echo "Checking dependencies..."
-    # TODO: Replace with your dependency check
-    # Examples:
-    #   cargo check
-    #   mix deps.get
-    #   gleam deps download
-    @echo "All dependencies satisfied"
+    #!/usr/bin/env bash
+    echo "Checking dependencies..."
+    MISSING=""
+    command -v idris2 >/dev/null || MISSING="$MISSING idris2"
+    command -v zig >/dev/null || MISSING="$MISSING zig"
+    if [ -n "$MISSING" ]; then
+        echo "MISSING:$MISSING"
+        echo "Install with: asdf install idris2 latest && asdf install zig latest"
+        exit 1
+    fi
+    echo "  idris2: $(idris2 --version 2>&1 | head -1)"
+    echo "  zig:    $(zig version)"
+    echo "All dependencies satisfied"
 
 # Audit dependencies for vulnerabilities
 deps-audit:

@@ -104,6 +104,8 @@ src/abi/build/
 # Zig cache
 ffi/zig/.zig-cache/
 ffi/zig/zig-out/
+cartridges/*/ffi/.zig-cache/
+cartridges/*/ffi/zig-out/
 
 # Cartridge Idris2 build artifacts
 cartridges/*/abi/build/

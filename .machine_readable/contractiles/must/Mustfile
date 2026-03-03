@@ -1,35 +1,68 @@
 # SPDX-License-Identifier: PMPL-1.0-or-later
-# Mustfile - declarative state contract (template)
+# Mustfile - declarative state contract for BoJ Server
 # See: https://github.com/hyperpolymath/mustfile
 
 version: 1
 
 metadata:
-  name: project-state-contract
-  spec: v0.0.1
-  description: "Invariant checks for config, policy, gateway, logs, and schema."
+  name: boj-server-state-contract
+  spec: v0.1.0
+  description: "Invariant checks for BoJ capability catalogue, cartridges, and formal proofs."
 
 parameters:
-  gateway_port: "8080"
-  schema_version: "v0.0.1"
+  gateway_port: "9000"
+  abi_dir: "src/abi"
+  ffi_dir: "ffi/zig"
 
 checks:
-  - name: config-valid
-    description: "config/service.yaml must be valid."
-    run: "yq -e '.' config/service.yaml >/dev/null"
+  - name: zero-believe-me
+    description: "No believe_me, assert_total, or assert_smaller in any Idris2 source."
+    run: "bash -uc '! grep -rn \"believe_me\\|assert_total\\|assert_smaller\" --include=\"*.idr\" src/ cartridges/ | grep -v -- \"--.*believe_me\" | grep -v \"|||.*believe_me\"'"
 
-  - name: policy-compiles
-    description: "policy/policy.ncl must compile."
-    run: "nickel check policy/policy.ncl"
+  - name: abi-typechecks
+    description: "Core ABI Idris2 files must type-check with %default total."
+    run: "cd src/abi && idris2 --check --package boj boj.ipkg"
 
-  - name: gateway-exposes-port
-    description: "Service must expose the configured port."
-    run: "bash -uc 'ss -lnt | rg \":${GATEWAY_PORT:-8080}\"'"
+  - name: ffi-builds
+    description: "Core FFI Zig layer must compile clean."
+    run: "cd ffi/zig && zig build"
 
-  - name: logs-are-json
-    description: "Logs must be JSON."
-    run: "bash -uc 'rg --files -g \"*.json\" logs | xargs -r jq -e .'"
+  - name: ffi-tests-pass
+    description: "Core FFI tests must pass."
+    run: "cd ffi/zig && zig build test"
 
-  - name: schema-version-matches
-    description: "Schema must match version spec."
-    run: "bash -uc 'rg -n \"${SCHEMA_VERSION:-v0.0.1}\" schema'"
+  - name: cartridge-fleet-abi
+    description: "Fleet-MCP ABI must type-check."
+    run: "cd cartridges/fleet-mcp/abi && idris2 --check fleet-mcp.ipkg"
+
+  - name: cartridge-nesy-abi
+    description: "NeSy-MCP ABI must type-check."
+    run: "cd cartridges/nesy-mcp/abi && idris2 --check nesy-mcp.ipkg"
+
+  - name: cartridge-database-abi
+    description: "Database-MCP ABI must type-check."
+    run: "cd cartridges/database-mcp/abi && idris2 --check database-mcp.ipkg"
+
+  - name: cartridge-agent-abi
+    description: "Agent-MCP ABI must type-check."
+    run: "cd cartridges/agent-mcp/abi && idris2 --check agent-mcp.ipkg"
+
+  - name: cartridge-ffi-tests
+    description: "All cartridge FFI tests must pass."
+    run: |
+      cd cartridges/fleet-mcp/ffi && zig build test &&
+      cd ../../nesy-mcp/ffi && zig build test &&
+      cd ../../database-mcp/ffi && zig build test &&
+      cd ../../agent-mcp/ffi && zig build test
+
+  - name: spdx-headers
+    description: "All source files must have PMPL-1.0-or-later SPDX headers."
+    run: "bash -uc 'find src/ ffi/ cartridges/ -name \"*.idr\" -o -name \"*.zig\" | xargs grep -L \"PMPL-1.0-or-later\" | head -5 | { read line && echo \"Missing SPDX: $line\" && exit 1 || true; }'"
+
+  - name: menu-exists
+    description: "A2ML menu must exist."
+    run: "test -f .machine_readable/servers/menu.a2ml"
+
+  - name: order-ticket-exists
+    description: "Order-ticket protocol spec must exist."
+    run: "test -f .machine_readable/servers/order-ticket.scm"

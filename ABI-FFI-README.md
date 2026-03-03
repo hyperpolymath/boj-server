@@ -1,6 +1,4 @@
-{{~ Aditionally delete this line and fill out the template below ~}}
-
-# BOJ_SERVER ABI/FFI Documentation
+# BoJ Server ABI/FFI Documentation
 
 ## Overview
 

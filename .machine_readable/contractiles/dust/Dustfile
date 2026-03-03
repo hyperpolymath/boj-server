@@ -1,29 +1,45 @@
 # SPDX-License-Identifier: PMPL-1.0-or-later
-# Dustfile template - recovery and rollback semantics
+# Dustfile - recovery and rollback semantics for BoJ Server
 
 version: 1
 
 recovery:
-  logs:
-    - name: decision-log
-      path: logs/decisions.json
-      reversible: true
-      handler: "log-replay --reverse logs/decisions.json"
+  catalogue:
+    - name: catalogue-rollback
+      path: src/abi/Boj/Catalogue.idr
+      rollback: "git checkout HEAD~1 -- src/abi/Boj/Catalogue.idr"
+      notes: "Rollback core catalogue to previous version. Re-run idris2 --check after."
 
-  policy:
-    - name: policy-rollback
-      path: policy/policy.ncl
-      rollback: "git checkout HEAD~1 -- policy/policy.ncl"
-      notes: "Rollback policy to the previous known-good revision."
+  cartridges:
+    - name: cartridge-rollback
+      event: "cartridge.mount.failure"
+      undo: "just clean && just build"
+      notes: "Clean build and rebuild all FFI layers after a cartridge mount failure."
 
-  gateway:
-    - name: bad-deployment
-      event: "deploy.failure"
-      undo: "kubectl rollout undo deployment/gateway"
-      notes: "Undo a failed deployment while preserving audit logs."
+    - name: cartridge-abi-rollback
+      path: "cartridges/*/abi/**/*.idr"
+      rollback: "git checkout HEAD~1 -- cartridges/"
+      notes: "Rollback all cartridge ABIs. Requires re-typecheck."
+
+  federation:
+    - name: node-deregister
+      event: "umoja.node.attestation.failure"
+      undo: "Remove node from gossip pool. Quarantine until hash re-verified."
+      notes: "Community node failed hash attestation. Isolate, do not route orders."
+
+    - name: gossip-rollback
+      event: "umoja.gossip.corruption"
+      undo: "Reset gossip state to last known-good snapshot."
+      notes: "If gossip data is corrupted, fall back to seed node registry."
+
+  menu:
+    - name: menu-regenerate
+      path: .machine_readable/servers/menu.a2ml
+      rollback: "Regenerate menu.a2ml from catalogue state."
+      notes: "Menu is derived from catalogue — regenerate rather than rollback."
 
   dust-events:
-    - name: decision-log-to-dust
-      source: logs/decisions.json
-      transform: "dustify --input logs/decisions.json --output logs/dust-events.json"
-      notes: "Map gateway decision logs into reversible dust events."
+    - name: ffi-rebuild
+      source: ffi/zig/
+      transform: "just clean && just build && just test"
+      notes: "Full FFI rebuild and test cycle after any Zig source change."

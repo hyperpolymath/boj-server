@@ -1,0 +1,26 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+// Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+//
+// Database-MCP Cartridge — Zig FFI build configuration (Zig 0.15+).
+
+const std = @import("std");
+
+pub fn build(b: *std.Build) void {
+    const target = b.standardTargetOptions(.{});
+    const optimize = b.standardOptimizeOption(.{});
+
+    const db_mod = b.addModule("database_ffi", .{
+        .root_source_file = b.path("database_ffi.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+
+    const db_tests = b.addTest(.{
+        .root_module = db_mod,
+    });
+
+    const run_tests = b.addRunArtifact(db_tests);
+
+    const test_step = b.step("test", "Run database-mcp FFI tests");
+    test_step.dependOn(&run_tests.step);
+}

@@ -20,9 +20,9 @@ purpose = [
 
 [identity]
 project = "Bundle of Joy Server"
-kind = "{{PROJECT_KIND}}"                # language | library | service | tool
+kind = "service"
 one-sentence = "Unified server capability catalogue with formally verified cartridges"
-domain = "{{PROJECT_DOMAIN}}"
+domain = "infrastructure"
 
 [semantic-authority]
 policy = "canonical"
@@ -34,8 +34,8 @@ owns = [
 ]
 
 [implementation-policy]
-allowed = ["Rust", "Idris2", "Zig", "Scheme", "Shell", "Just", "AsciiDoc", "Markdown"]
-forbidden = ["Node.js", "npm"]
+allowed = ["Idris2", "Zig", "V", "Scheme", "Shell", "Just", "AsciiDoc", "Markdown", "ReScript"]
+forbidden = ["Node.js", "npm", "TypeScript", "Python", "Go"]
 
 [golden-path]
 smoke-test-command = [
