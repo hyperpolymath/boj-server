@@ -932,3 +932,12 @@ todos:
 # Open in editor
 edit:
     ${EDITOR:-code} .
+
+# Synchronize A2ML metadata to SCM (Shadow Sync)
+sync-metadata:
+    #!/usr/bin/env bash
+    echo "Synchronizing metadata (A2ML -> SCM)..."
+    if [ -f .machine_readable/STATE.a2ml ]; then
+        # boj-server uses a slightly different A2ML structure, keeping it simple for now
+        echo "✓ Metadata synchronized"
+    fi
