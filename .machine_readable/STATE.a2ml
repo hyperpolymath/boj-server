@@ -6,40 +6,40 @@
 [metadata]
 project = "boj-server"
 version = "0.1.0"
-last-updated = "2026-03-02"
+last-updated = "2026-03-03"
 status = "active"
 
 [project-context]
 name = "Bundle of Joy Server"
 purpose = "Unified server capability catalogue solving the combinatoric explosion of developer server protocols. Provides a 2D matrix of formally verified cartridges (protocol types x capability domains), distributed via community-hosted nodes with hash attestation and gossip protocol."
-completion-percentage = 10
+completion-percentage = 25
 
 [position]
 phase = "implementation"
-maturity = "experimental"
+maturity = "alpha"
 
 [route-to-mvp]
 milestones = [
   { name = "Phase 0: Fresh repo from rsr-template-repo", completion = 100 },
-  { name = "Phase 1: Core catalogue & menu system (Idris2 ABI)", completion = 80 },
-  { name = "Phase 2: Zig FFI layer (catalogue operations)", completion = 0 },
+  { name = "Phase 1: Core catalogue & menu system (Idris2 ABI)", completion = 100 },
+  { name = "Phase 2: Core Zig FFI layer (catalogue operations)", completion = 100 },
   { name = "Phase 3: V-lang triple adapter (REST+gRPC+GraphQL)", completion = 0 },
-  { name = "Phase 4: First cartridges (database-mcp, nesy-mcp, fleet-mcp)", completion = 0 },
+  { name = "Phase 4: First cartridges — ABI+FFI (database, fleet, nesy, agent)", completion = 80 },
   { name = "Phase 5: Umoja federation & PanLL panel", completion = 0 },
   { name = "Phase 6: Remaining cartridges (fill the matrix)", completion = 0 },
   { name = "Phase 7: Polystack deprecation (endgame)", completion = 0 },
 ]
 
 [blockers-and-issues]
-# No blockers — clean start from rsr-template-repo
+# No blockers — 10 components at Grade D (Alpha), all type-check and pass tests
 
 [critical-next-actions]
 actions = [
-  "Complete Phase 1: Idris2 ABI files (Catalogue, Protocol, Domain, Menu, Federation)",
-  "Create menu.a2ml with three-tier Teranga/Shield/Ayo structure",
-  "Create order-ticket.scm protocol specification",
-  "Set up cartridge directory structure for Phase 4",
-  "Begin Phase 2: Zig FFI for catalogue mount/unmount",
+  "Phase 3: V-lang triple adapter (REST+gRPC+GraphQL on port 9000)",
+  "Phase 4 remaining: cartridge adapter layers (V-lang, depends on Phase 3)",
+  "End-to-end order-ticket flow: menu -> order -> mount -> endpoints (v0.2.0 milestone)",
+  "Integration tests: connect cartridge FFI to real backends",
+  "Dynamic cartridge loader: hash verification, hot-swap",
 ]
 
 [maintenance-status]

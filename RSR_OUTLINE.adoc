@@ -1,4 +1,4 @@
-= RSR Template Repository
+= Bundle of Joy Server — RSR Compliance Outline
 
 image:[Palimpsest-MPL-1.0,link="https://github.com/hyperpolymath/palimpsest-license"] image:[Palimpsest,link="https://github.com/hyperpolymath/palimpsest-license"]
 :toc:
@@ -6,158 +6,111 @@ image:[Palimpsest-MPL-1.0,link="https://github.com/hyperpolymath/palimpsest-lice
 
 // Badges
 image:https://img.shields.io/badge/RSR-Infrastructure-cd7f32[RSR Infrastructure]
-image:https://img.shields.io/badge/Phase-Maintenance-brightgreen[Phase]
+image:https://img.shields.io/badge/Phase-Alpha-yellow[Phase]
 image:https://img.shields.io/badge/Guix-Primary-purple?logo=gnu[Guix]
 
 == Overview
 
-**The canonical template for RSR (Rhodium Standard Repository) projects.**
+**Bundle of Joy Server** is a Rhodium Standard Repository (RSR) compliant project providing a unified, formally verified catalogue of developer server capabilities. It was bootstrapped from `rsr-template-repo` and maintains all 17 mandatory workflows.
 
-This repository provides the standardized structure, configuration, and tooling for all RSR-compliant repos. Use it to:
-
-* Bootstrap new projects with RSR compliance
-* Reference the standard directory structure
-* Copy configuration templates (Justfile, STATE.a2ml, etc.)
+This document describes the project's RSR compliance posture and structure.
 
 == Quick Start
 
 [source,bash]
 ----
-# Clone the template
-git clone https://github.com/hyperpolymath/RSR-template-repo my-project
-cd my-project
+# Clone
+git clone https://github.com/hyperpolymath/boj-server
+cd boj-server
 
-# Remove template git history
-rm -rf .git
-git init
-
-# Interactive bootstrap — replaces all placeholders
-just init
-
-# Enter development environment
+# Enter development environment (Guix primary, Nix fallback)
 guix shell -D -f guix.scm
+# or: nix develop
 
-# Validate compliance
-just validate-rsr
+# Build all FFI layers
+just build
+
+# Type-check all ABI definitions
+just typecheck
+
+# Run tests
+just test
+
+# Full verification (zero believe_me + type-check + tests)
+just verify
 ----
 
-== What's Included
+== Three-Layer Stack
 
-[cols="1,3"]
+Every cartridge follows the ABI/FFI universal standard:
+
+[cols="1,1,3"]
 |===
-|File/Directory |Purpose
+|Layer |Language |Purpose
 
-|`.editorconfig`
-|Editor configuration (indent, charset)
+|**ABI**
+|Idris2
+|Formal proofs, `%default total`, zero `believe_me`
 
-|`.gitignore`
-|Standard ignore patterns
+|**FFI**
+|Zig
+|C-compatible native execution, zero runtime deps
 
-|`.gitattributes`
-|Line endings, diff drivers, binary detection
-
-|`.guix-channel`
-|Guix channel definition
-
-|`.well-known/`
-|RFC-compliant metadata (security.txt, ai.txt, humans.txt)
-
-|`.machine_readable/`
-|All machine-readable content: state files (6 a2ml), `bot_directives/`, `contractiles/`
-
-|`docs/`
-|Documentation directory
-
-|`guix.scm`
-|Guix package definition
-
-|`Justfile`
-|Task runner with 40+ recipes
-
-|`Containerfile`
-|Container build (Wolfi base, Podman)
-
-|`LICENSE`
-|PMPL-1.0-or-later (Palimpsest MPL)
-
-|`EXHIBIT-A-ETHICAL-USE.txt`
-|Ethical use guidelines (LICENSE Exhibit A)
-
-|`EXHIBIT-B-QUANTUM-SAFE.txt`
-|Quantum-safe provenance spec (LICENSE Exhibit B)
-
-|`README.adoc`
-|Project overview
-
-|`TOPOLOGY.md`
-|Architecture diagram and completion dashboard
-
-|`PLACEHOLDERS.md`
-|Template variable reference and replacement guide
-
-|`0-AI-MANIFEST.a2ml`
-|Universal AI agent entry point
-
-|`AI.a2ml`
-|Claude-specific instructions
-
-|`src/abi/`
-|Idris2 ABI definitions (Types, Layout, Foreign)
-
-|`ffi/zig/`
-|Zig FFI implementation
-
-|`generated/abi/`
-|Auto-generated C headers from Idris2 ABI
+|**Adapter**
+|V-lang
+|Triple API (REST + gRPC + GraphQL) on single port
 |===
-
-== Justfile Features
-
-The template Justfile provides:
-
-* **Combinatoric matrix recipes** for build, test, container, CI
-* **Cookbook generation**: `just cookbook` -> `docs/just-cookbook.adoc`
-* **Man page generation**: `just man` -> `docs/man/project.1`
-* **RSR validation**: `just validate-rsr`
-* **STATE.a2ml management**: `just state-touch`, `just state-phase`
-* **Container support**: `just container-build`, `just container-push`
-* **CI matrix**: `just ci-matrix [stage] [depth]`
-
-=== Key Recipes
-
-[source,bash]
-----
-just                # Show all recipes
-just help <recipe>  # Detailed help
-just info           # Project info
-just combinations   # Show matrix options
-
-just build          # Build (debug)
-just test           # Run tests
-just quality        # Format + lint + test
-just ci             # Full CI pipeline
-
-just validate       # RSR + STATE validation
-just docs           # Generate all docs
-just cookbook        # Generate Justfile docs
-
-just guix-shell     # Guix dev environment
-just container-build # Build container
-----
 
 == Directory Structure
 
 [source]
 ----
-project/
-├── .editorconfig              # Editor settings
-├── .gitignore                 # Git ignore
-├── .gitattributes             # Line endings, diff drivers
-├── .guix-channel              # Guix channel
-├── .well-known/               # RFC metadata
-│   ├── ai.txt
-│   ├── humans.txt
-│   └── security.txt
+boj-server/
+├── 0-AI-MANIFEST.a2ml         # Universal AI agent entry point
+├── AI.a2ml                    # Claude-specific instructions
+├── README.adoc                # Project overview
+├── TOPOLOGY.md                # Architecture diagram + completion dashboard
+├── READINESS.md               # Component Readiness Grades (CRG)
+├── ROADMAP.adoc               # Phased roadmap
+├── Justfile                   # Task runner (build, test, typecheck, verify)
+├── guix.scm                   # Guix package (primary)
+├── flake.nix                  # Nix flake (fallback)
+├── .tool-versions             # asdf toolchain (idris2, zig, just)
+├── src/abi/                   # Idris2 ABI — formally verified catalogue
+│   ├── Catalogue.idr          # Cartridge registry, IsUnbreakable proof
+│   ├── Protocol.idr           # Protocol types (MCP, LSP, DAP, BSP, ...)
+│   ├── Domain.idr             # Capability domains (Cloud, DB, K8s, ...)
+│   ├── Menu.idr               # Menu generation from catalogue state
+│   └── Federation.idr         # Umoja gossip protocol, node attestation
+├── ffi/zig/                   # Zig FFI — C-compatible native execution
+│   ├── build.zig
+│   └── src/catalogue.zig      # Catalogue mount/unmount operations
+├── generated/abi/             # Auto-generated C headers from Idris2
+│   └── boj_catalogue.h
+├── cartridges/                # One dir per matrix cell
+│   ├── database-mcp/          # MCP × Database
+│   │   ├── abi/               # SafeDatabase.idr
+│   │   └── ffi/               # database_ffi.zig + build.zig
+│   ├── fleet-mcp/             # MCP × Fleet
+│   │   ├── abi/               # SafeFleet.idr
+│   │   └── ffi/               # fleet_ffi.zig + build.zig
+│   ├── nesy-mcp/              # MCP × NeSy
+│   │   ├── abi/               # SafeReasoning.idr
+│   │   └── ffi/               # nesy_ffi.zig + build.zig
+│   └── agent-mcp/             # MCP × Agent
+│       ├── abi/               # SafeOODA.idr
+│       └── ffi/               # agent_ffi.zig + build.zig
+├── adapter/v/                 # V-lang triple adapter (Phase 3)
+├── container/                 # Stapeln container ecosystem
+│   ├── Containerfile          # Multi-stage OCI build (Chainguard)
+│   ├── compose.toml           # selur-compose orchestration
+│   └── vordr.toml             # Runtime monitoring
+├── docs/                      # Documentation
+│   ├── ARCHITECTURE.md        # 2D matrix design
+│   ├── CULTURAL-RESPECT.md    # Teranga/Umoja/Ayo terminology
+│   ├── FEDERATION.md          # Distributed hosting model
+│   ├── DEVELOPERS.md          # Contributing cartridges
+│   └── QUICKSTART.md          # Getting started guide
 ├── .machine_readable/         # ALL machine-readable content
 │   ├── STATE.a2ml             # Project state, progress, blockers
 │   ├── META.a2ml              # Architecture decisions, governance
@@ -165,50 +118,23 @@ project/
 │   ├── AGENTIC.a2ml           # AI agent interaction patterns
 │   ├── NEUROSYM.a2ml          # Neurosymbolic integration config
 │   ├── PLAYBOOK.a2ml          # Operational runbook
-│   ├── bot_directives/        # Per-bot rules and constraints
-│   └── contractiles/          # Policy enforcement contracts
-│       ├── k9/                # Security levels (Kennel/Yard/Hunt)
-│       ├── dust/Dustfile      # Recovery and rollback
-│       ├── lust/Intentfile    # Future intent declarations
-│       ├── must/Mustfile      # Invariant checks
-│       └── trust/Trustfile.hs # Cryptographic verification
-├── docs/                      # Documentation
-│   ├── CITATIONS.adoc
-│   ├── TOPOLOGY-GUIDE.adoc
-│   ├── generated/
-│   └── man/
-├── src/abi/                   # Idris2 ABI definitions
-│   ├── Types.idr
-│   ├── Layout.idr
-│   └── Foreign.idr
-├── ffi/zig/                   # Zig FFI implementation
-│   ├── build.zig
-│   ├── src/main.zig
-│   └── test/integration_test.zig
-├── generated/abi/             # Auto-generated C headers
-├── examples/                  # Example code
-├── guix.scm                   # Guix package
-├── Justfile                   # Task runner
-├── Containerfile              # Container build
+│   ├── servers/
+│   │   ├── menu.a2ml          # Live Teranga menu
+│   │   └── order-ticket.scm   # Order protocol specification
+│   ├── anchors/ANCHOR.a2ml
+│   ├── policies/              # Maintenance axes, checklist, SDA
+│   ├── bot_directives/        # Per-bot rules
+│   └── contractiles/          # Policy enforcement (k9, dust, lust, must, trust)
+├── .well-known/               # RFC metadata (security.txt, ai.txt, humans.txt)
+├── .github/workflows/         # 17 mandatory + BoJ-specific
 ├── LICENSE                    # PMPL-1.0-or-later
 ├── EXHIBIT-A-ETHICAL-USE.txt  # Ethical use guidelines
-├── EXHIBIT-B-QUANTUM-SAFE.txt # Quantum-safe provenance
-├── README.adoc                # Overview
-├── TOPOLOGY.md                # Architecture + completion
-├── PLACEHOLDERS.md            # Template variable guide
-├── 0-AI-MANIFEST.a2ml         # Universal AI entry point
-└── AI.a2ml                    # Claude-specific instructions
+└── EXHIBIT-B-QUANTUM-SAFE.txt # Quantum-safe provenance
 ----
 
 == RSR Compliance
 
-=== Language Tiers
-
-* **Tier 1** (Gold): Rust, Elixir, Zig, Ada, Haskell, ReScript, Gleam
-* **Tier 2** (Silver): Nickel, Guile Scheme, Nix, Idris2, OCaml
-* **Infrastructure**: Guix channels, derivations, Julia batch scripts
-
-=== Required Files
+=== Required Files (all present)
 
 * `.editorconfig`
 * `.gitignore`
@@ -219,65 +145,53 @@ project/
 * `.well-known/security.txt`
 * `.well-known/ai.txt`
 * `.well-known/humans.txt`
-* `guix.scm` OR `flake.nix`
+* `guix.scm` (primary) + `flake.nix` (fallback)
 
-=== Prohibited
+=== Language Stack
 
-* Python outside `salt/` directory
+* **ABI**: Idris2 (dependent types, formal verification)
+* **FFI**: Zig (zero-cost C ABI, cross-compilation)
+* **Adapter**: V-lang (triple API, Phase 3)
+* **Infrastructure**: Just, Guile Scheme (`.a2ml` files), Nickel (k9), Shell
+
+=== Prohibited (enforced by CI)
+
 * TypeScript/JavaScript (use ReScript)
-* CUE (use Guile/Nickel)
-* `Dockerfile` (use `Containerfile`)
 * npm, Bun, pnpm, yarn (use Deno)
-* Go (use Rust)
+* Python (use Julia/Rust)
+* Go (use Rust/Zig)
+* `Dockerfile` (use `Containerfile`)
 
-== STATE.a2ml
+=== 17 Mandatory Workflows
 
-The STATE.a2ml file tracks project state:
+All present in `.github/workflows/`:
 
-[source]
-----
-# STATE — Project State Checkpoint
-# Format: a2ml (AI-readable markup)
-
-project: Bundle of Joy Server
-version: 0.1.0
-last-updated: 2026-02-14
-status: active
-
-phase: implementation
-maturity: beta
-
-ecosystem:
-  part-of: RSR Framework
-  depends-on: []
-
-milestones:
-  - name: Initial setup
-    completion: 100
-  - name: Core implementation
-    completion: 0
-----
-
-== Badge Schema
-
-Generate badges from STATE.a2ml:
-
-[source,bash]
-----
-just badges standard
-----
-
-See `docs/BADGE_SCHEMA.adoc` for the full badge taxonomy.
+* `hypatia-scan.yml` — Neurosymbolic security scanning
+* `codeql.yml` — Code analysis
+* `scorecard.yml` — OpenSSF Scorecard
+* `quality.yml` — Quality checks (TruffleHog, EditorConfig)
+* `mirror.yml` — GitLab/Bitbucket mirroring
+* `instant-sync.yml` — Forge propagation
+* `guix-nix-policy.yml` — Guix/Nix enforcement
+* `rsr-antipattern.yml` — RSR validation
+* `security-policy.yml` — Security policy checks
+* `wellknown-enforcement.yml` — .well-known/ validation
+* `workflow-linter.yml` — Workflow validation
+* `npm-bun-blocker.yml` — Package manager policy
+* `ts-blocker.yml` — TypeScript blocker
+* `jekyll-gh-pages.yml` — GitHub Pages
+* `jekyll.yml` — Jekyll
+* `scorecard-enforcer.yml` — Scorecard enforcement
+* `secret-scanner.yml` — Secret detection
 
 == Ecosystem Integration
 
-This template is part of:
-
-* **STATE.a2ml Ecosystem**: Conversation checkpoints
-* **RSR Framework**: Repository standards
-* **Consent-Aware-HTTP**: .well-known compliance
-* **Hypatia**: Neurosymbolic security scanning
-* **gitbot-fleet**: Bot orchestration
+* **proven-servers**: Imports MCP type skeletons and connector interfaces
+* **polystack**: BoJ supersedes polystack's 13 components
+* **PanLL**: Primary consumer (reads menu.a2ml for capability discovery)
+* **hypatia**: Neurosymbolic CI scanning
+* **gitbot-fleet**: 6-bot release gate policy
+* **stapeln**: Container supply chain for node hosting
 
 == License
 
@@ -285,6 +199,7 @@ SPDX-License-Identifier: PMPL-1.0-or-later
 
 == Links
 
-* https://github.com/hyperpolymath/elegant-STATE[elegant-STATE] - STATE tooling
-* https://github.com/hyperpolymath/conative-gating[conative-gating] - Policy enforcement
-* https://rhodium.sh[Rhodium Standard] - RSR documentation
+* https://github.com/hyperpolymath/boj-server[BoJ Server]
+* https://github.com/hyperpolymath/rsr-template-repo[RSR Template]
+* https://github.com/hyperpolymath/proven-servers[proven-servers]
+* https://rhodium.sh[Rhodium Standard]

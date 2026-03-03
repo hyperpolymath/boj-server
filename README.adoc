@@ -95,4 +95,4 @@ PMPL-1.0-or-later (Palimpsest License). The license's provenance requirements (c
 
 == Project Status
 
-Phase 1 complete (core catalogue). See `.machine_readable/STATE.a2ml` for current progress.
+10 components at Grade D (Alpha): all ABI+FFI layers type-check and pass unit tests. 7 components at Grade X (stub/spec only). See `READINESS.md` for the full CRG assessment and `.machine_readable/STATE.a2ml` for milestone progress.

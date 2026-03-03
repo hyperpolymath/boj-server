@@ -34,26 +34,15 @@ This method ensures:
 - Coordinated disclosure tooling
 - Automatic credit when the advisory is published
 
-### Alternative: Encrypted Email
+### Alternative: Email
 
 If you cannot use GitHub Security Advisories, you may email us directly:
 
 | | |
 |---|---|
 | **Email** | j.d.a.jewell@open.ac.uk |
-| **PGP Key** | [Download Public Key](TODO) |
-| **Fingerprint** | `TODO` |
 
-```bash
-# Import our PGP key
-curl -sSL TODO | gpg --import
-
-# Verify fingerprint
-gpg --fingerprint j.d.a.jewell@open.ac.uk
-
-# Encrypt your report
-gpg --armor --encrypt --recipient j.d.a.jewell@open.ac.uk report.txt
-```
+Please include `[SECURITY]` in the subject line.
 
 > **⚠️ Important:** Do not report security vulnerabilities through public GitHub issues, pull requests, discussions, or social media.
 
@@ -352,7 +341,6 @@ When using Bundle of Joy Server, we recommend:
 
 ## Additional Resources
 
-- [Our PGP Public Key](TODO)
 - [Security Advisories](https://github.com/hyperpolymath/boj-server/security/advisories)
 - [Changelog](CHANGELOG.md)
 - [Contributing Guidelines](CONTRIBUTING.md)

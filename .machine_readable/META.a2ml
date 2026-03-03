@@ -9,14 +9,22 @@ version = "0.1.0"
 last-updated = "2026-03-02"
 
 [project-info]
-type = "service"  # library | binary | monorepo | service | website
-languages = []             # e.g. ["rust", "zig", "idris2"]
+type = "service"
+languages = ["idris2", "zig", "v", "scheme", "nickel"]
 license = "PMPL-1.0-or-later"
 author = "Jonathan D.A. Jewell (hyperpolymath)"
 
 [architecture-decisions]
-# ADR format: status = proposed | accepted | deprecated | superseded | rejected
-# - { id = "ADR-001", title = "Use Zig for FFI", status = "accepted", date = "2026-02-14" }
+decisions = [
+  { id = "ADR-001", title = "Three-layer stack: Idris2 ABI + Zig FFI + V-lang Adapter", status = "accepted", date = "2026-03-02" },
+  { id = "ADR-002", title = "2D matrix: protocol types (cols) x capability domains (rows)", status = "accepted", date = "2026-03-02" },
+  { id = "ADR-003", title = "Cartridge metaphor — swappable, verified capability modules", status = "accepted", date = "2026-03-02" },
+  { id = "ADR-004", title = "IsUnbreakable proof type — only Ready cartridges can be mounted", status = "accepted", date = "2026-03-02" },
+  { id = "ADR-005", title = "Umoja federation — gossip protocol, IPv6, hash attestation", status = "accepted", date = "2026-03-02" },
+  { id = "ADR-006", title = "Teranga menu — three-tier A2ML (Core/Shield/Ayo)", status = "accepted", date = "2026-03-02" },
+  { id = "ADR-007", title = "Order-ticket protocol — AI reads menu, writes order, BoJ mounts cartridges", status = "accepted", date = "2026-03-02" },
+  { id = "ADR-008", title = "Zero believe_me policy — all Idris2 code must be total and sound", status = "accepted", date = "2026-03-02" },
+]
 
 [development-practices]
 build-tool = "just"
@@ -50,4 +58,7 @@ drift-risk-example = "single exception broadening into policy violation (e.g. Re
 effects-evidence = "benchmark execution/results and maintainer status dialogue/review"
 
 [design-rationale]
-# Key design decisions and their reasoning
+three-layer-stack = "Idris2 proves correctness (ABI), Zig executes at zero cost (FFI), V-lang serves all three API styles (Adapter). Each layer is independently verifiable."
+matrix-model = "Every cell in the (Protocol x Domain) matrix is a cartridge. Protocols define HOW you talk to a server; domains define WHAT the server does. This separates concerns and enables independent development."
+cultural-naming = "Teranga (Wolof: hospitality), Umoja (Swahili: unity), Ayo (Yoruba: joy) — naming reflects values of hospitality to users, unity across communities, and joy in contribution."
+zero-believe-me = "believe_me is worse than a TODO because it compiles and hides the problem. Zero tolerance ensures all proofs are genuine."

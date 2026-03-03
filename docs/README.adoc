@@ -1,14 +1,41 @@
-= Documentation Layout
+= BoJ Server Documentation
 
-Primary tracks:
+Primary documentation for Bundle of Joy Server.
 
-* `theory/` for formal and conceptual material
-* `practice/` for operational and implementation material
-* `maintenance/` for baseline checklists and release hard-pass runbooks
-* `whitepapers/academic/` for research-facing whitepapers
-* `whitepapers/industry/` for industry/outreach whitepapers
+== Documentation Map
 
-Core docs:
+[cols="1,3"]
+|===
+|Document |Description
 
-* `maintenance/MAINTENANCE-CHECKLIST.md`
-* `practice/SOFTWARE-DEVELOPMENT-APPROACH.adoc`
+|link:ARCHITECTURE.md[ARCHITECTURE.md]
+|2D capability matrix design, three-layer stack, cartridge lifecycle
+
+|link:DEVELOPERS.md[DEVELOPERS.md]
+|Contributing cartridges, building ABIs, writing FFI tests
+
+|link:FEDERATION.md[FEDERATION.md]
+|Umoja gossip protocol, distributed node hosting, hash attestation
+
+|link:CULTURAL-RESPECT.md[CULTURAL-RESPECT.md]
+|Teranga, Umoja, Ayo terminology — origin, meaning, and usage
+
+|link:QUICKSTART.md[QUICKSTART.md]
+|Get up and running in 60 seconds
+
+|link:THREAT-MODEL.md[THREAT-MODEL.md]
+|Security threat model and mitigations
+
+|link:AI-CONVENTIONS.md[AI-CONVENTIONS.md]
+|Conventions for AI agent interaction with this project
+
+|link:CITATIONS.adoc[CITATIONS.adoc]
+|Academic citations and references
+|===
+
+== Related Files
+
+* `../TOPOLOGY.md` — Architecture diagram and completion dashboard
+* `../READINESS.md` — Component Readiness Grades (CRG v1.0)
+* `../ROADMAP.adoc` — Phased development roadmap
+* `../.machine_readable/STATE.a2ml` — Current project state

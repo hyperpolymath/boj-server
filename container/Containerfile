@@ -50,14 +50,17 @@
 #
 FROM cgr.dev/chainguard/wolfi-base:latest AS builder
 
-# TODO: Install your language toolchain
-RUN apk add --no-cache build-base
+# Install Zig toolchain for FFI compilation
+RUN apk add --no-cache build-base zig
 
 WORKDIR /build
 
-# TODO: Copy source files and build
+# Copy source and build all FFI layers
 COPY . .
-# RUN <your-build-command>
+RUN cd ffi/zig && zig build -Doptimize=ReleaseFast
+RUN for cart in database-mcp fleet-mcp nesy-mcp agent-mcp; do \
+      cd /build/cartridges/$cart/ffi && zig build -Doptimize=ReleaseFast; \
+    done
 
 # ============================================================================
 # Stage 2: Runtime
@@ -94,11 +97,12 @@ RUN addgroup -S appuser && adduser -S appuser -G appuser
 
 WORKDIR /app
 
-# TODO: Copy compiled binary/release from builder stage.
-# Examples:
-#   COPY --from=builder /build/target/release/boj-server /app/boj-server
-#   COPY --from=builder /build/_build/prod/rel/boj-server /app/release/
-#   COPY --from=builder /build/zig-out/bin/boj-server /app/boj-server
+# Copy compiled FFI libraries from builder stage
+COPY --from=builder /build/ffi/zig/zig-out/ /app/lib/core/
+COPY --from=builder /build/cartridges/database-mcp/ffi/zig-out/ /app/lib/cartridges/database-mcp/
+COPY --from=builder /build/cartridges/fleet-mcp/ffi/zig-out/ /app/lib/cartridges/fleet-mcp/
+COPY --from=builder /build/cartridges/nesy-mcp/ffi/zig-out/ /app/lib/cartridges/nesy-mcp/
+COPY --from=builder /build/cartridges/agent-mcp/ffi/zig-out/ /app/lib/cartridges/agent-mcp/
 
 # Copy entrypoint script
 COPY container/entrypoint.sh /app/entrypoint.sh

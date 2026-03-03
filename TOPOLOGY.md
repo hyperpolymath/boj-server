@@ -1,124 +1,104 @@
 <!-- SPDX-License-Identifier: PMPL-1.0-or-later -->
 <!-- TOPOLOGY.md — Project architecture map and completion dashboard -->
-<!-- Last updated: 2026-02-28 -->
+<!-- Last updated: 2026-03-03 -->
 
-# RSR Template Repo — Project Topology
+# Bundle of Joy Server — Project Topology
 
 ## System Architecture
 
 ```
-                        ┌─────────────────────────────────────────┐
-                        │              NEW REPOSITORY             │
-                        │        (Consumer of this Template)      │
-                        └───────────────────┬─────────────────────┘
-                                            │ Scaffolding
-                                            ▼
-                        ┌─────────────────────────────────────────┐
-                        │           RSR TEMPLATE HUB              │
-                        │                                         │
-                        │  ┌───────────┐  ┌───────────────────┐  │
-                        │  │ AI Gate-  │  │  ABI / FFI        │  │
-                        │  │ keeper    │  │  Standard         │  │
-                        │  │ (0-AI-M)  │  │ (Idris2/Zig)      │  │
-                        │  └─────┬─────┘  └────────┬──────────┘  │
-                        │        │                 │              │
-                        │  ┌─────▼─────┐  ┌────────▼──────────┐  │
-                        │  │ Topology  │  │  SCM / 6SCM       │  │
-                        │  │ Guide     │  │  Metadata         │  │
-                        │  │ (Visual)  │  │ (machine_read)    │  │
-                        │  └─────┬─────┘  └────────┬──────────┘  │
-                        │        │                 │              │
-                        │  ┌─────▼─────────────────▼──────────┐  │
-                        │  │      CONTAINER ECOSYSTEM         │  │
-                        │  │  ┌──────────┐ ┌───────────────┐  │  │
-                        │  │  │ Podman / │ │ selur-compose  │  │  │
-                        │  │  │ OCI      │ │ cerro-torre    │  │  │
-                        │  │  │ Build    │ │ svalinn/vordr  │  │  │
-                        │  │  └──────────┘ └───────────────┘  │  │
-                        │  │  ct-build.sh  deploy.k9.ncl      │  │
-                        │  └──────────────────────────────────┘  │
-                        └────────│─────────────────│──────────────┘
-                                 │                 │
-                                 ▼                 ▼
-                        ┌─────────────────────────────────────────┐
-                        │          PLATFORM INTEGRATION           │
-                        │  ┌───────────┐  ┌───────────┐  ┌───────┐│
-                        │  │ GitHub    │  │ GitLab    │  │ Nix / ││
-                        │  │ Workflows │  │ CI/CD     │  │ Guix  ││
-                        │  └───────────┘  └───────────┘  └───────┘│
-                        └─────────────────────────────────────────┘
+                           ┌──────────────────────────┐
+                           │       AI / PanLL          │
+                           │  (reads menu, places      │
+                           │   orders for cartridges)  │
+                           └────────────┬─────────────┘
+                                        │ Order-Ticket Protocol
+                                        ▼
+               ┌────────────────────────────────────────────────┐
+               │              BOJ CATALOGUE                      │
+               │                                                 │
+               │  ┌──────────┐  ┌──────────┐  ┌──────────────┐ │
+               │  │ Teranga  │  │ Order    │  │ Federation   │ │
+               │  │ Menu     │  │ Ticket   │  │ (Umoja       │ │
+               │  │ (A2ML)   │  │ (SCM)    │  │  Gossip)     │ │
+               │  └────┬─────┘  └────┬─────┘  └──────┬───────┘ │
+               │       │             │               │          │
+               │  ┌────▼─────────────▼───────────────▼───────┐ │
+               │  │           Catalogue.idr                   │ │
+               │  │  (IsUnbreakable proof, matrix cells,      │ │
+               │  │   Protocol × Domain cartridge registry)   │ │
+               │  └────────────────────┬─────────────────────┘ │
+               └───────────────────────┼────────────────────────┘
+                                       │
+              ┌────────────────────────┼────────────────────────┐
+              │                        │                         │
+    ┌─────────▼──────┐  ┌─────────────▼──────┐  ┌──────────────▼────┐
+    │  ABI Layer      │  │  FFI Layer          │  │  Adapter Layer    │
+    │  (Idris2)       │  │  (Zig)              │  │  (V-lang)         │
+    │                 │  │                     │  │                   │
+    │  Catalogue.idr  │  │  catalogue.zig      │  │  REST  (9000)     │
+    │  Protocol.idr   │  │  loader.zig         │  │  gRPC  (9001)     │
+    │  Domain.idr     │  │  boj_catalogue.h    │  │  GraphQL (9002)   │
+    │  Menu.idr       │  │                     │  │                   │
+    │  Federation.idr │  │  fleet_ffi.zig      │  │  (Phase 3)        │
+    │                 │  │  nesy_ffi.zig       │  │                   │
+    │  SafeFleet.idr  │  │  database_ffi.zig   │  │                   │
+    │  SafeReasoning  │  │  agent_ffi.zig      │  │                   │
+    │  SafeDatabase   │  │                     │  │                   │
+    │  SafeOODA.idr   │  │                     │  │                   │
+    └─────────────────┘  └─────────────────────┘  └───────────────────┘
+```
 
-                        ┌─────────────────────────────────────────┐
-                        │          REPO INFRASTRUCTURE            │
-                        │  Justfile / Mustfile  .machine_readable/  │
-                        │  Codeowners / Reuse   0-AI-MANIFEST.a2ml  │
-                        └─────────────────────────────────────────┘
+## 2D Capability Matrix
+
+```
+              MCP    LSP    DAP    BSP    NeSy  Agentic  Fleet   gRPC   REST
+           ┌──────┬──────┬──────┬──────┬──────┬───────┬──────┬──────┬──────┐
+Database   │  ██  │      │      │      │      │       │      │      │      │
+Fleet      │  ██  │      │      │      │      │       │      │      │      │
+NeSy       │  ██  │      │      │      │      │       │      │      │      │
+Agent      │  ██  │      │      │      │      │       │      │      │      │
+Cloud      │      │      │      │      │      │       │      │      │      │
+Container  │      │      │      │      │      │       │      │      │      │
+K8s        │      │      │      │      │      │       │      │      │      │
+Git/VCS    │      │      │      │      │      │       │      │      │      │
+Secrets    │      │      │      │      │      │       │      │      │      │
+Queues     │      │      │      │      │      │       │      │      │      │
+IaC        │      │      │      │      │      │       │      │      │      │
+Observe    │      │      │      │      │      │       │      │      │      │
+SSG        │      │      │      │      │      │       │      │      │      │
+Proof      │      │      │      │      │      │       │      │      │      │
+           └──────┴──────┴──────┴──────┴──────┴───────┴──────┴──────┴──────┘
+
+  ██ = ABI + FFI complete (4 cartridges)
 ```
 
 ## Completion Dashboard
 
-```
-COMPONENT                          STATUS              NOTES
-─────────────────────────────────  ──────────────────  ─────────────────────────────────
-CORE STANDARDS
-  ABI/FFI Standard (Idris2/Zig)     ██████████ 100%    Universal interface stable
-  AI Gatekeeper (0-AI-MANIFEST)     ██████████ 100%    Universal entry point active
-  TOPOLOGY.md Standard              ██████████ 100%    Visual summary guide active
-  6SCM Metadata Structure           ██████████ 100%    Machine-readable state stable
-
-INFRASTRUCTURE
-  Justfile Automation               ██████████ 100%    Standard build/verify tasks
-  CI/CD Workflow Templates          ██████████ 100%    GH/GL scaffolding verified
-  Multi-Forge Sync                  ██████████ 100%    Hub-and-spoke mirroring stable
-
-CONTAINER ECOSYSTEM (Phase 2)
-  Containerfile (OCI build)         ██████████ 100%    Multi-stage Chainguard base
-  selur-compose orchestration       ██████████ 100%    Template + concrete example
-  cerro-torre manifest              ██████████ 100%    Bundle metadata & signing
-  svalinn gateway policy            ██████████ 100%    .gatekeeper.yaml active
-  vordr runtime monitoring          ██████████ 100%    Runtime config template
-  k9-svc deployment (Nickel)        ██████████ 100%    Hunt-level deploy descriptor
-  ct-build.sh pipeline              ██████████ 100%    Build/sign/verify script
-  Justfile container-* recipes      ██████████ 100%    8 recipes integrated
-  Trustfile CONTAINER_SUPPLY_CHAIN  ██████████ 100%    Supply chain section added
-
-REPO INFRASTRUCTURE
-  .machine_readable/                ██████████ 100%    STATE/META/ECOSYSTEM active
-  Governance & License              ██████████ 100%    PMPL & Ethical use verified
-  Development Shells (Nix/Guix)     ██████████ 100%    Reproducible env stable
-
-─────────────────────────────────────────────────────────────────────────────
-OVERALL:                            ██████████ 100%    RSR Template Stable & Certified
-```
+| Component              | Progress   | Status       |
+|------------------------|------------|--------------|
+| Core Catalogue ABI     | `██████████` 100% | Complete |
+| Core Catalogue FFI     | `██████████` 100% | Complete |
+| C Headers              | `██████████` 100% | Complete |
+| database-mcp (ABI+FFI) | `██████████` 100% | Complete |
+| fleet-mcp (ABI+FFI)    | `██████████` 100% | Complete |
+| nesy-mcp (ABI+FFI)     | `██████████` 100% | Complete |
+| agent-mcp (ABI+FFI)    | `██████████` 100% | Complete |
+| V-lang Adapter          | `░░░░░░░░░░`   0% | Phase 3  |
+| Dynamic Loader          | `█░░░░░░░░░`  10% | Stub     |
+| Umoja Federation        | `░░░░░░░░░░`   0% | Phase 5  |
+| PanLL Panel             | `░░░░░░░░░░`   0% | Phase 5  |
+| Stapeln Container       | `░░░░░░░░░░`   0% | Phase 3  |
+| MCP Protocol Endpoint   | `░░░░░░░░░░`   0% | Phase 2  |
+| LSP Protocol Endpoint   | `░░░░░░░░░░`   0% | Phase 2  |
 
 ## Key Dependencies
 
-```
-Philosophy ──────► RSR Standard ──────► Template Scaffolding ──► New Repo
-     │                 │                      │                    │
-     ▼                 ▼                      ▼                    ▼
-CCCP Policy ─────► 0-AI-MANIFEST ────────► Justfile ──────────► Compliance
-                                              │
-                                              ▼
-                                      Container Ecosystem
-                                   ┌──────────┼──────────┐
-                                   ▼          ▼          ▼
-                              selur-compose  cerro-   svalinn/
-                              (orchestrate)  torre    vordr
-                                             (sign)   (monitor)
-                                              │
-                                              ▼
-                                         k9-svc deploy
-```
-
-## Update Protocol
-
-This file is maintained by both humans and AI agents. When updating:
-
-1. **After completing a component**: Change its bar and percentage
-2. **After adding a component**: Add a new row in the appropriate section
-3. **After architectural changes**: Update the ASCII diagram
-4. **Date**: Update the `Last updated` comment at the top of this file
-
-Progress bars use: `█` (filled) and `░` (empty), 10 characters wide.
-Percentages: 0%, 10%, 20%, ... 100% (in 10% increments).
+| Dependency       | Purpose                          | Status    |
+|------------------|----------------------------------|-----------|
+| proven-servers   | MCP/LSP type skeletons, connectors | Available |
+| polystack        | Capability domain mapping (deprecation target) | Available |
+| stapeln          | Container supply chain           | Available |
+| PanLL            | Panel framework for matrix display | Available |
+| gitbot-fleet     | 6-bot release gate               | Available |
+| hypatia          | Neurosymbolic CI scanning        | Available |
