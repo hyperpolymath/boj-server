@@ -941,3 +941,8 @@ sync-metadata:
         # boj-server uses a slightly different A2ML structure, keeping it simple for now
         echo "✓ Metadata synchronized"
     fi
+
+# [AUTO-GENERATED] Multi-arch / RISC-V target
+build-riscv:
+	@echo "Building for RISC-V..."
+	cross build --target riscv64gc-unknown-linux-gnu
