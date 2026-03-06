@@ -6,13 +6,13 @@
 [metadata]
 project = "boj-server"
 version = "0.1.0"
-last-updated = "2026-03-03"
+last-updated = "2026-03-06"
 status = "active"
 
 [project-context]
 name = "Bundle of Joy Server"
 purpose = "Unified server capability catalogue solving the combinatoric explosion of developer server protocols. Provides a 2D matrix of formally verified cartridges (protocol types x capability domains), distributed via community-hosted nodes with hash attestation and gossip protocol."
-completion-percentage = 25
+completion-percentage = 35
 
 [position]
 phase = "implementation"
@@ -23,7 +23,7 @@ milestones = [
   { name = "Phase 0: Fresh repo from rsr-template-repo", completion = 100 },
   { name = "Phase 1: Core catalogue & menu system (Idris2 ABI)", completion = 100 },
   { name = "Phase 2: Core Zig FFI layer (catalogue operations)", completion = 100 },
-  { name = "Phase 3: V-lang triple adapter (REST+gRPC+GraphQL)", completion = 0 },
+  { name = "Phase 3: V-lang triple adapter (REST+gRPC+GraphQL)", completion = 70 },
   { name = "Phase 4: First cartridges — ABI+FFI (database, fleet, nesy, agent)", completion = 80 },
   { name = "Phase 5: Umoja federation & PanLL panel", completion = 0 },
   { name = "Phase 6: Remaining cartridges (fill the matrix)", completion = 0 },
@@ -35,7 +35,8 @@ milestones = [
 
 [critical-next-actions]
 actions = [
-  "Phase 3: V-lang triple adapter (REST+gRPC+GraphQL on port 9000)",
+  "Phase 3 remaining: proper gRPC with protobuf (currently JSON-over-HTTP/2 compat)",
+  "Phase 3 remaining: order-ticket.scm file parser (currently uses JSON orders)",
   "Phase 4 remaining: cartridge adapter layers (V-lang, depends on Phase 3)",
   "End-to-end order-ticket flow: menu -> order -> mount -> endpoints (v0.2.0 milestone)",
   "Integration tests: connect cartridge FFI to real backends",
