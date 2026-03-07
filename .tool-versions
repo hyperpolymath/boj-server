@@ -1,4 +1,4 @@
 # BoJ Server toolchain (managed by asdf)
 idris2 0.8.0
 zig 0.15.2
-just 1.40.0
+just 1.46.0

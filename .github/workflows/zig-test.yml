@@ -1,0 +1,52 @@
+# SPDX-License-Identifier: PMPL-1.0-or-later
+# Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+#
+# BoJ Server — Zig FFI test & build pipeline
+
+name: Zig FFI Tests
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'ffi/**'
+      - 'cartridges/**/ffi/**'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'ffi/**'
+      - 'cartridges/**/ffi/**'
+
+permissions: read-all
+
+jobs:
+  test:
+    name: Zig FFI Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Install Zig
+        uses: mlugg/setup-zig@v2
+        with:
+          version: 0.15.2
+
+      - name: Run catalogue tests
+        run: cd ffi/zig && zig build test --summary all
+
+      - name: Run readiness tests
+        run: cd ffi/zig && zig build readiness --summary all
+
+      - name: Run cartridge FFI tests
+        run: |
+          for cart in database-mcp fleet-mcp nesy-mcp agent-mcp; do
+            echo "Testing $cart..."
+            cd cartridges/$cart/ffi && zig build test --summary all
+            cd "$GITHUB_WORKSPACE"
+          done
+
+      - name: Build static library
+        run: cd ffi/zig && zig build lib
+
+      - name: Run benchmarks
+        run: cd ffi/zig && zig build bench

@@ -1,0 +1,109 @@
+{
+  "generated_at": "2026-03-07T23:00:00Z",
+  "repo": "/var/mnt/eclipse/repos/boj-server",
+  "git": {
+    "branch": "main"
+  },
+  "summary": {
+    "pass": 7,
+    "warn": 0,
+    "fail": 0,
+    "skipped": 0
+  },
+  "steps": [
+    {
+      "name": "zig_ffi_tests",
+      "status": "pass",
+      "details": {
+        "total_tests": 35,
+        "catalogue_tests": 4,
+        "loader_tests": 10,
+        "readiness_tests": 21
+      }
+    },
+    {
+      "name": "cartridge_ffi_tests",
+      "status": "pass",
+      "details": {
+        "total_tests": 23,
+        "database_mcp": 6,
+        "fleet_mcp": 4,
+        "nesy_mcp": 6,
+        "agent_mcp": 7
+      }
+    },
+    {
+      "name": "v_adapter_check",
+      "status": "pass",
+      "details": {
+        "command": "v -check src/main.v",
+        "result": "clean"
+      }
+    },
+    {
+      "name": "todo_scan",
+      "status": "pass",
+      "details": {
+        "total_markers": 1,
+        "items": [
+          "container/entrypoint.sh:57 — template placeholder (expected)"
+        ]
+      }
+    },
+    {
+      "name": "idris_unsound_scan",
+      "status": "pass",
+      "details": {
+        "believe_me": 0,
+        "assert_total": 0,
+        "assert_smaller": 0,
+        "notes": "2 hits in FleetMcp/SafeFleet.idr are documentation comments only"
+      }
+    },
+    {
+      "name": "benchmarks",
+      "status": "pass",
+      "details": {
+        "init_deinit_ns": 359,
+        "register_ns": 317,
+        "mount_unmount_ns": 1,
+        "count_ready_ns": 4,
+        "set_hash_ns": "<1"
+      }
+    },
+    {
+      "name": "static_library_build",
+      "status": "pass",
+      "details": {
+        "artifact": "ffi/zig/zig-out/lib/libboj_catalogue.a"
+      }
+    }
+  ],
+  "maintenance_axes": {
+    "axis_1_scoping": {
+      "must": [
+        "Cartridge .so/.dylib shared library builds",
+        "Order-ticket end-to-end flow test"
+      ],
+      "intend": [
+        "Phase 5: Umoja federation stub",
+        "gRPC native adapter"
+      ],
+      "like": [
+        "VeriSimDB backing store",
+        "WASM cartridge support",
+        "PanLL panel integration"
+      ]
+    },
+    "axis_2": {
+      "corrective": "V 0.5.0 API migration (done)",
+      "adaptive": "Zig 0.15 API migration (done)",
+      "perfective": "Benchmarks, readiness tests, CI pipeline (done)"
+    },
+    "axis_3": {
+      "systems": "CI pipeline created, all tests pass",
+      "compliance": "Zero believe_me, panic-attack directive configured",
+      "effects": "Benchmark evidence recorded, sub-microsecond mount operations"
+    }
+  }
+}

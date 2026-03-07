@@ -96,7 +96,7 @@ var initialised: bool = false;
 // ═══════════════════════════════════════════════════════════════════════
 
 /// Initialise the catalogue. Must be called before any other function.
-export fn boj_catalogue_init() c_int {
+pub export fn boj_catalogue_init() c_int {
     catalogue_count = 0;
     for (&catalogue) |*entry| {
         entry.mounted = false;
@@ -111,7 +111,7 @@ export fn boj_catalogue_init() c_int {
 }
 
 /// Shut down the catalogue. Unmounts all cartridges.
-export fn boj_catalogue_deinit() void {
+pub export fn boj_catalogue_deinit() void {
     for (&catalogue) |*entry| {
         entry.mounted = false;
     }
@@ -125,7 +125,7 @@ export fn boj_catalogue_deinit() void {
 
 /// Register a cartridge in the catalogue.
 /// Returns 0 on success, -1 on failure.
-export fn boj_catalogue_register(
+pub export fn boj_catalogue_register(
     name_ptr: [*]const u8,
     name_len: usize,
     version_ptr: [*]const u8,
@@ -155,7 +155,7 @@ export fn boj_catalogue_register(
 }
 
 /// Add a protocol to the last registered cartridge.
-export fn boj_catalogue_add_protocol(protocol: c_int) c_int {
+pub export fn boj_catalogue_add_protocol(protocol: c_int) c_int {
     if (!initialised or catalogue_count == 0) return -1;
     if (protocol < 1 or protocol > 9) return -1;
     catalogue[catalogue_count - 1].protocols[@as(usize, @intCast(protocol)) - 1] = true;
@@ -169,7 +169,7 @@ export fn boj_catalogue_add_protocol(protocol: c_int) c_int {
 /// Mount a cartridge by index.
 /// SAFETY: Only mounts if status == Ready (matching IsUnbreakable proof).
 /// Returns 0 on success, -1 if not ready, -2 if not found.
-export fn boj_catalogue_mount(index: usize) c_int {
+pub export fn boj_catalogue_mount(index: usize) c_int {
     if (!initialised or index >= catalogue_count) return -2;
     if (catalogue[index].status != .ready) return -1;
     catalogue[index].mounted = true;
@@ -177,14 +177,14 @@ export fn boj_catalogue_mount(index: usize) c_int {
 }
 
 /// Unmount a cartridge by index.
-export fn boj_catalogue_unmount(index: usize) c_int {
+pub export fn boj_catalogue_unmount(index: usize) c_int {
     if (!initialised or index >= catalogue_count) return -2;
     catalogue[index].mounted = false;
     return 0;
 }
 
 /// Check if a cartridge is mounted.
-export fn boj_catalogue_is_mounted(index: usize) c_int {
+pub export fn boj_catalogue_is_mounted(index: usize) c_int {
     if (!initialised or index >= catalogue_count) return -1;
     return if (catalogue[index].mounted) 1 else 0;
 }
@@ -194,12 +194,12 @@ export fn boj_catalogue_is_mounted(index: usize) c_int {
 // ═══════════════════════════════════════════════════════════════════════
 
 /// Get the total number of registered cartridges.
-export fn boj_catalogue_count() usize {
+pub export fn boj_catalogue_count() usize {
     return catalogue_count;
 }
 
 /// Get the number of ready cartridges.
-export fn boj_catalogue_count_ready() usize {
+pub export fn boj_catalogue_count_ready() usize {
     var count: usize = 0;
     for (catalogue[0..catalogue_count]) |entry| {
         if (entry.status == .ready) count += 1;
@@ -208,7 +208,7 @@ export fn boj_catalogue_count_ready() usize {
 }
 
 /// Get the number of mounted cartridges.
-export fn boj_catalogue_count_mounted() usize {
+pub export fn boj_catalogue_count_mounted() usize {
     var count: usize = 0;
     for (catalogue[0..catalogue_count]) |entry| {
         if (entry.mounted) count += 1;
@@ -217,13 +217,35 @@ export fn boj_catalogue_count_mounted() usize {
 }
 
 /// Get the status of a cartridge by index.
-export fn boj_catalogue_status(index: usize) c_int {
+pub export fn boj_catalogue_status(index: usize) c_int {
     if (index >= catalogue_count) return -1;
     return @intFromEnum(catalogue[index].status);
 }
 
+/// Set the binary hash for a cartridge by index.
+/// hash_ptr: pointer to hex string. hash_len: must be <= 64.
+/// Returns 0 on success, -1 on failure.
+pub export fn boj_catalogue_set_hash(index: usize, hash_ptr: [*]const u8, hash_len: usize) c_int {
+    if (!initialised or index >= catalogue_count) return -1;
+    if (hash_len > 64) return -1;
+    @memcpy(catalogue[index].binary_hash[0..hash_len], hash_ptr[0..hash_len]);
+    catalogue[index].hash_len = hash_len;
+    return 0;
+}
+
+/// Get the binary hash for a cartridge by index.
+/// Writes the hash into out_ptr, returns the hash length (0 if no hash set).
+pub export fn boj_catalogue_get_hash(index: usize, out_ptr: [*]u8) usize {
+    if (!initialised or index >= catalogue_count) return 0;
+    const len = catalogue[index].hash_len;
+    if (len > 0) {
+        @memcpy(out_ptr[0..len], catalogue[index].binary_hash[0..len]);
+    }
+    return len;
+}
+
 /// Get the version string.
-export fn boj_catalogue_version() [*:0]const u8 {
+pub export fn boj_catalogue_version() [*:0]const u8 {
     return "0.1.0";
 }
 

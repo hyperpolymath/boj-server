@@ -1,6 +1,6 @@
 <!-- SPDX-License-Identifier: PMPL-1.0-or-later -->
 <!-- TOPOLOGY.md — Project architecture map and completion dashboard -->
-<!-- Last updated: 2026-03-03 -->
+<!-- Last updated: 2026-03-07 -->
 
 # Bundle of Joy Server — Project Topology
 
@@ -40,9 +40,9 @@
     │  Protocol.idr   │  │  loader.zig         │  │  gRPC  (9001)     │
     │  Domain.idr     │  │  boj_catalogue.h    │  │  GraphQL (9002)   │
     │  Menu.idr       │  │                     │  │                   │
-    │  Federation.idr │  │  fleet_ffi.zig      │  │  (Phase 3)        │
-    │                 │  │  nesy_ffi.zig       │  │                   │
-    │  SafeFleet.idr  │  │  database_ffi.zig   │  │                   │
+    │  Federation.idr │  │  fleet_ffi.zig      │  │  order-ticket.scm │
+    │                 │  │  nesy_ffi.zig       │  │  matrix view      │
+    │  SafeFleet.idr  │  │  database_ffi.zig   │  │  cartridge detail │
     │  SafeReasoning  │  │  agent_ffi.zig      │  │                   │
     │  SafeDatabase   │  │                     │  │                   │
     │  SafeOODA.idr   │  │                     │  │                   │
@@ -54,10 +54,10 @@
 ```
               MCP    LSP    DAP    BSP    NeSy  Agentic  Fleet   gRPC   REST
            ┌──────┬──────┬──────┬──────┬──────┬───────┬──────┬──────┬──────┐
-Database   │  ██  │      │      │      │      │       │      │      │      │
-Fleet      │  ██  │      │      │      │      │       │      │      │      │
-NeSy       │  ██  │      │      │      │      │       │      │      │      │
-Agent      │  ██  │      │      │      │      │       │      │      │      │
+Database   │  ██  │      │      │      │      │       │      │  ██  │  ██  │
+Fleet      │  ██  │      │      │      │      │       │  ██  │      │  ██  │
+NeSy       │  ██  │      │      │      │  ██  │       │      │      │  ██  │
+Agent      │  ██  │      │      │      │      │  ██   │      │  ██  │  ██  │
 Cloud      │      │      │      │      │      │       │      │      │      │
 Container  │      │      │      │      │      │       │      │      │      │
 K8s        │      │      │      │      │      │       │      │      │      │
@@ -70,35 +70,39 @@ SSG        │      │      │      │      │      │       │      │  
 Proof      │      │      │      │      │      │       │      │      │      │
            └──────┴──────┴──────┴──────┴──────┴───────┴──────┴──────┴──────┘
 
-  ██ = ABI + FFI complete (4 cartridges)
+  ██ = ABI + FFI + Adapter complete (4 cartridges, multi-protocol)
 ```
 
 ## Completion Dashboard
 
-| Component              | Progress   | Status       |
-|------------------------|------------|--------------|
-| Core Catalogue ABI     | `██████████` 100% | Complete |
-| Core Catalogue FFI     | `██████████` 100% | Complete |
-| C Headers              | `██████████` 100% | Complete |
-| database-mcp (ABI+FFI) | `██████████` 100% | Complete |
-| fleet-mcp (ABI+FFI)    | `██████████` 100% | Complete |
-| nesy-mcp (ABI+FFI)     | `██████████` 100% | Complete |
-| agent-mcp (ABI+FFI)    | `██████████` 100% | Complete |
-| V-lang Adapter          | `░░░░░░░░░░`   0% | Phase 3  |
-| Dynamic Loader          | `█░░░░░░░░░`  10% | Stub     |
-| Umoja Federation        | `░░░░░░░░░░`   0% | Phase 5  |
-| PanLL Panel             | `░░░░░░░░░░`   0% | Phase 5  |
-| Stapeln Container       | `░░░░░░░░░░`   0% | Phase 3  |
-| MCP Protocol Endpoint   | `░░░░░░░░░░`   0% | Phase 2  |
-| LSP Protocol Endpoint   | `░░░░░░░░░░`   0% | Phase 2  |
+| Component                    | Progress                  | Grade |
+|------------------------------|---------------------------|-------|
+| Core Catalogue ABI (Idris2)  | `██████████` 100%         | B (RC) |
+| Core Catalogue FFI (Zig)     | `██████████` 100%         | B (RC) |
+| Dynamic Loader (Zig)         | `██████████` 100%         | C (Beta) |
+| V-lang Adapter (REST+gRPC+GQL) | `██████████` 100%      | C (Beta) |
+| database-mcp ABI+FFI+Adapter | `██████████` 100%         | D (Alpha) |
+| fleet-mcp ABI+FFI+Adapter    | `██████████` 100%         | D (Alpha) |
+| nesy-mcp ABI+FFI+Adapter     | `██████████` 100%         | D (Alpha) |
+| agent-mcp ABI+FFI+Adapter    | `██████████` 100%         | D (Alpha) |
+| Readiness tests (CRG D/C/B)  | `██████████` 100%         | B (RC) |
+| Benchmarks                    | `██████████` 100%         | B (RC) |
+| CI pipeline (zig-test.yml)    | `██████████` 100%         | D (Alpha) |
+| TOPOLOGY.md                   | `██████████` 100%         | Complete |
+| Umoja federation              | `░░░░░░░░░░`   0%         | X |
+| Matrix fill (remaining)       | `░░░░░░░░░░`   0%         | X |
+| Polystack deprecation         | `░░░░░░░░░░`   0%         | X |
 
 ## Key Dependencies
 
 | Dependency       | Purpose                          | Status    |
 |------------------|----------------------------------|-----------|
-| proven-servers   | MCP/LSP type skeletons, connectors | Available |
+| Zig 0.15.2       | FFI compilation                  | Available |
+| Idris2           | ABI formal proofs                | Available |
+| V-lang 0.5.0     | Network adapter                  | Available |
+| proven-servers   | Reference cartridge catalogue    | Active    |
 | polystack        | Capability domain mapping (deprecation target) | Available |
 | stapeln          | Container supply chain           | Available |
-| PanLL            | Panel framework for matrix display | Available |
+| PanLL            | Panel framework for matrix display | Planned   |
 | gitbot-fleet     | 6-bot release gate               | Available |
 | hypatia          | Neurosymbolic CI scanning        | Available |

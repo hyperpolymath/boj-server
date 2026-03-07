@@ -322,6 +322,22 @@ test-smoke:
     cd ffi/zig && zig build test
     @echo "Smoke test passed!"
 
+# Run Component Readiness Grade tests (D/C/B)
+readiness:
+    @echo "Running readiness tests..."
+    cd ffi/zig && zig build readiness --summary all
+    @echo "Readiness tests passed!"
+
+# Run benchmarks (catalogue lifecycle, mount/unmount, queries, hash ops)
+bench:
+    @echo "Running benchmarks..."
+    cd ffi/zig && zig build bench
+
+# Run end-to-end integration tests
+integration:
+    @echo "Running integration tests..."
+    bash tests/integration.sh
+
 # Run all quality checks
 quality: fmt-check lint test
     @echo "All quality checks passed!"
@@ -386,17 +402,20 @@ matrix:
     echo "  BoJ Capability Matrix"
     echo "═══════════════════════════════════════════════════"
     echo ""
-    echo "  Cartridge         ABI    FFI    Tests"
-    echo "  ─────────────────────────────────────────"
+    echo "  Cartridge         ABI    FFI    Adapter  Tests"
+    echo "  ───────────────────────────────────────────────"
     for cart in database-mcp fleet-mcp nesy-mcp agent-mcp; do
-        ABI="✗"; FFI="✗"; TESTS="✗"
+        ABI="✗"; FFI="✗"; ADAPTER="✗"; TESTS="✗"
         [ -f "cartridges/$cart/abi"/*/*.idr ] 2>/dev/null && ABI="✓"
         [ -f "cartridges/$cart/ffi"/*_ffi.zig ] 2>/dev/null && FFI="✓"
+        [ -f "cartridges/$cart/adapter"/*_adapter.v ] 2>/dev/null && ADAPTER="✓"
         [ -f "cartridges/$cart/ffi/build.zig" ] 2>/dev/null && TESTS="✓"
-        printf "  %-20s %s      %s      %s\n" "$cart" "$ABI" "$FFI" "$TESTS"
+        printf "  %-20s %s      %s      %s        %s\n" "$cart" "$ABI" "$FFI" "$ADAPTER" "$TESTS"
     done
     echo ""
     echo "  Core catalogue:    ffi/zig/src/catalogue.zig"
+    echo "  Dynamic loader:    ffi/zig/src/loader.zig"
+    echo "  V-lang adapter:    adapter/v/src/main.v"
     echo "  Menu:              .machine_readable/servers/menu.a2ml"
     echo ""
 

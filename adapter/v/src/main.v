@@ -16,7 +16,6 @@ module main
 import json
 import net.http
 import os
-import os.cmdline
 import time
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -38,6 +37,9 @@ fn C.boj_catalogue_count_ready() usize
 fn C.boj_catalogue_count_mounted() usize
 fn C.boj_catalogue_status(index usize) int
 fn C.boj_catalogue_version() &u8
+fn C.boj_catalogue_set_hash(index usize, hash_ptr &u8, hash_len usize) int
+fn C.boj_catalogue_get_hash(index usize, out_ptr &u8) usize
+fn C.boj_loader_verify(path_ptr &u8, path_len usize, expected_hex_ptr &u8, expected_hex_len usize) int
 
 // ═══════════════════════════════════════════════════════════════════════
 // Domain Types (match Idris2 ABI encodings)
@@ -197,6 +199,27 @@ fn (mut app BojApp) register_cartridge(info CartridgeInfo) ! {
 fn (mut app BojApp) mount_cartridge(name string) !string {
 	for c in app.cartridges {
 		if c.name == name {
+			// Verify hash before mounting (if hash is stored)
+			mut hash_buf := [64]u8{init: 0}
+			hash_len := C.boj_catalogue_get_hash(c.index, &hash_buf[0])
+			if hash_len == 64 {
+				// Hash is stored — verify against the binary on disk
+				lib_path := 'cartridges/${name}/ffi/zig-out/lib/lib${name}.so'
+				path_bytes := lib_path.bytes()
+				verify_result := C.boj_loader_verify(
+					path_bytes.data,
+					usize(path_bytes.len),
+					&hash_buf[0],
+					usize(hash_len),
+				)
+				if verify_result == 0 {
+					return error('cartridge "${name}" hash mismatch — binary has been tampered with')
+				}
+				if verify_result == -1 {
+					return error('cartridge "${name}" hash verification failed — binary not found or unreadable')
+				}
+			}
+
 			result := C.boj_catalogue_mount(c.index)
 			return match result {
 				0 { 'mounted "${name}" successfully' }
@@ -379,7 +402,7 @@ fn (app &BojApp) build_menu() MenuResponse {
 
 fn json_response(data string) http.Response {
 	return http.Response{
-		status: .ok
+		status_code: 200
 		header: http.new_header_from_map({
 			.content_type: 'application/json; charset=utf-8'
 		})
@@ -387,12 +410,12 @@ fn json_response(data string) http.Response {
 	}
 }
 
-fn error_response(status http.Status, message string) http.Response {
+fn error_response(status_code int, message string) http.Response {
 	body := json.encode({
 		'error': message
 	})
 	return http.Response{
-		status: status
+		status_code: status_code
 		header: http.new_header_from_map({
 			.content_type: 'application/json; charset=utf-8'
 		})
@@ -400,51 +423,94 @@ fn error_response(status http.Status, message string) http.Response {
 	}
 }
 
-fn rest_handler(mut app BojApp) fn (http.Request) http.Response {
-	return fn [app] (req http.Request) http.Response {
-		path := req.url.path
+// Handler structs (V 0.5.0 uses Handler interface, not function closures)
 
-		match path {
-			'/health' {
-				return json_response('{"status":"ok"}')
-			}
-			'/status' {
-				return json_response(json.encode(app.build_status()))
-			}
-			'/menu' {
-				return json_response(json.encode(app.build_menu()))
-			}
-			'/order' {
-				if req.method != .post {
-					return error_response(.method_not_allowed, 'POST required')
-				}
-				order := json.decode(OrderRequest, req.body) or {
-					return error_response(.bad_request, 'invalid order JSON: ${err.msg()}')
-				}
-				return handle_order(mut app, order)
-			}
-			else {
-				return error_response(.not_found, 'unknown endpoint: ${path}')
-			}
-		}
-	}
+struct RestHandler {
+	app &BojApp
 }
 
-fn handle_order(mut app BojApp, order OrderRequest) http.Response {
+fn (h RestHandler) handle(req http.Request) http.Response {
+	path := req.url
+
+	if path == '/health' {
+		return json_response('{"status":"ok"}')
+	}
+	if path == '/status' {
+		return json_response(json.encode(h.app.build_status()))
+	}
+	if path == '/menu' {
+		return json_response(json.encode(h.app.build_menu()))
+	}
+	if path == '/matrix' {
+		return json_response(json.encode(h.app.build_matrix()))
+	}
+	if path == '/order' {
+		if req.method != .post {
+			return error_response(405, 'POST required')
+		}
+		order := json.decode(OrderRequest, req.data) or {
+			return error_response(400, 'invalid order JSON: ${err.msg()}')
+		}
+		return handle_order(h.app, order)
+	}
+	if path == '/order-ticket' {
+		if req.method != .post {
+			return error_response(405, 'POST required')
+		}
+		return handle_order_ticket(h.app, req.data)
+	}
+	// Cartridge-specific endpoints: /cartridge/{name}
+	if path.starts_with('/cartridge/') {
+		cname := path['/cartridge/'.len..]
+		return handle_cartridge_endpoint(h.app, cname, req)
+	}
+	return error_response(404, 'unknown endpoint: ${path}')
+}
+
+fn handle_order(app &BojApp, order OrderRequest) http.Response {
 	session_id := '${time.now().unix()}:${order.requested_by}'
 	mut mounted := []string{}
 	mut failed := []OrderFailure{}
 	mut endpoints := []EndpointInfo{}
 
 	for name in order.cartridges {
-		app.mount_cartridge(name) or {
+		// Find the cartridge and mount via C FFI
+		mut found := false
+		for c in app.cartridges {
+			if c.name == name {
+				found = true
+				// Check if already mounted
+				if C.boj_catalogue_is_mounted(c.index) == 1 {
+					mounted << name
+					break
+				}
+				result := C.boj_catalogue_mount(c.index)
+				if result != 0 {
+					reason := match result {
+						-1 { 'not Ready (status: ${status_label(c.status)})' }
+						-2 { 'not found in catalogue' }
+						else { 'mount error (code ${result})' }
+					}
+					failed << OrderFailure{
+						cartridge: name
+						reason: reason
+					}
+				} else {
+					mounted << name
+				}
+				break
+			}
+		}
+		if !found {
 			failed << OrderFailure{
 				cartridge: name
-				reason: err.msg()
+				reason: 'not registered'
 			}
 			continue
 		}
-		mounted << name
+		if name !in mounted {
+			continue
+		}
 		endpoints << EndpointInfo{
 			cartridge: name
 			rest: 'http://localhost:9000/cartridge/${name}'
@@ -462,43 +528,240 @@ fn handle_order(mut app BojApp, order OrderRequest) http.Response {
 }
 
 // ═══════════════════════════════════════════════════════════════════════
+// Order-Ticket (SCM format) Parser
+// ═══════════════════════════════════════════════════════════════════════
+
+// Parse a minimal order-ticket.scm body into an OrderRequest.
+// Expected format:
+//   (order
+//     (requested-by "agent-name")
+//     (session-id "id")
+//     (cartridges ("database-mcp" "nesy-mcp")))
+fn parse_order_ticket(body string) !OrderRequest {
+	mut requested_by := ''
+	mut cartridges := []string{}
+
+	for line in body.split('\n') {
+		trimmed := line.trim_space()
+		if trimmed.starts_with('(requested-by') {
+			requested_by = extract_quoted(trimmed) or { '' }
+		}
+		if trimmed.starts_with('(cartridges') || trimmed.starts_with('("') {
+			// Extract quoted cartridge names from the line
+			mut rest := trimmed
+			for {
+				idx := rest.index('"') or { break }
+				end := rest[(idx + 1)..].index('"') or { break }
+				cartridges << rest[(idx + 1)..(idx + 1 + end)]
+				rest = rest[(idx + 1 + end + 1)..]
+			}
+		}
+	}
+
+	if requested_by == '' {
+		return error('missing requested-by field')
+	}
+	if cartridges.len == 0 {
+		return error('no cartridges specified')
+	}
+
+	return OrderRequest{
+		requested_by: requested_by
+		cartridges: cartridges
+	}
+}
+
+fn extract_quoted(s string) !string {
+	start := s.index('"') or { return error('no quote') }
+	end := s[(start + 1)..].index('"') or { return error('no closing quote') }
+	return s[(start + 1)..(start + 1 + end)]
+}
+
+fn handle_order_ticket(app &BojApp, body string) http.Response {
+	order := parse_order_ticket(body) or {
+		return error_response(400, 'invalid order ticket: ${err.msg()}')
+	}
+	return handle_order(app, order)
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// Cartridge-Specific Endpoints
+// ═══════════════════════════════════════════════════════════════════════
+
+fn handle_cartridge_endpoint(app &BojApp, cname string, _ http.Request) http.Response {
+	// Find the cartridge
+	for c in app.cartridges {
+		if c.name == cname {
+			mounted := C.boj_catalogue_is_mounted(c.index)
+			if mounted != 1 {
+				return error_response(503, 'cartridge "${cname}" is not mounted')
+			}
+			return json_response(json.encode(CartridgeDetail{
+				name: c.name
+				version: c.version
+				domain: domain_label(c.domain)
+				protocols: c.protocols.map(protocol_label)
+				status: status_label(c.status)
+				mounted: true
+				endpoints: EndpointInfo{
+					cartridge: c.name
+					rest: 'http://localhost:9000/cartridge/${c.name}'
+					grpc: 'grpc://localhost:9001/${c.name}'
+					graphql: 'http://localhost:9002/graphql?module=${c.name}'
+				}
+			}))
+		}
+	}
+	return error_response(404, 'cartridge "${cname}" not found')
+}
+
+struct CartridgeDetail {
+	name      string
+	version   string
+	domain    string
+	protocols []string
+	status    string
+	mounted   bool
+	endpoints EndpointInfo
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// Matrix View
+// ═══════════════════════════════════════════════════════════════════════
+
+struct MatrixResponse {
+	rows []MatrixRow
+}
+
+struct MatrixRow {
+	protocol    string
+	cells       map[string]string
+}
+
+fn (app &BojApp) build_matrix() MatrixResponse {
+	protocols := [ProtocolType.mcp, .lsp, .dap, .bsp, .nesy, .agentic, .fleet, .grpc, .rest]
+	domains := [CapabilityDomain.cloud, .container, .database, .k8s, .git, .secrets, .queues, .iac, .observe, .ssg, .proof, .fleet_dom, .nesy_dom]
+	mut rows := []MatrixRow{}
+
+	for p in protocols {
+		mut cells := map[string]string{}
+		for d in domains {
+			// Check if any cartridge fills this cell
+			mut cell_val := '-'
+			for c in app.cartridges {
+				if c.domain == d && p in c.protocols {
+					mounted := C.boj_catalogue_is_mounted(c.index)
+					cell_val = if mounted == 1 { '[M] ${c.name}' } else { c.name }
+					break
+				}
+			}
+			cells[domain_label(d)] = cell_val
+		}
+		rows << MatrixRow{
+			protocol: protocol_label(p)
+			cells: cells
+		}
+	}
+
+	return MatrixResponse{
+		rows: rows
+	}
+}
+
+// ═══════════════════════════════════════════════════════════════════════
 // GraphQL Server (port 9002)
 // ═══════════════════════════════════════════════════════════════════════
 
-fn graphql_handler(app &BojApp) fn (http.Request) http.Response {
-	return fn [app] (req http.Request) http.Response {
-		// Minimal GraphQL introspection + query support
-		if req.method != .post {
-			return error_response(.method_not_allowed, 'POST required for GraphQL')
-		}
+struct GraphQLHandler {
+	app &BojApp
+}
 
-		body := json.decode(map[string]string, req.body) or {
-			return error_response(.bad_request, 'invalid GraphQL request')
-		}
-		query := body['query'] or { '' }
-
-		if query.contains('__schema') || query.contains('__type') {
-			return json_response(graphql_schema())
-		}
-
-		if query.contains('status') {
-			return json_response(json.encode({
-				'data': {
-					'status': json.encode(app.build_status())
-				}
-			}))
-		}
-
-		if query.contains('menu') {
-			return json_response(json.encode({
-				'data': {
-					'menu': json.encode(app.build_menu())
-				}
-			}))
-		}
-
-		return error_response(.bad_request, 'unsupported query')
+fn (h GraphQLHandler) handle(req http.Request) http.Response {
+	if req.method != .post {
+		return error_response(405, 'POST required for GraphQL')
 	}
+
+	body := json.decode(map[string]string, req.data) or {
+		return error_response(400, 'invalid GraphQL request')
+	}
+	query := body['query'] or { '' }
+
+	if query.contains('__schema') || query.contains('__type') {
+		return json_response(graphql_schema())
+	}
+
+	if query.contains('status') {
+		return json_response(json.encode({
+			'data': {
+				'status': json.encode(h.app.build_status())
+			}
+		}))
+	}
+
+	if query.contains('menu') {
+		return json_response(json.encode({
+			'data': {
+				'menu': json.encode(h.app.build_menu())
+			}
+		}))
+	}
+
+	if query.contains('matrix') {
+		return json_response(json.encode({
+			'data': {
+				'matrix': json.encode(h.app.build_matrix())
+			}
+		}))
+	}
+
+	if query.contains('cartridge') {
+		cname := extract_graphql_arg(query, 'name') or { '' }
+		if cname != '' {
+			for c in h.app.cartridges {
+				if c.name == cname {
+					return json_response(json.encode({
+						'data': {
+							'cartridge': json.encode(MenuEntryResponse{
+								name: c.name
+								version: c.version
+								domain: domain_label(c.domain)
+								protocols: c.protocols.map(protocol_label)
+								status: status_label(c.status)
+								available: c.status == .ready
+							})
+						}
+					}))
+				}
+			}
+			return error_response(404, 'cartridge "${cname}" not found')
+		}
+	}
+
+	// Mutation support: forward to REST /order endpoint
+	if query.contains('mutation') && query.contains('order') {
+		return json_response(json.encode({
+			'data': {
+				'order': json.encode({
+					'message': 'Use POST /order endpoint for mutations'
+					'endpoint': 'http://localhost:9000/order'
+				})
+			}
+		}))
+	}
+
+	return error_response(400, 'unsupported query')
+}
+
+fn extract_graphql_arg(query string, arg_name string) !string {
+	// Find arg_name: "value" pattern in a GraphQL query
+	needle := '${arg_name}:'
+	idx := query.index(needle) or { return error('arg not found') }
+	rest := query[(idx + needle.len)..].trim_space()
+	if rest.len == 0 || rest[0] != `"` {
+		return error('arg not quoted')
+	}
+	end := rest[1..].index('"') or { return error('no closing quote') }
+	return rest[1..(end + 1)]
 }
 
 fn graphql_schema() string {
@@ -557,28 +820,32 @@ fn main() {
 	println('Catalogue: ${total} cartridges registered, ${ready} ready')
 	println('')
 
+	app_ref := &app
+
 	// REST server on port 9000
 	println('Starting REST  on :9000')
-	spawn http.Server{
+	mut rest_srv := &http.Server{
 		addr: ':9000'
-		handler: rest_handler(mut app)
-	}.listen_and_serve()
+		handler: RestHandler{app: app_ref}
+	}
+	spawn rest_srv.listen_and_serve()
 
 	// GraphQL server on port 9002
 	println('Starting GraphQL on :9002')
-	spawn http.Server{
+	mut gql_srv := &http.Server{
 		addr: ':9002'
-		handler: graphql_handler(&app)
-	}.listen_and_serve()
+		handler: GraphQLHandler{app: app_ref}
+	}
+	spawn gql_srv.listen_and_serve()
 
 	// gRPC on port 9001 — V-lang has no native gRPC library yet.
-	// For now, serve a JSON-over-HTTP/2 endpoint that mirrors the gRPC contract.
-	// This will be replaced with proper gRPC when vlib gains protobuf support.
+	// JSON-over-HTTP/2 endpoint that mirrors the gRPC contract.
 	println('Starting gRPC-compat on :9001 (JSON-over-HTTP/2 until vlib gains protobuf)')
-	spawn http.Server{
+	mut grpc_srv := &http.Server{
 		addr: ':9001'
-		handler: rest_handler(mut app)
-	}.listen_and_serve()
+		handler: RestHandler{app: app_ref}
+	}
+	spawn grpc_srv.listen_and_serve()
 
 	println('')
 	println('BoJ Server ready. Endpoints:')
