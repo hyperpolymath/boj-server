@@ -64,6 +64,27 @@ pub fn build(b: *std.Build) void {
     });
     const run_loader_tests = b.addRunArtifact(loader_tests);
 
+    // --- Guardian module (resource-aware failure tolerance) ---
+    const guardian_mod = b.addModule("boj_guardian", .{
+        .root_source_file = b.path("src/guardian.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+
+    const guardian_lib = b.addLibrary(.{
+        .name = "boj_guardian",
+        .root_module = guardian_mod,
+    });
+    b.installArtifact(guardian_lib);
+
+    const guardian_tests = b.addTest(.{
+        .root_module = guardian_mod,
+    });
+    const run_guardian_tests = b.addRunArtifact(guardian_tests);
+
+    const guardian_step = b.step("guardian", "Run Guardian resource-awareness tests");
+    guardian_step.dependOn(&run_guardian_tests.step);
+
     // --- Federation module (Umoja gossip protocol) ---
     const federation_mod = b.addModule("boj_federation", .{
         .root_source_file = b.path("src/federation.zig"),
@@ -122,5 +143,6 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&run_loader_tests.step);
     test_step.dependOn(&run_readiness_tests.step);
     test_step.dependOn(&run_federation_tests.step);
+    test_step.dependOn(&run_guardian_tests.step);
     test_step.dependOn(&run_e2e_tests.step);
 }
