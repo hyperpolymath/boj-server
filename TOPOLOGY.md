@@ -1,6 +1,6 @@
 <!-- SPDX-License-Identifier: PMPL-1.0-or-later -->
 <!-- TOPOLOGY.md — Project architecture map and completion dashboard -->
-<!-- Last updated: 2026-03-08 (13 cartridges) -->
+<!-- Last updated: 2026-03-08 (13 cartridges, all .so built + tested) -->
 
 # Bundle of Joy Server — Project Topology
 
@@ -104,7 +104,9 @@ Proof      │      │      │      │      │      │       │      │  
 | gRPC-compat adapter           | `██████████` 100%         | D (Alpha) |
 | GraphQL subscriptions         | `██████████` 100%         | D (Alpha) |
 | Cartridge hot-reload          | `██████████` 100%         | D (Alpha) |
-| Matrix fill (remaining)       | `████████░░`  70%         | D (Alpha) |
+| 13 shared libraries (.so)     | `██████████` 100%         | D (Alpha) |
+| 13-cartridge CI pipeline      | `██████████` 100%         | D (Alpha) |
+| Matrix fill (remaining)       | `█████████░`  90%         | D (Alpha) |
 | Polystack deprecation         | `██░░░░░░░░`  20%         | X |
 
 ## Key Dependencies

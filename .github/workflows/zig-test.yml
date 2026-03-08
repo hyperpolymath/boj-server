@@ -39,9 +39,17 @@ jobs:
 
       - name: Run cartridge FFI tests
         run: |
-          for cart in database-mcp fleet-mcp nesy-mcp agent-mcp; do
+          for cart in database-mcp fleet-mcp nesy-mcp agent-mcp cloud-mcp container-mcp k8s-mcp git-mcp secrets-mcp queues-mcp iac-mcp observe-mcp ssg-mcp; do
             echo "Testing $cart..."
             cd cartridges/$cart/ffi && zig build test --summary all
+            cd "$GITHUB_WORKSPACE"
+          done
+
+      - name: Build cartridge shared libraries
+        run: |
+          for cart in database-mcp fleet-mcp nesy-mcp agent-mcp cloud-mcp container-mcp k8s-mcp git-mcp secrets-mcp queues-mcp iac-mcp observe-mcp ssg-mcp; do
+            echo "Building $cart .so..."
+            cd cartridges/$cart/ffi && zig build
             cd "$GITHUB_WORKSPACE"
           done
 
