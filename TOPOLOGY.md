@@ -108,7 +108,7 @@ Proof      │  ██  │      │      │      │      │       │      �
 | 14 shared libraries (.so)     | `██████████` 100%         | D (Alpha) |
 | 14-cartridge CI pipeline      | `██████████` 100%         | D (Alpha) |
 | Matrix fill (all 14 rows)     | `██████████` 100%         | D (Alpha) |
-| Polystack deprecation         | `██░░░░░░░░`  20%         | X |
+| Polystack deprecation         | `████████░░`  80%         | D (Alpha) |
 
 ## Key Dependencies
 
@@ -118,7 +118,7 @@ Proof      │  ██  │      │      │      │      │       │      �
 | Idris2           | ABI formal proofs                | Available |
 | V-lang 0.5.0     | Network adapter                  | Available |
 | proven-servers   | Reference cartridge catalogue    | Active    |
-| polystack        | Capability domain mapping (deprecation target) | Available |
+| polystack        | Capability domain mapping (DEPRECATED 2026-03-08) | Archived |
 | stapeln          | Container supply chain           | Available |
 | PanLL            | Panel framework for matrix display | Planned   |
 | gitbot-fleet     | 6-bot release gate               | Available |
