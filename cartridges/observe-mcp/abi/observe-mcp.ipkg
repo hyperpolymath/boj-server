@@ -1,0 +1,11 @@
+-- SPDX-License-Identifier: PMPL-1.0-or-later
+package observemcp
+
+authors    = "Jonathan D.A. Jewell"
+version    = 0.1.0
+license    = "PMPL-1.0-or-later"
+brief      = "Observe MCP cartridge — metrics pipeline state machine with backpressure tracking"
+
+sourcedir  = "."
+modules    = ObserveMcp.SafeObserve
+depends    = base, contrib

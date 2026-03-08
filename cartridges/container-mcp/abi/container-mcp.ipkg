@@ -1,0 +1,11 @@
+-- SPDX-License-Identifier: PMPL-1.0-or-later
+package containermcp
+
+authors    = "Jonathan D.A. Jewell"
+version    = 0.1.0
+license    = "PMPL-1.0-or-later"
+brief      = "Container MCP cartridge — container lifecycle state machine with build/create/start/stop/remove ordering"
+
+sourcedir  = "."
+modules    = ContainerMcp.SafeContainer
+depends    = base, contrib

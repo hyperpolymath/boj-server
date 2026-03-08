@@ -1,0 +1,11 @@
+-- SPDX-License-Identifier: PMPL-1.0-or-later
+package iacmcp
+
+authors    = "Jonathan D.A. Jewell"
+version    = 0.1.0
+license    = "PMPL-1.0-or-later"
+brief      = "IaC MCP cartridge — plan-before-apply state machine for Terraform/Pulumi"
+
+sourcedir  = "."
+modules    = IacMcp.SafeIac
+depends    = base, contrib

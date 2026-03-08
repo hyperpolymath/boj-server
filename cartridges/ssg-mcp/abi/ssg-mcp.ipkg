@@ -1,0 +1,11 @@
+-- SPDX-License-Identifier: PMPL-1.0-or-later
+package ssgmcp
+
+authors    = "Jonathan D.A. Jewell"
+version    = 0.1.0
+license    = "PMPL-1.0-or-later"
+brief      = "SSG MCP cartridge — build pipeline state machine for Hugo/Zola/Astro/Casket"
+
+sourcedir  = "."
+modules    = SsgMcp.SafeSsg
+depends    = base, contrib
