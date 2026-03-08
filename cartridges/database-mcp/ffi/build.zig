@@ -15,6 +15,7 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
 
+    // ── Tests ────────────────────────────────────────────────────────
     const db_tests = b.addTest(.{
         .root_module = db_mod,
     });
@@ -23,4 +24,19 @@ pub fn build(b: *std.Build) void {
 
     const test_step = b.step("test", "Run database-mcp FFI tests");
     test_step.dependOn(&run_tests.step);
+
+    // ── Shared library ──────────────────────────────────────────────
+    const lib = b.addLibrary(.{
+        .name = "database_mcp",
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("database_ffi.zig"),
+            .target = target,
+            .optimize = optimize,
+        }),
+        .linkage = .dynamic,
+    });
+    b.installArtifact(lib);
+
+    const lib_step = b.step("lib", "Build shared library");
+    lib_step.dependOn(&lib.step);
 }

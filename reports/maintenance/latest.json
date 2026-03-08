@@ -1,11 +1,11 @@
 {
-  "generated_at": "2026-03-07T23:00:00Z",
+  "generated_at": "2026-03-08T23:00:00Z",
   "repo": "/var/mnt/eclipse/repos/boj-server",
   "git": {
     "branch": "main"
   },
   "summary": {
-    "pass": 7,
+    "pass": 9,
     "warn": 0,
     "fail": 0,
     "skipped": 0
@@ -15,10 +15,12 @@
       "name": "zig_ffi_tests",
       "status": "pass",
       "details": {
-        "total_tests": 35,
+        "total_tests": 51,
         "catalogue_tests": 4,
         "loader_tests": 10,
-        "readiness_tests": 21
+        "readiness_tests": 28,
+        "federation_tests": 6,
+        "e2e_tests": 3
       }
     },
     {
@@ -33,11 +35,25 @@
       }
     },
     {
+      "name": "cartridge_shared_libraries",
+      "status": "pass",
+      "details": {
+        "built": 4,
+        "artifacts": [
+          "cartridges/database-mcp/ffi/zig-out/lib/libdatabase_mcp.so",
+          "cartridges/fleet-mcp/ffi/zig-out/lib/libfleet_mcp.so",
+          "cartridges/nesy-mcp/ffi/zig-out/lib/libnesy_mcp.so",
+          "cartridges/agent-mcp/ffi/zig-out/lib/libagent_mcp.so"
+        ]
+      }
+    },
+    {
       "name": "v_adapter_check",
       "status": "pass",
       "details": {
         "command": "v -check src/main.v",
-        "result": "clean"
+        "result": "clean",
+        "features": ["gRPC-compat handler", "GraphQL subscriptions", "cartridge hot-reload", "event queue"]
       }
     },
     {
@@ -64,8 +80,8 @@
       "name": "benchmarks",
       "status": "pass",
       "details": {
-        "init_deinit_ns": 359,
-        "register_ns": 317,
+        "init_deinit_ns": 360,
+        "register_ns": 316,
         "mount_unmount_ns": 1,
         "count_ready_ns": 4,
         "set_hash_ns": "<1"
@@ -77,17 +93,29 @@
       "details": {
         "artifact": "ffi/zig/zig-out/lib/libboj_catalogue.a"
       }
+    },
+    {
+      "name": "federation_stub",
+      "status": "pass",
+      "details": {
+        "tests": 6,
+        "exports": 11,
+        "features": ["node registry", "heartbeat", "suspect/dead lifecycle", "catalogue hash sync"]
+      }
     }
   ],
   "maintenance_axes": {
     "axis_1_scoping": {
       "must": [
-        "Cartridge .so/.dylib shared library builds",
-        "Order-ticket end-to-end flow test"
+        "Cartridge .so/.dylib shared library builds (DONE)",
+        "Order-ticket end-to-end flow test (DONE)"
       ],
       "intend": [
-        "Phase 5: Umoja federation stub",
-        "gRPC native adapter"
+        "Phase 5: Umoja federation stub (DONE)",
+        "gRPC-compat adapter (DONE)",
+        "GraphQL subscriptions (DONE)",
+        "Readiness Grade A tests (DONE)",
+        "Cartridge hot-reload (DONE)"
       ],
       "like": [
         "VeriSimDB backing store",
@@ -98,10 +126,10 @@
     "axis_2": {
       "corrective": "V 0.5.0 API migration (done)",
       "adaptive": "Zig 0.15 API migration (done)",
-      "perfective": "Benchmarks, readiness tests, CI pipeline (done)"
+      "perfective": "Benchmarks, readiness A tests, federation stub, shared libs, e2e tests (done)"
     },
     "axis_3": {
-      "systems": "CI pipeline created, all tests pass",
+      "systems": "CI pipeline created, all 74 tests pass",
       "compliance": "Zero believe_me, panic-attack directive configured",
       "effects": "Benchmark evidence recorded, sub-microsecond mount operations"
     }

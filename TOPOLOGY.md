@@ -1,6 +1,6 @@
 <!-- SPDX-License-Identifier: PMPL-1.0-or-later -->
 <!-- TOPOLOGY.md — Project architecture map and completion dashboard -->
-<!-- Last updated: 2026-03-07 -->
+<!-- Last updated: 2026-03-08 -->
 
 # Bundle of Joy Server — Project Topology
 
@@ -85,11 +85,16 @@ Proof      │      │      │      │      │      │       │      │  
 | fleet-mcp ABI+FFI+Adapter    | `██████████` 100%         | D (Alpha) |
 | nesy-mcp ABI+FFI+Adapter     | `██████████` 100%         | D (Alpha) |
 | agent-mcp ABI+FFI+Adapter    | `██████████` 100%         | D (Alpha) |
-| Readiness tests (CRG D/C/B)  | `██████████` 100%         | B (RC) |
+| Readiness tests (CRG D/C/B/A)| `██████████` 100%         | A (Prod) |
 | Benchmarks                    | `██████████` 100%         | B (RC) |
 | CI pipeline (zig-test.yml)    | `██████████` 100%         | D (Alpha) |
+| E2E order-ticket tests        | `██████████` 100%         | B (RC) |
+| Cartridge shared libraries    | `██████████` 100%         | B (RC) |
 | TOPOLOGY.md                   | `██████████` 100%         | Complete |
-| Umoja federation              | `░░░░░░░░░░`   0%         | X |
+| Umoja federation (stub)       | `██████████` 100%         | D (Alpha) |
+| gRPC-compat adapter           | `██████████` 100%         | D (Alpha) |
+| GraphQL subscriptions         | `██████████` 100%         | D (Alpha) |
+| Cartridge hot-reload          | `██████████` 100%         | D (Alpha) |
 | Matrix fill (remaining)       | `░░░░░░░░░░`   0%         | X |
 | Polystack deprecation         | `░░░░░░░░░░`   0%         | X |
 

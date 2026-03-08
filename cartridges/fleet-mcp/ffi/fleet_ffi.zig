@@ -40,13 +40,13 @@ var passed_gates: [MAX_GATES]bool = .{ false, false, false, false, false, false 
 var gate_scores: [MAX_GATES]c_int = .{ 0, 0, 0, 0, 0, 0 };
 
 /// Reset all gate results.
-export fn fleet_reset() void {
+pub export fn fleet_reset() void {
     for (&passed_gates) |*g| g.* = false;
     for (&gate_scores) |*s| s.* = 0;
 }
 
 /// Record a gate scan result.
-export fn fleet_record_gate(gate: c_int, passed: c_int, score: c_int) c_int {
+pub export fn fleet_record_gate(gate: c_int, passed: c_int, score: c_int) c_int {
     if (gate < 1 or gate > 6) return -1;
     const idx: usize = @intCast(gate - 1);
     passed_gates[idx] = passed != 0;
@@ -55,13 +55,13 @@ export fn fleet_record_gate(gate: c_int, passed: c_int, score: c_int) c_int {
 }
 
 /// Check if mandatory gates (Rhodibot, Echidnabot, Panicbot) have passed.
-export fn fleet_has_mandatory() c_int {
+pub export fn fleet_has_mandatory() c_int {
     // Rhodibot=0, Echidnabot=1, Panicbot=3
     return if (passed_gates[0] and passed_gates[1] and passed_gates[3]) 1 else 0;
 }
 
 /// Check if all six gates have passed.
-export fn fleet_has_all() c_int {
+pub export fn fleet_has_all() c_int {
     for (passed_gates) |g| {
         if (!g) return 0;
     }
@@ -69,7 +69,7 @@ export fn fleet_has_all() c_int {
 }
 
 /// Derive repository status from current gate results.
-export fn fleet_status() c_int {
+pub export fn fleet_status() c_int {
     if (fleet_has_all() == 1) return @intFromEnum(RepoStatus.healthy);
     if (fleet_has_mandatory() == 1) return @intFromEnum(RepoStatus.degraded);
     for (passed_gates) |g| {
@@ -79,9 +79,35 @@ export fn fleet_status() c_int {
 }
 
 /// Get the score for a specific gate.
-export fn fleet_gate_score(gate: c_int) c_int {
+pub export fn fleet_gate_score(gate: c_int) c_int {
     if (gate < 1 or gate > 6) return -1;
     return gate_scores[@intCast(gate - 1)];
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════
+// Standard Cartridge Interface (loader expects these 4 C-ABI symbols)
+// ═══════════════════════════════════════════════════════════════════════
+
+/// Initialise the fleet-mcp cartridge. Resets all gate results.
+pub export fn boj_cartridge_init() c_int {
+    fleet_reset();
+    return 0;
+}
+
+/// Deinitialise the fleet-mcp cartridge. Resets all gate results.
+pub export fn boj_cartridge_deinit() void {
+    fleet_reset();
+}
+
+/// Return the cartridge name as a null-terminated C string.
+pub export fn boj_cartridge_name() [*:0]const u8 {
+    return "fleet-mcp";
+}
+
+/// Return the cartridge version as a null-terminated C string.
+pub export fn boj_cartridge_version() [*:0]const u8 {
+    return "0.1.0";
 }
 
 // ═══════════════════════════════════════════════════════════════════════

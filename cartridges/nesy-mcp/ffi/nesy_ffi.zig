@@ -43,7 +43,7 @@ pub const ConfidenceLevel = enum(c_int) {
 
 /// The harmonization law.
 /// Symbolic truth ALWAYS overrides Neural probability.
-export fn nesy_harmonize(neural: c_int, symbolic: c_int) c_int {
+pub export fn nesy_harmonize(neural: c_int, symbolic: c_int) c_int {
     const sym: SymbolicVerdict = @enumFromInt(symbolic);
     const neur: NeuralVerdict = @enumFromInt(neural);
 
@@ -61,7 +61,7 @@ export fn nesy_harmonize(neural: c_int, symbolic: c_int) c_int {
 }
 
 /// Confidence level for a harmonization.
-export fn nesy_confidence(neural: c_int, symbolic: c_int) c_int {
+pub export fn nesy_confidence(neural: c_int, symbolic: c_int) c_int {
     const sym: SymbolicVerdict = @enumFromInt(symbolic);
     const neur: NeuralVerdict = @enumFromInt(neural);
 
@@ -74,6 +74,29 @@ export fn nesy_confidence(neural: c_int, symbolic: c_int) c_int {
     };
 
     return @intFromEnum(result);
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════
+// Standard Cartridge Interface (loader expects these 4 C-ABI symbols)
+// ═══════════════════════════════════════════════════════════════════════
+
+/// Initialise the nesy-mcp cartridge. No-op (harmonization is stateless).
+pub export fn boj_cartridge_init() c_int {
+    return 0;
+}
+
+/// Deinitialise the nesy-mcp cartridge. No-op (harmonization is stateless).
+pub export fn boj_cartridge_deinit() void {}
+
+/// Return the cartridge name as a null-terminated C string.
+pub export fn boj_cartridge_name() [*:0]const u8 {
+    return "nesy-mcp";
+}
+
+/// Return the cartridge version as a null-terminated C string.
+pub export fn boj_cartridge_version() [*:0]const u8 {
+    return "0.1.0";
 }
 
 // ═══════════════════════════════════════════════════════════════════════

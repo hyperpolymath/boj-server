@@ -6,13 +6,13 @@
 [metadata]
 project = "boj-server"
 version = "0.1.0"
-last-updated = "2026-03-07"
+last-updated = "2026-03-08"
 status = "active"
 
 [project-context]
 name = "Bundle of Joy Server"
 purpose = "Unified server capability catalogue solving the combinatoric explosion of developer server protocols. Provides a 2D matrix of formally verified cartridges (protocol types x capability domains), distributed via community-hosted nodes with hash attestation and gossip protocol."
-completion-percentage = 65
+completion-percentage = 75
 
 [position]
 phase = "implementation"
@@ -25,33 +25,36 @@ milestones = [
   { name = "Phase 2: Core Zig FFI layer (catalogue + loader)", completion = 100 },
   { name = "Phase 3: V-lang triple adapter (REST+gRPC+GraphQL)", completion = 100 },
   { name = "Phase 4: First cartridges — ABI+FFI+Adapter (database, fleet, nesy, agent)", completion = 100 },
-  { name = "Phase 5: Umoja federation & PanLL panel", completion = 0 },
+  { name = "Phase 5: Umoja federation & PanLL panel", completion = 30 },
   { name = "Phase 6: Remaining cartridges (fill the matrix)", completion = 0 },
   { name = "Phase 7: Polystack deprecation (endgame)", completion = 0 },
 ]
 
 [quality]
-zig-ffi-tests = 58
-readiness-tests = 21
-readiness-grades = "D(5) + C(7) + B(9)"
+zig-ffi-tests = 74
+readiness-tests = 28
+readiness-grades = "D(5) + C(7) + B(9) + A(7)"
+federation-tests = 6
+e2e-tests = 3
+cartridge-shared-libs = 4
 benchmark = true
 ci-pipeline = "zig-test.yml"
 topology = true
 
 [maintenance]
 must = [
-  "Order-ticket end-to-end flow test",
-  "Cartridge .so/.dylib shared library builds",
+  "Order-ticket end-to-end flow test (done)",
+  "Cartridge .so/.dylib shared library builds (done)",
   "CI/CD pipeline (zig-test.yml — done)",
   "Hash verification wired to mount (done)",
   "Distinct error codes for all failure modes (done)",
 ]
 should = [
-  "gRPC adapter (currently JSON-over-HTTP/2 stub)",
-  "GraphQL subscriptions for mount/unmount events",
-  "Readiness Grade A tests (concurrent access, stress)",
+  "gRPC-compat adapter (done — JSON-over-HTTP with service/method paths)",
+  "GraphQL subscriptions for mount/unmount events (done — polling)",
+  "Readiness Grade A tests (done — 7 production tests)",
   "PanLL module mapping",
-  "Cartridge hot-reload",
+  "Cartridge hot-reload (done — unmount/verify/remount)",
 ]
 could = [
   "Phase 6: matrix fill — remaining cartridges",
@@ -68,14 +71,13 @@ could = [
 
 [critical-next-actions]
 actions = [
-  "Build cartridge shared libraries (.so/.dylib) for real dynamic loading",
-  "End-to-end order-ticket flow test: menu -> order -> mount -> endpoints",
-  "Phase 5: Umoja federation runtime (gossip protocol, node handshake)",
   "Phase 5: PanLL BoJ panel (ReScript/TEA) showing matrix, menu, active orders",
+  "Phase 6: Remaining cartridges (fill the matrix)",
+  "Phase 7: Polystack deprecation",
 ]
 
 [maintenance-status]
-last-run-utc = "2026-03-07"
+last-run-utc = "2026-03-08"
 last-report = "reports/maintenance/latest.json"
 last-result = "pass"
 open-warnings = 0

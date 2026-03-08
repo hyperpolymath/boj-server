@@ -64,6 +64,27 @@ pub fn build(b: *std.Build) void {
     });
     const run_loader_tests = b.addRunArtifact(loader_tests);
 
+    // --- Federation module (Umoja gossip protocol) ---
+    const federation_mod = b.addModule("boj_federation", .{
+        .root_source_file = b.path("src/federation.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+
+    const federation_lib = b.addLibrary(.{
+        .name = "boj_federation",
+        .root_module = federation_mod,
+    });
+    b.installArtifact(federation_lib);
+
+    const federation_tests = b.addTest(.{
+        .root_module = federation_mod,
+    });
+    const run_federation_tests = b.addRunArtifact(federation_tests);
+
+    const federation_step = b.step("federation", "Run Umoja federation protocol tests");
+    federation_step.dependOn(&run_federation_tests.step);
+
     // --- Readiness tests ---
     const readiness_mod = b.addModule("boj_readiness", .{
         .root_source_file = b.path("src/readiness.zig"),
@@ -79,9 +100,27 @@ pub fn build(b: *std.Build) void {
     const readiness_step = b.step("readiness", "Run Component Readiness Grade tests");
     readiness_step.dependOn(&run_readiness_tests.step);
 
+    // --- End-to-end order-ticket tests ---
+    const e2e_mod = b.addModule("boj_e2e_order", .{
+        .root_source_file = b.path("src/e2e_order.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    e2e_mod.addImport("catalogue", catalogue_mod);
+
+    const e2e_tests = b.addTest(.{
+        .root_module = e2e_mod,
+    });
+    const run_e2e_tests = b.addRunArtifact(e2e_tests);
+
+    const e2e_step = b.step("e2e", "Run end-to-end order-ticket tests (no V server needed)");
+    e2e_step.dependOn(&run_e2e_tests.step);
+
     // --- Test step runs all ---
     const test_step = b.step("test", "Run all FFI tests");
     test_step.dependOn(&run_catalogue_tests.step);
     test_step.dependOn(&run_loader_tests.step);
     test_step.dependOn(&run_readiness_tests.step);
+    test_step.dependOn(&run_federation_tests.step);
+    test_step.dependOn(&run_e2e_tests.step);
 }

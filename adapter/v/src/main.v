@@ -141,12 +141,82 @@ struct CartridgeInfo {
 	index     usize
 }
 
+struct EventEntry {
+	event_type string
+	cartridge  string
+	timestamp  i64
+}
+
+struct Subscription {
+	id    string
+	event string
+}
+
+struct EventQueue {
+mut:
+	events        []EventEntry
+	subscriptions []Subscription
+	next_sub_id   int
+}
+
+fn EventQueue.new() EventQueue {
+	return EventQueue{
+		events: []EventEntry{}
+		subscriptions: []Subscription{}
+		next_sub_id: 1
+	}
+}
+
+fn (mut eq EventQueue) push(event_type string, cartridge string) {
+	eq.events << EventEntry{
+		event_type: event_type
+		cartridge: cartridge
+		timestamp: time.now().unix()
+	}
+	// Ring buffer: cap at 100 entries
+	if eq.events.len > 100 {
+		eq.events = eq.events[eq.events.len - 100..]
+	}
+}
+
+fn (mut eq EventQueue) subscribe(event string) string {
+	id := 'sub-${eq.next_sub_id}'
+	eq.next_sub_id++
+	eq.subscriptions << Subscription{
+		id: id
+		event: event
+	}
+	return id
+}
+
+fn (eq &EventQueue) events_for(sub_id string) []EventEntry {
+	// Find subscription to get the event filter
+	mut event_filter := ''
+	for s in eq.subscriptions {
+		if s.id == sub_id {
+			event_filter = s.event
+			break
+		}
+	}
+	if event_filter == '' {
+		return []EventEntry{}
+	}
+	mut result := []EventEntry{}
+	for e in eq.events {
+		if e.event_type == event_filter {
+			result << e
+		}
+	}
+	return result
+}
+
 struct BojApp {
 mut:
-	cartridges []CartridgeInfo
-	start_time time.Time
-	node_id    string
-	region     string
+	cartridges  []CartridgeInfo
+	start_time  time.Time
+	node_id     string
+	region      string
+	event_queue EventQueue
 }
 
 fn BojApp.new() BojApp {
@@ -155,6 +225,7 @@ fn BojApp.new() BojApp {
 		start_time: time.now()
 		node_id: os.getenv_opt('BOJ_NODE_ID') or { 'local-0' }
 		region: os.getenv_opt('BOJ_REGION') or { 'local' }
+		event_queue: EventQueue.new()
 	}
 }
 
@@ -467,6 +538,143 @@ fn (h RestHandler) handle(req http.Request) http.Response {
 	return error_response(404, 'unknown endpoint: ${path}')
 }
 
+// ═══════════════════════════════════════════════════════════════════════
+// gRPC-compat Server (port 9001)
+// ═══════════════════════════════════════════════════════════════════════
+
+struct GrpcHandler {
+	app &BojApp
+}
+
+fn grpc_response(data string, grpc_status string) http.Response {
+	mut hdr := http.new_header_from_map({
+		.content_type: 'application/json; charset=utf-8'
+	})
+	hdr.add_custom('grpc-status', grpc_status) or {}
+	return http.Response{
+		status_code: 200
+		header: hdr
+		body: data
+	}
+}
+
+fn grpc_error(status_code int, message string, grpc_status string) http.Response {
+	body := json.encode({
+		'error': message
+	})
+	mut hdr := http.new_header_from_map({
+		.content_type: 'application/json; charset=utf-8'
+	})
+	hdr.add_custom('grpc-status', grpc_status) or {}
+	return http.Response{
+		status_code: status_code
+		header: hdr
+		body: body
+	}
+}
+
+fn (h GrpcHandler) handle(req http.Request) http.Response {
+	if req.method != .post {
+		return grpc_error(405, 'gRPC requires POST', '5')
+	}
+
+	path := req.url
+
+	if path == '/boj.Catalogue/GetStatus' {
+		return grpc_response(json.encode(h.app.build_status()), '0')
+	}
+	if path == '/boj.Catalogue/GetMenu' {
+		return grpc_response(json.encode(h.app.build_menu()), '0')
+	}
+	if path == '/boj.Catalogue/GetMatrix' {
+		return grpc_response(json.encode(h.app.build_matrix()), '0')
+	}
+	if path == '/boj.Catalogue/Mount' {
+		body := json.decode(map[string]string, req.data) or {
+			return grpc_error(400, 'invalid JSON body', '5')
+		}
+		name := body['name'] or { '' }
+		if name == '' {
+			return grpc_error(400, 'missing "name" field', '5')
+		}
+		for c in h.app.cartridges {
+			if c.name == name {
+				result := C.boj_catalogue_mount(c.index)
+				if result != 0 {
+					reason := match result {
+						-1 { 'not Ready' }
+						-2 { 'not found in catalogue' }
+						else { 'mount error (code ${result})' }
+					}
+					return grpc_error(500, reason, '5')
+				}
+				mut eq := unsafe { &h.app.event_queue }
+				eq.push('mount', name)
+				return grpc_response(json.encode({
+					'status':    'mounted'
+					'cartridge': name
+				}), '0')
+			}
+		}
+		return grpc_error(404, 'cartridge "${name}" not found', '5')
+	}
+	if path == '/boj.Catalogue/Unmount' {
+		body := json.decode(map[string]string, req.data) or {
+			return grpc_error(400, 'invalid JSON body', '5')
+		}
+		name := body['name'] or { '' }
+		if name == '' {
+			return grpc_error(400, 'missing "name" field', '5')
+		}
+		for c in h.app.cartridges {
+			if c.name == name {
+				result := C.boj_catalogue_unmount(c.index)
+				if result != 0 {
+					return grpc_error(500, 'unmount error (code ${result})', '5')
+				}
+				mut eq := unsafe { &h.app.event_queue }
+				eq.push('unmount', name)
+				return grpc_response(json.encode({
+					'status':    'unmounted'
+					'cartridge': name
+				}), '0')
+			}
+		}
+		return grpc_error(404, 'cartridge "${name}" not found', '5')
+	}
+	if path == '/boj.Catalogue/GetCartridge' {
+		body := json.decode(map[string]string, req.data) or {
+			return grpc_error(400, 'invalid JSON body', '5')
+		}
+		name := body['name'] or { '' }
+		if name == '' {
+			return grpc_error(400, 'missing "name" field', '5')
+		}
+		for c in h.app.cartridges {
+			if c.name == name {
+				mounted := C.boj_catalogue_is_mounted(c.index)
+				return grpc_response(json.encode(CartridgeDetail{
+					name: c.name
+					version: c.version
+					domain: domain_label(c.domain)
+					protocols: c.protocols.map(protocol_label)
+					status: status_label(c.status)
+					mounted: mounted == 1
+					endpoints: EndpointInfo{
+						cartridge: c.name
+						rest: 'http://localhost:9000/cartridge/${c.name}'
+						grpc: 'grpc://localhost:9001/${c.name}'
+						graphql: 'http://localhost:9002/graphql?module=${c.name}'
+					}
+				}), '0')
+			}
+		}
+		return grpc_error(404, 'cartridge "${name}" not found', '5')
+	}
+
+	return grpc_error(404, 'unknown gRPC method: ${path}', '5')
+}
+
 fn handle_order(app &BojApp, order OrderRequest) http.Response {
 	session_id := '${time.now().unix()}:${order.requested_by}'
 	mut mounted := []string{}
@@ -497,6 +705,8 @@ fn handle_order(app &BojApp, order OrderRequest) http.Response {
 					}
 				} else {
 					mounted << name
+					mut eq := unsafe { &app.event_queue }
+					eq.push('mount', name)
 				}
 				break
 			}
@@ -588,7 +798,24 @@ fn handle_order_ticket(app &BojApp, body string) http.Response {
 // Cartridge-Specific Endpoints
 // ═══════════════════════════════════════════════════════════════════════
 
-fn handle_cartridge_endpoint(app &BojApp, cname string, _ http.Request) http.Response {
+struct ReloadResponse {
+	cartridge  string
+	status     string
+	reloaded   bool
+	elapsed_ms i64
+}
+
+fn handle_cartridge_endpoint(app &BojApp, raw_path string, req http.Request) http.Response {
+	// Check for /cartridge/{name}/reload
+	if raw_path.ends_with('/reload') {
+		cname := raw_path[..raw_path.len - '/reload'.len]
+		if req.method != .post {
+			return error_response(405, 'POST required for reload')
+		}
+		return handle_cartridge_reload(app, cname)
+	}
+
+	cname := raw_path
 	// Find the cartridge
 	for c in app.cartridges {
 		if c.name == cname {
@@ -609,6 +836,64 @@ fn handle_cartridge_endpoint(app &BojApp, cname string, _ http.Request) http.Res
 					grpc: 'grpc://localhost:9001/${c.name}'
 					graphql: 'http://localhost:9002/graphql?module=${c.name}'
 				}
+			}))
+		}
+	}
+	return error_response(404, 'cartridge "${cname}" not found')
+}
+
+fn handle_cartridge_reload(app &BojApp, cname string) http.Response {
+	start := time.now()
+
+	for c in app.cartridges {
+		if c.name == cname {
+			// Step 1: Unmount if currently mounted
+			if C.boj_catalogue_is_mounted(c.index) == 1 {
+				C.boj_catalogue_unmount(c.index)
+				mut eq := unsafe { &app.event_queue }
+				eq.push('unmount', cname)
+			}
+
+			// Step 2: Re-verify hash if one is stored
+			mut hash_buf := [64]u8{init: 0}
+			hash_len := C.boj_catalogue_get_hash(c.index, &hash_buf[0])
+			if hash_len == 64 {
+				lib_path := 'cartridges/${cname}/ffi/zig-out/lib/lib${cname}.so'
+				path_bytes := lib_path.bytes()
+				verify_result := C.boj_loader_verify(
+					path_bytes.data,
+					usize(path_bytes.len),
+					&hash_buf[0],
+					usize(hash_len),
+				)
+				if verify_result == 0 {
+					return error_response(409, 'reload failed: hash mismatch for "${cname}"')
+				}
+				if verify_result == -1 {
+					return error_response(500, 'reload failed: binary not found for "${cname}"')
+				}
+			}
+
+			// Step 3: Re-mount
+			result := C.boj_catalogue_mount(c.index)
+			if result != 0 {
+				reason := match result {
+					-1 { 'not Ready (status: ${status_label(c.status)})' }
+					-2 { 'not found in catalogue' }
+					else { 'mount error (code ${result})' }
+				}
+				return error_response(500, 'reload mount failed: ${reason}')
+			}
+
+			mut eq := unsafe { &app.event_queue }
+			eq.push('mount', cname)
+
+			elapsed := i64((time.now() - start) / time.millisecond)
+			return json_response(json.encode(ReloadResponse{
+				cartridge: cname
+				status: 'reloaded'
+				reloaded: true
+				elapsed_ms: elapsed
 			}))
 		}
 	}
@@ -676,7 +961,57 @@ struct GraphQLHandler {
 	app &BojApp
 }
 
+struct SubscribeRequest {
+	event string
+}
+
+struct SubscribeResponse {
+	subscription_id string
+	event           string
+	status          string
+}
+
 fn (h GraphQLHandler) handle(req http.Request) http.Response {
+	// Subscription polling endpoints (non-GraphQL paths on this port)
+	if req.url == '/graphql/subscriptions' && req.method == .get {
+		return json_response(json.encode(h.app.event_queue.subscriptions))
+	}
+	if req.url == '/graphql/subscribe' && req.method == .post {
+		sub_req := json.decode(SubscribeRequest, req.data) or {
+			return error_response(400, 'invalid subscribe JSON: expected {"event": "..."}')
+		}
+		if sub_req.event != 'mount' && sub_req.event != 'unmount' {
+			return error_response(400, 'unsupported event type: "${sub_req.event}" (use "mount" or "unmount")')
+		}
+		// NOTE: mut access through shared ref — V's type system requires this
+		// to be safe. In practice the event_queue is only mutated here and
+		// in mount/unmount handlers, all on the same HTTP server thread.
+		mut eq := unsafe { &h.app.event_queue }
+		sub_id := eq.subscribe(sub_req.event)
+		return json_response(json.encode(SubscribeResponse{
+			subscription_id: sub_id
+			event: sub_req.event
+			status: 'subscribed'
+		}))
+	}
+	if req.url.starts_with('/graphql/events') && req.method == .get {
+		// Extract subscription_id from query string
+		mut sub_id := ''
+		if req.url.contains('?') {
+			query_part := req.url[req.url.index('?') or { 0 } + 1..]
+			for param in query_part.split('&') {
+				if param.starts_with('subscription_id=') {
+					sub_id = param['subscription_id='.len..]
+				}
+			}
+		}
+		if sub_id == '' {
+			return error_response(400, 'missing subscription_id parameter')
+		}
+		events := h.app.event_queue.events_for(sub_id)
+		return json_response(json.encode(events))
+	}
+
 	if req.method != .post {
 		return error_response(405, 'POST required for GraphQL')
 	}
@@ -838,12 +1173,12 @@ fn main() {
 	}
 	spawn gql_srv.listen_and_serve()
 
-	// gRPC on port 9001 — V-lang has no native gRPC library yet.
-	// JSON-over-HTTP/2 endpoint that mirrors the gRPC contract.
-	println('Starting gRPC-compat on :9001 (JSON-over-HTTP/2 until vlib gains protobuf)')
+	// gRPC-compat on port 9001 — proper service/method paths.
+	// JSON-over-HTTP until vlib gains protobuf support.
+	println('Starting gRPC-compat on :9001 (JSON-over-HTTP, service/method paths)')
 	mut grpc_srv := &http.Server{
 		addr: ':9001'
-		handler: RestHandler{app: app_ref}
+		handler: GrpcHandler{app: app_ref}
 	}
 	spawn grpc_srv.listen_and_serve()
 

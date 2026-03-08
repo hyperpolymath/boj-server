@@ -52,7 +52,7 @@ fn isValidTransition(from: AgentState, to: AgentState) bool {
 }
 
 /// Create a new agent session. Returns session index or -1.
-export fn agent_new_session() c_int {
+pub export fn agent_new_session() c_int {
     for (&sessions, 0..) |*s, i| {
         if (!s.active) {
             s.active = true;
@@ -66,14 +66,14 @@ export fn agent_new_session() c_int {
 }
 
 /// End a session.
-export fn agent_end_session(idx: c_int) c_int {
+pub export fn agent_end_session(idx: c_int) c_int {
     if (idx < 0 or idx >= MAX_SESSIONS) return -1;
     sessions[@intCast(idx)].active = false;
     return 0;
 }
 
 /// Attempt a state transition. Returns 0 on success, -1 invalid, -2 not found.
-export fn agent_transition(idx: c_int, to: c_int) c_int {
+pub export fn agent_transition(idx: c_int, to: c_int) c_int {
     if (idx < 0 or idx >= MAX_SESSIONS) return -2;
     const i: usize = @intCast(idx);
     if (!sessions[i].active) return -2;
@@ -94,7 +94,7 @@ export fn agent_transition(idx: c_int, to: c_int) c_int {
 }
 
 /// Get current state of a session.
-export fn agent_state(idx: c_int) c_int {
+pub export fn agent_state(idx: c_int) c_int {
     if (idx < 0 or idx >= MAX_SESSIONS) return -1;
     const i: usize = @intCast(idx);
     if (!sessions[i].active) return -1;
@@ -102,7 +102,7 @@ export fn agent_state(idx: c_int) c_int {
 }
 
 /// Get loop count for a session.
-export fn agent_loop_count(idx: c_int) c_int {
+pub export fn agent_loop_count(idx: c_int) c_int {
     if (idx < 0 or idx >= MAX_SESSIONS) return -1;
     const i: usize = @intCast(idx);
     if (!sessions[i].active) return -1;
@@ -110,14 +110,14 @@ export fn agent_loop_count(idx: c_int) c_int {
 }
 
 /// Validate a transition without executing it (C-ABI export).
-export fn agent_validate_ooda(from: c_int, to: c_int) c_int {
+pub export fn agent_validate_ooda(from: c_int, to: c_int) c_int {
     const f: AgentState = @enumFromInt(from);
     const t: AgentState = @enumFromInt(to);
     return if (isValidTransition(f, t)) 1 else 0;
 }
 
 /// Get next standard state in the OODA sequence.
-export fn agent_next_state(current: c_int) c_int {
+pub export fn agent_next_state(current: c_int) c_int {
     const s: AgentState = @enumFromInt(current);
     return @intFromEnum(switch (s) {
         .observe => AgentState.orient,
@@ -129,13 +129,39 @@ export fn agent_next_state(current: c_int) c_int {
 }
 
 /// Reset all sessions (for testing).
-export fn agent_reset() void {
+pub export fn agent_reset() void {
     for (&sessions) |*s| {
         s.active = false;
         s.state = .observe;
         s.loop_count = 0;
         s.was_halted = false;
     }
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════
+// Standard Cartridge Interface (loader expects these 4 C-ABI symbols)
+// ═══════════════════════════════════════════════════════════════════════
+
+/// Initialise the agent-mcp cartridge. Resets all sessions.
+pub export fn boj_cartridge_init() c_int {
+    agent_reset();
+    return 0;
+}
+
+/// Deinitialise the agent-mcp cartridge. Resets all sessions.
+pub export fn boj_cartridge_deinit() void {
+    agent_reset();
+}
+
+/// Return the cartridge name as a null-terminated C string.
+pub export fn boj_cartridge_name() [*:0]const u8 {
+    return "agent-mcp";
+}
+
+/// Return the cartridge version as a null-terminated C string.
+pub export fn boj_cartridge_version() [*:0]const u8 {
+    return "0.1.0";
 }
 
 // ═══════════════════════════════════════════════════════════════════════
