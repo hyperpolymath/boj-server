@@ -121,6 +121,20 @@ pub fn build(b: *std.Build) void {
     const readiness_step = b.step("readiness", "Run Component Readiness Grade tests");
     readiness_step.dependOn(&run_readiness_tests.step);
 
+    // --- VeriSimDB backing store ---
+    const verisimdb_mod = b.addModule("boj_verisimdb", .{
+        .root_source_file = b.path("src/verisimdb.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    const verisimdb_tests = b.addTest(.{
+        .root_module = verisimdb_mod,
+    });
+    const run_verisimdb_tests = b.addRunArtifact(verisimdb_tests);
+
+    const verisimdb_step = b.step("verisimdb", "Run VeriSimDB backing store tests");
+    verisimdb_step.dependOn(&run_verisimdb_tests.step);
+
     // --- End-to-end order-ticket tests ---
     const e2e_mod = b.addModule("boj_e2e_order", .{
         .root_source_file = b.path("src/e2e_order.zig"),
@@ -145,4 +159,5 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&run_federation_tests.step);
     test_step.dependOn(&run_guardian_tests.step);
     test_step.dependOn(&run_e2e_tests.step);
+    test_step.dependOn(&run_verisimdb_tests.step);
 }

@@ -250,6 +250,210 @@ pub export fn boj_catalogue_version() [*:0]const u8 {
 }
 
 // ═══════════════════════════════════════════════════════════════════════
+// Teranga Menu Discovery
+// ═══════════════════════════════════════════════════════════════════════
+//
+// These exports implement the Teranga menu discovery protocol (matching
+// the Idris2 Boj.Menu ABI). AI agents use these to discover what
+// cartridges are available, their capabilities, and whether they can
+// be mounted.
+
+/// Get the name of a cartridge by index. Copies into out_ptr.
+/// Returns the name length, or 0 if index is invalid.
+pub export fn boj_menu_name(index: usize, out_ptr: [*]u8, out_len: usize) usize {
+    if (!initialised or index >= catalogue_count) return 0;
+    const len = @min(catalogue[index].name_len, out_len);
+    @memcpy(out_ptr[0..len], catalogue[index].name[0..len]);
+    return len;
+}
+
+/// Get the version of a cartridge by index. Copies into out_ptr.
+/// Returns the version length, or 0 if index is invalid.
+pub export fn boj_menu_version(index: usize, out_ptr: [*]u8, out_len: usize) usize {
+    if (!initialised or index >= catalogue_count) return 0;
+    const len = @min(catalogue[index].version_len, out_len);
+    @memcpy(out_ptr[0..len], catalogue[index].version[0..len]);
+    return len;
+}
+
+/// Get the tier of a cartridge by index.
+/// Returns 0=Teranga, 1=Shield, 2=Ayo, or -1 on error.
+pub export fn boj_menu_tier(index: usize) c_int {
+    if (!initialised or index >= catalogue_count) return -1;
+    return @intFromEnum(catalogue[index].tier);
+}
+
+/// Get the domain of a cartridge by index.
+/// Returns the domain integer (1-13), or -1 on error.
+pub export fn boj_menu_domain(index: usize) c_int {
+    if (!initialised or index >= catalogue_count) return -1;
+    return @intFromEnum(catalogue[index].domain);
+}
+
+/// Check if a cartridge supports a given protocol.
+/// Returns 1 if supported, 0 if not, -1 on error.
+pub export fn boj_menu_has_protocol(index: usize, protocol: c_int) c_int {
+    if (!initialised or index >= catalogue_count) return -1;
+    if (protocol < 1 or protocol > 9) return -1;
+    return if (catalogue[index].protocols[@as(usize, @intCast(protocol)) - 1]) 1 else 0;
+}
+
+/// Check if a cartridge is available (status == Ready).
+/// Returns 1 if available, 0 if not, -1 on error.
+pub export fn boj_menu_available(index: usize) c_int {
+    if (!initialised or index >= catalogue_count) return -1;
+    return if (catalogue[index].status == .ready) 1 else 0;
+}
+
+/// Count cartridges by tier.
+pub export fn boj_menu_count_by_tier(tier_int: c_int) usize {
+    if (!initialised) return 0;
+    const tier: MenuTier = @enumFromInt(tier_int);
+    var count: usize = 0;
+    for (catalogue[0..catalogue_count]) |entry| {
+        if (entry.tier == tier) count += 1;
+    }
+    return count;
+}
+
+/// Count available (Ready) cartridges by tier.
+pub export fn boj_menu_count_available_by_tier(tier_int: c_int) usize {
+    if (!initialised) return 0;
+    const tier: MenuTier = @enumFromInt(tier_int);
+    var count: usize = 0;
+    for (catalogue[0..catalogue_count]) |entry| {
+        if (entry.tier == tier and entry.status == .ready) count += 1;
+    }
+    return count;
+}
+
+/// Validate an order ticket — given an array of cartridge names, returns
+/// how many can be mounted (status == Ready). This matches the Idris2
+/// validateOrder function.
+pub export fn boj_menu_validate_order(
+    name_ptrs: [*]const [*]const u8,
+    name_lens: [*]const usize,
+    count: usize,
+) usize {
+    if (!initialised) return 0;
+    if (count > MAX_ORDER_SIZE) return 0;
+
+    var satisfied: usize = 0;
+    for (0..count) |i| {
+        const req_name = name_ptrs[i][0..name_lens[i]];
+        for (catalogue[0..catalogue_count]) |entry| {
+            if (entry.name_len == req_name.len and
+                std.mem.eql(u8, entry.name[0..entry.name_len], req_name) and
+                entry.status == .ready)
+            {
+                satisfied += 1;
+                break;
+            }
+        }
+    }
+    return satisfied;
+}
+
+/// Generate a JSON-formatted menu string into out_buf.
+/// Returns the number of bytes written, or 0 on error.
+/// This is the primary discovery endpoint for AI agents.
+pub export fn boj_menu_json(out_ptr: [*]u8, out_len: usize) usize {
+    if (!initialised) return 0;
+
+    const tier_labels = [_][]const u8{ "teranga", "shield", "ayo" };
+    const proto_labels = [_][]const u8{ "mcp", "lsp", "dap", "bsp", "nesy", "agentic", "fleet", "grpc", "rest" };
+    const status_labels = [_][]const u8{ "development", "ready", "deprecated", "faulty" };
+
+    var buf: [8192]u8 = undefined;
+    var pos: usize = 0;
+
+    // Opening.
+    const header = "{\"menu\":\"teranga\",\"version\":\"0.1.0\",\"cartridges\":[";
+    if (pos + header.len > buf.len) return 0;
+    @memcpy(buf[pos..][0..header.len], header);
+    pos += header.len;
+
+    for (catalogue[0..catalogue_count], 0..) |entry, idx| {
+        if (idx > 0) {
+            buf[pos] = ',';
+            pos += 1;
+        }
+
+        // Build entry JSON manually (no allocator needed).
+        // {"name":"...","version":"...","tier":"...","status":"...","available":true/false,"protocols":["..."]}
+        const prefix = "{\"name\":\"";
+        @memcpy(buf[pos..][0..prefix.len], prefix);
+        pos += prefix.len;
+
+        @memcpy(buf[pos..][0..entry.name_len], entry.name[0..entry.name_len]);
+        pos += entry.name_len;
+
+        const mid1 = "\",\"version\":\"";
+        @memcpy(buf[pos..][0..mid1.len], mid1);
+        pos += mid1.len;
+
+        @memcpy(buf[pos..][0..entry.version_len], entry.version[0..entry.version_len]);
+        pos += entry.version_len;
+
+        const mid2 = "\",\"tier\":\"";
+        @memcpy(buf[pos..][0..mid2.len], mid2);
+        pos += mid2.len;
+
+        const tier_label = tier_labels[@as(usize, @intCast(@intFromEnum(entry.tier)))];
+        @memcpy(buf[pos..][0..tier_label.len], tier_label);
+        pos += tier_label.len;
+
+        const mid3 = "\",\"status\":\"";
+        @memcpy(buf[pos..][0..mid3.len], mid3);
+        pos += mid3.len;
+
+        const status_label = status_labels[@as(usize, @intCast(@intFromEnum(entry.status)))];
+        @memcpy(buf[pos..][0..status_label.len], status_label);
+        pos += status_label.len;
+
+        const mid4 = if (entry.status == .ready)
+            "\",\"available\":true,\"protocols\":["
+        else
+            "\",\"available\":false,\"protocols\":[";
+        @memcpy(buf[pos..][0..mid4.len], mid4);
+        pos += mid4.len;
+
+        // Protocols array.
+        var first_proto = true;
+        for (entry.protocols, 0..) |has, pi| {
+            if (has) {
+                if (!first_proto) {
+                    buf[pos] = ',';
+                    pos += 1;
+                }
+                buf[pos] = '"';
+                pos += 1;
+                const pl = proto_labels[pi];
+                @memcpy(buf[pos..][0..pl.len], pl);
+                pos += pl.len;
+                buf[pos] = '"';
+                pos += 1;
+                first_proto = false;
+            }
+        }
+
+        const suffix = "]}";
+        @memcpy(buf[pos..][0..suffix.len], suffix);
+        pos += suffix.len;
+    }
+
+    // Closing.
+    const footer = "]}";
+    @memcpy(buf[pos..][0..footer.len], footer);
+    pos += footer.len;
+
+    // Copy to output buffer.
+    const write_len = @min(pos, out_len);
+    @memcpy(out_ptr[0..write_len], buf[0..write_len]);
+    return write_len;
+}
+
+// ═══════════════════════════════════════════════════════════════════════
 // Tests
 // ═══════════════════════════════════════════════════════════════════════
 
@@ -305,4 +509,132 @@ test "cannot mount faulty cartridge" {
 
     // Mount should fail (status = faulty)
     try std.testing.expectEqual(@as(c_int, -1), boj_catalogue_mount(0));
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// Teranga Menu Discovery Tests
+// ═══════════════════════════════════════════════════════════════════════
+
+test "menu name and version query" {
+    _ = boj_catalogue_init();
+    defer boj_catalogue_deinit();
+
+    const name = "database-mcp";
+    const ver = "0.2.0";
+    _ = boj_catalogue_register(name.ptr, name.len, ver.ptr, ver.len, 1, 0, 3);
+
+    var name_buf: [64]u8 = undefined;
+    const nlen = boj_menu_name(0, &name_buf, 64);
+    try std.testing.expectEqual(name.len, nlen);
+    try std.testing.expectEqualSlices(u8, name, name_buf[0..nlen]);
+
+    var ver_buf: [16]u8 = undefined;
+    const vlen = boj_menu_version(0, &ver_buf, 16);
+    try std.testing.expectEqual(ver.len, vlen);
+    try std.testing.expectEqualSlices(u8, ver, ver_buf[0..vlen]);
+}
+
+test "menu tier and domain query" {
+    _ = boj_catalogue_init();
+    defer boj_catalogue_deinit();
+
+    const name = "fleet-mcp";
+    const ver = "0.1.0";
+    _ = boj_catalogue_register(name.ptr, name.len, ver.ptr, ver.len, 1, 0, 12); // teranga, fleet domain
+
+    try std.testing.expectEqual(@as(c_int, 0), boj_menu_tier(0));   // teranga
+    try std.testing.expectEqual(@as(c_int, 12), boj_menu_domain(0)); // fleet
+}
+
+test "menu protocol check" {
+    _ = boj_catalogue_init();
+    defer boj_catalogue_deinit();
+
+    const name = "nesy-mcp";
+    const ver = "0.2.0";
+    _ = boj_catalogue_register(name.ptr, name.len, ver.ptr, ver.len, 1, 0, 13);
+    _ = boj_catalogue_add_protocol(1); // MCP
+    _ = boj_catalogue_add_protocol(5); // NeSy
+    _ = boj_catalogue_add_protocol(8); // gRPC
+
+    try std.testing.expectEqual(@as(c_int, 1), boj_menu_has_protocol(0, 1)); // MCP
+    try std.testing.expectEqual(@as(c_int, 1), boj_menu_has_protocol(0, 5)); // NeSy
+    try std.testing.expectEqual(@as(c_int, 1), boj_menu_has_protocol(0, 8)); // gRPC
+    try std.testing.expectEqual(@as(c_int, 0), boj_menu_has_protocol(0, 2)); // LSP - not set
+}
+
+test "menu availability check" {
+    _ = boj_catalogue_init();
+    defer boj_catalogue_deinit();
+
+    const ready = "ready-cart";
+    _ = boj_catalogue_register(ready.ptr, ready.len, "1.0".ptr, 3, 1, 0, 1); // ready
+    const dev = "dev-cart";
+    _ = boj_catalogue_register(dev.ptr, dev.len, "0.1".ptr, 3, 0, 0, 2); // development
+
+    try std.testing.expectEqual(@as(c_int, 1), boj_menu_available(0)); // ready
+    try std.testing.expectEqual(@as(c_int, 0), boj_menu_available(1)); // development
+}
+
+test "menu count by tier" {
+    _ = boj_catalogue_init();
+    defer boj_catalogue_deinit();
+
+    // 2 teranga, 1 shield
+    _ = boj_catalogue_register("t1".ptr, 2, "1.0".ptr, 3, 1, 0, 1);
+    _ = boj_catalogue_register("t2".ptr, 2, "1.0".ptr, 3, 0, 0, 2);
+    _ = boj_catalogue_register("s1".ptr, 2, "1.0".ptr, 3, 1, 1, 6);
+
+    try std.testing.expectEqual(@as(usize, 2), boj_menu_count_by_tier(0)); // teranga
+    try std.testing.expectEqual(@as(usize, 1), boj_menu_count_by_tier(1)); // shield
+    try std.testing.expectEqual(@as(usize, 0), boj_menu_count_by_tier(2)); // ayo
+
+    // Available by tier
+    try std.testing.expectEqual(@as(usize, 1), boj_menu_count_available_by_tier(0)); // 1 of 2 teranga ready
+    try std.testing.expectEqual(@as(usize, 1), boj_menu_count_available_by_tier(1)); // shield ready
+}
+
+test "menu validate order" {
+    _ = boj_catalogue_init();
+    defer boj_catalogue_deinit();
+
+    _ = boj_catalogue_register("database-mcp".ptr, 12, "0.1.0".ptr, 5, 1, 0, 3); // ready
+    _ = boj_catalogue_register("fleet-mcp".ptr, 9, "0.1.0".ptr, 5, 1, 0, 12);    // ready
+    _ = boj_catalogue_register("nesy-mcp".ptr, 8, "0.1.0".ptr, 5, 0, 0, 13);     // development
+
+    // Order for database-mcp and fleet-mcp (both ready)
+    const names = [_][*]const u8{ "database-mcp", "fleet-mcp" };
+    const lens = [_]usize{ 12, 9 };
+    try std.testing.expectEqual(@as(usize, 2), boj_menu_validate_order(&names, &lens, 2));
+
+    // Order including nesy-mcp (not ready)
+    const names2 = [_][*]const u8{ "database-mcp", "nesy-mcp" };
+    const lens2 = [_]usize{ 12, 8 };
+    try std.testing.expectEqual(@as(usize, 1), boj_menu_validate_order(&names2, &lens2, 2));
+
+    // Order for nonexistent cartridge
+    const names3 = [_][*]const u8{"phantom-mcp"};
+    const lens3 = [_]usize{11};
+    try std.testing.expectEqual(@as(usize, 0), boj_menu_validate_order(&names3, &lens3, 1));
+}
+
+test "menu JSON generation" {
+    _ = boj_catalogue_init();
+    defer boj_catalogue_deinit();
+
+    _ = boj_catalogue_register("database-mcp".ptr, 12, "0.1.0".ptr, 5, 1, 0, 3);
+    _ = boj_catalogue_add_protocol(1); // MCP
+    _ = boj_catalogue_add_protocol(9); // REST
+
+    var buf: [4096]u8 = undefined;
+    const len = boj_menu_json(&buf, 4096);
+    try std.testing.expect(len > 0);
+
+    const json = buf[0..len];
+    // Verify structural elements are present.
+    try std.testing.expect(std.mem.indexOf(u8, json, "\"menu\":\"teranga\"") != null);
+    try std.testing.expect(std.mem.indexOf(u8, json, "\"database-mcp\"") != null);
+    try std.testing.expect(std.mem.indexOf(u8, json, "\"available\":true") != null);
+    try std.testing.expect(std.mem.indexOf(u8, json, "\"mcp\"") != null);
+    try std.testing.expect(std.mem.indexOf(u8, json, "\"rest\"") != null);
 }

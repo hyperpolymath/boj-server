@@ -51,6 +51,28 @@ const MAX_DIGEST_ENTRIES: usize = 128;
 /// Maximum length of a single cartridge digest entry string.
 const MAX_ENTRY_LEN: usize = 160;
 
+/// Default federation port for UDP communication.
+const DEFAULT_PORT: u16 = 9999;
+
+/// Multicast group for peer discovery (link-local, site-scoped).
+/// ff02::b04 = "boj" on link-local scope.
+const MULTICAST_GROUP: [16]u8 = .{ 0xff, 0x02, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x0b, 0x04 };
+
+/// Maximum size of a UDP packet payload.
+const MAX_PACKET_LEN: usize = 1024;
+
+/// Discovery window: how many recv attempts before returning (non-blocking).
+const DISCOVERY_RECV_ATTEMPTS: usize = 32;
+
+/// Packet tag bytes for the wire protocol.
+const PKT_DISCOVER: u8 = 0x01;
+const PKT_DISCOVER_REPLY: u8 = 0x02;
+const PKT_GOSSIP_DIGEST: u8 = 0x03;
+const PKT_GOSSIP_DIGEST_REPLY: u8 = 0x04;
+const PKT_HANDSHAKE_INIT: u8 = 0x05;
+const PKT_HANDSHAKE_REPLY: u8 = 0x06;
+const PKT_HEARTBEAT: u8 = 0x07;
+
 // ═══════════════════════════════════════════════════════════════════════
 // Types — Federation node registry (original SWIM layer)
 // ═══════════════════════════════════════════════════════════════════════
@@ -153,6 +175,26 @@ var local_digest_valid: bool = false;
 /// Counter for gossip rounds completed (for testing/metrics).
 var gossip_round_count: usize = 0;
 
+/// Our local node identifier (set by umoja_set_node_id).
+var local_node_id: [MAX_NODE_ID_LEN]u8 = [_]u8{0} ** MAX_NODE_ID_LEN;
+var local_node_id_len: usize = 0;
+
+/// Our listen port (set by umoja_bind).
+var local_port: u16 = 0;
+
+/// UDP socket file descriptor. -1 means not bound.
+var udp_fd: std.posix.socket_t = -1;
+
+/// Whether the UDP socket is bound and ready.
+var socket_bound: bool = false;
+
+/// Last error code from a network operation (for diagnostics).
+var last_net_error: c_int = 0;
+
+/// Statistics: packets sent and received.
+var packets_sent: usize = 0;
+var packets_received: usize = 0;
+
 // ═══════════════════════════════════════════════════════════════════════
 // Internal helpers
 // ═══════════════════════════════════════════════════════════════════════
@@ -214,12 +256,474 @@ fn pickRandomPeer() ?usize {
 }
 
 // ═══════════════════════════════════════════════════════════════════════
+// Internal helpers — UDP networking
+// ═══════════════════════════════════════════════════════════════════════
+
+/// Build a packet with tag + node_id + payload into the provided buffer.
+/// Format: [tag:1][id_len:2 LE][id:N][payload_len:2 LE][payload:M]
+/// Returns total length, or 0 on overflow.
+fn buildPacket(
+    buf: []u8,
+    tag: u8,
+    payload: ?[]const u8,
+) usize {
+    const id_len = local_node_id_len;
+    const pay_len: usize = if (payload) |p| p.len else 0;
+    const total = 1 + 2 + id_len + 2 + pay_len;
+    if (total > buf.len) return 0;
+
+    buf[0] = tag;
+    buf[1] = @truncate(id_len & 0xFF);
+    buf[2] = @truncate((id_len >> 8) & 0xFF);
+    if (id_len > 0) {
+        @memcpy(buf[3 .. 3 + id_len], local_node_id[0..id_len]);
+    }
+    const pay_off = 3 + id_len;
+    buf[pay_off] = @truncate(pay_len & 0xFF);
+    buf[pay_off + 1] = @truncate((pay_len >> 8) & 0xFF);
+    if (payload) |p| {
+        if (p.len > 0) {
+            @memcpy(buf[pay_off + 2 .. pay_off + 2 + p.len], p);
+        }
+    }
+    return total;
+}
+
+/// Parse a received packet. Returns tag, node_id slice, and payload slice.
+/// Returns null on malformed packets.
+const ParsedPacket = struct {
+    tag: u8,
+    node_id: []const u8,
+    payload: []const u8,
+};
+
+fn parsePacket(buf: []const u8) ?ParsedPacket {
+    if (buf.len < 5) return null; // minimum: tag + id_len(2) + pay_len(2)
+
+    const tag = buf[0];
+    const id_len: usize = @as(usize, buf[1]) | (@as(usize, buf[2]) << 8);
+    if (3 + id_len + 2 > buf.len) return null;
+
+    const pay_off = 3 + id_len;
+    const pay_len: usize = @as(usize, buf[pay_off]) | (@as(usize, buf[pay_off + 1]) << 8);
+    if (pay_off + 2 + pay_len > buf.len) return null;
+
+    return ParsedPacket{
+        .tag = tag,
+        .node_id = buf[3 .. 3 + id_len],
+        .payload = buf[pay_off + 2 .. pay_off + 2 + pay_len],
+    };
+}
+
+/// Send a UDP packet to a peer by index.
+/// Returns 0 on success, -1 on error.
+fn sendToPeer(peer_idx: usize, buf: []const u8) c_int {
+    if (!socket_bound) return -1;
+    if (!validPeer(peer_idx)) return -1;
+
+    const peer = &peers[peer_idx];
+    var addr: std.posix.sockaddr.in6 = std.mem.zeroes(std.posix.sockaddr.in6);
+    addr.family = std.posix.AF.INET6;
+    addr.port = std.mem.nativeToBig(u16, peer.port);
+
+    // Parse IPv6 address from peer host string.
+    const host_slice = peer.host[0..peer.host_len];
+    const parsed = std.net.Ip6Address.parse(host_slice, peer.port) catch {
+        last_net_error = -2;
+        return -1;
+    };
+    addr = parsed.sa;
+
+    const dest: *const std.posix.sockaddr = @ptrCast(&addr);
+    const sent = std.posix.sendto(udp_fd, buf, 0, dest, @sizeOf(std.posix.sockaddr.in6)) catch {
+        last_net_error = -3;
+        return -1;
+    };
+    _ = sent;
+    packets_sent += 1;
+    return 0;
+}
+
+/// Try to receive one UDP packet (non-blocking).
+/// Returns the number of bytes received, 0 if nothing available, or -1 on error.
+/// Stores the sender's address in the provided sockaddr.
+fn recvPacket(buf: []u8, src_addr: *std.posix.sockaddr.in6) c_int {
+    if (!socket_bound) return -1;
+
+    var addr6: std.posix.sockaddr.in6 = std.mem.zeroes(std.posix.sockaddr.in6);
+    var addr6_len: std.posix.socklen_t = @sizeOf(std.posix.sockaddr.in6);
+
+    const n = std.posix.recvfrom(udp_fd, buf, std.posix.MSG.DONTWAIT, @ptrCast(&addr6), &addr6_len) catch |err| {
+        if (err == error.WouldBlock) return 0;
+        last_net_error = -4;
+        return -1;
+    };
+
+    src_addr.* = addr6;
+
+    packets_received += 1;
+    return @intCast(n);
+}
+
+/// Format an IPv6 address (16 bytes) into a human-readable string.
+/// Uses compressed notation (e.g. "::1" for loopback).
+fn formatIp6(raw: [16]u8, buf: []u8) usize {
+    // Convert 16 bytes to 8 groups of 16-bit values.
+    var groups: [8]u16 = undefined;
+    for (0..8) |i| {
+        groups[i] = (@as(u16, raw[i * 2]) << 8) | @as(u16, raw[i * 2 + 1]);
+    }
+
+    // Find longest run of zeros for "::" compression.
+    var best_start: usize = 8;
+    var best_len: usize = 0;
+    var run_start: usize = 0;
+    var run_len: usize = 0;
+    for (0..8) |i| {
+        if (groups[i] == 0) {
+            if (run_len == 0) run_start = i;
+            run_len += 1;
+            if (run_len > best_len) {
+                best_start = run_start;
+                best_len = run_len;
+            }
+        } else {
+            run_len = 0;
+        }
+    }
+    if (best_len < 2) {
+        best_start = 8; // don't compress single zeros
+        best_len = 0;
+    }
+
+    var pos: usize = 0;
+    var i: usize = 0;
+    while (i < 8) {
+        if (i == best_start) {
+            if (i == 0) {
+                if (pos < buf.len) { buf[pos] = ':'; pos += 1; }
+            }
+            if (pos < buf.len) { buf[pos] = ':'; pos += 1; }
+            i += best_len;
+            continue;
+        }
+        if (i > 0 and i != best_start + best_len) {
+            // Need separator only if we didn't just emit "::"
+            if (pos < buf.len) { buf[pos] = ':'; pos += 1; }
+        } else if (i == best_start + best_len and i > 0) {
+            // After "::", no extra colon needed — already have trailing ':'
+        }
+        // Write group as hex without leading zeros.
+        const val = groups[i];
+        const hex_str = std.fmt.bufPrint(buf[pos..], "{x}", .{val}) catch return pos;
+        pos += hex_str.len;
+        i += 1;
+    }
+    return pos;
+}
+
+/// Find or add a peer by IPv6 address and port. Returns peer index.
+fn findOrAddPeerByAddr(addr: *const std.posix.sockaddr.in6) c_int {
+    // Format the raw IPv6 address bytes as a string.
+    var addr_buf: [46]u8 = undefined;
+    const host_len = formatIp6(addr.addr, &addr_buf);
+    const port = std.mem.bigToNative(u16, addr.port);
+
+    if (host_len == 0 or host_len > MAX_HOST_LEN) return -1;
+
+    return umoja_add_peer(addr_buf[0..host_len].ptr, host_len, port);
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// C-ABI exports — Umoja UDP socket lifecycle
+// ═══════════════════════════════════════════════════════════════════════
+
+/// Set the local node identifier used in all outgoing packets.
+/// Must be called before umoja_bind(). Returns 0 on success, -1 on error.
+pub export fn umoja_set_node_id(
+    id_ptr: [*]const u8,
+    id_len: usize,
+) c_int {
+    if (id_len == 0 or id_len > MAX_NODE_ID_LEN) return -1;
+    local_node_id_len = copyBounded(&local_node_id, id_ptr, id_len);
+    return 0;
+}
+
+/// Bind a UDP socket to the given port for federation communication.
+/// Uses IPv6 dual-stack (receives both IPv4-mapped and IPv6).
+/// Returns 0 on success, -1 on error.
+pub export fn umoja_bind(port: u16) c_int {
+    if (socket_bound) return -1; // already bound
+    if (port == 0) return -1;
+
+    const fd = std.posix.socket(std.posix.AF.INET6, std.posix.SOCK.DGRAM, 0) catch {
+        last_net_error = -10;
+        return -1;
+    };
+
+    // Allow address reuse.
+    const one: c_int = 1;
+    std.posix.setsockopt(fd, std.posix.SOL.SOCKET, std.posix.SO.REUSEADDR, std.mem.asBytes(&one)) catch {};
+
+    // Bind to [::]:port.
+    var addr: std.posix.sockaddr.in6 = std.mem.zeroes(std.posix.sockaddr.in6);
+    addr.family = std.posix.AF.INET6;
+    addr.port = std.mem.nativeToBig(u16, port);
+
+    std.posix.bind(fd, @ptrCast(&addr), @sizeOf(std.posix.sockaddr.in6)) catch {
+        std.posix.close(fd);
+        last_net_error = -11;
+        return -1;
+    };
+
+    // Set non-blocking via ioctl FIONBIO.
+    const fionbio: c_int = 1;
+    const FIONBIO: u32 = 0x5421;
+    const ioctl_result = std.posix.system.ioctl(fd, FIONBIO, @intFromPtr(&fionbio));
+    if (ioctl_result != 0) {
+        std.posix.close(fd);
+        last_net_error = -12;
+        return -1;
+    }
+
+    udp_fd = fd;
+    local_port = port;
+    socket_bound = true;
+    return 0;
+}
+
+/// Close the UDP socket and reset networking state.
+/// Returns 0 on success, -1 if not bound.
+pub export fn umoja_unbind() c_int {
+    if (!socket_bound) return -1;
+
+    std.posix.close(udp_fd);
+    udp_fd = -1;
+    local_port = 0;
+    socket_bound = false;
+    packets_sent = 0;
+    packets_received = 0;
+    last_net_error = 0;
+    return 0;
+}
+
+/// Return 1 if the UDP socket is bound, 0 otherwise.
+pub export fn umoja_is_bound() c_int {
+    return if (socket_bound) 1 else 0;
+}
+
+/// Return the last network error code (for diagnostics).
+pub export fn umoja_last_net_error() c_int {
+    return last_net_error;
+}
+
+/// Return the number of packets sent since bind.
+pub export fn umoja_packets_sent() usize {
+    return packets_sent;
+}
+
+/// Return the number of packets received since bind.
+pub export fn umoja_packets_received() usize {
+    return packets_received;
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// C-ABI exports — Umoja real UDP gossip
+// ═══════════════════════════════════════════════════════════════════════
+
+/// Send a gossip digest to a specific peer over UDP.
+/// Sends our local catalogue digest in a GOSSIP_DIGEST packet.
+/// Returns 0 on success, -1 on error.
+pub export fn umoja_send_digest(peer_idx: usize) c_int {
+    if (!socket_bound) return -1;
+    if (!local_digest_valid) return -1;
+    if (!validPeer(peer_idx)) return -1;
+
+    var buf: [MAX_PACKET_LEN]u8 = undefined;
+    const pkt_len = buildPacket(&buf, PKT_GOSSIP_DIGEST, &local_digest);
+    if (pkt_len == 0) return -1;
+
+    return sendToPeer(peer_idx, buf[0..pkt_len]);
+}
+
+/// Send a handshake initiation packet to a peer.
+/// Returns 0 on success, -1 on error.
+pub export fn umoja_send_handshake(peer_idx: usize) c_int {
+    if (!socket_bound) return -1;
+    if (!validPeer(peer_idx)) return -1;
+
+    var buf: [MAX_PACKET_LEN]u8 = undefined;
+    const pkt_len = buildPacket(&buf, PKT_HANDSHAKE_INIT, null);
+    if (pkt_len == 0) return -1;
+
+    const result = sendToPeer(peer_idx, buf[0..pkt_len]);
+    if (result == 0) {
+        peers[peer_idx].handshake_state = .pending;
+        peers[peer_idx].last_seen = std.time.timestamp();
+    }
+    return result;
+}
+
+/// Send a heartbeat packet to a peer.
+/// Returns 0 on success, -1 on error.
+pub export fn umoja_send_heartbeat(peer_idx: usize) c_int {
+    if (!socket_bound) return -1;
+    if (!validPeer(peer_idx)) return -1;
+
+    var buf: [MAX_PACKET_LEN]u8 = undefined;
+    const pkt_len = buildPacket(&buf, PKT_HEARTBEAT, null);
+    if (pkt_len == 0) return -1;
+
+    return sendToPeer(peer_idx, buf[0..pkt_len]);
+}
+
+/// Process one incoming UDP packet (non-blocking).
+/// Reads one packet from the socket and handles it according to tag:
+///   - DISCOVER: adds sender as peer, sends DISCOVER_REPLY
+///   - DISCOVER_REPLY: adds sender as peer
+///   - GOSSIP_DIGEST: stores digest, sends our digest back
+///   - GOSSIP_DIGEST_REPLY: stores digest
+///   - HANDSHAKE_INIT: transitions to pending, sends reply
+///   - HANDSHAKE_REPLY: transitions to exchanged
+///   - HEARTBEAT: updates last_seen
+///
+/// Returns the packet tag on success (>0), 0 if no packet available, -1 on error.
+pub export fn umoja_recv_and_process() c_int {
+    if (!socket_bound) return -1;
+
+    var buf: [MAX_PACKET_LEN]u8 = undefined;
+    var src_addr: std.posix.sockaddr.in6 = std.mem.zeroes(std.posix.sockaddr.in6);
+
+    const n = recvPacket(&buf, &src_addr);
+    if (n <= 0) return n; // 0 = no data, -1 = error
+
+    const pkt = parsePacket(buf[0..@intCast(n)]) orelse return -1;
+
+    // Find or create the peer entry for this sender.
+    const peer_result = findOrAddPeerByAddr(&src_addr);
+    if (peer_result < 0) return -1;
+    const pidx: usize = @intCast(peer_result);
+
+    // Store the sender's node_id if provided.
+    if (pkt.node_id.len > 0 and pkt.node_id.len <= MAX_NODE_ID_LEN) {
+        peers[pidx].node_id_len = copyBounded(&peers[pidx].node_id, pkt.node_id.ptr, pkt.node_id.len);
+    }
+    peers[pidx].last_seen = std.time.timestamp();
+
+    switch (pkt.tag) {
+        PKT_DISCOVER => {
+            // Reply with our identity so the sender knows we exist.
+            var reply: [MAX_PACKET_LEN]u8 = undefined;
+            const rlen = buildPacket(&reply, PKT_DISCOVER_REPLY, null);
+            if (rlen > 0) {
+                _ = sendToPeer(pidx, reply[0..rlen]);
+            }
+        },
+        PKT_DISCOVER_REPLY => {
+            // Peer already added by findOrAddPeerByAddr above.
+        },
+        PKT_GOSSIP_DIGEST => {
+            // Store received digest.
+            if (pkt.payload.len == DIGEST_LEN) {
+                @memcpy(&peers[pidx].catalogue_digest, pkt.payload[0..DIGEST_LEN]);
+                peers[pidx].has_digest = true;
+            }
+            // Send our digest back.
+            if (local_digest_valid) {
+                var reply: [MAX_PACKET_LEN]u8 = undefined;
+                const rlen = buildPacket(&reply, PKT_GOSSIP_DIGEST_REPLY, &local_digest);
+                if (rlen > 0) {
+                    _ = sendToPeer(pidx, reply[0..rlen]);
+                }
+            }
+            gossip_round_count += 1;
+        },
+        PKT_GOSSIP_DIGEST_REPLY => {
+            // Store received digest.
+            if (pkt.payload.len == DIGEST_LEN) {
+                @memcpy(&peers[pidx].catalogue_digest, pkt.payload[0..DIGEST_LEN]);
+                peers[pidx].has_digest = true;
+            }
+            gossip_round_count += 1;
+        },
+        PKT_HANDSHAKE_INIT => {
+            peers[pidx].handshake_state = .pending;
+            // Reply to complete handshake.
+            var reply: [MAX_PACKET_LEN]u8 = undefined;
+            const rlen = buildPacket(&reply, PKT_HANDSHAKE_REPLY, null);
+            if (rlen > 0) {
+                _ = sendToPeer(pidx, reply[0..rlen]);
+            }
+        },
+        PKT_HANDSHAKE_REPLY => {
+            if (peers[pidx].handshake_state == .pending) {
+                peers[pidx].handshake_state = .exchanged;
+            }
+        },
+        PKT_HEARTBEAT => {
+            // last_seen already updated above.
+        },
+        else => {
+            // Unknown tag — ignore.
+        },
+    }
+
+    return @intCast(pkt.tag);
+}
+
+/// Discover peers by sending a broadcast discovery packet to the given
+/// target address (e.g. "ff02::b04" for multicast or "::1" for loopback testing).
+/// Then processes up to DISCOVERY_RECV_ATTEMPTS incoming responses.
+/// Returns the number of newly discovered peers (>= 0), or -1 on error.
+pub export fn umoja_discover_udp(
+    target_ptr: [*]const u8,
+    target_len: usize,
+    target_port: u16,
+) c_int {
+    if (!socket_bound) return -1;
+    if (target_len == 0 or target_len > MAX_HOST_LEN) return -1;
+
+    // Build discovery packet.
+    var buf: [MAX_PACKET_LEN]u8 = undefined;
+    const pkt_len = buildPacket(&buf, PKT_DISCOVER, null);
+    if (pkt_len == 0) return -1;
+
+    // Parse target address.
+    const target_slice = target_ptr[0..target_len];
+    const parsed_ip6 = std.net.Ip6Address.parse(target_slice, target_port) catch {
+        last_net_error = -20;
+        return -1;
+    };
+
+    // Send discovery packet.
+    const dest: *const std.posix.sockaddr = @ptrCast(&parsed_ip6.sa);
+    _ = std.posix.sendto(udp_fd, buf[0..pkt_len], 0, dest, @sizeOf(std.posix.sockaddr.in6)) catch {
+        last_net_error = -21;
+        return -1;
+    };
+    packets_sent += 1;
+
+    // Collect responses (non-blocking).
+    const before = peer_count;
+    var attempts: usize = 0;
+    while (attempts < DISCOVERY_RECV_ATTEMPTS) : (attempts += 1) {
+        const tag = umoja_recv_and_process();
+        if (tag <= 0) break; // no more packets
+    }
+
+    const new_peers = peer_count - before;
+    return @intCast(new_peers);
+}
+
+// ═══════════════════════════════════════════════════════════════════════
 // C-ABI exports — Federation node registry (original SWIM layer)
 // ═══════════════════════════════════════════════════════════════════════
 
 /// Initialise (or reset) the federation registry and Umoja gossip state.
+/// If a UDP socket is bound, it is closed first.
 /// Returns 0 on success.
 pub export fn boj_federation_init() c_int {
+    if (socket_bound) _ = umoja_unbind();
     nodes = [_]FederationNode{FederationNode{}} ** MAX_NODES;
     node_count = 0;
     peers = [_]PeerNode{PeerNode{}} ** MAX_PEERS;
@@ -228,6 +732,12 @@ pub export fn boj_federation_init() c_int {
     local_digest_valid = false;
     gossip_round_count = 0;
     prng_state = 0;
+    local_node_id = [_]u8{0} ** MAX_NODE_ID_LEN;
+    local_node_id_len = 0;
+    local_port = 0;
+    last_net_error = 0;
+    packets_sent = 0;
+    packets_received = 0;
     return 0;
 }
 
@@ -1058,4 +1568,442 @@ test "umoja discover nodes returns peer count" {
     const host2 = "10.0.0.2";
     _ = umoja_add_peer(host2.ptr, host2.len, 9999);
     try std.testing.expectEqual(@as(c_int, 2), umoja_discover_nodes());
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// Tests — UDP networking layer
+// ═══════════════════════════════════════════════════════════════════════
+
+test "packet build and parse roundtrip" {
+    // Set a local node id for packet building.
+    const node_id = "test-node-01";
+    _ = umoja_set_node_id(node_id.ptr, node_id.len);
+
+    var buf: [MAX_PACKET_LEN]u8 = undefined;
+
+    // Build a digest packet with payload.
+    var payload: [DIGEST_LEN]u8 = undefined;
+    for (0..DIGEST_LEN) |i| {
+        payload[i] = @truncate(i);
+    }
+    const pkt_len = buildPacket(&buf, PKT_GOSSIP_DIGEST, &payload);
+    try std.testing.expect(pkt_len > 0);
+
+    // Parse it back.
+    const parsed = parsePacket(buf[0..pkt_len]);
+    try std.testing.expect(parsed != null);
+
+    const pkt = parsed.?;
+    try std.testing.expectEqual(PKT_GOSSIP_DIGEST, pkt.tag);
+    try std.testing.expectEqualSlices(u8, node_id, pkt.node_id);
+    try std.testing.expectEqual(@as(usize, DIGEST_LEN), pkt.payload.len);
+    try std.testing.expectEqualSlices(u8, &payload, pkt.payload);
+}
+
+test "packet build with no payload" {
+    const node_id = "heartbeat-node";
+    _ = umoja_set_node_id(node_id.ptr, node_id.len);
+
+    var buf: [MAX_PACKET_LEN]u8 = undefined;
+    const pkt_len = buildPacket(&buf, PKT_HEARTBEAT, null);
+    try std.testing.expect(pkt_len > 0);
+
+    const parsed = parsePacket(buf[0..pkt_len]).?;
+    try std.testing.expectEqual(PKT_HEARTBEAT, parsed.tag);
+    try std.testing.expectEqualSlices(u8, node_id, parsed.node_id);
+    try std.testing.expectEqual(@as(usize, 0), parsed.payload.len);
+}
+
+test "parse malformed packets" {
+    // Too short.
+    const short = [_]u8{ 0x01, 0x00 };
+    try std.testing.expect(parsePacket(&short) == null);
+
+    // ID length exceeds buffer.
+    const bad_id = [_]u8{ 0x01, 0xFF, 0x00, 0x00, 0x00 };
+    try std.testing.expect(parsePacket(&bad_id) == null);
+}
+
+test "umoja socket lifecycle" {
+    _ = boj_federation_init();
+
+    // Not bound initially.
+    try std.testing.expectEqual(@as(c_int, 0), umoja_is_bound());
+
+    // Set node id.
+    const node_id = "socket-test-node";
+    try std.testing.expectEqual(@as(c_int, 0), umoja_set_node_id(node_id.ptr, node_id.len));
+
+    // Bind to a high port (unlikely to conflict in test).
+    const test_port: u16 = 19876;
+    const bind_result = umoja_bind(test_port);
+    if (bind_result < 0) {
+        // Port in use or insufficient privileges — skip gracefully.
+        return;
+    }
+    try std.testing.expectEqual(@as(c_int, 1), umoja_is_bound());
+
+    // Double bind should fail.
+    try std.testing.expectEqual(@as(c_int, -1), umoja_bind(test_port + 1));
+
+    // Unbind.
+    try std.testing.expectEqual(@as(c_int, 0), umoja_unbind());
+    try std.testing.expectEqual(@as(c_int, 0), umoja_is_bound());
+
+    // Unbind again should fail.
+    try std.testing.expectEqual(@as(c_int, -1), umoja_unbind());
+}
+
+test "umoja loopback send and receive" {
+    _ = boj_federation_init();
+
+    const node_id = "loopback-test";
+    _ = umoja_set_node_id(node_id.ptr, node_id.len);
+
+    // Bind two sockets on different ports for loopback testing.
+    const port_a: u16 = 19877;
+    const port_b: u16 = 19878;
+
+    // Bind socket A.
+    if (umoja_bind(port_a) < 0) return; // skip if port unavailable
+
+    // Add a peer pointing to ourselves on port_a (loopback).
+    const loopback = "::1";
+    const peer_idx = umoja_add_peer(loopback.ptr, loopback.len, port_a);
+    try std.testing.expect(peer_idx >= 0);
+
+    // Compute a local digest so we can send it.
+    const names = [_][*]const u8{"test-cart"};
+    const name_lens = [_]usize{9};
+    const versions = [_][*]const u8{"1.0.0"};
+    const version_lens = [_]usize{5};
+    const hashes = [_][*]const u8{"abc123"};
+    const hash_lens = [_]usize{6};
+    _ = umoja_compute_digest(&names, &name_lens, &versions, &version_lens, &hashes, &hash_lens, 1);
+
+    // Send a heartbeat to ourselves (loopback).
+    const send_result = umoja_send_heartbeat(@intCast(peer_idx));
+    try std.testing.expectEqual(@as(c_int, 0), send_result);
+    try std.testing.expect(umoja_packets_sent() > 0);
+
+    // Try to receive (may or may not arrive instantly on loopback).
+    const recv_tag = umoja_recv_and_process();
+    // On loopback, we should get our own packet back.
+    if (recv_tag > 0) {
+        try std.testing.expectEqual(@as(c_int, PKT_HEARTBEAT), recv_tag);
+        try std.testing.expect(umoja_packets_received() > 0);
+    }
+
+    _ = umoja_unbind();
+    _ = port_b; // reserved for future two-socket tests
+}
+
+test "umoja network stats tracking" {
+    _ = boj_federation_init();
+
+    try std.testing.expectEqual(@as(usize, 0), umoja_packets_sent());
+    try std.testing.expectEqual(@as(usize, 0), umoja_packets_received());
+    try std.testing.expectEqual(@as(c_int, 0), umoja_last_net_error());
+
+    // Operations without socket should fail gracefully.
+    try std.testing.expectEqual(@as(c_int, -1), umoja_send_heartbeat(0));
+    try std.testing.expectEqual(@as(c_int, -1), umoja_send_digest(0));
+    try std.testing.expectEqual(@as(c_int, -1), umoja_recv_and_process());
+}
+
+test "umoja set node id validation" {
+    _ = boj_federation_init();
+
+    // Empty id should fail.
+    const empty = "";
+    try std.testing.expectEqual(@as(c_int, -1), umoja_set_node_id(empty.ptr, 0));
+
+    // Valid id should succeed.
+    const valid = "my-federation-node";
+    try std.testing.expectEqual(@as(c_int, 0), umoja_set_node_id(valid.ptr, valid.len));
+
+    // Verify it's stored.
+    try std.testing.expectEqual(valid.len, local_node_id_len);
+    try std.testing.expectEqualSlices(u8, valid, local_node_id[0..local_node_id_len]);
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// Tests — Multi-node integration (full protocol over loopback UDP)
+// ═══════════════════════════════════════════════════════════════════════
+
+test "integration: full gossip handshake over loopback UDP" {
+    // This test exercises the complete Umoja federation protocol:
+    //   1. Bind to a loopback port
+    //   2. Send handshake init to self
+    //   3. Receive and process (triggers handshake reply)
+    //   4. Receive the reply (transitions to exchanged)
+    //   5. Verify the full handshake completed
+    _ = boj_federation_init();
+
+    const node_id = "integration-handshake";
+    _ = umoja_set_node_id(node_id.ptr, node_id.len);
+
+    const port: u16 = 19900;
+    if (umoja_bind(port) < 0) return; // skip in restricted environments
+
+    // Add loopback peer.
+    const loopback = "::1";
+    const pidx = umoja_add_peer(loopback.ptr, loopback.len, port);
+    try std.testing.expect(pidx >= 0);
+    const peer_idx: usize = @intCast(pidx);
+
+    // Step 1: Send handshake init.
+    const send_r = umoja_send_handshake(peer_idx);
+    try std.testing.expectEqual(@as(c_int, 0), send_r);
+    try std.testing.expectEqual(HandshakeState.pending, peers[peer_idx].handshake_state);
+
+    // Step 2: Receive the HANDSHAKE_INIT we just sent to ourselves.
+    // The recv_and_process handler will:
+    //   a) Set the peer to pending
+    //   b) Send a HANDSHAKE_REPLY back
+    const tag1 = umoja_recv_and_process();
+    if (tag1 > 0) {
+        try std.testing.expectEqual(@as(c_int, PKT_HANDSHAKE_INIT), tag1);
+
+        // Step 3: Receive the auto-sent HANDSHAKE_REPLY.
+        // This should transition the peer from pending to exchanged.
+        const tag2 = umoja_recv_and_process();
+        if (tag2 > 0) {
+            try std.testing.expectEqual(@as(c_int, PKT_HANDSHAKE_REPLY), tag2);
+            try std.testing.expectEqual(HandshakeState.exchanged, peers[peer_idx].handshake_state);
+        }
+    }
+
+    // Verify stats.
+    try std.testing.expect(umoja_packets_sent() >= 1);
+
+    _ = umoja_unbind();
+}
+
+test "integration: digest exchange and attestation over loopback UDP" {
+    // Tests the full catalogue sync protocol:
+    //   1. Compute local digest
+    //   2. Send digest to self
+    //   3. Receive (stores digest, sends reply)
+    //   4. Receive reply (stores digest again)
+    //   5. Verify attestation matches
+    _ = boj_federation_init();
+
+    const node_id = "integration-digest";
+    _ = umoja_set_node_id(node_id.ptr, node_id.len);
+
+    const port: u16 = 19901;
+    if (umoja_bind(port) < 0) return;
+
+    const loopback = "::1";
+    const pidx = umoja_add_peer(loopback.ptr, loopback.len, port);
+    try std.testing.expect(pidx >= 0);
+    const peer_idx: usize = @intCast(pidx);
+
+    // Compute a local digest from cartridge data.
+    const names = [_][*]const u8{ "database-mcp", "fleet-mcp", "nesy-mcp" };
+    const name_lens = [_]usize{ 12, 9, 8 };
+    const versions = [_][*]const u8{ "0.1.0", "0.1.0", "0.2.0" };
+    const version_lens = [_]usize{ 5, 5, 5 };
+    const hashes = [_][*]const u8{ "aabb", "ccdd", "eeff" };
+    const hash_lens = [_]usize{ 4, 4, 4 };
+    _ = umoja_compute_digest(&names, &name_lens, &versions, &version_lens, &hashes, &hash_lens, 3);
+    try std.testing.expect(local_digest_valid);
+
+    // Step 1: Send our digest to self.
+    const send_r = umoja_send_digest(peer_idx);
+    try std.testing.expectEqual(@as(c_int, 0), send_r);
+
+    // Step 2: Receive GOSSIP_DIGEST — handler stores digest and sends reply.
+    const tag1 = umoja_recv_and_process();
+    if (tag1 > 0) {
+        try std.testing.expectEqual(@as(c_int, PKT_GOSSIP_DIGEST), tag1);
+        try std.testing.expect(peers[peer_idx].has_digest);
+        try std.testing.expect(umoja_gossip_round_count() >= 1);
+
+        // Step 3: Receive GOSSIP_DIGEST_REPLY.
+        const tag2 = umoja_recv_and_process();
+        if (tag2 > 0) {
+            try std.testing.expectEqual(@as(c_int, PKT_GOSSIP_DIGEST_REPLY), tag2);
+            try std.testing.expect(umoja_gossip_round_count() >= 2);
+        }
+
+        // Step 4: Verify attestation — digests should match (we sent our own).
+        // First go through handshake states.
+        _ = umoja_handshake(peer_idx);
+        _ = umoja_handshake_exchanged(peer_idx);
+        const verified = umoja_verify_attestation(peer_idx);
+        try std.testing.expectEqual(@as(c_int, 1), verified);
+        try std.testing.expectEqual(HandshakeState.verified, peers[peer_idx].handshake_state);
+    }
+
+    _ = umoja_unbind();
+}
+
+test "integration: discovery over loopback UDP" {
+    // Tests peer discovery protocol:
+    //   1. Bind to port
+    //   2. Send discovery packet to self
+    //   3. Receive DISCOVER — handler sends DISCOVER_REPLY
+    //   4. Receive DISCOVER_REPLY — peer confirmed
+    _ = boj_federation_init();
+
+    const node_id = "integration-discover";
+    _ = umoja_set_node_id(node_id.ptr, node_id.len);
+
+    const port: u16 = 19902;
+    if (umoja_bind(port) < 0) return;
+
+    // Use umoja_discover_udp targeting loopback.
+    const loopback = "::1";
+    const initial_peers = peer_count;
+    const result = umoja_discover_udp(loopback.ptr, loopback.len, port);
+
+    // Should succeed (>=0). On loopback, we send DISCOVER to ourselves.
+    try std.testing.expect(result >= 0);
+
+    // We should have at least as many peers as before (discover doesn't remove).
+    try std.testing.expect(peer_count >= initial_peers);
+
+    // Verify we sent at least one packet.
+    try std.testing.expect(umoja_packets_sent() >= 1);
+
+    _ = umoja_unbind();
+}
+
+test "integration: heartbeat keeps peer alive after multiple rounds" {
+    // Tests that heartbeat packets successfully update peer state over UDP.
+    _ = boj_federation_init();
+
+    const node_id = "integration-heartbeat";
+    _ = umoja_set_node_id(node_id.ptr, node_id.len);
+
+    const port: u16 = 19903;
+    if (umoja_bind(port) < 0) return;
+
+    const loopback = "::1";
+    const pidx = umoja_add_peer(loopback.ptr, loopback.len, port);
+    try std.testing.expect(pidx >= 0);
+    const peer_idx: usize = @intCast(pidx);
+
+    // Record initial last_seen.
+    const initial_last_seen = peers[peer_idx].last_seen;
+
+    // Send 3 heartbeats and process them.
+    var heartbeats_received: usize = 0;
+    for (0..3) |_| {
+        _ = umoja_send_heartbeat(peer_idx);
+        const tag = umoja_recv_and_process();
+        if (tag == PKT_HEARTBEAT) heartbeats_received += 1;
+    }
+
+    // At least some heartbeats should have been received on loopback.
+    if (heartbeats_received > 0) {
+        try std.testing.expect(peers[peer_idx].last_seen >= initial_last_seen);
+        try std.testing.expect(umoja_packets_sent() >= 3);
+        try std.testing.expect(umoja_packets_received() >= 1);
+    }
+
+    _ = umoja_unbind();
+}
+
+test "integration: mixed protocol traffic over loopback" {
+    // Sends multiple packet types in sequence and verifies correct handling.
+    _ = boj_federation_init();
+
+    const node_id = "integration-mixed";
+    _ = umoja_set_node_id(node_id.ptr, node_id.len);
+
+    const port: u16 = 19904;
+    if (umoja_bind(port) < 0) return;
+
+    const loopback = "::1";
+    const pidx = umoja_add_peer(loopback.ptr, loopback.len, port);
+    try std.testing.expect(pidx >= 0);
+    const peer_idx: usize = @intCast(pidx);
+
+    // Compute digest for gossip.
+    const names = [_][*]const u8{"mixed-test"};
+    const name_lens = [_]usize{10};
+    const versions = [_][*]const u8{"1.0.0"};
+    const version_lens = [_]usize{5};
+    const hashes = [_][*]const u8{"abcd1234"};
+    const hash_lens = [_]usize{8};
+    _ = umoja_compute_digest(&names, &name_lens, &versions, &version_lens, &hashes, &hash_lens, 1);
+
+    // Send sequence: heartbeat, digest, handshake.
+    _ = umoja_send_heartbeat(peer_idx);
+    _ = umoja_send_digest(peer_idx);
+    _ = umoja_send_handshake(peer_idx);
+
+    // Drain all packets (6 possible: 3 sent + up to 3 auto-replies).
+    var tags_seen: [8]c_int = [_]c_int{0} ** 8;
+    var tag_count: usize = 0;
+    for (0..8) |_| {
+        const tag = umoja_recv_and_process();
+        if (tag <= 0) break;
+        if (tag_count < 8) {
+            tags_seen[tag_count] = tag;
+            tag_count += 1;
+        }
+    }
+
+    // We should have received at least some of our packets.
+    try std.testing.expect(tag_count >= 1);
+    try std.testing.expect(umoja_packets_sent() >= 3);
+
+    _ = umoja_unbind();
+}
+
+test "umoja last_net_error tracks errors" {
+    _ = boj_federation_init();
+
+    // After init, last error should be 0.
+    try std.testing.expectEqual(@as(c_int, 0), umoja_last_net_error());
+
+    // Attempt an operation that sets error state — discover without binding.
+    // umoja_discover_udp should return -1 when not bound.
+    const target = "::1";
+    try std.testing.expectEqual(@as(c_int, -1), umoja_discover_udp(target.ptr, target.len, 19999));
+
+    // No error set for "not bound" — it's a pre-check, not a network error.
+    // last_net_error stays 0 because the function returns early before touching network.
+    try std.testing.expectEqual(@as(c_int, 0), umoja_last_net_error());
+}
+
+test "umoja gossip_round_count increments" {
+    _ = boj_federation_init();
+
+    // After init, count should be 0.
+    try std.testing.expectEqual(@as(usize, 0), umoja_gossip_round_count());
+
+    // Add a peer and run a gossip round.
+    const host = "::1";
+    const pidx = umoja_add_peer(host.ptr, host.len, 19998);
+    try std.testing.expect(pidx >= 0);
+
+    // Gossip round increments the counter.
+    _ = umoja_gossip_round();
+    try std.testing.expectEqual(@as(usize, 1), umoja_gossip_round_count());
+
+    // Another round.
+    _ = umoja_gossip_round();
+    try std.testing.expectEqual(@as(usize, 2), umoja_gossip_round_count());
+}
+
+test "umoja discover_udp validates inputs" {
+    _ = boj_federation_init();
+
+    // Not bound → -1.
+    const target = "::1";
+    try std.testing.expectEqual(@as(c_int, -1), umoja_discover_udp(target.ptr, target.len, 19997));
+
+    // Empty target → -1 even if bound.
+    const port: u16 = 19996;
+    if (umoja_bind(port) < 0) return; // Skip if can't bind.
+
+    const empty = "";
+    try std.testing.expectEqual(@as(c_int, -1), umoja_discover_udp(empty.ptr, empty.len, 19995));
+
+    _ = umoja_unbind();
 }

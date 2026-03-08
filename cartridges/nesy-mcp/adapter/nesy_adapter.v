@@ -17,6 +17,12 @@ import json
 
 fn C.nesy_harmonize(neural int, symbolic int) int
 fn C.nesy_confidence(neural int, symbolic int) int
+// Protocol FFI (v0.2.0 — from proven-nesy)
+fn C.nesy_recommend_drift_action(drift int) int
+fn C.nesy_mode_uses_symbolic(mode int) int
+fn C.nesy_mode_uses_neural(mode int) int
+fn C.nesy_grounding_is_trusted(g int) int
+fn C.nesy_drift_is_urgent(drift int) int
 
 // ═══════════════════════════════════════════════════════════════════════
 // Types
@@ -97,5 +103,98 @@ pub fn harmonize(neural_verdict string, symbolic_verdict string) !HarmonizeRespo
 		verdict: harmonized_label(result)
 		confidence: confidence_label(conf)
 		symbolic_wins: symbolic != 2 // symbolic always wins when there's a proof
+	}
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// Protocol Functions (v0.2.0 — from proven-nesy)
+// ═══════════════════════════════════════════════════════════════════════
+
+fn drift_kind_label(v int) string {
+	return match v {
+		0 { 'NoDrift' }
+		1 { 'SemanticDrift' }
+		2 { 'ConfidenceDrift' }
+		3 { 'FactualDrift' }
+		4 { 'TemporalDrift' }
+		5 { 'CatastrophicDrift' }
+		else { 'Unknown' }
+	}
+}
+
+fn drift_action_label(v int) string {
+	return match v {
+		0 { 'LogAndAccept' }
+		1 { 'FlagForReview' }
+		2 { 'RejectNeural' }
+		3 { 'RetryNeural' }
+		4 { 'Escalate' }
+		5 { 'Halt' }
+		else { 'Unknown' }
+	}
+}
+
+fn reasoning_mode_label(v int) string {
+	return match v {
+		0 { 'Symbolic' }
+		1 { 'Neural' }
+		2 { 'SymToNeural' }
+		3 { 'NeuralToSym' }
+		4 { 'Ensemble' }
+		5 { 'Cascade' }
+		else { 'Unknown' }
+	}
+}
+
+struct DriftReport {
+	drift              string
+	severity           int
+	urgent             bool
+	recommended_action string
+}
+
+struct ReasoningModeInfo {
+	mode           string
+	uses_symbolic  bool
+	uses_neural    bool
+	is_hybrid      bool
+}
+
+pub fn analyze_drift(kind string) !DriftReport {
+	drift_int := match kind.to_lower() {
+		'nodrift', 'no_drift', 'none' { 0 }
+		'semanticdrift', 'semantic' { 1 }
+		'confidencedrift', 'confidence' { 2 }
+		'factualdrift', 'factual' { 3 }
+		'temporaldrift', 'temporal' { 4 }
+		'catastrophicdrift', 'catastrophic' { 5 }
+		else { return error('unknown drift kind: ${kind}') }
+	}
+	action := C.nesy_recommend_drift_action(drift_int)
+	return DriftReport{
+		drift: drift_kind_label(drift_int)
+		severity: drift_int
+		urgent: C.nesy_drift_is_urgent(drift_int) == 1
+		recommended_action: drift_action_label(action)
+	}
+}
+
+pub fn reasoning_mode_info(mode string) !ReasoningModeInfo {
+	mode_int := match mode.to_lower() {
+		'symbolic' { 0 }
+		'neural' { 1 }
+		'symtoneural' { 2 }
+		'neuraltosym' { 3 }
+		'ensemble' { 4 }
+		'cascade' { 5 }
+		else { return error('unknown reasoning mode: ${mode}') }
+	}
+	sym := C.nesy_mode_uses_symbolic(mode_int) == 1
+	neur := C.nesy_mode_uses_neural(mode_int) == 1
+	return ReasoningModeInfo{
+		mode: reasoning_mode_label(mode_int)
+		uses_symbolic: sym
+		uses_neural: neur
+		is_hybrid: sym && neur
 	}
 }

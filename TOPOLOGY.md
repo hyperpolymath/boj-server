@@ -1,6 +1,6 @@
 <!-- SPDX-License-Identifier: PMPL-1.0-or-later -->
 <!-- TOPOLOGY.md — Project architecture map and completion dashboard -->
-<!-- Last updated: 2026-03-08 (14 cartridges, all .so built + tested) -->
+<!-- Last updated: 2026-03-08 (17 cartridges + federation + VeriSimDB store) -->
 
 # Bundle of Joy Server — Project Topology
 
@@ -20,7 +20,7 @@
                │  ┌──────────┐  ┌──────────┐  ┌──────────────┐ │
                │  │ Teranga  │  │ Order    │  │ Federation   │ │
                │  │ Menu     │  │ Ticket   │  │ (Umoja       │ │
-               │  │ (A2ML)   │  │ (SCM)    │  │  Gossip)     │ │
+               │  │ (A2ML)   │  │ (SCM)    │  │  UDP+Gossip) │ │
                │  └────┬─────┘  └────┬─────┘  └──────┬───────┘ │
                │       │             │               │          │
                │  ┌────▼─────────────▼───────────────▼───────┐ │
@@ -38,14 +38,17 @@
     │                 │  │                     │  │                   │
     │  Catalogue.idr  │  │  catalogue.zig      │  │  REST  (9000)     │
     │  Protocol.idr   │  │  loader.zig         │  │  gRPC  (9001)     │
-    │  Domain.idr     │  │  boj_catalogue.h    │  │  GraphQL (9002)   │
-    │  Menu.idr       │  │                     │  │                   │
-    │  Federation.idr │  │  fleet_ffi.zig      │  │  order-ticket.scm │
-    │                 │  │  nesy_ffi.zig       │  │  matrix view      │
-    │  SafeFleet.idr  │  │  database_ffi.zig   │  │  cartridge detail │
-    │  SafeReasoning  │  │  agent_ffi.zig      │  │                   │
-    │  SafeDatabase   │  │                     │  │                   │
+    │  Domain.idr     │  │  federation.zig     │  │  GraphQL (9002)   │
+    │  Menu.idr       │  │  verisimdb.zig      │  │                   │
+    │  Federation.idr │  │  guardian.zig       │  │  order-ticket.scm │
+    │                 │  │                     │  │  matrix view      │
+    │  SafeFleet.idr  │  │  14 cartridge FFIs  │  │  cartridge detail │
+    │  SafeReasoning  │  │  + 3 protocol FFIs  │  │                   │
+    │  SafeDatabase   │  │  (lsp/dap/bsp)      │  │                   │
     │  SafeOODA.idr   │  │                     │  │                   │
+    │  SafeLsp.idr    │  │                     │  │                   │
+    │  SafeDap.idr    │  │                     │  │                   │
+    │  SafeBsp.idr    │  │                     │  │                   │
     └─────────────────┘  └─────────────────────┘  └───────────────────┘
 ```
 
@@ -68,9 +71,12 @@ IaC        │  ██  │      │      │      │      │       │      �
 Observe    │  ██  │      │      │      │      │       │      │  ██  │  ██  │
 SSG        │  ██  │      │      │      │      │       │      │  ██  │  ██  │
 Proof      │  ██  │      │      │      │      │       │      │  ██  │  ██  │
+LSP        │  ██  │  ██  │      │      │      │       │      │  ██  │  ██  │
+DAP        │  ██  │      │  ██  │      │      │       │      │  ██  │  ██  │
+BSP        │  ██  │      │      │  ██  │      │       │      │  ██  │  ██  │
            └──────┴──────┴──────┴──────┴──────┴───────┴──────┴──────┴──────┘
 
-  ██ = ABI + FFI + Adapter complete (14 cartridges, multi-protocol)
+  ██ = ABI + FFI + Adapter complete (17 cartridges, multi-protocol)
 ```
 
 ## Completion Dashboard
@@ -95,20 +101,23 @@ Proof      │  ██  │      │      │      │      │       │      �
 | observe-mcp ABI+FFI+Adapter  | `██████████` 100%         | D (Alpha) |
 | ssg-mcp ABI+FFI+Adapter      | `██████████` 100%         | D (Alpha) |
 | proof-mcp ABI+FFI+Adapter    | `██████████` 100%         | D (Alpha) |
+| lsp-mcp ABI+FFI+Adapter      | `██████████` 100%         | D (Alpha) |
+| dap-mcp ABI+FFI+Adapter      | `██████████` 100%         | D (Alpha) |
+| bsp-mcp ABI+FFI+Adapter      | `██████████` 100%         | D (Alpha) |
 | Readiness tests (CRG D/C/B/A)| `██████████` 100%         | A (Prod) |
 | Benchmarks                    | `██████████` 100%         | B (RC) |
-| CI pipeline (zig-test.yml)    | `██████████` 100%         | D (Alpha) |
+| CI pipeline (zig-test.yml)    | `██████████` 100%         | B (RC) |
 | E2E order-ticket tests        | `██████████` 100%         | B (RC) |
 | Cartridge shared libraries    | `██████████` 100%         | B (RC) |
 | TOPOLOGY.md                   | `██████████` 100%         | Complete |
-| Umoja federation (stub)       | `██████████` 100%         | D (Alpha) |
+| Umoja federation (real UDP)   | `██████████` 100%         | D (Alpha) |
+| VeriSimDB backing store       | `██████████` 100%         | D (Alpha) |
 | gRPC-compat adapter           | `██████████` 100%         | D (Alpha) |
 | GraphQL subscriptions         | `██████████` 100%         | D (Alpha) |
 | Cartridge hot-reload          | `██████████` 100%         | D (Alpha) |
-| 14 shared libraries (.so)     | `██████████` 100%         | D (Alpha) |
-| 14-cartridge CI pipeline      | `██████████` 100%         | D (Alpha) |
-| Matrix fill (all 14 rows)     | `██████████` 100%         | D (Alpha) |
-| Polystack deprecation         | `████████░░`  80%         | D (Alpha) |
+| 17 shared libraries (.so)     | `██████████` 100%         | D (Alpha) |
+| 17-cartridge matrix fill      | `██████████` 100%         | D (Alpha) |
+| Polystack deprecation         | `██████████` 100%         | Complete |
 
 ## Key Dependencies
 
@@ -120,6 +129,7 @@ Proof      │  ██  │      │      │      │      │       │      �
 | proven-servers   | Reference cartridge catalogue    | Active    |
 | polystack        | Capability domain mapping (DEPRECATED 2026-03-08) | Archived |
 | stapeln          | Container supply chain           | Available |
-| PanLL            | Panel framework for matrix display | Planned   |
+| PanLL            | Panel framework for matrix display | Active   |
 | gitbot-fleet     | 6-bot release gate               | Available |
 | hypatia          | Neurosymbolic CI scanning        | Available |
+| VeriSimDB        | Backing store for cartridge state | Available |

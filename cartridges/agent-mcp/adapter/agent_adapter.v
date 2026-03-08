@@ -23,6 +23,13 @@ fn C.agent_loop_count(idx int) int
 fn C.agent_validate_ooda(from int, to int) int
 fn C.agent_next_state(current int) int
 fn C.agent_reset()
+// Protocol FFI (v0.2.0 — from proven-agentic)
+fn C.agent_tool_has_side_effects(tc int) int
+fn C.agent_tool_requires_safety(tc int) int
+fn C.agent_safety_allows_exec(sc int) int
+fn C.agent_safety_needs_human(sc int) int
+fn C.agent_coordination_is_multi(c int) int
+fn C.agent_memory_is_persistent(m int) int
 
 // ═══════════════════════════════════════════════════════════════════════
 // Types
@@ -159,4 +166,122 @@ pub fn validate(from_name string, to_name string) !ValidationResponse {
 
 pub fn reset() {
 	C.agent_reset()
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// Protocol Functions (v0.2.0 — from proven-agentic)
+// ═══════════════════════════════════════════════════════════════════════
+
+fn tool_call_label(t int) string {
+	return match t {
+		0 { 'Execute' }
+		1 { 'Query' }
+		2 { 'Transform' }
+		3 { 'Communicate' }
+		4 { 'Delegate' }
+		5 { 'Escalate' }
+		else { 'Unknown' }
+	}
+}
+
+fn coordination_label(c int) string {
+	return match c {
+		0 { 'Solo' }
+		1 { 'Collaborative' }
+		2 { 'Competitive' }
+		3 { 'Hierarchical' }
+		4 { 'Swarm' }
+		5 { 'Consensus' }
+		else { 'Unknown' }
+	}
+}
+
+fn safety_check_label(s int) string {
+	return match s {
+		0 { 'Approved' }
+		1 { 'Denied' }
+		2 { 'Escalated' }
+		3 { 'Timeout' }
+		4 { 'Sandboxed' }
+		5 { 'HumanRequired' }
+		else { 'Unknown' }
+	}
+}
+
+fn memory_type_label(m int) string {
+	return match m {
+		0 { 'Working' }
+		1 { 'Episodic' }
+		2 { 'Semantic' }
+		3 { 'Procedural' }
+		4 { 'Shared' }
+		else { 'Unknown' }
+	}
+}
+
+struct ToolCallInfo {
+	kind                  string
+	has_side_effects      bool
+	requires_safety_check bool
+}
+
+struct SafetyCheckInfo {
+	outcome          string
+	allows_execution bool
+	needs_human      bool
+}
+
+struct CoordinationInfo {
+	strategy       string
+	is_multi_agent bool
+}
+
+pub fn tool_call_info(kind string) !ToolCallInfo {
+	tc := match kind.to_lower() {
+		'execute' { 0 }
+		'query' { 1 }
+		'transform' { 2 }
+		'communicate' { 3 }
+		'delegate' { 4 }
+		'escalate' { 5 }
+		else { return error('unknown tool call: ${kind}') }
+	}
+	return ToolCallInfo{
+		kind: tool_call_label(tc)
+		has_side_effects: C.agent_tool_has_side_effects(tc) == 1
+		requires_safety_check: C.agent_tool_requires_safety(tc) == 1
+	}
+}
+
+pub fn safety_check_info(outcome string) !SafetyCheckInfo {
+	sc := match outcome.to_lower() {
+		'approved' { 0 }
+		'denied' { 1 }
+		'escalated' { 2 }
+		'timeout' { 3 }
+		'sandboxed' { 4 }
+		'humanrequired', 'human_required' { 5 }
+		else { return error('unknown safety check: ${outcome}') }
+	}
+	return SafetyCheckInfo{
+		outcome: safety_check_label(sc)
+		allows_execution: C.agent_safety_allows_exec(sc) == 1
+		needs_human: C.agent_safety_needs_human(sc) == 1
+	}
+}
+
+pub fn coordination_info(strategy string) !CoordinationInfo {
+	c := match strategy.to_lower() {
+		'solo' { 0 }
+		'collaborative' { 1 }
+		'competitive' { 2 }
+		'hierarchical' { 3 }
+		'swarm' { 4 }
+		'consensus' { 5 }
+		else { return error('unknown coordination: ${strategy}') }
+	}
+	return CoordinationInfo{
+		strategy: coordination_label(c)
+		is_multi_agent: C.agent_coordination_is_multi(c) == 1
+	}
 }

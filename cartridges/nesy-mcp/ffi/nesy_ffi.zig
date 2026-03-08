@@ -96,7 +96,95 @@ pub export fn boj_cartridge_name() [*:0]const u8 {
 
 /// Return the cartridge version as a null-terminated C string.
 pub export fn boj_cartridge_version() [*:0]const u8 {
-    return "0.1.0";
+    return "0.2.0";
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// Protocol Types (from proven-nesy, added in v0.2.0)
+// ═══════════════════════════════════════════════════════════════════════
+
+pub const ReasoningMode = enum(c_int) {
+    symbolic = 0,
+    neural = 1,
+    sym_to_neural = 2,
+    neural_to_sym = 3,
+    ensemble = 4,
+    cascade = 5,
+};
+
+pub const DriftKind = enum(c_int) {
+    no_drift = 0,
+    semantic_drift = 1,
+    confidence_drift = 2,
+    factual_drift = 3,
+    temporal_drift = 4,
+    catastrophic_drift = 5,
+};
+
+pub const DriftAction = enum(c_int) {
+    log_and_accept = 0,
+    flag_for_review = 1,
+    reject_neural = 2,
+    retry_neural = 3,
+    escalate = 4,
+    halt = 5,
+};
+
+pub const MergeStrategy = enum(c_int) {
+    symbolic_primacy = 0,
+    neural_primacy = 1,
+    confidence_weighted = 2,
+    consensus = 3,
+    dual_return = 4,
+    constrained_generation = 5,
+};
+
+pub const GroundingStatus = enum(c_int) {
+    fully_grounded = 0,
+    partially_grounded = 1,
+    ungrounded = 2,
+    grounding_pending = 3,
+    grounding_failed = 4,
+};
+
+/// Recommend a drift action given drift severity.
+pub export fn nesy_recommend_drift_action(drift: c_int) c_int {
+    const dk: DriftKind = @enumFromInt(drift);
+    const action: DriftAction = switch (dk) {
+        .no_drift, .semantic_drift => .log_and_accept,
+        .confidence_drift => .flag_for_review,
+        .factual_drift => .reject_neural,
+        .temporal_drift => .retry_neural,
+        .catastrophic_drift => .halt,
+    };
+    return @intFromEnum(action);
+}
+
+/// Whether a reasoning mode uses the symbolic layer.
+pub export fn nesy_mode_uses_symbolic(mode: c_int) c_int {
+    const m: ReasoningMode = @enumFromInt(mode);
+    return if (m != .neural) 1 else 0;
+}
+
+/// Whether a reasoning mode uses the neural layer.
+pub export fn nesy_mode_uses_neural(mode: c_int) c_int {
+    const m: ReasoningMode = @enumFromInt(mode);
+    return if (m != .symbolic) 1 else 0;
+}
+
+/// Whether a grounding status is trusted (fully grounded).
+pub export fn nesy_grounding_is_trusted(g: c_int) c_int {
+    const gs: GroundingStatus = @enumFromInt(g);
+    return if (gs == .fully_grounded) 1 else 0;
+}
+
+/// Whether the drift is urgent (factual or catastrophic).
+pub export fn nesy_drift_is_urgent(drift: c_int) c_int {
+    const dk: DriftKind = @enumFromInt(drift);
+    return switch (dk) {
+        .factual_drift, .catastrophic_drift => 1,
+        else => 0,
+    };
 }
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -147,4 +235,25 @@ test "no proof gives low confidence" {
         @as(c_int, @intFromEnum(ConfidenceLevel.low)),
         nesy_confidence(@intFromEnum(NeuralVerdict.probable_safe), @intFromEnum(SymbolicVerdict.no_proof)),
     );
+}
+
+// Protocol tests (v0.2.0)
+
+test "drift action recommendations" {
+    try std.testing.expectEqual(@as(c_int, 0), nesy_recommend_drift_action(0)); // no_drift -> log_and_accept
+    try std.testing.expectEqual(@as(c_int, 2), nesy_recommend_drift_action(3)); // factual -> reject_neural
+    try std.testing.expectEqual(@as(c_int, 5), nesy_recommend_drift_action(5)); // catastrophic -> halt
+}
+
+test "reasoning mode predicates" {
+    try std.testing.expectEqual(@as(c_int, 1), nesy_mode_uses_symbolic(0)); // symbolic uses symbolic
+    try std.testing.expectEqual(@as(c_int, 0), nesy_mode_uses_symbolic(1)); // neural does not
+    try std.testing.expectEqual(@as(c_int, 0), nesy_mode_uses_neural(0)); // symbolic does not use neural
+    try std.testing.expectEqual(@as(c_int, 1), nesy_mode_uses_neural(4)); // ensemble uses neural
+}
+
+test "drift urgency" {
+    try std.testing.expectEqual(@as(c_int, 0), nesy_drift_is_urgent(0)); // no_drift not urgent
+    try std.testing.expectEqual(@as(c_int, 1), nesy_drift_is_urgent(3)); // factual is urgent
+    try std.testing.expectEqual(@as(c_int, 1), nesy_drift_is_urgent(5)); // catastrophic is urgent
 }

@@ -161,7 +161,104 @@ pub export fn boj_cartridge_name() [*:0]const u8 {
 
 /// Return the cartridge version as a null-terminated C string.
 pub export fn boj_cartridge_version() [*:0]const u8 {
-    return "0.1.0";
+    return "0.2.0";
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// Protocol Types (from proven-agentic, added in v0.2.0)
+// ═══════════════════════════════════════════════════════════════════════
+
+pub const ToolCall = enum(c_int) {
+    execute = 0,
+    query = 1,
+    transform = 2,
+    communicate = 3,
+    delegate = 4,
+    escalate = 5,
+};
+
+pub const PlanStep = enum(c_int) {
+    action = 0,
+    condition = 1,
+    loop = 2,
+    branch = 3,
+    parallel = 4,
+    checkpoint = 5,
+    rollback = 6,
+};
+
+pub const Coordination = enum(c_int) {
+    solo = 0,
+    collaborative = 1,
+    competitive = 2,
+    hierarchical = 3,
+    swarm = 4,
+    consensus = 5,
+};
+
+pub const SafetyCheck = enum(c_int) {
+    approved = 0,
+    denied = 1,
+    escalated = 2,
+    timeout = 3,
+    sandboxed = 4,
+    human_required = 5,
+};
+
+pub const MemoryType = enum(c_int) {
+    working = 0,
+    episodic = 1,
+    semantic = 2,
+    procedural = 3,
+    shared = 4,
+};
+
+/// Whether a tool call has side effects.
+pub export fn agent_tool_has_side_effects(tc: c_int) c_int {
+    const t: ToolCall = @enumFromInt(tc);
+    return switch (t) {
+        .execute, .communicate, .delegate, .escalate => 1,
+        .query, .transform => 0,
+    };
+}
+
+/// Whether a tool call requires a safety pre-check.
+pub export fn agent_tool_requires_safety(tc: c_int) c_int {
+    const t: ToolCall = @enumFromInt(tc);
+    return switch (t) {
+        .execute, .delegate, .escalate => 1,
+        else => 0,
+    };
+}
+
+/// Whether a safety check outcome allows execution.
+pub export fn agent_safety_allows_exec(sc: c_int) c_int {
+    const s: SafetyCheck = @enumFromInt(sc);
+    return switch (s) {
+        .approved, .sandboxed => 1,
+        else => 0,
+    };
+}
+
+/// Whether a safety check needs human intervention.
+pub export fn agent_safety_needs_human(sc: c_int) c_int {
+    const s: SafetyCheck = @enumFromInt(sc);
+    return switch (s) {
+        .escalated, .human_required => 1,
+        else => 0,
+    };
+}
+
+/// Whether a coordination strategy involves multiple agents.
+pub export fn agent_coordination_is_multi(c: c_int) c_int {
+    const coord: Coordination = @enumFromInt(c);
+    return if (coord != .solo) 1 else 0;
+}
+
+/// Whether a memory type persists across sessions.
+pub export fn agent_memory_is_persistent(m: c_int) c_int {
+    const mem: MemoryType = @enumFromInt(m);
+    return if (mem != .working) 1 else 0;
 }
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -235,6 +332,30 @@ test "next state sequence" {
     try std.testing.expectEqual(@as(c_int, 4), agent_next_state(3)); // Decide -> Act
     try std.testing.expectEqual(@as(c_int, 1), agent_next_state(4)); // Act -> Observe
     try std.testing.expectEqual(@as(c_int, 1), agent_next_state(5)); // Halted -> Observe
+}
+
+// Protocol tests (v0.2.0)
+
+test "tool call side effects" {
+    try std.testing.expectEqual(@as(c_int, 1), agent_tool_has_side_effects(0)); // execute
+    try std.testing.expectEqual(@as(c_int, 0), agent_tool_has_side_effects(1)); // query
+    try std.testing.expectEqual(@as(c_int, 0), agent_tool_has_side_effects(2)); // transform
+    try std.testing.expectEqual(@as(c_int, 1), agent_tool_has_side_effects(4)); // delegate
+}
+
+test "safety check permissions" {
+    try std.testing.expectEqual(@as(c_int, 1), agent_safety_allows_exec(0)); // approved
+    try std.testing.expectEqual(@as(c_int, 0), agent_safety_allows_exec(1)); // denied
+    try std.testing.expectEqual(@as(c_int, 1), agent_safety_allows_exec(4)); // sandboxed
+    try std.testing.expectEqual(@as(c_int, 0), agent_safety_allows_exec(5)); // human_required
+    try std.testing.expectEqual(@as(c_int, 1), agent_safety_needs_human(5)); // human_required
+    try std.testing.expectEqual(@as(c_int, 0), agent_safety_needs_human(0)); // approved
+}
+
+test "coordination multi-agent" {
+    try std.testing.expectEqual(@as(c_int, 0), agent_coordination_is_multi(0)); // solo
+    try std.testing.expectEqual(@as(c_int, 1), agent_coordination_is_multi(1)); // collaborative
+    try std.testing.expectEqual(@as(c_int, 1), agent_coordination_is_multi(4)); // swarm
 }
 
 test "validation matches transitions" {

@@ -21,23 +21,26 @@
 #
 #              MCP    LSP    DAP    BSP    NeSy   Agent  Fleet  gRPC   REST
 #           ┌──────┬──────┬──────┬──────┬──────┬──────┬──────┬──────┬──────┐
-# Cloud     │      │      │      │      │      │      │      │      │      │
-# Container │      │      │      │      │      │      │      │      │      │
-# Database  │  ●   │  ●   │      │      │      │      │      │      │      │
-# K8s       │      │      │      │      │      │      │      │      │      │
-# Git       │      │      │      │      │      │      │      │      │      │
-# Secrets   │      │      │      │      │      │      │      │      │      │
-# Queues    │      │      │      │      │      │      │      │      │      │
-# IaC       │      │      │      │      │      │      │      │      │      │
-# Observe   │      │      │      │      │      │      │      │      │      │
-# SSG       │      │      │      │      │      │      │      │      │      │
-# Proof     │      │      │      │      │      │      │      │      │      │
-# Fleet     │  ●   │      │      │      │      │      │  ●   │  ●   │      │
-# NeSy      │  ●   │  ●   │      │      │  ●   │      │      │  ●   │      │
+# Database  │  ██  │      │      │      │      │      │      │  ██  │  ██  │
+# Fleet     │  ██  │      │      │      │      │      │  ██  │      │  ██  │
+# NeSy      │  ██  │      │      │      │  ██  │      │      │      │  ██  │
+# Agent     │  ██  │      │      │      │      │  ██  │      │  ██  │  ██  │
+# Cloud     │  ██  │      │      │      │      │      │      │  ██  │  ██  │
+# Container │  ██  │      │      │      │      │      │      │  ██  │  ██  │
+# K8s       │  ██  │      │      │      │      │      │      │  ██  │  ██  │
+# Git       │  ██  │      │      │      │      │      │      │  ██  │  ██  │
+# Secrets   │  ██  │      │      │      │      │      │      │  ██  │  ██  │
+# Queues    │  ██  │      │      │      │      │      │      │  ██  │  ██  │
+# IaC       │  ██  │      │      │      │      │      │      │  ██  │  ██  │
+# Observe   │  ██  │      │      │      │      │      │      │  ██  │  ██  │
+# SSG       │  ██  │      │      │      │      │      │      │  ██  │  ██  │
+# Proof     │  ██  │      │      │      │      │      │      │  ██  │  ██  │
+# LSP       │  ██  │  ██  │      │      │      │      │      │  ██  │  ██  │
+# DAP       │  ██  │      │  ██  │      │      │      │      │  ██  │  ██  │
+# BSP       │  ██  │      │      │  ██  │      │      │      │  ██  │  ██  │
 #           └──────┴──────┴──────┴──────┴──────┴──────┴──────┴──────┴──────┘
 #
-# ● = cartridge present (may be Development, Ready, or Faulty)
-# Empty = no cartridge yet (future work)
+# ██ = ABI + FFI + Adapter complete (17 cartridges, Grade D Alpha)
 
 # ═══════════════════════════════════════════════════════════════════════════
 # Teranga Selection (Core)
@@ -74,14 +77,182 @@
 
 @cartridge(id="nesy-mcp"):
   name       = "nesy-mcp"
-  version    = "0.1.0"
+  version    = "0.2.0"
   status     = Development
   tier       = Teranga
   domain     = NeSy
-  protocols  = [MCP, LSP, NeSy, GRPC]
+  protocols  = [MCP, NeSy, GRPC, REST]
   hash       = ""
   depends-on = ["proven-mcp", "proven-neurosym"]
   notes      = "Neurosymbolic reasoning. Harmonization law: Symbolic truth always overrides Neural probability."
+@end
+
+@cartridge(id="agent-mcp"):
+  name       = "agent-mcp"
+  version    = "0.2.0"
+  status     = Development
+  tier       = Teranga
+  domain     = Agent
+  protocols  = [MCP, Agentic, GRPC, REST]
+  hash       = ""
+  depends-on = ["proven-mcp", "proven-agentic"]
+  notes      = "AI agent lifecycle management. OODA loop, tool invocation, autonomy boundaries."
+@end
+
+@cartridge(id="cloud-mcp"):
+  name       = "cloud-mcp"
+  version    = "0.1.0"
+  status     = Development
+  tier       = Teranga
+  domain     = Cloud
+  protocols  = [MCP, GRPC, REST]
+  hash       = ""
+  depends-on = []
+  notes      = "Cloud resource provisioning — multi-provider infrastructure management."
+@end
+
+@cartridge(id="container-mcp"):
+  name       = "container-mcp"
+  version    = "0.1.0"
+  status     = Development
+  tier       = Teranga
+  domain     = Container
+  protocols  = [MCP, GRPC, REST]
+  hash       = ""
+  depends-on = ["stapeln"]
+  notes      = "Container lifecycle management via Stapeln-compatible supply chains."
+@end
+
+@cartridge(id="k8s-mcp"):
+  name       = "k8s-mcp"
+  version    = "0.1.0"
+  status     = Development
+  tier       = Teranga
+  domain     = K8s
+  protocols  = [MCP, GRPC, REST]
+  hash       = ""
+  depends-on = []
+  notes      = "Kubernetes cluster orchestration — pods, services, deployments."
+@end
+
+@cartridge(id="git-mcp"):
+  name       = "git-mcp"
+  version    = "0.1.0"
+  status     = Development
+  tier       = Teranga
+  domain     = Git
+  protocols  = [MCP, GRPC, REST]
+  hash       = ""
+  depends-on = ["gitbot-fleet"]
+  notes      = "Git/VCS operations — repository management, forge integrations."
+@end
+
+@cartridge(id="secrets-mcp"):
+  name       = "secrets-mcp"
+  version    = "0.1.0"
+  status     = Development
+  tier       = Teranga
+  domain     = Secrets
+  protocols  = [MCP, GRPC, REST]
+  hash       = ""
+  depends-on = []
+  notes      = "Secrets management — vault integration, rotation, access control."
+@end
+
+@cartridge(id="queues-mcp"):
+  name       = "queues-mcp"
+  version    = "0.1.0"
+  status     = Development
+  tier       = Teranga
+  domain     = Queues
+  protocols  = [MCP, GRPC, REST]
+  hash       = ""
+  depends-on = []
+  notes      = "Message queue management — pub/sub, streams, dead-letter handling."
+@end
+
+@cartridge(id="iac-mcp"):
+  name       = "iac-mcp"
+  version    = "0.1.0"
+  status     = Development
+  tier       = Teranga
+  domain     = IaC
+  protocols  = [MCP, GRPC, REST]
+  hash       = ""
+  depends-on = []
+  notes      = "Infrastructure as Code — Nickel configs, plan/apply lifecycle."
+@end
+
+@cartridge(id="observe-mcp"):
+  name       = "observe-mcp"
+  version    = "0.1.0"
+  status     = Development
+  tier       = Teranga
+  domain     = Observe
+  protocols  = [MCP, GRPC, REST]
+  hash       = ""
+  depends-on = ["hypatia"]
+  notes      = "Observability — metrics, tracing, logs, health dashboards."
+@end
+
+@cartridge(id="ssg-mcp"):
+  name       = "ssg-mcp"
+  version    = "0.1.0"
+  status     = Development
+  tier       = Teranga
+  domain     = SSG
+  protocols  = [MCP, GRPC, REST]
+  hash       = ""
+  depends-on = []
+  notes      = "Static site generation — Jekyll, Hugo, Eleventy build pipelines."
+@end
+
+@cartridge(id="proof-mcp"):
+  name       = "proof-mcp"
+  version    = "0.1.0"
+  status     = Development
+  tier       = Teranga
+  domain     = Proof
+  protocols  = [MCP, GRPC, REST]
+  hash       = ""
+  depends-on = []
+  notes      = "Formal proof management — theorem prover sessions, proof obligations, verification."
+@end
+
+@cartridge(id="lsp-mcp"):
+  name       = "lsp-mcp"
+  version    = "0.1.0"
+  status     = Development
+  tier       = Teranga
+  domain     = LSP
+  protocols  = [MCP, LSP, GRPC, REST]
+  hash       = ""
+  depends-on = []
+  notes      = "Language Server Protocol cartridge — diagnostics, completion, hover, symbol navigation."
+@end
+
+@cartridge(id="dap-mcp"):
+  name       = "dap-mcp"
+  version    = "0.1.0"
+  status     = Development
+  tier       = Teranga
+  domain     = DAP
+  protocols  = [MCP, DAP, GRPC, REST]
+  hash       = ""
+  depends-on = []
+  notes      = "Debug Adapter Protocol cartridge — breakpoints, stepping, variable inspection."
+@end
+
+@cartridge(id="bsp-mcp"):
+  name       = "bsp-mcp"
+  version    = "0.1.0"
+  status     = Development
+  tier       = Teranga
+  domain     = BSP
+  protocols  = [MCP, BSP, GRPC, REST]
+  hash       = ""
+  depends-on = []
+  notes      = "Build Server Protocol cartridge — build targets, compilation, test execution."
 @end
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -176,6 +347,6 @@
   format    = "PMPL-provenance-v1"
   algorithm = "Ed25519+Dilithium5"
   signature = "PLACEHOLDER"
-  timestamp = "2026-03-02T00:00:00Z"
+  timestamp = "2026-03-08T00:00:00Z"
   canonical = "boj-server/.machine_readable/servers/menu.a2ml"
 @end
