@@ -1,6 +1,6 @@
 <!-- SPDX-License-Identifier: PMPL-1.0-or-later -->
 <!-- TOPOLOGY.md — Project architecture map and completion dashboard -->
-<!-- Last updated: 2026-03-08 (13 cartridges, all .so built + tested) -->
+<!-- Last updated: 2026-03-08 (14 cartridges, all .so built + tested) -->
 
 # Bundle of Joy Server — Project Topology
 
@@ -67,10 +67,10 @@ Queues     │  ██  │      │      │      │      │       │      �
 IaC        │  ██  │      │      │      │      │       │      │  ██  │  ██  │
 Observe    │  ██  │      │      │      │      │       │      │  ██  │  ██  │
 SSG        │  ██  │      │      │      │      │       │      │  ██  │  ██  │
-Proof      │      │      │      │      │      │       │      │      │      │
+Proof      │  ██  │      │      │      │      │       │      │  ██  │  ██  │
            └──────┴──────┴──────┴──────┴──────┴───────┴──────┴──────┴──────┘
 
-  ██ = ABI + FFI + Adapter complete (13 cartridges, multi-protocol)
+  ██ = ABI + FFI + Adapter complete (14 cartridges, multi-protocol)
 ```
 
 ## Completion Dashboard
@@ -94,6 +94,7 @@ Proof      │      │      │      │      │      │       │      │  
 | iac-mcp ABI+FFI+Adapter      | `██████████` 100%         | D (Alpha) |
 | observe-mcp ABI+FFI+Adapter  | `██████████` 100%         | D (Alpha) |
 | ssg-mcp ABI+FFI+Adapter      | `██████████` 100%         | D (Alpha) |
+| proof-mcp ABI+FFI+Adapter    | `██████████` 100%         | D (Alpha) |
 | Readiness tests (CRG D/C/B/A)| `██████████` 100%         | A (Prod) |
 | Benchmarks                    | `██████████` 100%         | B (RC) |
 | CI pipeline (zig-test.yml)    | `██████████` 100%         | D (Alpha) |
@@ -104,9 +105,9 @@ Proof      │      │      │      │      │      │       │      │  
 | gRPC-compat adapter           | `██████████` 100%         | D (Alpha) |
 | GraphQL subscriptions         | `██████████` 100%         | D (Alpha) |
 | Cartridge hot-reload          | `██████████` 100%         | D (Alpha) |
-| 13 shared libraries (.so)     | `██████████` 100%         | D (Alpha) |
-| 13-cartridge CI pipeline      | `██████████` 100%         | D (Alpha) |
-| Matrix fill (remaining)       | `█████████░`  90%         | D (Alpha) |
+| 14 shared libraries (.so)     | `██████████` 100%         | D (Alpha) |
+| 14-cartridge CI pipeline      | `██████████` 100%         | D (Alpha) |
+| Matrix fill (all 14 rows)     | `██████████` 100%         | D (Alpha) |
 | Polystack deprecation         | `██░░░░░░░░`  20%         | X |
 
 ## Key Dependencies

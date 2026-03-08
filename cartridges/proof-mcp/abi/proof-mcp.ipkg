@@ -1,0 +1,11 @@
+-- SPDX-License-Identifier: PMPL-1.0-or-later
+package proofmcp
+
+authors    = "Jonathan D.A. Jewell"
+version    = 0.1.0
+license    = "PMPL-1.0-or-later"
+brief      = "Proof MCP cartridge — verification state machine with formal backend management"
+
+sourcedir  = "."
+modules    = ProofMcp.SafeProof
+depends    = base, contrib
