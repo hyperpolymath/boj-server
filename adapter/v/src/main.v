@@ -1160,34 +1160,86 @@ fn handle_cartridge_invoke(app &BojApp, cname string, body string) http.Response
 // --- database-mcp: VeriSimDB + general database operations ---
 
 fn invoke_database(tool string, args string) http.Response {
+	// VeriSimDB endpoint — configurable via VERISIMDB_URL env var
+	verisimdb_url := os.getenv_opt('VERISIMDB_URL') or { 'http://localhost:8180' }
+
 	if tool == 'health' {
-		result := os.execute('curl -sf --max-time 3 http://localhost:8080/api/v1/health 2>/dev/null')
+		result := os.execute('curl -sf --max-time 3 ${verisimdb_url}/health 2>/dev/null')
 		if result.exit_code == 0 {
 			return json_response(json.encode({
 				'tool':   'health'
 				'status': 'ok'
-				'data':   result.output
+				'data':   result.output.trim_space()
 			}))
 		}
 		return json_response(json.encode({
 			'tool':   'health'
 			'status': 'unreachable'
-			'error':  'VeriSimDB not responding at localhost:8080'
+			'error':  'VeriSimDB not responding at ${verisimdb_url}'
+		}))
+	}
+	if tool == 'list_hexads' {
+		result := os.execute('curl -sf --max-time 5 ${verisimdb_url}/hexads 2>/dev/null')
+		if result.exit_code == 0 {
+			return json_response(json.encode({
+				'tool':   'list_hexads'
+				'status': 'ok'
+				'data':   result.output.trim_space()
+			}))
+		}
+		return json_response(json.encode({
+			'tool':   'list_hexads'
+			'status': 'error'
+			'error':  'Failed to list hexads: ${result.output.trim_space()}'
+		}))
+	}
+	if tool == 'create_hexad' {
+		params := json.decode(map[string]string, args) or {
+			return error_response(400, 'create_hexad requires {"name": "...", "type": "service|entity|resource"}')
+		}
+		name := params['name'] or { '' }
+		entity_type := params['type'] or { 'entity' }
+		if name == '' {
+			return error_response(400, 'create_hexad requires "name"')
+		}
+		body := '{"name":"${name}","type":"${entity_type}"}'
+		result := os.execute("curl -sf --max-time 5 -X POST -H 'Content-Type: application/json' -d '${body}' ${verisimdb_url}/hexads 2>/dev/null")
+		return json_response(json.encode({
+			'tool':   'create_hexad'
+			'name':   name
+			'status': if result.exit_code == 0 { 'created' } else { 'error' }
+			'data':   result.output.trim_space()
 		}))
 	}
 	if tool == 'query' {
-		result := os.execute("curl -sf --max-time 5 -X POST http://localhost:8080/api/v1/query -H 'Content-Type: application/json' -d '${args}' 2>/dev/null")
+		result := os.execute("curl -sf --max-time 5 -X POST -H 'Content-Type: application/json' -d '${args}' ${verisimdb_url}/vql/execute 2>/dev/null")
 		if result.exit_code == 0 {
 			return json_response(json.encode({
 				'tool':   'query'
 				'status': 'ok'
-				'data':   result.output
+				'data':   result.output.trim_space()
 			}))
 		}
 		return json_response(json.encode({
 			'tool':   'query'
 			'status': 'error'
-			'error':  'Query failed: ${result.output}'
+			'error':  'VQL query failed: ${result.output.trim_space()}'
+		}))
+	}
+	if tool == 'drift' {
+		params := json.decode(map[string]string, args) or {
+			return error_response(400, 'drift requires {"id": "hexad-id"}')
+		}
+		entity_id := params['id'] or { '' }
+		if entity_id == '' {
+			return error_response(400, 'drift requires "id"')
+		}
+		result := os.execute('curl -sf --max-time 5 ${verisimdb_url}/drift/entity/${entity_id} 2>/dev/null')
+		return json_response(json.encode({
+			'tool':   'drift'
+			'id':     entity_id
+			'status': if result.exit_code == 0 { 'ok' } else { 'error' }
+			'data':   result.output.trim_space()
 		}))
 	}
 	if tool == 'list_backends' {
@@ -1196,7 +1248,7 @@ fn invoke_database(tool string, args string) http.Response {
 			'backends': 'verisimdb,postgresql,sqlite,redis'
 		}))
 	}
-	return error_response(400, 'unknown database-mcp tool: "${tool}" — available: health, query, list_backends')
+	return error_response(400, 'unknown database-mcp tool: "${tool}" — available: health, list_hexads, create_hexad, query, drift, list_backends')
 }
 
 // --- ssg-mcp: Static site generation (Zola, Hugo, ddraig) ---
