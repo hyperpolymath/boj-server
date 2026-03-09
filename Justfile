@@ -450,7 +450,7 @@ build-adapter: build
     #!/usr/bin/env bash
     set -euo pipefail
     echo "Building V-lang adapter..."
-    v -cc gcc -cflags "-L$(pwd)/ffi/zig/zig-out/lib -Wl,--allow-multiple-definition" \
+    v -cc gcc -cflags "-L$(pwd)/ffi/zig/zig-out/lib -L$(pwd)/cartridges/container-mcp/ffi/zig-out/lib -Wl,--allow-multiple-definition" \
         -o adapter/v/boj-server adapter/v/src/main.v
     echo "Built: adapter/v/boj-server ($(du -h adapter/v/boj-server | cut -f1))"
 

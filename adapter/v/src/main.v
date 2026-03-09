@@ -25,6 +25,8 @@ import time
 #flag -L../../ffi/zig/zig-out/lib
 #flag -lboj_catalogue
 #flag -lboj_loader
+#flag -L../../cartridges/container-mcp/ffi/zig-out/lib
+#flag -lcontainer_mcp
 
 fn C.boj_catalogue_init() int
 fn C.boj_catalogue_deinit()
@@ -1314,9 +1316,35 @@ fn invoke_ssg(tool string, args string) http.Response {
 	return error_response(400, 'unknown ssg-mcp tool: "${tool}" — available: build, preview, list_engines')
 }
 
-// --- container-mcp: Podman container management ---
+// --- container-mcp: Container lifecycle + Stapeln integration ---
+// Combines three layers:
+//   1. Podman CLI — direct container operations (list, build, images)
+//   2. Zig FFI state machine — formal lifecycle tracking (slots, transitions)
+//   3. Stapeln API — stack validation, security scanning, gap analysis, codegen
+
+fn C.ctr_build(runtime int, image_name &u8) int
+fn C.ctr_create(slot_idx int) int
+fn C.ctr_start(slot_idx int) int
+fn C.ctr_stop(slot_idx int) int
+fn C.ctr_remove(slot_idx int) int
+fn C.ctr_state(slot_idx int) int
+fn C.ctr_can_transition(from int, to int) int
+fn C.ctr_reset()
+
+fn ctr_state_label(s int) string {
+	return match s {
+		0 { 'none' }
+		1 { 'built' }
+		2 { 'created' }
+		3 { 'running' }
+		4 { 'stopped' }
+		5 { 'removed' }
+		else { 'unknown' }
+	}
+}
 
 fn invoke_container(tool string, args string) http.Response {
+	// --- Podman CLI tools ---
 	if tool == 'list' {
 		result := os.execute('podman ps --format json 2>/dev/null')
 		status_str := if result.exit_code == 0 { 'ok' } else { 'error' }
@@ -1333,12 +1361,25 @@ fn invoke_container(tool string, args string) http.Response {
 		}
 		build_path := params['path'] or { '.' }
 		tag := params['tag'] or { 'boj-build:latest' }
+		runtime_name := params['runtime'] or { 'podman' }
 
+		// Allocate a state machine slot for lifecycle tracking
+		runtime_int := match runtime_name {
+			'podman' { 1 }
+			'nerdctl' { 2 }
+			'docker' { 3 }
+			else { 1 }
+		}
+		slot := C.ctr_build(runtime_int, tag.str)
+
+		// Actually build via CLI
 		result := os.execute('cd ${build_path} && podman build -t ${tag} -f Containerfile . 2>&1')
 		status_str := if result.exit_code == 0 { 'success' } else { 'failed' }
 		return json_response(json.encode({
 			'tool':      'build'
 			'tag':       tag
+			'slot':      slot.str()
+			'state':     ctr_state_label(C.ctr_state(slot))
 			'exit_code': result.exit_code.str()
 			'output':    result.output
 			'status':    status_str
@@ -1353,7 +1394,186 @@ fn invoke_container(tool string, args string) http.Response {
 			'data':   result.output
 		}))
 	}
-	return error_response(400, 'unknown container-mcp tool: "${tool}" — available: list, build, images')
+
+	// --- FFI state machine tools ---
+	if tool == 'create' {
+		params := json.decode(map[string]string, args) or {
+			return error_response(400, 'create requires {"slot": "0"}')
+		}
+		slot := (params['slot'] or { '0' }).int()
+		result := C.ctr_create(slot)
+		if result == -1 {
+			return error_response(404, 'slot ${slot} not active')
+		}
+		if result == -2 {
+			return error_response(409, 'cannot create from state: ${ctr_state_label(C.ctr_state(slot))}')
+		}
+		return json_response(json.encode({
+			'tool':   'create'
+			'slot':   slot.str()
+			'state':  ctr_state_label(C.ctr_state(slot))
+			'status': 'ok'
+		}))
+	}
+	if tool == 'start' {
+		params := json.decode(map[string]string, args) or {
+			return error_response(400, 'start requires {"slot": "0"}')
+		}
+		slot := (params['slot'] or { '0' }).int()
+		result := C.ctr_start(slot)
+		if result == -1 {
+			return error_response(404, 'slot ${slot} not active')
+		}
+		if result == -2 {
+			return error_response(409, 'cannot start from state: ${ctr_state_label(C.ctr_state(slot))}')
+		}
+		return json_response(json.encode({
+			'tool':   'start'
+			'slot':   slot.str()
+			'state':  ctr_state_label(C.ctr_state(slot))
+			'status': 'ok'
+		}))
+	}
+	if tool == 'stop' {
+		params := json.decode(map[string]string, args) or {
+			return error_response(400, 'stop requires {"slot": "0"}')
+		}
+		slot := (params['slot'] or { '0' }).int()
+		result := C.ctr_stop(slot)
+		if result == -1 {
+			return error_response(404, 'slot ${slot} not active')
+		}
+		if result == -2 {
+			return error_response(409, 'cannot stop from state: ${ctr_state_label(C.ctr_state(slot))}')
+		}
+		return json_response(json.encode({
+			'tool':   'stop'
+			'slot':   slot.str()
+			'state':  ctr_state_label(C.ctr_state(slot))
+			'status': 'ok'
+		}))
+	}
+	if tool == 'remove' {
+		params := json.decode(map[string]string, args) or {
+			return error_response(400, 'remove requires {"slot": "0"}')
+		}
+		slot := (params['slot'] or { '0' }).int()
+		result := C.ctr_remove(slot)
+		if result == -1 {
+			return error_response(404, 'slot ${slot} not active')
+		}
+		if result == -2 {
+			return error_response(409, 'cannot remove from state: ${ctr_state_label(C.ctr_state(slot))} — stop first')
+		}
+		return json_response(json.encode({
+			'tool':   'remove'
+			'slot':   slot.str()
+			'state':  ctr_state_label(C.ctr_state(slot))
+			'status': 'ok'
+		}))
+	}
+	if tool == 'inspect' {
+		params := json.decode(map[string]string, args) or {
+			return error_response(400, 'inspect requires {"slot": "0"}')
+		}
+		slot := (params['slot'] or { '0' }).int()
+		state := C.ctr_state(slot)
+		return json_response(json.encode({
+			'tool':  'inspect'
+			'slot':  slot.str()
+			'state': ctr_state_label(state)
+		}))
+	}
+	if tool == 'logs' {
+		params := json.decode(map[string]string, args) or {
+			return error_response(400, 'logs requires {"name": "container-name"}')
+		}
+		name := params['name'] or { '' }
+		if name == '' {
+			return error_response(400, 'logs requires {"name": "container-name"}')
+		}
+		result := os.execute('podman logs ${name} 2>&1')
+		status_str := if result.exit_code == 0 { 'ok' } else { 'error' }
+		return json_response(json.encode({
+			'tool':   'logs'
+			'name':   name
+			'status': status_str
+			'data':   result.output
+		}))
+	}
+
+	// --- Stapeln integration tools ---
+	stapeln_url := os.getenv_opt('STAPELN_URL') or { 'http://localhost:4000' }
+
+	if tool == 'stapeln_stacks' {
+		resp := http.get('${stapeln_url}/api/stacks') or {
+			return error_response(502, 'stapeln not reachable at ${stapeln_url}: ${err.msg()}')
+		}
+		return json_response(json.encode({
+			'tool':   'stapeln_stacks'
+			'status': if resp.status_code == 200 { 'ok' } else { 'error' }
+			'data':   resp.body
+		}))
+	}
+	if tool == 'stapeln_validate' {
+		params := json.decode(map[string]string, args) or {
+			return error_response(400, 'stapeln_validate requires {"stack_id": "1"}')
+		}
+		stack_id := params['stack_id'] or { '1' }
+		resp := http.post('${stapeln_url}/api/stacks/${stack_id}/validate', '') or {
+			return error_response(502, 'stapeln not reachable: ${err.msg()}')
+		}
+		return json_response(json.encode({
+			'tool':   'stapeln_validate'
+			'status': if resp.status_code == 200 { 'ok' } else { 'error' }
+			'data':   resp.body
+		}))
+	}
+	if tool == 'stapeln_security' {
+		params := json.decode(map[string]string, args) or {
+			return error_response(400, 'stapeln_security requires {"stack_id": "1"}')
+		}
+		stack_id := params['stack_id'] or { '1' }
+		resp := http.post('${stapeln_url}/api/stacks/${stack_id}/security-scan', '') or {
+			return error_response(502, 'stapeln not reachable: ${err.msg()}')
+		}
+		return json_response(json.encode({
+			'tool':   'stapeln_security'
+			'status': if resp.status_code == 200 { 'ok' } else { 'error' }
+			'data':   resp.body
+		}))
+	}
+	if tool == 'stapeln_gaps' {
+		params := json.decode(map[string]string, args) or {
+			return error_response(400, 'stapeln_gaps requires {"stack_id": "1"}')
+		}
+		stack_id := params['stack_id'] or { '1' }
+		resp := http.post('${stapeln_url}/api/stacks/${stack_id}/gap-analysis', '') or {
+			return error_response(502, 'stapeln not reachable: ${err.msg()}')
+		}
+		return json_response(json.encode({
+			'tool':   'stapeln_gaps'
+			'status': if resp.status_code == 200 { 'ok' } else { 'error' }
+			'data':   resp.body
+		}))
+	}
+	if tool == 'stapeln_generate' {
+		params := json.decode(map[string]string, args) or {
+			return error_response(400, 'stapeln_generate requires {"stack_id": "1", "format": "docker_compose"}')
+		}
+		stack_id := params['stack_id'] or { '1' }
+		format := params['format'] or { 'all' }
+		resp := http.post('${stapeln_url}/api/stacks/${stack_id}/generate?format=${format}', '') or {
+			return error_response(502, 'stapeln not reachable: ${err.msg()}')
+		}
+		return json_response(json.encode({
+			'tool':   'stapeln_generate'
+			'format': format
+			'status': if resp.status_code == 200 { 'ok' } else { 'error' }
+			'data':   resp.body
+		}))
+	}
+	return error_response(400, 'unknown container-mcp tool: "${tool}" — available: list, build, images, create, start, stop, remove, inspect, logs, stapeln_stacks, stapeln_validate, stapeln_security, stapeln_gaps, stapeln_generate')
 }
 
 // --- observe-mcp: Observability and feedback ---
