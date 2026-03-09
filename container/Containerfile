@@ -1,53 +1,29 @@
 # SPDX-License-Identifier: PMPL-1.0-or-later
 # Bundle of Joy Server Container Image
 #
-# Multi-stage build template for Chainguard Wolfi base images.
-# Customise the builder stage for your language and copy the
-# resulting binary/release into the minimal runtime stage.
+# Multi-stage build: Zig FFI compilation + pre-built V adapter binary.
+#
+# Prerequisites:
+#   just build-adapter   # Build the V binary locally first
 #
 # Build with Podman:
 #   podman build -t boj-server:latest -f container/Containerfile .
 #
 # Run:
-#   podman run -p 9000:9000 boj-server:latest
+#   podman run -p 7700:7700 -p 7701:7701 -p 7702:7702 boj-server:latest
 #
 # Run with persistent volume:
-#   podman run -p 9000:9000 -v boj-server-data:/data boj-server:latest
+#   podman run -p 7700:7700 -p 7701:7701 -p 7702:7702 \
+#     -v boj-server-data:/data boj-server:latest
 
 # ============================================================================
-# Stage 1: Builder
+# Stage 1: FFI Builder
 # ============================================================================
 #
-# Install build tools and compile the application.
-# This stage is discarded after the build — only the compiled output
-# is copied into the runtime stage.
-#
-# Language-specific examples (uncomment the one you need):
-#
-# --- Rust ---
-#   RUN apk add --no-cache rust pkgconf build-base
-#   COPY Cargo.toml Cargo.lock ./
-#   COPY src/ ./src/
-#   RUN cargo build --release
-#   # Output: /build/target/release/boj-server
-#
-# --- Elixir ---
-#   RUN apk add --no-cache erl27-elixir-1.18 erlang-27 erlang-27-dev git build-base
-#   COPY mix.exs mix.lock ./
-#   COPY lib/ ./lib/
-#   COPY config/ ./config/
-#   ENV MIX_ENV=prod
-#   RUN mix local.hex --force && mix local.rebar --force && \
-#       mix deps.get --only prod && mix compile && mix release
-#   # Output: /build/_build/prod/rel/boj-server/
-#
-# --- Zig ---
-#   RUN apk add --no-cache zig build-base
-#   COPY build.zig build.zig.zon ./
-#   COPY src/ ./src/
-#   RUN zig build -Doptimize=ReleaseFast
-#   # Output: /build/zig-out/bin/boj-server
-#
+# Compiles all Zig FFI layers (core + 18 cartridges) in ReleaseFast mode.
+# The V adapter binary is built locally and copied in — V compiler is not
+# available in Wolfi packages.
+
 FROM cgr.dev/chainguard/wolfi-base:latest AS builder
 
 # Install Zig toolchain for FFI compilation
@@ -55,20 +31,27 @@ RUN apk add --no-cache build-base zig
 
 WORKDIR /build
 
-# Copy source and build all FFI layers
+# Copy source tree
 COPY . .
+
+# Build core FFI (catalogue, loader, guardian, federation, readiness, verisimdb, e2e)
 RUN cd ffi/zig && zig build -Doptimize=ReleaseFast
-RUN for cart in database-mcp fleet-mcp nesy-mcp agent-mcp; do \
-      cd /build/cartridges/$cart/ffi && zig build -Doptimize=ReleaseFast; \
+
+# Build all 18 cartridge FFI shared libraries
+RUN for cart in database fleet nesy agent cloud container k8s git \
+                secrets queues iac observe ssg proof lsp dap bsp feedback; do \
+      echo "Building ${cart}-mcp FFI..." && \
+      cd /build/cartridges/${cart}-mcp/ffi && \
+      zig build -Doptimize=ReleaseFast || exit 1; \
     done
 
 # ============================================================================
 # Stage 2: Runtime
 # ============================================================================
 #
-# Minimal production image. Only the compiled binary/release and runtime
-# dependencies are included. No compilers, no source code, no build tools.
-#
+# Minimal production image. Only the compiled binary, shared libraries,
+# and runtime dependencies are included.
+
 FROM cgr.dev/chainguard/wolfi-base:latest
 
 # OCI image labels (compatible with cerro-torre .ctp bundle metadata)
@@ -83,58 +66,77 @@ LABEL org.opencontainers.image.title="Bundle of Joy Server" \
       dev.cerrotorre.gatekeeper="container/.gatekeeper.yaml" \
       dev.stapeln.compose="container/compose.toml"
 
-# Install minimal runtime dependencies.
-# Adjust this list for your application:
-#   - ca-certificates: TLS root certificates
-#   - curl: health check probe
-#   - libstdc++: C++ standard library (if needed by native deps)
-#   - ncurses: terminal UI (if needed, e.g. Elixir IEx)
+# Minimal runtime dependencies
 RUN apk add --no-cache ca-certificates curl
 
-# Create non-root user for the application.
-# Running as root inside containers is a security anti-pattern.
+# Create non-root user
 RUN addgroup -S appuser && adduser -S appuser -G appuser
 
 WORKDIR /app
 
-# Copy compiled FFI libraries from builder stage
+# Copy pre-built V adapter binary (built locally via just build-adapter)
+COPY adapter/v/boj-server /app/boj-server
+RUN chmod +x /app/boj-server
+
+# Copy core FFI libraries from builder stage
 COPY --from=builder /build/ffi/zig/zig-out/ /app/lib/core/
+
+# Copy all 18 cartridge .so files from builder stage
 COPY --from=builder /build/cartridges/database-mcp/ffi/zig-out/ /app/lib/cartridges/database-mcp/
 COPY --from=builder /build/cartridges/fleet-mcp/ffi/zig-out/ /app/lib/cartridges/fleet-mcp/
 COPY --from=builder /build/cartridges/nesy-mcp/ffi/zig-out/ /app/lib/cartridges/nesy-mcp/
 COPY --from=builder /build/cartridges/agent-mcp/ffi/zig-out/ /app/lib/cartridges/agent-mcp/
+COPY --from=builder /build/cartridges/cloud-mcp/ffi/zig-out/ /app/lib/cartridges/cloud-mcp/
+COPY --from=builder /build/cartridges/container-mcp/ffi/zig-out/ /app/lib/cartridges/container-mcp/
+COPY --from=builder /build/cartridges/k8s-mcp/ffi/zig-out/ /app/lib/cartridges/k8s-mcp/
+COPY --from=builder /build/cartridges/git-mcp/ffi/zig-out/ /app/lib/cartridges/git-mcp/
+COPY --from=builder /build/cartridges/secrets-mcp/ffi/zig-out/ /app/lib/cartridges/secrets-mcp/
+COPY --from=builder /build/cartridges/queues-mcp/ffi/zig-out/ /app/lib/cartridges/queues-mcp/
+COPY --from=builder /build/cartridges/iac-mcp/ffi/zig-out/ /app/lib/cartridges/iac-mcp/
+COPY --from=builder /build/cartridges/observe-mcp/ffi/zig-out/ /app/lib/cartridges/observe-mcp/
+COPY --from=builder /build/cartridges/ssg-mcp/ffi/zig-out/ /app/lib/cartridges/ssg-mcp/
+COPY --from=builder /build/cartridges/proof-mcp/ffi/zig-out/ /app/lib/cartridges/proof-mcp/
+COPY --from=builder /build/cartridges/lsp-mcp/ffi/zig-out/ /app/lib/cartridges/lsp-mcp/
+COPY --from=builder /build/cartridges/dap-mcp/ffi/zig-out/ /app/lib/cartridges/dap-mcp/
+COPY --from=builder /build/cartridges/bsp-mcp/ffi/zig-out/ /app/lib/cartridges/bsp-mcp/
+COPY --from=builder /build/cartridges/feedback-mcp/ffi/zig-out/ /app/lib/cartridges/feedback-mcp/
 
 # Copy entrypoint script
 COPY container/entrypoint.sh /app/entrypoint.sh
 RUN chmod +x /app/entrypoint.sh
 
-# Copy stapeln integration files (svalinn gatekeeper policy, cerro-torre manifest)
+# Copy stapeln integration files
 COPY container/.gatekeeper.yaml /etc/svalinn/gatekeeper.yaml
 COPY container/manifest.toml /app/manifest.toml
 
-# Create data directory for persistent storage (mountable volume)
+# Copy machine-readable config (menu, order-ticket)
+COPY .machine_readable/servers/ /app/config/servers/
+
+# Create data directory for persistent storage
 RUN mkdir -p /data && chown appuser:appuser /data
 
-# Set ownership of the application directory
+# Set ownership
 RUN chown -R appuser:appuser /app
 
-# Environment variables — customise for your application
+# Environment variables
 ENV APP_HOST=[::]
-ENV APP_PORT=9000
+ENV APP_PORT=7700
 ENV APP_LOG_FORMAT=json
 ENV APP_DATA_DIR=/data
+ENV LD_LIBRARY_PATH=/app/lib/core/lib:/app/lib/cartridges/database-mcp/lib:/app/lib/cartridges/fleet-mcp/lib:/app/lib/cartridges/nesy-mcp/lib:/app/lib/cartridges/agent-mcp/lib:/app/lib/cartridges/cloud-mcp/lib:/app/lib/cartridges/container-mcp/lib:/app/lib/cartridges/k8s-mcp/lib:/app/lib/cartridges/git-mcp/lib:/app/lib/cartridges/secrets-mcp/lib:/app/lib/cartridges/queues-mcp/lib:/app/lib/cartridges/iac-mcp/lib:/app/lib/cartridges/observe-mcp/lib:/app/lib/cartridges/ssg-mcp/lib:/app/lib/cartridges/proof-mcp/lib:/app/lib/cartridges/lsp-mcp/lib:/app/lib/cartridges/dap-mcp/lib:/app/lib/cartridges/bsp-mcp/lib:/app/lib/cartridges/feedback-mcp/lib
 
-# Declare /data as a volume for persistent storage
+# Persistent storage volume
 VOLUME ["/data"]
 
 # Run as non-root
 USER appuser
 
-# Expose the application port
-EXPOSE 9000
+# Expose all three adapter ports
+EXPOSE 7700 7701 7702
 
-# Health check — the application must respond 2xx at /health
+# Health check via REST endpoint
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
     CMD curl -sf http://localhost:${APP_PORT}/health || exit 1
 
 ENTRYPOINT ["/app/entrypoint.sh"]
+CMD ["/app/boj-server"]

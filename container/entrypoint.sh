@@ -29,7 +29,7 @@ trap cleanup TERM INT
 
 echo "Starting boj-server..."
 echo "  Host: ${APP_HOST:-[::]}"
-echo "  Port: ${APP_PORT:-9000}"
+echo "  Port: ${APP_PORT:-7700}"
 echo "  Data: ${APP_DATA_DIR:-/data}"
 echo "  Log:  ${APP_LOG_FORMAT:-json}"
 

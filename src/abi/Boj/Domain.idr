@@ -25,6 +25,7 @@ data CapabilityDomain
   | Proof       -- Formal proof assistants (Idris2, Lean, Coq)
   | FleetDom    -- Gitbot fleet domain (rhodibot, echidnabot, etc.)
   | NeSyDom     -- Neurosymbolic reasoning domain (hypatia, echidna)
+  | Feedback    -- Feedback collection (feedback-o-tron)
 
 ||| Human-readable label for display in the Teranga menu.
 public export
@@ -42,6 +43,7 @@ domainLabel SSG       = "SSG"
 domainLabel Proof     = "Proof"
 domainLabel FleetDom  = "Fleet"
 domainLabel NeSyDom   = "NeSy"
+domainLabel Feedback  = "Feedback"
 
 ||| C-ABI encoding: domain to integer.
 public export
@@ -59,6 +61,7 @@ domainToInt SSG       = 10
 domainToInt Proof     = 11
 domainToInt FleetDom  = 12
 domainToInt NeSyDom   = 13
+domainToInt Feedback  = 14
 
 ||| C-ABI decoding: integer to domain (with safe fallback).
 public export
@@ -76,6 +79,7 @@ intToDomain 10 = Just SSG
 intToDomain 11 = Just Proof
 intToDomain 12 = Just FleetDom
 intToDomain 13 = Just NeSyDom
+intToDomain 14 = Just Feedback
 intToDomain _  = Nothing
 
 ||| Equality for capability domains.

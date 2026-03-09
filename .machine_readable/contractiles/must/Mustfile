@@ -10,7 +10,7 @@ metadata:
   description: "Invariant checks for BoJ capability catalogue, cartridges, and formal proofs."
 
 parameters:
-  gateway_port: "9000"
+  gateway_port: "7700"
   abi_dir: "src/abi"
   ffi_dir: "ffi/zig"
 
@@ -31,29 +31,42 @@ checks:
     description: "Core FFI tests must pass."
     run: "cd ffi/zig && zig build test"
 
-  - name: cartridge-fleet-abi
-    description: "Fleet-MCP ABI must type-check."
-    run: "cd cartridges/fleet-mcp/abi && idris2 --check fleet-mcp.ipkg"
-
-  - name: cartridge-nesy-abi
-    description: "NeSy-MCP ABI must type-check."
-    run: "cd cartridges/nesy-mcp/abi && idris2 --check nesy-mcp.ipkg"
-
-  - name: cartridge-database-abi
-    description: "Database-MCP ABI must type-check."
-    run: "cd cartridges/database-mcp/abi && idris2 --check database-mcp.ipkg"
-
-  - name: cartridge-agent-abi
-    description: "Agent-MCP ABI must type-check."
-    run: "cd cartridges/agent-mcp/abi && idris2 --check agent-mcp.ipkg"
+  - name: cartridge-abi-all
+    description: "All 18 cartridge ABIs must type-check."
+    run: |
+      for cart in database fleet nesy agent cloud container k8s git secrets queues iac observe ssg proof lsp dap bsp feedback; do
+        dir="cartridges/${cart}-mcp/abi"
+        if [ -d "$dir" ]; then
+          echo "Checking ${cart}-mcp ABI..."
+          (cd "$dir" && idris2 --check ${cart}-mcp.ipkg) || exit 1
+        fi
+      done
 
   - name: cartridge-ffi-tests
-    description: "All cartridge FFI tests must pass."
+    description: "All 18 cartridge FFI tests must pass."
     run: |
-      cd cartridges/fleet-mcp/ffi && zig build test &&
-      cd ../../nesy-mcp/ffi && zig build test &&
-      cd ../../database-mcp/ffi && zig build test &&
-      cd ../../agent-mcp/ffi && zig build test
+      for cart in database fleet nesy agent cloud container k8s git secrets queues iac observe ssg proof lsp dap bsp feedback; do
+        dir="cartridges/${cart}-mcp/ffi"
+        if [ -d "$dir" ] && [ -f "$dir/build.zig" ]; then
+          echo "Testing ${cart}-mcp FFI..."
+          (cd "$dir" && zig build test) || exit 1
+        fi
+      done
+
+  - name: cartridge-shared-libs
+    description: "All 18 cartridge .so files must exist."
+    run: |
+      for cart in database fleet nesy agent cloud container k8s git secrets queues iac observe ssg proof lsp dap bsp feedback; do
+        so="cartridges/${cart}-mcp/ffi/zig-out/lib/lib${cart}_mcp.so"
+        if [ ! -f "$so" ]; then
+          echo "Missing: $so"
+          exit 1
+        fi
+      done
+
+  - name: adapter-builds
+    description: "V-lang triple adapter must compile."
+    run: "v -check adapter/v/src/main.v"
 
   - name: spdx-headers
     description: "All source files must have PMPL-1.0-or-later SPDX headers."

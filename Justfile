@@ -267,6 +267,7 @@ build *args:
     cd cartridges/nesy-mcp/ffi && zig build {{args}}
     cd cartridges/database-mcp/ffi && zig build {{args}}
     cd cartridges/agent-mcp/ffi && zig build {{args}}
+    cd cartridges/feedback-mcp/ffi && zig build {{args}}
     @echo "Build complete"
 
 # Build in release mode with optimizations
@@ -305,6 +306,8 @@ test *args:
     cd cartridges/database-mcp/ffi && zig build test
     @echo "Running agent-mcp FFI tests..."
     cd cartridges/agent-mcp/ffi && zig build test
+    @echo "Running feedback-mcp FFI tests..."
+    cd cartridges/feedback-mcp/ffi && zig build test
     @echo "All tests passed!"
 
 # Run tests with verbose output
@@ -314,6 +317,7 @@ test-verbose:
     cd cartridges/nesy-mcp/ffi && zig build test -- --verbose
     cd cartridges/database-mcp/ffi && zig build test -- --verbose
     cd cartridges/agent-mcp/ffi && zig build test -- --verbose
+    cd cartridges/feedback-mcp/ffi && zig build test -- --verbose
 
 # Smoke test — type-check core ABI + run one FFI test
 test-smoke:
@@ -377,6 +381,7 @@ typecheck:
     cd cartridges/nesy-mcp/abi && idris2 --check nesy-mcp.ipkg
     cd cartridges/database-mcp/abi && idris2 --check database-mcp.ipkg
     cd cartridges/agent-mcp/abi && idris2 --check agent-mcp.ipkg
+    cd cartridges/feedback-mcp/abi && idris2 --check feedback-mcp.ipkg
     @echo "All ABI files type-check!"
 
 # Verify zero believe_me in all Idris2 sources
@@ -423,20 +428,65 @@ matrix:
 # RUN & EXECUTE
 # ═══════════════════════════════════════════════════════════════════════════════
 
-# Run the BoJ server (Phase 3 — V-lang adapter required)
+# Run the BoJ server (V-lang triple adapter: REST 7700, gRPC 7701, GraphQL 7702)
 run *args: build
-    @echo "BoJ server requires V-lang adapter (Phase 3)"
-    @echo "Current status: ABI + FFI layers complete"
-    @echo "Run 'just matrix' to see cartridge status"
+    #!/usr/bin/env bash
+    set -euo pipefail
+    ADAPTER="adapter/v/boj-server"
+    if [ ! -f "$ADAPTER" ]; then
+        echo "Building V-lang adapter..."
+        v -cc gcc -cflags "-L$(pwd)/ffi/zig/zig-out/lib -Wl,--allow-multiple-definition" \
+            -o "$ADAPTER" adapter/v/src/main.v
+    fi
+    echo "Starting BoJ Server..."
+    exec "$ADAPTER" {{args}}
 
 # Run with verbose output
 run-verbose *args: build
-    just run {{args}}
+    BOJ_VERBOSE=1 just run {{args}}
+
+# Build V-lang adapter binary
+build-adapter: build
+    #!/usr/bin/env bash
+    set -euo pipefail
+    echo "Building V-lang adapter..."
+    v -cc gcc -cflags "-L$(pwd)/ffi/zig/zig-out/lib -Wl,--allow-multiple-definition" \
+        -o adapter/v/boj-server adapter/v/src/main.v
+    echo "Built: adapter/v/boj-server ($(du -h adapter/v/boj-server | cut -f1))"
 
 # Install to user path
-install: build-release
+install: build-adapter
     @echo "Installing boj-server..."
-    @echo "Phase 3 required for installable binary"
+    cp adapter/v/boj-server ~/.local/bin/boj-server
+    @echo "Installed to ~/.local/bin/boj-server"
+
+# Start Cloudflare quick tunnel (exposes BoJ at *.trycloudflare.com)
+tunnel:
+    @echo "Starting Cloudflare Quick Tunnel → *.trycloudflare.com"
+    @echo "Watch output for the assigned URL."
+    cloudflared tunnel --no-autoupdate --no-tls-verify --url http://localhost:7700
+
+# Run BoJ server + Cloudflare Tunnel together
+serve: build
+    #!/usr/bin/env bash
+    set -euo pipefail
+    ADAPTER="adapter/v/boj-server"
+    if [ ! -f "$ADAPTER" ]; then
+        echo "Building V-lang adapter..."
+        v -cc gcc -cflags "-L$(pwd)/ffi/zig/zig-out/lib -Wl,--allow-multiple-definition" \
+            -o "$ADAPTER" adapter/v/src/main.v
+    fi
+    echo "Starting BoJ Server..."
+    echo "  Local: http://localhost:7700/status"
+    LD_LIBRARY_PATH="$(pwd)/ffi/zig/zig-out/lib" "$ADAPTER" &
+    BOJ_PID=$!
+    trap "kill $BOJ_PID 2>/dev/null; kill $TUNNEL_PID 2>/dev/null; exit" INT TERM
+    sleep 2
+    echo ""
+    echo "Starting Cloudflare Tunnel (watch for public URL)..."
+    cloudflared tunnel --no-autoupdate --no-tls-verify --url http://localhost:7700 &
+    TUNNEL_PID=$!
+    wait $BOJ_PID $TUNNEL_PID
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # DEPENDENCIES

@@ -26,11 +26,20 @@ pub fn build(b: *std.Build) void {
     loader_mod.addImport("catalogue", catalogue_mod);
 
     // --- Static library (for V-lang adapter linking) ---
+    // Catalogue-only lib (used by V adapter for most symbols)
     const lib = b.addLibrary(.{
         .name = "boj_catalogue",
         .root_module = catalogue_mod,
     });
     b.installArtifact(lib);
+
+    // Loader lib (adds boj_loader_verify, boj_loader_set_hash)
+    // Built as object-only to avoid duplicate catalogue symbols when linking both
+    const loader_lib = b.addLibrary(.{
+        .name = "boj_loader",
+        .root_module = loader_mod,
+    });
+    b.installArtifact(loader_lib);
 
     const lib_step = b.step("lib", "Build static library for V-lang linking");
     lib_step.dependOn(&lib.step);

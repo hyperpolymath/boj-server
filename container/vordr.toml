@@ -25,13 +25,13 @@ version = "0.1.0"
 
 [health]
 # Primary health endpoint — must return 2xx.
-endpoint = "http://localhost:9000/health"
+endpoint = "http://localhost:7700/health"
 interval = "30s"
 timeout = "5s"
 failure_threshold = 3
 
 # Readiness endpoint — checked during startup and after restarts.
-readiness_endpoint = "http://localhost:9000/ready"
+readiness_endpoint = "http://localhost:7700/ready"
 readiness_timeout = "10s"
 
 # Action on failure: "alert" (log + notify) or "restart" (alert + podman restart).

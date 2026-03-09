@@ -19,7 +19,23 @@ recovery:
     - name: cartridge-abi-rollback
       path: "cartridges/*/abi/**/*.idr"
       rollback: "git checkout HEAD~1 -- cartridges/"
-      notes: "Rollback all cartridge ABIs. Requires re-typecheck."
+      notes: "Rollback all 18 cartridge ABIs. Requires re-typecheck."
+
+    - name: cartridge-ffi-rollback
+      path: "cartridges/*/ffi/**/*.zig"
+      rollback: "git checkout HEAD~1 -- cartridges/"
+      notes: "Rollback all 18 cartridge FFI layers. Requires zig build test."
+
+    - name: single-cartridge-rollback
+      event: "cartridge.{name}.failure"
+      undo: "git checkout HEAD~1 -- cartridges/{name}-mcp/ && cd cartridges/{name}-mcp/ffi && zig build"
+      notes: "Rollback a single cartridge (ABI+FFI) and rebuild its .so."
+
+  adapter:
+    - name: v-adapter-rollback
+      path: "adapter/v/src/main.v"
+      rollback: "git checkout HEAD~1 -- adapter/v/src/main.v"
+      notes: "Rollback V-lang adapter. Rebuild with just build-adapter."
 
   federation:
     - name: node-deregister
@@ -32,6 +48,11 @@ recovery:
       undo: "Reset gossip state to last known-good snapshot."
       notes: "If gossip data is corrupted, fall back to seed node registry."
 
+    - name: federation-transport-fallback
+      event: "umoja.quic.failure"
+      undo: "Fall back to UDP transport for gossip."
+      notes: "QUIC transport failure triggers automatic UDP fallback."
+
   menu:
     - name: menu-regenerate
       path: .machine_readable/servers/menu.a2ml
@@ -43,3 +64,8 @@ recovery:
       source: ffi/zig/
       transform: "just clean && just build && just test"
       notes: "Full FFI rebuild and test cycle after any Zig source change."
+
+    - name: shared-libs-rebuild
+      event: "cartridge.so.missing"
+      transform: "for c in cartridges/*/ffi; do (cd $c && zig build); done"
+      notes: "Rebuild all 18 cartridge .so files."
