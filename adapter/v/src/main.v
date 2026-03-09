@@ -1178,34 +1178,34 @@ fn invoke_database(tool string, args string) http.Response {
 			'error':  'VeriSimDB not responding at ${verisimdb_url}'
 		}))
 	}
-	if tool == 'list_hexads' {
-		result := os.execute('curl -sf --max-time 5 ${verisimdb_url}/hexads 2>/dev/null')
+	if tool == 'list_octads' {
+		result := os.execute('curl -sf --max-time 5 ${verisimdb_url}/octads 2>/dev/null')
 		if result.exit_code == 0 {
 			return json_response(json.encode({
-				'tool':   'list_hexads'
+				'tool':   'list_octads'
 				'status': 'ok'
 				'data':   result.output.trim_space()
 			}))
 		}
 		return json_response(json.encode({
-			'tool':   'list_hexads'
+			'tool':   'list_octads'
 			'status': 'error'
-			'error':  'Failed to list hexads: ${result.output.trim_space()}'
+			'error':  'Failed to list octads: ${result.output.trim_space()}'
 		}))
 	}
-	if tool == 'create_hexad' {
+	if tool == 'create_octad' {
 		params := json.decode(map[string]string, args) or {
-			return error_response(400, 'create_hexad requires {"name": "...", "type": "service|entity|resource"}')
+			return error_response(400, 'create_octad requires {"name": "...", "type": "service|entity|resource"}')
 		}
 		name := params['name'] or { '' }
 		entity_type := params['type'] or { 'entity' }
 		if name == '' {
-			return error_response(400, 'create_hexad requires "name"')
+			return error_response(400, 'create_octad requires "name"')
 		}
 		body := '{"name":"${name}","type":"${entity_type}"}'
-		result := os.execute("curl -sf --max-time 5 -X POST -H 'Content-Type: application/json' -d '${body}' ${verisimdb_url}/hexads 2>/dev/null")
+		result := os.execute("curl -sf --max-time 5 -X POST -H 'Content-Type: application/json' -d '${body}' ${verisimdb_url}/octads 2>/dev/null")
 		return json_response(json.encode({
-			'tool':   'create_hexad'
+			'tool':   'create_octad'
 			'name':   name
 			'status': if result.exit_code == 0 { 'created' } else { 'error' }
 			'data':   result.output.trim_space()
@@ -1228,7 +1228,7 @@ fn invoke_database(tool string, args string) http.Response {
 	}
 	if tool == 'drift' {
 		params := json.decode(map[string]string, args) or {
-			return error_response(400, 'drift requires {"id": "hexad-id"}')
+			return error_response(400, 'drift requires {"id": "octad-id"}')
 		}
 		entity_id := params['id'] or { '' }
 		if entity_id == '' {
@@ -1248,7 +1248,7 @@ fn invoke_database(tool string, args string) http.Response {
 			'backends': 'verisimdb,postgresql,sqlite,redis'
 		}))
 	}
-	return error_response(400, 'unknown database-mcp tool: "${tool}" — available: health, list_hexads, create_hexad, query, drift, list_backends')
+	return error_response(400, 'unknown database-mcp tool: "${tool}" — available: health, list_octads, create_octad, query, drift, list_backends')
 }
 
 // --- ssg-mcp: Static site generation (Zola, Hugo, ddraig) ---
