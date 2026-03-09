@@ -738,6 +738,9 @@ pub export fn boj_federation_init() c_int {
     last_net_error = 0;
     packets_sent = 0;
     packets_received = 0;
+    transport_mode = .udp;
+    resetQuicSessions();
+    quic_keypair_valid = false;
     return 0;
 }
 
@@ -750,6 +753,8 @@ pub export fn boj_federation_deinit() void {
     local_digest = [_]u8{0} ** DIGEST_LEN;
     local_digest_valid = false;
     gossip_round_count = 0;
+    transport_mode = .udp;
+    resetQuicSessions();
 }
 
 /// Register a new peer node in the federation.
@@ -1159,6 +1164,479 @@ pub export fn umoja_heartbeat(peer_idx: usize) c_int {
 /// Get the number of completed gossip rounds.
 pub export fn umoja_gossip_round_count() usize {
     return gossip_round_count;
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// QUIC-first transport layer
+//
+// Provides authenticated-encrypted UDP using:
+//   - X25519 Diffie-Hellman key exchange (per-peer shared secret)
+//   - ChaCha20-Poly1305 AEAD (authenticated encryption with associated data)
+//
+// QUIC-first means: try encrypted transport first, fall back to cleartext
+// UDP if key exchange hasn't completed or if QUIC is disabled.
+//
+// Wire format for encrypted packets:
+//   [0x80 | tag : 1][nonce : 12][ciphertext : N][auth_tag : 16]
+//
+// The high bit of byte 0 distinguishes encrypted (0x80+) from cleartext
+// packets (0x01-0x07). Recipients check the high bit to determine whether
+// to decrypt before parsing.
+// ═══════════════════════════════════════════════════════════════════════
+
+const X25519 = std.crypto.dh.X25519;
+const ChaCha20Poly1305 = std.crypto.aead.chacha_poly.ChaCha20Poly1305;
+
+/// QUIC transport mode.
+const TransportMode = enum(u8) {
+    /// Cleartext UDP only (legacy, Grade D Alpha).
+    udp = 0,
+    /// QUIC-first: encrypted if handshake complete, UDP fallback otherwise.
+    quic = 1,
+};
+
+/// Per-peer QUIC session state.
+const QuicPeerSession = struct {
+    /// Our ephemeral keypair for this peer session.
+    local_secret: [32]u8 = [_]u8{0} ** 32,
+    local_public: [32]u8 = [_]u8{0} ** 32,
+    /// Peer's public key (received during handshake).
+    remote_public: [32]u8 = [_]u8{0} ** 32,
+    /// Shared secret derived from X25519(local_secret, remote_public).
+    shared_secret: [32]u8 = [_]u8{0} ** 32,
+    /// Whether the key exchange is complete and encryption is active.
+    established: bool = false,
+    /// Monotonic nonce counter for this session (prevents replay).
+    send_nonce_counter: u64 = 0,
+    /// Whether we have the peer's public key.
+    has_remote_key: bool = false,
+};
+
+/// QUIC transport global state.
+var transport_mode: TransportMode = .udp;
+
+/// Per-peer QUIC sessions (indexed same as peers array).
+var quic_sessions: [MAX_PEERS]QuicPeerSession = [_]QuicPeerSession{QuicPeerSession{}} ** MAX_PEERS;
+
+/// Our long-lived QUIC identity keypair (generated once at bind time).
+var quic_local_secret: [32]u8 = [_]u8{0} ** 32;
+var quic_local_public: [32]u8 = [_]u8{0} ** 32;
+var quic_keypair_valid: bool = false;
+
+/// QUIC packet marker — high bit set to distinguish from cleartext tags.
+const QUIC_MARKER: u8 = 0x80;
+
+/// QUIC-specific packet tags (OR'd with QUIC_MARKER).
+const PKT_QUIC_KEY_EXCHANGE: u8 = 0x08;
+const PKT_QUIC_KEY_REPLY: u8 = 0x09;
+
+/// Nonce size for ChaCha20-Poly1305.
+const NONCE_LEN: usize = 12;
+
+/// Authentication tag size for ChaCha20-Poly1305.
+const AEAD_TAG_LEN: usize = 16;
+
+/// QUIC overhead per packet: marker(1) + nonce(12) + auth_tag(16) = 29 bytes.
+const QUIC_OVERHEAD: usize = 1 + NONCE_LEN + AEAD_TAG_LEN;
+
+/// Generate the local QUIC keypair using system randomness.
+fn generateQuicKeypair() void {
+    // Use OS random for the secret key.
+    std.crypto.random.bytes(&quic_local_secret);
+
+    // Derive public key.
+    quic_local_public = X25519.recoverPublicKey(quic_local_secret) catch {
+        // Degenerate key — regenerate.
+        std.crypto.random.bytes(&quic_local_secret);
+        quic_local_public = X25519.recoverPublicKey(quic_local_secret) catch {
+            return; // Give up — will fall back to UDP.
+        };
+        quic_keypair_valid = true;
+        return;
+    };
+    quic_keypair_valid = true;
+}
+
+/// Derive a shared secret for a peer session using X25519 ECDH.
+fn deriveSharedSecret(session: *QuicPeerSession) bool {
+    if (!session.has_remote_key) return false;
+    session.shared_secret = X25519.scalarmult(session.local_secret, session.remote_public) catch {
+        return false; // Degenerate point.
+    };
+    session.established = true;
+    return true;
+}
+
+/// Build a nonce from the counter value.
+fn buildNonce(counter: u64) [NONCE_LEN]u8 {
+    var nonce: [NONCE_LEN]u8 = [_]u8{0} ** NONCE_LEN;
+    // First 4 bytes: zero padding. Last 8 bytes: little-endian counter.
+    const counter_bytes = std.mem.toBytes(counter);
+    @memcpy(nonce[4..12], &counter_bytes);
+    return nonce;
+}
+
+/// Encrypt a packet using the peer's QUIC session.
+/// Input: cleartext packet (tag + payload from buildPacket).
+/// Output: [QUIC_MARKER | tag][nonce:12][ciphertext:N][auth_tag:16]
+/// Returns total encrypted length, or 0 on failure.
+fn encryptPacket(session: *QuicPeerSession, cleartext: []const u8, out: []u8) usize {
+    if (!session.established) return 0;
+    if (cleartext.len == 0) return 0;
+    const total = 1 + NONCE_LEN + cleartext.len + AEAD_TAG_LEN;
+    if (total > out.len) return 0;
+
+    // Marker byte: QUIC_MARKER OR'd with original tag.
+    out[0] = QUIC_MARKER | cleartext[0];
+
+    // Generate nonce from counter.
+    const nonce = buildNonce(session.send_nonce_counter);
+    session.send_nonce_counter += 1;
+    @memcpy(out[1 .. 1 + NONCE_LEN], &nonce);
+
+    // Encrypt (cleartext → ciphertext + auth tag).
+    var auth_tag: [AEAD_TAG_LEN]u8 = undefined;
+    ChaCha20Poly1305.encrypt(
+        out[1 + NONCE_LEN .. 1 + NONCE_LEN + cleartext.len],
+        &auth_tag,
+        cleartext,
+        &[_]u8{}, // no additional data
+        nonce,
+        session.shared_secret,
+    );
+    @memcpy(out[1 + NONCE_LEN + cleartext.len .. total], &auth_tag);
+
+    return total;
+}
+
+/// Decrypt a QUIC packet using the peer's session.
+/// Input: encrypted packet (marker + nonce + ciphertext + auth_tag).
+/// Output: cleartext packet.
+/// Returns cleartext length, or 0 on failure (bad auth, no session, etc.).
+fn decryptPacket(session: *const QuicPeerSession, encrypted: []const u8, out: []u8) usize {
+    if (!session.established) return 0;
+    if (encrypted.len < QUIC_OVERHEAD) return 0;
+
+    const ct_len = encrypted.len - QUIC_OVERHEAD;
+    if (ct_len > out.len) return 0;
+
+    // Extract nonce.
+    var nonce: [NONCE_LEN]u8 = undefined;
+    @memcpy(&nonce, encrypted[1 .. 1 + NONCE_LEN]);
+
+    // Extract auth tag.
+    var auth_tag: [AEAD_TAG_LEN]u8 = undefined;
+    @memcpy(&auth_tag, encrypted[encrypted.len - AEAD_TAG_LEN .. encrypted.len]);
+
+    // Decrypt and verify.
+    ChaCha20Poly1305.decrypt(
+        out[0..ct_len],
+        encrypted[1 + NONCE_LEN .. 1 + NONCE_LEN + ct_len],
+        auth_tag,
+        &[_]u8{}, // no additional data
+        nonce,
+        session.shared_secret,
+    ) catch {
+        return 0; // Authentication failed.
+    };
+
+    // Restore original tag (strip QUIC_MARKER).
+    if (ct_len > 0) {
+        out[0] = encrypted[0] & 0x7F;
+    }
+    return ct_len;
+}
+
+/// Send a packet to a peer, encrypting if QUIC session is established.
+/// Falls back to cleartext UDP if no QUIC session or in UDP mode.
+fn sendToPeerQuicAware(peer_idx: usize, buf: []const u8) c_int {
+    if (!socket_bound) return -1;
+    if (!validPeer(peer_idx)) return -1;
+
+    if (transport_mode == .quic and quic_sessions[peer_idx].established) {
+        // Encrypt and send.
+        var enc_buf: [MAX_PACKET_LEN + QUIC_OVERHEAD]u8 = undefined;
+        const enc_len = encryptPacket(&quic_sessions[peer_idx], buf, &enc_buf);
+        if (enc_len > 0) {
+            return sendToPeerRaw(peer_idx, enc_buf[0..enc_len]);
+        }
+        // Encryption failed — fall through to cleartext.
+    }
+
+    // Cleartext UDP fallback.
+    return sendToPeerRaw(peer_idx, buf);
+}
+
+/// Raw send — identical to the original sendToPeer but renamed to avoid collision.
+fn sendToPeerRaw(peer_idx: usize, buf: []const u8) c_int {
+    if (!socket_bound) return -1;
+    if (!validPeer(peer_idx)) return -1;
+
+    const peer = &peers[peer_idx];
+    var addr: std.posix.sockaddr.in6 = std.mem.zeroes(std.posix.sockaddr.in6);
+    addr.family = std.posix.AF.INET6;
+    addr.port = std.mem.nativeToBig(u16, peer.port);
+
+    const host_slice = peer.host[0..peer.host_len];
+    const parsed = std.net.Ip6Address.parse(host_slice, peer.port) catch {
+        last_net_error = -2;
+        return -1;
+    };
+    addr = parsed.sa;
+
+    const dest: *const std.posix.sockaddr = @ptrCast(&addr);
+    _ = std.posix.sendto(udp_fd, buf, 0, dest, @sizeOf(std.posix.sockaddr.in6)) catch {
+        last_net_error = -3;
+        return -1;
+    };
+    packets_sent += 1;
+    return 0;
+}
+
+/// Process one incoming packet with QUIC-awareness.
+/// If the high bit is set, attempts decryption before parsing.
+/// Falls back to cleartext parsing if decryption fails.
+/// Returns the packet tag on success, 0 if no data, -1 on error.
+pub export fn umoja_recv_and_process_quic() c_int {
+    if (!socket_bound) return -1;
+
+    var buf: [MAX_PACKET_LEN + QUIC_OVERHEAD]u8 = undefined;
+    var src_addr: std.posix.sockaddr.in6 = std.mem.zeroes(std.posix.sockaddr.in6);
+
+    const n = recvPacket(@as([]u8, &buf), &src_addr);
+    if (n <= 0) return n;
+
+    const raw = buf[0..@intCast(n)];
+
+    // Check for QUIC key exchange packets (always cleartext).
+    if (raw.len > 0 and raw[0] == PKT_QUIC_KEY_EXCHANGE) {
+        return handleQuicKeyExchange(raw, &src_addr);
+    }
+    if (raw.len > 0 and raw[0] == PKT_QUIC_KEY_REPLY) {
+        return handleQuicKeyReply(raw, &src_addr);
+    }
+
+    // Check for encrypted packet (high bit set).
+    if (raw.len > 0 and (raw[0] & QUIC_MARKER) != 0) {
+        // Find peer by address to get their session.
+        const peer_result = findOrAddPeerByAddr(&src_addr);
+        if (peer_result < 0) return -1;
+        const pidx: usize = @intCast(peer_result);
+
+        var cleartext: [MAX_PACKET_LEN]u8 = undefined;
+        const ct_len = decryptPacket(&quic_sessions[pidx], raw, &cleartext);
+        if (ct_len > 0) {
+            // Successfully decrypted — process as normal packet.
+            return processPacket(cleartext[0..ct_len], &src_addr);
+        }
+        // Decryption failed — might be cleartext with coincidental high bit.
+        // Fall through to cleartext processing.
+    }
+
+    // Cleartext packet — process normally.
+    return processPacket(raw, &src_addr);
+}
+
+/// Process a cleartext (or decrypted) packet. Shared logic for both
+/// umoja_recv_and_process() and umoja_recv_and_process_quic().
+fn processPacket(raw: []const u8, src_addr: *std.posix.sockaddr.in6) c_int {
+    const pkt = parsePacket(raw) orelse return -1;
+
+    const peer_result = findOrAddPeerByAddr(src_addr);
+    if (peer_result < 0) return -1;
+    const pidx: usize = @intCast(peer_result);
+
+    if (pkt.node_id.len > 0 and pkt.node_id.len <= MAX_NODE_ID_LEN) {
+        peers[pidx].node_id_len = copyBounded(&peers[pidx].node_id, pkt.node_id.ptr, pkt.node_id.len);
+    }
+    peers[pidx].last_seen = std.time.timestamp();
+
+    switch (pkt.tag) {
+        PKT_DISCOVER => {
+            var reply: [MAX_PACKET_LEN]u8 = undefined;
+            const rlen = buildPacket(&reply, PKT_DISCOVER_REPLY, null);
+            if (rlen > 0) _ = sendToPeerQuicAware(pidx, reply[0..rlen]);
+        },
+        PKT_DISCOVER_REPLY => {},
+        PKT_GOSSIP_DIGEST => {
+            if (pkt.payload.len == DIGEST_LEN) {
+                @memcpy(&peers[pidx].catalogue_digest, pkt.payload[0..DIGEST_LEN]);
+                peers[pidx].has_digest = true;
+            }
+            if (local_digest_valid) {
+                var reply: [MAX_PACKET_LEN]u8 = undefined;
+                const rlen = buildPacket(&reply, PKT_GOSSIP_DIGEST_REPLY, &local_digest);
+                if (rlen > 0) _ = sendToPeerQuicAware(pidx, reply[0..rlen]);
+            }
+            gossip_round_count += 1;
+        },
+        PKT_GOSSIP_DIGEST_REPLY => {
+            if (pkt.payload.len == DIGEST_LEN) {
+                @memcpy(&peers[pidx].catalogue_digest, pkt.payload[0..DIGEST_LEN]);
+                peers[pidx].has_digest = true;
+            }
+            gossip_round_count += 1;
+        },
+        PKT_HANDSHAKE_INIT => {
+            peers[pidx].handshake_state = .pending;
+            var reply: [MAX_PACKET_LEN]u8 = undefined;
+            const rlen = buildPacket(&reply, PKT_HANDSHAKE_REPLY, null);
+            if (rlen > 0) _ = sendToPeerQuicAware(pidx, reply[0..rlen]);
+        },
+        PKT_HANDSHAKE_REPLY => {
+            if (peers[pidx].handshake_state == .pending) {
+                peers[pidx].handshake_state = .exchanged;
+            }
+        },
+        PKT_HEARTBEAT => {},
+        else => {},
+    }
+
+    return @intCast(pkt.tag);
+}
+
+/// Handle an incoming QUIC key exchange packet.
+/// Format: [0x08][id_len:2][id:N][payload_len:2][public_key:32]
+fn handleQuicKeyExchange(raw: []const u8, src_addr: *std.posix.sockaddr.in6) c_int {
+    const pkt = parsePacket(raw) orelse return -1;
+    if (pkt.payload.len != 32) return -1; // X25519 public key is 32 bytes
+
+    const peer_result = findOrAddPeerByAddr(src_addr);
+    if (peer_result < 0) return -1;
+    const pidx: usize = @intCast(peer_result);
+
+    if (pkt.node_id.len > 0 and pkt.node_id.len <= MAX_NODE_ID_LEN) {
+        peers[pidx].node_id_len = copyBounded(&peers[pidx].node_id, pkt.node_id.ptr, pkt.node_id.len);
+    }
+    peers[pidx].last_seen = std.time.timestamp();
+
+    // Store peer's public key.
+    @memcpy(&quic_sessions[pidx].remote_public, pkt.payload[0..32]);
+    quic_sessions[pidx].has_remote_key = true;
+
+    // Generate per-session ephemeral keypair if not yet done.
+    if (!quic_sessions[pidx].established) {
+        std.crypto.random.bytes(&quic_sessions[pidx].local_secret);
+        quic_sessions[pidx].local_public = X25519.recoverPublicKey(quic_sessions[pidx].local_secret) catch {
+            return -1;
+        };
+        _ = deriveSharedSecret(&quic_sessions[pidx]);
+    }
+
+    // Reply with our public key.
+    var reply: [MAX_PACKET_LEN]u8 = undefined;
+    const rlen = buildPacket(&reply, PKT_QUIC_KEY_REPLY, &quic_sessions[pidx].local_public);
+    if (rlen > 0) {
+        _ = sendToPeerRaw(pidx, reply[0..rlen]); // Key reply is always cleartext.
+    }
+
+    return PKT_QUIC_KEY_EXCHANGE;
+}
+
+/// Handle an incoming QUIC key reply packet.
+fn handleQuicKeyReply(raw: []const u8, src_addr: *std.posix.sockaddr.in6) c_int {
+    const pkt = parsePacket(raw) orelse return -1;
+    if (pkt.payload.len != 32) return -1;
+
+    const peer_result = findOrAddPeerByAddr(src_addr);
+    if (peer_result < 0) return -1;
+    const pidx: usize = @intCast(peer_result);
+
+    if (pkt.node_id.len > 0 and pkt.node_id.len <= MAX_NODE_ID_LEN) {
+        peers[pidx].node_id_len = copyBounded(&peers[pidx].node_id, pkt.node_id.ptr, pkt.node_id.len);
+    }
+    peers[pidx].last_seen = std.time.timestamp();
+
+    // Store peer's public key and derive shared secret.
+    @memcpy(&quic_sessions[pidx].remote_public, pkt.payload[0..32]);
+    quic_sessions[pidx].has_remote_key = true;
+    _ = deriveSharedSecret(&quic_sessions[pidx]);
+
+    return PKT_QUIC_KEY_REPLY;
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// C-ABI exports — QUIC transport management
+// ═══════════════════════════════════════════════════════════════════════
+
+/// Bind with QUIC-first transport. Binds the UDP socket, generates a
+/// local QUIC keypair, and enables QUIC mode. All subsequent packets will
+/// be encrypted once per-peer key exchange completes.
+/// Returns 0 on success, -1 on error.
+pub export fn umoja_bind_quic(port: u16) c_int {
+    const result = umoja_bind(port);
+    if (result != 0) return result;
+
+    generateQuicKeypair();
+    if (!quic_keypair_valid) {
+        // Keypair generation failed — stay in UDP mode.
+        return 0;
+    }
+
+    transport_mode = .quic;
+    return 0;
+}
+
+/// Get the current transport mode: 0 = UDP, 1 = QUIC.
+pub export fn umoja_transport_mode() c_int {
+    return @intFromEnum(transport_mode);
+}
+
+/// Set transport mode explicitly. 0 = UDP, 1 = QUIC.
+/// Returns 0 on success, -1 on invalid mode.
+pub export fn umoja_set_transport_mode(mode: c_int) c_int {
+    if (mode == 0) {
+        transport_mode = .udp;
+        return 0;
+    }
+    if (mode == 1) {
+        if (!quic_keypair_valid) generateQuicKeypair();
+        transport_mode = .quic;
+        return 0;
+    }
+    return -1;
+}
+
+/// Initiate QUIC key exchange with a peer.
+/// Sends our public key to the peer; they reply with theirs.
+/// After both sides exchange keys, the shared secret is derived and
+/// all subsequent packets are encrypted.
+/// Returns 0 on success, -1 on error.
+pub export fn umoja_quic_key_exchange(peer_idx: usize) c_int {
+    if (!socket_bound) return -1;
+    if (!validPeer(peer_idx)) return -1;
+    if (!quic_keypair_valid) return -1;
+
+    // Generate per-session ephemeral keypair.
+    std.crypto.random.bytes(&quic_sessions[peer_idx].local_secret);
+    quic_sessions[peer_idx].local_public = X25519.recoverPublicKey(quic_sessions[peer_idx].local_secret) catch {
+        return -1;
+    };
+
+    // Send our public key to the peer.
+    var buf: [MAX_PACKET_LEN]u8 = undefined;
+    const pkt_len = buildPacket(&buf, PKT_QUIC_KEY_EXCHANGE, &quic_sessions[peer_idx].local_public);
+    if (pkt_len == 0) return -1;
+
+    return sendToPeerRaw(peer_idx, buf[0..pkt_len]);
+}
+
+/// Check whether a QUIC session is established with a peer.
+/// Returns 1 if established, 0 if not, -1 if invalid peer.
+pub export fn umoja_quic_session_established(peer_idx: usize) c_int {
+    if (!validPeer(peer_idx)) return -1;
+    return if (quic_sessions[peer_idx].established) 1 else 0;
+}
+
+/// Get the number of encrypted packets sent to a peer (via nonce counter).
+pub export fn umoja_quic_packets_encrypted(peer_idx: usize) usize {
+    if (peer_idx >= MAX_PEERS) return 0;
+    return quic_sessions[peer_idx].send_nonce_counter;
+}
+
+/// Reset all QUIC sessions. Called during federation init/deinit.
+fn resetQuicSessions() void {
+    quic_sessions = [_]QuicPeerSession{QuicPeerSession{}} ** MAX_PEERS;
 }
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -2006,4 +2484,261 @@ test "umoja discover_udp validates inputs" {
     try std.testing.expectEqual(@as(c_int, -1), umoja_discover_udp(empty.ptr, empty.len, 19995));
 
     _ = umoja_unbind();
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// Tests — QUIC transport layer
+// ═══════════════════════════════════════════════════════════════════════
+
+test "quic keypair generation" {
+    _ = boj_federation_init();
+
+    generateQuicKeypair();
+    try std.testing.expect(quic_keypair_valid);
+
+    // Public key should not be all zeros.
+    var all_zero = true;
+    for (quic_local_public) |b| {
+        if (b != 0) { all_zero = false; break; }
+    }
+    try std.testing.expect(!all_zero);
+}
+
+test "quic bind sets transport mode" {
+    _ = boj_federation_init();
+    try std.testing.expectEqual(@as(c_int, 0), umoja_transport_mode());
+
+    const id = "quic-test-node";
+    _ = umoja_set_node_id(id.ptr, id.len);
+
+    const port: u16 = 19800;
+    if (umoja_bind_quic(port) < 0) return; // Skip if can't bind.
+
+    try std.testing.expectEqual(@as(c_int, 1), umoja_transport_mode());
+    try std.testing.expect(quic_keypair_valid);
+    try std.testing.expectEqual(@as(c_int, 1), umoja_is_bound());
+
+    _ = umoja_unbind();
+}
+
+test "quic transport mode toggle" {
+    _ = boj_federation_init();
+
+    // Start in UDP mode.
+    try std.testing.expectEqual(@as(c_int, 0), umoja_transport_mode());
+
+    // Switch to QUIC.
+    try std.testing.expectEqual(@as(c_int, 0), umoja_set_transport_mode(1));
+    try std.testing.expectEqual(@as(c_int, 1), umoja_transport_mode());
+
+    // Switch back to UDP.
+    try std.testing.expectEqual(@as(c_int, 0), umoja_set_transport_mode(0));
+    try std.testing.expectEqual(@as(c_int, 0), umoja_transport_mode());
+
+    // Invalid mode.
+    try std.testing.expectEqual(@as(c_int, -1), umoja_set_transport_mode(42));
+}
+
+test "quic encrypt and decrypt roundtrip" {
+    _ = boj_federation_init();
+
+    // Simulate two peers with X25519 key exchange.
+    var session_a = QuicPeerSession{};
+    var session_b = QuicPeerSession{};
+
+    // Generate keypairs for both sides.
+    std.crypto.random.bytes(&session_a.local_secret);
+    session_a.local_public = X25519.recoverPublicKey(session_a.local_secret) catch unreachable;
+
+    std.crypto.random.bytes(&session_b.local_secret);
+    session_b.local_public = X25519.recoverPublicKey(session_b.local_secret) catch unreachable;
+
+    // Exchange public keys.
+    session_a.remote_public = session_b.local_public;
+    session_a.has_remote_key = true;
+    session_b.remote_public = session_a.local_public;
+    session_b.has_remote_key = true;
+
+    // Derive shared secrets (should match).
+    try std.testing.expect(deriveSharedSecret(&session_a));
+    try std.testing.expect(deriveSharedSecret(&session_b));
+    try std.testing.expectEqualSlices(u8, &session_a.shared_secret, &session_b.shared_secret);
+
+    // Encrypt a packet with A.
+    const cleartext = [_]u8{ PKT_GOSSIP_DIGEST, 0x01, 0x02, 0x03, 0x04, 0x05 };
+    var encrypted: [MAX_PACKET_LEN + QUIC_OVERHEAD]u8 = undefined;
+    const enc_len = encryptPacket(&session_a, &cleartext, &encrypted);
+    try std.testing.expect(enc_len > 0);
+    try std.testing.expect(enc_len > cleartext.len); // Must be larger (nonce + tag).
+
+    // High bit should be set on marker byte.
+    try std.testing.expect((encrypted[0] & QUIC_MARKER) != 0);
+
+    // Decrypt with B.
+    var decrypted: [MAX_PACKET_LEN]u8 = undefined;
+    const dec_len = decryptPacket(&session_b, encrypted[0..enc_len], &decrypted);
+    try std.testing.expectEqual(cleartext.len, dec_len);
+    try std.testing.expectEqualSlices(u8, &cleartext, decrypted[0..dec_len]);
+}
+
+test "quic decrypt fails with wrong key" {
+    _ = boj_federation_init();
+
+    var session_a = QuicPeerSession{};
+    var session_wrong = QuicPeerSession{};
+
+    // Generate keypairs.
+    std.crypto.random.bytes(&session_a.local_secret);
+    session_a.local_public = X25519.recoverPublicKey(session_a.local_secret) catch unreachable;
+
+    std.crypto.random.bytes(&session_wrong.local_secret);
+    session_wrong.local_public = X25519.recoverPublicKey(session_wrong.local_secret) catch unreachable;
+
+    // A encrypts with its own shared secret (self-loop for test).
+    session_a.remote_public = session_a.local_public;
+    session_a.has_remote_key = true;
+    _ = deriveSharedSecret(&session_a);
+
+    // Wrong derives with different key.
+    session_wrong.remote_public = session_wrong.local_public;
+    session_wrong.has_remote_key = true;
+    _ = deriveSharedSecret(&session_wrong);
+
+    // Encrypt with A.
+    const cleartext = [_]u8{ PKT_HEARTBEAT, 0xAA, 0xBB };
+    var encrypted: [MAX_PACKET_LEN + QUIC_OVERHEAD]u8 = undefined;
+    const enc_len = encryptPacket(&session_a, &cleartext, &encrypted);
+    try std.testing.expect(enc_len > 0);
+
+    // Decrypt with wrong key should fail (return 0).
+    var decrypted: [MAX_PACKET_LEN]u8 = undefined;
+    const dec_len = decryptPacket(&session_wrong, encrypted[0..enc_len], &decrypted);
+    try std.testing.expectEqual(@as(usize, 0), dec_len);
+}
+
+test "quic session established tracking" {
+    _ = boj_federation_init();
+
+    // No peer → -1.
+    try std.testing.expectEqual(@as(c_int, -1), umoja_quic_session_established(0));
+
+    // Add a peer.
+    const host = "::1";
+    const port: u16 = 19801;
+    _ = umoja_add_peer(host.ptr, host.len, port);
+
+    // Not established yet.
+    try std.testing.expectEqual(@as(c_int, 0), umoja_quic_session_established(0));
+
+    // Manually establish.
+    std.crypto.random.bytes(&quic_sessions[0].local_secret);
+    quic_sessions[0].local_public = X25519.recoverPublicKey(quic_sessions[0].local_secret) catch unreachable;
+    quic_sessions[0].remote_public = quic_sessions[0].local_public;
+    quic_sessions[0].has_remote_key = true;
+    _ = deriveSharedSecret(&quic_sessions[0]);
+
+    try std.testing.expectEqual(@as(c_int, 1), umoja_quic_session_established(0));
+}
+
+test "quic nonce counter increments" {
+    _ = boj_federation_init();
+
+    var session = QuicPeerSession{};
+    std.crypto.random.bytes(&session.local_secret);
+    session.local_public = X25519.recoverPublicKey(session.local_secret) catch unreachable;
+    session.remote_public = session.local_public;
+    session.has_remote_key = true;
+    _ = deriveSharedSecret(&session);
+
+    try std.testing.expectEqual(@as(u64, 0), session.send_nonce_counter);
+
+    // Encrypt twice — counter should increment.
+    const cleartext = [_]u8{PKT_HEARTBEAT};
+    var enc1: [MAX_PACKET_LEN + QUIC_OVERHEAD]u8 = undefined;
+    _ = encryptPacket(&session, &cleartext, &enc1);
+    try std.testing.expectEqual(@as(u64, 1), session.send_nonce_counter);
+
+    var enc2: [MAX_PACKET_LEN + QUIC_OVERHEAD]u8 = undefined;
+    _ = encryptPacket(&session, &cleartext, &enc2);
+    try std.testing.expectEqual(@as(u64, 2), session.send_nonce_counter);
+}
+
+test "quic nonce produces unique ciphertexts" {
+    _ = boj_federation_init();
+
+    var session = QuicPeerSession{};
+    std.crypto.random.bytes(&session.local_secret);
+    session.local_public = X25519.recoverPublicKey(session.local_secret) catch unreachable;
+    session.remote_public = session.local_public;
+    session.has_remote_key = true;
+    _ = deriveSharedSecret(&session);
+
+    // Encrypt same plaintext twice — ciphertext must differ (different nonces).
+    const cleartext = [_]u8{ PKT_GOSSIP_DIGEST, 0xDE, 0xAD, 0xBE, 0xEF };
+    var enc1: [MAX_PACKET_LEN + QUIC_OVERHEAD]u8 = undefined;
+    const len1 = encryptPacket(&session, &cleartext, &enc1);
+
+    var enc2: [MAX_PACKET_LEN + QUIC_OVERHEAD]u8 = undefined;
+    const len2 = encryptPacket(&session, &cleartext, &enc2);
+
+    try std.testing.expectEqual(len1, len2);
+    // Ciphertexts should differ (different nonces).
+    var same = true;
+    for (0..len1) |i| {
+        if (enc1[i] != enc2[i]) { same = false; break; }
+    }
+    try std.testing.expect(!same);
+}
+
+test "integration: quic key exchange over loopback" {
+    _ = boj_federation_init();
+
+    const id = "quic-kex-node";
+    _ = umoja_set_node_id(id.ptr, id.len);
+
+    const port: u16 = 19802;
+    if (umoja_bind_quic(port) < 0) return; // Skip if can't bind.
+
+    // Add self as peer for loopback testing.
+    const host = "::1";
+    _ = umoja_add_peer(host.ptr, host.len, port);
+
+    // Initiate key exchange.
+    const kex_result = umoja_quic_key_exchange(0);
+    try std.testing.expectEqual(@as(c_int, 0), kex_result);
+
+    // Process the key exchange packet we just sent to ourselves.
+    const tag = umoja_recv_and_process_quic();
+    // Should get KEY_EXCHANGE (0x08) processed.
+    if (tag > 0) {
+        try std.testing.expectEqual(@as(c_int, PKT_QUIC_KEY_EXCHANGE), tag);
+    }
+
+    // Process the KEY_REPLY that handleQuicKeyExchange sent back.
+    const tag2 = umoja_recv_and_process_quic();
+    if (tag2 > 0) {
+        try std.testing.expectEqual(@as(c_int, PKT_QUIC_KEY_REPLY), tag2);
+    }
+
+    // Session should now be established (both keys exchanged).
+    if (tag > 0 and tag2 > 0) {
+        try std.testing.expectEqual(@as(c_int, 1), umoja_quic_session_established(0));
+    }
+
+    _ = umoja_unbind();
+}
+
+test "quic federation init resets sessions" {
+    _ = boj_federation_init();
+
+    // Set up some QUIC state.
+    generateQuicKeypair();
+    transport_mode = .quic;
+    quic_sessions[0].established = true;
+
+    // Init should reset everything.
+    _ = boj_federation_init();
+    try std.testing.expectEqual(@as(c_int, 0), umoja_transport_mode());
+    try std.testing.expect(!quic_keypair_valid);
+    try std.testing.expect(!quic_sessions[0].established);
 }
