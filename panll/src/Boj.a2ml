@@ -1,0 +1,95 @@
+# SPDX-License-Identifier: PMPL-1.0-or-later
+# Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+#
+# Clade Definition: BoJ (Bundle of Joy)
+# Unified cartridge server — 17 domains, 3-layer ABI/FFI/Adapter, Umoja federation.
+#
+# This file is consumed by PanLL's CladeLoader at startup to register the BoJ
+# panel.  The panel source (BojModel, BojEngine, BojCmd, Boj view) lives in the
+# PanLL repository at panll/src/{model,core,commands,components}/Boj*.res.
+
+[clade]
+id = "boj"
+name = "BoJ — Bundle of Joy"
+kind = "bridge"
+version = "1.0.0"
+
+[clade-description]
+summary = "Unified cartridge runtime bridging all protocol domains (MCP, LSP, DAP, BSP, etc.) through Idris2 ABI -> Zig FFI -> V-lang triple adapter"
+long = """
+The Bundle of Joy server is the protocol backbone of the hyperpolymath ecosystem.
+It replaces polystack with a single cartridge-based architecture where each domain
+(database, fleet, nesy, agent, cloud, container, k8s, git, secrets, queues, iac,
+observe, ssg, proof, lsp, dap, bsp) is a hot-reloadable shared library (.so) with
+SHA-256 integrity verification and formal ABI proofs via Idris2 dependent types.
+
+The Umoja federation layer enables distributed node discovery via gossip protocol,
+allowing multiple BoJ instances to form a peer network with cryptographic attestation.
+"""
+
+[clade-traits]
+has-persistence = false
+has-backend = true
+has-work-items = false
+has-real-time = true
+is-ambient = false
+
+[clade-capabilities]
+capabilities = [
+  "CartridgeList",
+  "CartridgeLoad",
+  "CartridgeUnload",
+  "CartridgeInvoke",
+  "HealthCheck",
+  "TopologyView",
+  "UmojaFederation",
+  "MatrixView",
+  "HotReload",
+]
+
+[clade-connections]
+backend-type = "http"
+default-endpoint = "http://localhost:7700/api/v1"
+protocols = ["MCP", "REST", "gRPC", "GraphQL"]
+
+[clade-architecture]
+layers = ["Idris2 ABI (dependent types)", "Zig FFI (C-compatible)", "V-lang Triple Adapter (REST+gRPC+GraphQL)"]
+cartridge-count = 17
+federation = "Umoja gossip protocol"
+
+[clade-panel]
+panel-id = 39
+source-repo = "panll"
+model = "src/model/BojModel.res"
+engine = "src/core/BojEngine.res"
+commands = "src/commands/BojCmd.res"
+view = "src/components/Boj.res"
+view-lines = 887
+tabs = ["Dashboard", "Cartridges", "Topology", "Federation", "Invoke"]
+
+[clade-taxonomy]
+inherits-from = "bridge"
+sibling-clades = ["ai", "database", "network"]
+supersedes = "polystack"
+
+[clade-integrations]
+consumes = []
+consumed-by = ["aerie", "ai", "databases", "playgrounds", "valence-shell"]
+dispatches-to = [
+  "database-mcp", "fleet-mcp", "nesy-mcp", "agent-mcp",
+  "cloud-mcp", "container-mcp", "k8s-mcp", "git-mcp",
+  "secrets-mcp", "queues-mcp", "iac-mcp", "observe-mcp",
+  "ssg-mcp", "proof-mcp", "lsp-mcp", "dap-mcp", "bsp-mcp",
+]
+
+[clade-accessibility]
+keyboard-navigable = true
+screen-reader-support = true
+aria-roles = ["dialog", "grid", "tab", "tablist"]
+
+[clade-status]
+grade = "D (Alpha)"
+tests = 218
+shared-libs = 17
+federation-tests = 30
+panll-view = "complete (887 lines, 5 tabs)"
