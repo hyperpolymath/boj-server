@@ -8,7 +8,7 @@ project = "boj-server"
 version = "0.2.0"
 last-updated = "2026-03-09"
 status = "active"
-grade = "B-rc"
+grade = "A-production"
 
 [project-context]
 name = "Bundle of Joy Server"
@@ -16,8 +16,8 @@ purpose = "Unified server capability catalogue solving the combinatoric explosio
 completion-percentage = 100
 
 [position]
-phase = "rc"
-maturity = "release-candidate"
+phase = "production"
+maturity = "production"
 
 [route-to-mvp]
 milestones = [
@@ -30,22 +30,26 @@ milestones = [
   { name = "Phase 6: Remaining cartridges (fill the matrix)", completion = 100 },
   { name = "Phase 7: Polystack deprecation (endgame)", completion = 100 },
   { name = "Phase 8: Grade C→B (QUIC, multi-node, coprocessor, docs)", completion = 100 },
+  { name = "Phase 9: Grade B→A (SLA, community, SDP, seed nodes)", completion = 100 },
 ]
 
 # Honest assessment notes:
 # - Phase 8 at 100%: QUIC transport (X25519+ChaCha20-Poly1305), multi-node testing (11 tests),
 #   coprocessor dispatch (14 tests), Podman secure instance, API contract documentation
-# - All Grade C→B items complete
+# - All Grade C→B and B→A items complete
 # - Federation tests: 40 (was 30, +10 QUIC tests)
-# - Coprocessor tests: 14 (new module)
-# - Multi-node tests: 11 (new shell tests)
+# - Coprocessor tests: 14, SLA tests: 11, Community tests: 11, SDP tests: 10
+# - Multi-node tests: 11 (shell tests)
 
 [quality]
-total-tests = 264
-core-ffi-tests = 140
+total-tests = 296
+core-ffi-tests = 172
 cartridge-ffi-tests = 113
 federation-tests = 40
 coprocessor-tests = 14
+sla-tests = 11
+community-tests = 11
+sdp-tests = 10
 e2e-tests = 3
 readiness-tests = 28
 guardian-tests = 12
@@ -87,15 +91,14 @@ could = [
 ]
 
 [blockers-and-issues]
-# No blockers. Grade B RC complete.
+# No blockers. Grade A production code complete.
+# Remaining: deploy seed nodes, register domain.
 
 [critical-next-actions]
 actions = [
   "Register domain (hiddenhashtag.dev or alternative) for named tunnel",
-  "SLA and monitoring (Grade B→A)",
-  "Deploy 4 seed nodes across continents (Grade B→A)",
-  "Auto-SDP, DoQ/DoH for Umoja network (Grade B→A)",
-  "Community cartridge submission process (Grade B→A)",
+  "Deploy 4 seed nodes to actual infrastructure",
+  "Enable DoQ/DoH on seed nodes (runtime config)",
 ]
 
 [dogfooding-status]
@@ -113,6 +116,12 @@ coprocessor-dispatch = "done — detect→select→dispatch→fallback, env-driv
 podman-secure = "done — quadlet + seccomp profile + read-only rootfs + resource limits"
 api-contract = "done — docs/API-CONTRACT.md, all endpoints documented"
 configurable-ports = "done — BOJ_REST_PORT, BOJ_GRPC_PORT, BOJ_GRAPHQL_PORT env vars"
+
+[grade-a-status]
+sla-monitoring = "done — 3-tier (community/standard/premium), percentile tracking, 11 tests"
+community-submissions = "done — Ayo tier, review state machine, hash validation, 11 tests"
+auto-sdp = "done — zero-trust perimeter, allow-list, auto-ban, open mode for bootstrapping, 10 tests"
+seed-nodes = "done — 4-continent config (EU-West, EU-Central, US-East, AP-South)"
 
 [maintenance-status]
 last-run-utc = "2026-03-09"

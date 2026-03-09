@@ -128,6 +128,54 @@ All ports are configurable via environment variables:
 }
 ```
 
+### SLA Monitoring
+
+| Method | Path | Stability | Description |
+|--------|------|-----------|-------------|
+| GET | `/sla/status` | **stable** | System SLA metrics (requests, errors, tracked cartridges) |
+
+#### SLA Status Response
+
+```json
+{
+  "total_requests": 1234,
+  "total_errors": 5,
+  "cartridges_tracked": 18
+}
+```
+
+### Community Cartridge Submissions (Ayo Tier)
+
+| Method | Path | Stability | Description |
+|--------|------|-----------|-------------|
+| GET | `/community/submissions` | **stable** | Count of submissions by status |
+| POST | `/community/submit` | **stable** | Submit a community cartridge |
+
+#### Submit Request
+
+```json
+{
+  "name": "my-cool-mcp",
+  "author": "Alice <alice@example.com>",
+  "description": "A cool cartridge for testing",
+  "hash": "a1b2c3...64-char-hex-sha256"
+}
+```
+
+#### Submission State Machine
+
+```
+submitted → under_review → approved → suspended
+                         ↘ rejected     ↓
+                                    under_review
+```
+
+### Auto-SDP (Software Defined Perimeter)
+
+| Method | Path | Stability | Description |
+|--------|------|-----------|-------------|
+| GET | `/sdp/status` | experimental | SDP perimeter status (peers, bans) |
+
 ## gRPC-compat Endpoints
 
 The gRPC-compat adapter exposes the same functionality as REST using

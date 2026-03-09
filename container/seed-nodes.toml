@@ -1,0 +1,83 @@
+# SPDX-License-Identifier: PMPL-1.0-or-later
+# Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+#
+# Umoja Federation — 4 Continental Seed Node Configuration
+#
+# Bootstrap nodes for the Umoja gossip network. New community nodes
+# discover the federation by connecting to one of these seeds.
+# Each seed auto-peers with the other 3 on startup.
+
+[metadata]
+version = "0.1.0"
+network = "umoja-mainnet"
+min-seeds-for-quorum = 2
+
+# ═══════════════════════════════════════════════════════════════════════
+# Seed Nodes (4 continents)
+# ═══════════════════════════════════════════════════════════════════════
+
+[[seed]]
+id = "seed-eu-west"
+region = "eu-west-1"
+continent = "Europe"
+location = "London, UK"
+host = "eu.boj.hyperpolymath.dev"
+federation-port = 9999
+rest-port = 7700
+description = "Primary European seed (UK)"
+
+[[seed]]
+id = "seed-eu-central"
+region = "eu-central-1"
+continent = "Europe"
+location = "Frankfurt, DE"
+host = "de.boj.hyperpolymath.dev"
+federation-port = 9999
+rest-port = 7700
+description = "Central European seed (Germany)"
+
+[[seed]]
+id = "seed-us-east"
+region = "us-east-1"
+continent = "Americas"
+location = "Virginia, US"
+host = "us.boj.hyperpolymath.dev"
+federation-port = 9999
+rest-port = 7700
+description = "Americas seed (US East)"
+
+[[seed]]
+id = "seed-ap-south"
+region = "ap-southeast-1"
+continent = "Asia-Pacific"
+location = "Sydney, AU"
+host = "ap.boj.hyperpolymath.dev"
+federation-port = 9999
+rest-port = 7700
+description = "Asia-Pacific seed (Australia)"
+
+# ═══════════════════════════════════════════════════════════════════════
+# Network Parameters
+# ═══════════════════════════════════════════════════════════════════════
+
+[network]
+# Gossip protocol settings
+gossip-interval-ms = 5000
+gossip-fanout = 3
+heartbeat-interval-ms = 10000
+heartbeat-timeout-ms = 30000
+
+# QUIC transport settings
+quic-enabled = true
+udp-fallback = true
+key-exchange-timeout-ms = 5000
+
+# Discovery settings
+discovery-interval-ms = 60000
+max-peers = 128
+min-peers = 2
+
+# Health settings
+health-check-interval-ms = 30000
+unhealthy-threshold = 3
+recovery-threshold = 2

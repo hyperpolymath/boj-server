@@ -27,6 +27,9 @@ import time
 #flag -lboj_loader
 #flag -lboj_federation
 #flag -lboj_coprocessor
+#flag -lboj_sla
+#flag -lboj_community
+#flag -lboj_sdp
 #flag -L../../cartridges/container-mcp/ffi/zig-out/lib
 #flag -lcontainer_mcp
 
@@ -75,6 +78,42 @@ fn C.boj_coprocessor_register(name_ptr &u8, name_len usize, kinds_ptr &u8, kinds
 fn C.boj_coprocessor_select_by_name(name_ptr &u8, name_len usize, was_fallback &u8) u8
 fn C.boj_coprocessor_affinity_count() usize
 fn C.boj_coprocessor_has_accelerator(kind u8) u8
+
+// SLA & Monitoring C FFI declarations
+fn C.boj_sla_init() int
+fn C.boj_sla_deinit()
+fn C.boj_sla_register(name_ptr &u8, name_len usize, tier u8) int
+fn C.boj_sla_record_invocation(idx usize, latency_us u32, success u8)
+fn C.boj_sla_record_health(idx usize, healthy u8)
+fn C.boj_sla_uptime(idx usize) u32
+fn C.boj_sla_error_rate(idx usize) u32
+fn C.boj_sla_p50(idx usize) u32
+fn C.boj_sla_p95(idx usize) u32
+fn C.boj_sla_p99(idx usize) u32
+fn C.boj_sla_meets_target(idx usize) u8
+fn C.boj_sla_total_requests() u64
+fn C.boj_sla_total_errors() u64
+fn C.boj_sla_cartridge_count() usize
+
+// Community cartridge submission C FFI declarations
+fn C.boj_community_init() int
+fn C.boj_community_deinit()
+fn C.boj_community_submit(name_ptr &u8, name_len usize, author_ptr &u8, author_len usize, desc_ptr &u8, desc_len usize, hash_ptr &u8, hash_len usize) int
+fn C.boj_community_set_status(idx usize, status u8) int
+fn C.boj_community_status(idx usize) u8
+fn C.boj_community_count() usize
+fn C.boj_community_count_approved() usize
+fn C.boj_community_count_pending() usize
+fn C.boj_community_find(name_ptr &u8, name_len usize) int
+
+// Auto-SDP C FFI declarations
+fn C.boj_sdp_init() int
+fn C.boj_sdp_deinit()
+fn C.boj_sdp_authorise(id_ptr &u8, id_len usize, rate_limit u32) int
+fn C.boj_sdp_check(id_ptr &u8, id_len usize) u8
+fn C.boj_sdp_set_open_mode(mode u8)
+fn C.boj_sdp_peer_count() usize
+fn C.boj_sdp_ban_count() usize
 
 // ═══════════════════════════════════════════════════════════════════════
 // Domain Types (match Idris2 ABI encodings)
@@ -726,6 +765,18 @@ fn (h RestHandler) handle(req http.Request) http.Response {
 	}
 	if path == '/coprocessor/select' && req.method == .post {
 		return handle_coprocessor_select(req.data)
+	}
+	if path == '/sla/status' {
+		return handle_sla_status()
+	}
+	if path == '/community/submissions' && req.method == .get {
+		return handle_community_list()
+	}
+	if path == '/community/submit' && req.method == .post {
+		return handle_community_submit(req.data)
+	}
+	if path == '/sdp/status' {
+		return handle_sdp_status()
 	}
 	return error_response(404, 'unknown endpoint: ${path}')
 }
@@ -2592,6 +2643,78 @@ fn handle_coprocessor_select(body string) http.Response {
 }
 
 // ═══════════════════════════════════════════════════════════════════════
+// SLA Monitoring REST handlers
+// ═══════════════════════════════════════════════════════════════════════
+
+fn handle_sla_status() http.Response {
+	total_req := C.boj_sla_total_requests()
+	total_err := C.boj_sla_total_errors()
+	tracked := int(C.boj_sla_cartridge_count())
+	return json_response('{"total_requests":${total_req},"total_errors":${total_err},"cartridges_tracked":${tracked}}')
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// Community Submission REST handlers
+// ═══════════════════════════════════════════════════════════════════════
+
+fn review_status_name(status u8) string {
+	return match status {
+		0 { 'submitted' }
+		1 { 'under_review' }
+		2 { 'approved' }
+		3 { 'rejected' }
+		4 { 'suspended' }
+		else { 'unknown' }
+	}
+}
+
+fn handle_community_list() http.Response {
+	total := int(C.boj_community_count())
+	approved := int(C.boj_community_count_approved())
+	pending := int(C.boj_community_count_pending())
+	return json_response('{"total":${total},"approved":${approved},"pending":${pending}}')
+}
+
+fn handle_community_submit(body string) http.Response {
+	params := json.decode(map[string]string, body) or {
+		return error_response(400, 'requires {"name","author","description","hash"}')
+	}
+	name := params['name'] or { '' }
+	author := params['author'] or { '' }
+	desc := params['description'] or { '' }
+	hash := params['hash'] or { '' }
+	if name == '' || author == '' || hash == '' {
+		return error_response(400, 'name, author, and hash are required')
+	}
+	result := C.boj_community_submit(name.str, name.len, author.str, author.len, desc.str, desc.len, hash.str, hash.len)
+	if result < 0 {
+		err_msg := match result {
+			-1 { 'max submissions reached' }
+			-2 { 'invalid name' }
+			-3 { 'hash must be 64 hex chars' }
+			-4 { 'duplicate cartridge name' }
+			else { 'submission failed' }
+		}
+		return error_response(409, err_msg)
+	}
+	return json_response(json.encode({
+		'status':  'submitted'
+		'name':    name
+		'index':   result.str()
+	}))
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// Auto-SDP REST handlers
+// ═══════════════════════════════════════════════════════════════════════
+
+fn handle_sdp_status() http.Response {
+	peers := int(C.boj_sdp_peer_count())
+	bans := int(C.boj_sdp_ban_count())
+	return json_response('{"authorised_peers":${peers},"active_bans":${bans}}')
+}
+
+// ═══════════════════════════════════════════════════════════════════════
 // Main
 // ═══════════════════════════════════════════════════════════════════════
 
@@ -2635,6 +2758,18 @@ fn main() {
 	C.boj_coprocessor_init()
 	coproc_devs := int(C.boj_coprocessor_device_count())
 	println('Coprocessor: ${coproc_devs} device(s) detected')
+
+	// Initialise SLA monitoring
+	C.boj_sla_init()
+	println('SLA: monitoring initialised')
+
+	// Initialise community cartridge registry
+	C.boj_community_init()
+	println('Community: Ayo tier submissions ready')
+
+	// Initialise Auto-SDP perimeter
+	C.boj_sdp_init()
+	println('SDP: perimeter active (open mode for seed bootstrapping)')
 
 	// Register built-in cartridges
 	app.register_builtin_cartridges() or {

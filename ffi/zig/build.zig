@@ -165,6 +165,69 @@ pub fn build(b: *std.Build) void {
     const coprocessor_step = b.step("coprocessor", "Run coprocessor dispatch tests");
     coprocessor_step.dependOn(&run_coprocessor_tests.step);
 
+    // --- SLA & Monitoring module ---
+    const sla_mod = b.addModule("boj_sla", .{
+        .root_source_file = b.path("src/sla.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+
+    const sla_lib = b.addLibrary(.{
+        .name = "boj_sla",
+        .root_module = sla_mod,
+    });
+    b.installArtifact(sla_lib);
+
+    const sla_tests = b.addTest(.{
+        .root_module = sla_mod,
+    });
+    const run_sla_tests = b.addRunArtifact(sla_tests);
+
+    const sla_step = b.step("sla", "Run SLA monitoring tests");
+    sla_step.dependOn(&run_sla_tests.step);
+
+    // --- Community cartridge submission module ---
+    const community_mod = b.addModule("boj_community", .{
+        .root_source_file = b.path("src/community.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+
+    const community_lib = b.addLibrary(.{
+        .name = "boj_community",
+        .root_module = community_mod,
+    });
+    b.installArtifact(community_lib);
+
+    const community_tests = b.addTest(.{
+        .root_module = community_mod,
+    });
+    const run_community_tests = b.addRunArtifact(community_tests);
+
+    const community_step = b.step("community", "Run community cartridge submission tests");
+    community_step.dependOn(&run_community_tests.step);
+
+    // --- Auto-SDP module ---
+    const sdp_mod = b.addModule("boj_sdp", .{
+        .root_source_file = b.path("src/sdp.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+
+    const sdp_lib = b.addLibrary(.{
+        .name = "boj_sdp",
+        .root_module = sdp_mod,
+    });
+    b.installArtifact(sdp_lib);
+
+    const sdp_tests = b.addTest(.{
+        .root_module = sdp_mod,
+    });
+    const run_sdp_tests = b.addRunArtifact(sdp_tests);
+
+    const sdp_step = b.step("sdp", "Run Auto-SDP perimeter tests");
+    sdp_step.dependOn(&run_sdp_tests.step);
+
     // --- End-to-end order-ticket tests ---
     const e2e_mod = b.addModule("boj_e2e_order", .{
         .root_source_file = b.path("src/e2e_order.zig"),
@@ -191,4 +254,7 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&run_e2e_tests.step);
     test_step.dependOn(&run_verisimdb_tests.step);
     test_step.dependOn(&run_coprocessor_tests.step);
+    test_step.dependOn(&run_sla_tests.step);
+    test_step.dependOn(&run_community_tests.step);
+    test_step.dependOn(&run_sdp_tests.step);
 }
