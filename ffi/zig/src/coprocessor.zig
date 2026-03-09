@@ -20,6 +20,8 @@
 
 const std = @import("std");
 
+extern fn getenv(name: [*:0]const u8) ?[*:0]const u8;
+
 // ═══════════════════════════════════════════════════════════════════════
 // Constants
 // ═══════════════════════════════════════════════════════════════════════
@@ -102,101 +104,30 @@ var initialised: bool = false;
 // Detection
 // ═══════════════════════════════════════════════════════════════════════
 
-/// Detect CUDA devices by checking for /dev/nvidia* or CUDA_VISIBLE_DEVICES env.
-fn detectCuda() void {
-    // Check environment override first
-    if (std.posix.getenv("BOJ_CUDA_DEVICES")) |val| {
-        const count = std.fmt.parseInt(u8, val, 10) catch 0;
-        var i: u8 = 0;
-        while (i < count and device_count < MAX_DEVICES) : (i += 1) {
-            var dev = &devices[device_count];
-            dev.kind = .cuda;
-            dev.status = .available;
-            dev.device_index = i;
-            const label = "CUDA Device";
-            @memcpy(dev.name[0..label.len], label);
-            dev.name_len = label.len;
-            device_count += 1;
+/// Detect accelerator devices from environment variables.
+/// Uses env-only detection (no filesystem probing) for safe cross-runtime use.
+/// Set BOJ_CUDA_DEVICES=N, BOJ_ROCM_DEVICES=N, etc. to declare devices.
+fn detectFromEnv(env_name: [*:0]const u8, kind: AcceleratorKind, label: []const u8) void {
+    const val = getenv(env_name) orelse return;
+    // Parse the C string to get count
+    var count: u8 = 0;
+    var i: usize = 0;
+    while (val[i] != 0 and i < 3) : (i += 1) {
+        if (val[i] >= '0' and val[i] <= '9') {
+            count = count * 10 + (val[i] - '0');
         }
-        return;
     }
-    // Probe /dev/nvidia0
-    if (std.fs.openFileAbsolute("/dev/nvidia0", .{})) |f| {
-        f.close();
+    if (count == 0) return;
+    var dev_idx: u8 = 0;
+    while (dev_idx < count and device_count < MAX_DEVICES) : (dev_idx += 1) {
         var dev = &devices[device_count];
-        dev.kind = .cuda;
+        dev.kind = kind;
         dev.status = .available;
-        dev.device_index = 0;
-        const label = "NVIDIA GPU";
-        @memcpy(dev.name[0..label.len], label);
-        dev.name_len = label.len;
+        dev.device_index = dev_idx;
+        const actual_len = @min(label.len, MAX_NAME_LEN);
+        @memcpy(dev.name[0..actual_len], label[0..actual_len]);
+        dev.name_len = actual_len;
         device_count += 1;
-    } else |_| {}
-}
-
-/// Detect ROCm devices by checking for /dev/kfd (AMD kernel fusion driver).
-fn detectRocm() void {
-    if (std.posix.getenv("BOJ_ROCM_DEVICES")) |val| {
-        const count = std.fmt.parseInt(u8, val, 10) catch 0;
-        var i: u8 = 0;
-        while (i < count and device_count < MAX_DEVICES) : (i += 1) {
-            var dev = &devices[device_count];
-            dev.kind = .rocm;
-            dev.status = .available;
-            dev.device_index = i;
-            const label = "ROCm Device";
-            @memcpy(dev.name[0..label.len], label);
-            dev.name_len = label.len;
-            device_count += 1;
-        }
-        return;
-    }
-    if (std.fs.openFileAbsolute("/dev/kfd", .{})) |f| {
-        f.close();
-        var dev = &devices[device_count];
-        dev.kind = .rocm;
-        dev.status = .available;
-        dev.device_index = 0;
-        const label = "AMD GPU";
-        @memcpy(dev.name[0..label.len], label);
-        dev.name_len = label.len;
-        device_count += 1;
-    } else |_| {}
-}
-
-/// Detect TPU via BOJ_TPU_DEVICES environment variable.
-fn detectTpu() void {
-    if (std.posix.getenv("BOJ_TPU_DEVICES")) |val| {
-        const count = std.fmt.parseInt(u8, val, 10) catch 0;
-        var i: u8 = 0;
-        while (i < count and device_count < MAX_DEVICES) : (i += 1) {
-            var dev = &devices[device_count];
-            dev.kind = .tpu;
-            dev.status = .available;
-            dev.device_index = i;
-            const label = "TPU Device";
-            @memcpy(dev.name[0..label.len], label);
-            dev.name_len = label.len;
-            device_count += 1;
-        }
-    }
-}
-
-/// Detect FPGA via BOJ_FPGA_DEVICES environment variable.
-fn detectFpga() void {
-    if (std.posix.getenv("BOJ_FPGA_DEVICES")) |val| {
-        const count = std.fmt.parseInt(u8, val, 10) catch 0;
-        var i: u8 = 0;
-        while (i < count and device_count < MAX_DEVICES) : (i += 1) {
-            var dev = &devices[device_count];
-            dev.kind = .fpga;
-            dev.status = .available;
-            dev.device_index = i;
-            const label = "FPGA Device";
-            @memcpy(dev.name[0..label.len], label);
-            dev.name_len = label.len;
-            device_count += 1;
-        }
     }
 }
 
@@ -219,11 +150,11 @@ fn init() void {
     cpu_dev.name_len = cpu_label.len;
     device_count = 1;
 
-    // Detect accelerators
-    detectCuda();
-    detectRocm();
-    detectTpu();
-    detectFpga();
+    // Detect accelerators from environment variables
+    detectFromEnv("BOJ_CUDA_DEVICES", .cuda, "CUDA Device");
+    detectFromEnv("BOJ_ROCM_DEVICES", .rocm, "ROCm Device");
+    detectFromEnv("BOJ_TPU_DEVICES", .tpu, "TPU Device");
+    detectFromEnv("BOJ_FPGA_DEVICES", .fpga, "FPGA Device");
 
     initialised = true;
 }

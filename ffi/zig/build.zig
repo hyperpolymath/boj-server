@@ -149,6 +149,7 @@ pub fn build(b: *std.Build) void {
         .root_source_file = b.path("src/coprocessor.zig"),
         .target = target,
         .optimize = optimize,
+        .link_libc = true,
     });
 
     const coprocessor_lib = b.addLibrary(.{
