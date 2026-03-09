@@ -25,6 +25,8 @@ import time
 #flag -L../../ffi/zig/zig-out/lib
 #flag -lboj_catalogue
 #flag -lboj_loader
+#flag -lboj_federation
+#flag -lboj_coprocessor
 #flag -L../../cartridges/container-mcp/ffi/zig-out/lib
 #flag -lcontainer_mcp
 
@@ -43,6 +45,36 @@ fn C.boj_catalogue_version() &u8
 fn C.boj_catalogue_set_hash(index usize, hash_ptr &u8, hash_len usize) int
 fn C.boj_catalogue_get_hash(index usize, out_ptr &u8) usize
 fn C.boj_loader_verify(path_ptr &u8, path_len usize, expected_hex_ptr &u8, expected_hex_len usize) int
+
+// Umoja federation C FFI declarations
+fn C.boj_federation_init() int
+fn C.umoja_set_node_id(id_ptr &u8, id_len usize) int
+fn C.umoja_bind(port u16) int
+fn C.umoja_bind_quic(port u16) int
+fn C.umoja_unbind() int
+fn C.umoja_is_bound() int
+fn C.umoja_transport_mode() int
+fn C.umoja_add_peer(host_ptr &u8, host_len usize, port u16) int
+fn C.umoja_peer_count() usize
+fn C.umoja_gossip_round_count() usize
+fn C.umoja_quic_key_exchange(peer_idx usize) int
+fn C.umoja_quic_session_established(peer_idx usize) int
+fn C.umoja_send_heartbeat(peer_idx usize) int
+fn C.umoja_discover_udp(target_ptr &u8, target_len usize, target_port u16) int
+fn C.umoja_packets_sent() usize
+fn C.umoja_packets_received() usize
+
+// Coprocessor dispatch C FFI declarations
+fn C.boj_coprocessor_init() int
+fn C.boj_coprocessor_deinit()
+fn C.boj_coprocessor_device_count() usize
+fn C.boj_coprocessor_device_kind(idx usize) u8
+fn C.boj_coprocessor_device_status(idx usize) u8
+fn C.boj_coprocessor_device_dispatches(idx usize) u64
+fn C.boj_coprocessor_register(name_ptr &u8, name_len usize, kinds_ptr &u8, kinds_len usize) int
+fn C.boj_coprocessor_select_by_name(name_ptr &u8, name_len usize, was_fallback &u8) u8
+fn C.boj_coprocessor_affinity_count() usize
+fn C.boj_coprocessor_has_accelerator(kind u8) u8
 
 // ═══════════════════════════════════════════════════════════════════════
 // Domain Types (match Idris2 ABI encodings)
@@ -673,6 +705,27 @@ fn (h RestHandler) handle(req http.Request) http.Response {
 	if path.starts_with('/cartridges/') {
 		cname := path['/cartridges/'.len..]
 		return handle_cartridge_endpoint(h.app, cname, req)
+	}
+	// --- Umoja Federation endpoints ---
+	if path == '/umoja/status' {
+		return handle_umoja_status(h.app)
+	}
+	if path == '/umoja/peers' && req.method == .post {
+		return handle_umoja_add_peer(req.data)
+	}
+	if path == '/umoja/peers' {
+		return handle_umoja_peers()
+	}
+	if path == '/umoja/transport' {
+		return json_response(json.encode({
+			'mode': if C.umoja_transport_mode() == 1 { 'quic' } else { 'udp' }
+		}))
+	}
+	if path == '/coprocessor/status' {
+		return handle_coprocessor_status()
+	}
+	if path == '/coprocessor/select' && req.method == .post {
+		return handle_coprocessor_select(req.data)
 	}
 	return error_response(404, 'unknown endpoint: ${path}')
 }
@@ -2442,6 +2495,103 @@ fn graphql_schema() string {
 }
 
 // ═══════════════════════════════════════════════════════════════════════
+// Umoja Federation REST handlers
+// ═══════════════════════════════════════════════════════════════════════
+
+fn handle_umoja_status(app &BojApp) http.Response {
+	return json_response(json.encode({
+		'node_id':         app.node_id
+		'region':          app.region
+		'transport':       if C.umoja_transport_mode() == 1 { 'quic' } else { 'udp' }
+		'bound':           (int(C.umoja_is_bound())).str()
+		'peers':           (int(C.umoja_peer_count())).str()
+		'gossip_rounds':   (int(C.umoja_gossip_round_count())).str()
+		'packets_sent':    (int(C.umoja_packets_sent())).str()
+		'packets_received': (int(C.umoja_packets_received())).str()
+	}))
+}
+
+fn handle_umoja_peers() http.Response {
+	peer_count := int(C.umoja_peer_count())
+	return json_response(json.encode({
+		'count': peer_count.str()
+	}))
+}
+
+fn handle_umoja_add_peer(body string) http.Response {
+	params := json.decode(map[string]string, body) or {
+		return error_response(400, 'requires {"host": "::1", "port": "9999"}')
+	}
+	host := params['host'] or { '' }
+	port_str := params['port'] or { '9999' }
+	if host == '' {
+		return error_response(400, 'host is required')
+	}
+	port := u16(port_str.int())
+	result := C.umoja_add_peer(host.str, host.len, port)
+	if result < 0 {
+		return error_response(503, 'failed to add peer')
+	}
+	return json_response(json.encode({
+		'status': 'added'
+		'host':   host
+		'port':   port_str
+		'index':  result.str()
+	}))
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// Coprocessor Dispatch REST handlers
+// ═══════════════════════════════════════════════════════════════════════
+
+fn accel_kind_name(kind u8) string {
+	return match kind {
+		0 { 'cpu' }
+		1 { 'cuda' }
+		2 { 'rocm' }
+		3 { 'metal' }
+		4 { 'tpu' }
+		5 { 'fpga' }
+		else { 'unknown' }
+	}
+}
+
+fn handle_coprocessor_status() http.Response {
+	dev_count := int(C.boj_coprocessor_device_count())
+	mut device_list := []string{}
+	for i in 0 .. dev_count {
+		kind := C.boj_coprocessor_device_kind(usize(i))
+		status := C.boj_coprocessor_device_status(usize(i))
+		dispatches := C.boj_coprocessor_device_dispatches(usize(i))
+		device_list << '{"kind":"${accel_kind_name(kind)}","status":${status},"dispatches":${dispatches}}'
+	}
+	affinities := int(C.boj_coprocessor_affinity_count())
+	has_cuda := int(C.boj_coprocessor_has_accelerator(1))
+	has_rocm := int(C.boj_coprocessor_has_accelerator(2))
+	has_tpu := int(C.boj_coprocessor_has_accelerator(4))
+	has_fpga := int(C.boj_coprocessor_has_accelerator(5))
+	body := '{"devices":[${device_list.join(",")}],"affinities":${affinities},"accelerators":{"cuda":${has_cuda},"rocm":${has_rocm},"tpu":${has_tpu},"fpga":${has_fpga}}}'
+	return json_response(body)
+}
+
+fn handle_coprocessor_select(body string) http.Response {
+	params := json.decode(map[string]string, body) or {
+		return error_response(400, 'requires {"cartridge": "name"}')
+	}
+	name := params['cartridge'] or { '' }
+	if name == '' {
+		return error_response(400, 'cartridge name is required')
+	}
+	mut fallback := u8(0)
+	selected := C.boj_coprocessor_select_by_name(name.str, name.len, &fallback)
+	return json_response(json.encode({
+		'cartridge': name
+		'device':    accel_kind_name(selected)
+		'fallback':  if fallback == 1 { 'true' } else { 'false' }
+	}))
+}
+
+// ═══════════════════════════════════════════════════════════════════════
 // Main
 // ═══════════════════════════════════════════════════════════════════════
 
@@ -2459,6 +2609,33 @@ fn main() {
 	}
 	defer { C.boj_catalogue_deinit() }
 
+	// Initialise Umoja federation
+	C.boj_federation_init()
+	fed_port := u16((os.getenv_opt('BOJ_FEDERATION_PORT') or { '9999' }).int())
+	node_id := app.node_id
+	C.umoja_set_node_id(node_id.str, node_id.len)
+	use_quic := os.getenv_opt('BOJ_QUIC') or { '1' }
+	if use_quic == '1' {
+		fed_result := C.umoja_bind_quic(fed_port)
+		if fed_result == 0 {
+			println('Federation: QUIC-first on :${fed_port} (UDP fallback)')
+		} else {
+			println('Federation: bind failed on :${fed_port} (running without federation)')
+		}
+	} else {
+		fed_result := C.umoja_bind(fed_port)
+		if fed_result == 0 {
+			println('Federation: UDP on :${fed_port}')
+		} else {
+			println('Federation: bind failed on :${fed_port} (running without federation)')
+		}
+	}
+
+	// Initialise coprocessor dispatch
+	C.boj_coprocessor_init()
+	coproc_devs := int(C.boj_coprocessor_device_count())
+	println('Coprocessor: ${coproc_devs} device(s) detected')
+
 	// Register built-in cartridges
 	app.register_builtin_cartridges() or {
 		eprintln('FATAL: ${err.msg()}')
@@ -2472,36 +2649,38 @@ fn main() {
 
 	app_ref := &app
 
-	// REST server on port 7700
-	println('Starting REST  on :7700')
+	// Configurable ports via env (defaults: 7700/7701/7702)
+	rest_port := os.getenv_opt('BOJ_REST_PORT') or { '7700' }
+	grpc_port := os.getenv_opt('BOJ_GRPC_PORT') or { '7701' }
+	graphql_port := os.getenv_opt('BOJ_GRAPHQL_PORT') or { '7702' }
+
+	println('Starting REST  on :${rest_port}')
 	mut rest_srv := &http.Server{
-		addr: ':7700'
+		addr: ':${rest_port}'
 		handler: RestHandler{app: app_ref}
 	}
 	spawn rest_srv.listen_and_serve()
 
-	// GraphQL server on port 7702
-	println('Starting GraphQL on :7702')
+	println('Starting GraphQL on :${graphql_port}')
 	mut gql_srv := &http.Server{
-		addr: ':7702'
+		addr: ':${graphql_port}'
 		handler: GraphQLHandler{app: app_ref}
 	}
 	spawn gql_srv.listen_and_serve()
 
-	// gRPC-compat on port 7701 — proper service/method paths.
-	// JSON-over-HTTP until vlib gains protobuf support.
-	println('Starting gRPC-compat on :7701 (JSON-over-HTTP, service/method paths)')
+	// gRPC-compat — JSON-over-HTTP until vlib gains protobuf support.
+	println('Starting gRPC-compat on :${grpc_port} (JSON-over-HTTP, service/method paths)')
 	mut grpc_srv := &http.Server{
-		addr: ':7701'
+		addr: ':${grpc_port}'
 		handler: GrpcHandler{app: app_ref}
 	}
 	spawn grpc_srv.listen_and_serve()
 
 	println('')
 	println('BoJ Server ready. Endpoints:')
-	println('  REST:    http://localhost:7700/status')
-	println('  gRPC:    grpc://localhost:7701 (JSON-compat)')
-	println('  GraphQL: http://localhost:7702/graphql')
+	println('  REST:    http://localhost:${rest_port}/status')
+	println('  gRPC:    grpc://localhost:${grpc_port} (JSON-compat)')
+	println('  GraphQL: http://localhost:${graphql_port}/graphql')
 	println('')
 	println('Press Ctrl+C to stop.')
 

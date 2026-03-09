@@ -1,0 +1,52 @@
+{
+  "_comment": "SPDX-License-Identifier: PMPL-1.0-or-later — BoJ Server seccomp profile (restricted)",
+  "defaultAction": "SCMP_ACT_ERRNO",
+  "defaultErrnoRet": 1,
+  "architectures": [
+    "SCMP_ARCH_X86_64",
+    "SCMP_ARCH_AARCH64"
+  ],
+  "syscalls": [
+    {
+      "names": [
+        "accept", "accept4", "access", "arch_prctl", "bind", "brk",
+        "clock_getres", "clock_gettime", "clock_nanosleep", "clone",
+        "clone3", "close", "connect", "dup", "dup2", "dup3",
+        "epoll_create1", "epoll_ctl", "epoll_wait", "epoll_pwait",
+        "eventfd2", "execve", "exit", "exit_group",
+        "faccessat", "faccessat2", "fadvise64", "fallocate",
+        "fchmod", "fchmodat", "fchown", "fchownat",
+        "fcntl", "fdatasync", "fstat", "fstatfs", "fsync",
+        "ftruncate", "futex", "getcwd", "getdents64",
+        "getegid", "geteuid", "getgid", "getgroups",
+        "getpeername", "getpid", "getppid", "getrandom",
+        "getsockname", "getsockopt", "gettid", "gettimeofday",
+        "getuid", "ioctl", "kill",
+        "lseek", "lstat", "madvise", "memfd_create",
+        "mincore", "mkdir", "mkdirat", "mlock", "mmap",
+        "mprotect", "mremap", "munmap", "nanosleep",
+        "newfstatat", "open", "openat", "pipe", "pipe2",
+        "poll", "ppoll", "prctl", "pread64", "prlimit64",
+        "pwrite64", "read", "readlink", "readlinkat",
+        "readv", "recvfrom", "recvmsg", "rename", "renameat",
+        "renameat2", "restart_syscall", "rmdir",
+        "rt_sigaction", "rt_sigprocmask", "rt_sigreturn",
+        "sched_getaffinity", "sched_yield",
+        "sendmsg", "sendto", "set_robust_list", "set_tid_address",
+        "setsockopt", "shutdown", "sigaltstack",
+        "socket", "socketpair", "stat", "statfs", "statx",
+        "sysinfo", "tgkill", "timer_create", "timer_delete",
+        "timer_getoverrun", "timer_gettime", "timer_settime",
+        "timerfd_create", "timerfd_gettime", "timerfd_settime",
+        "umask", "uname", "unlink", "unlinkat",
+        "wait4", "waitid", "write", "writev"
+      ],
+      "action": "SCMP_ACT_ALLOW"
+    },
+    {
+      "names": ["listen"],
+      "action": "SCMP_ACT_ALLOW",
+      "comment": "Required for REST/gRPC/GraphQL/federation listeners"
+    }
+  ]
+}

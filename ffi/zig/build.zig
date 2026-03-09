@@ -144,6 +144,27 @@ pub fn build(b: *std.Build) void {
     const verisimdb_step = b.step("verisimdb", "Run VeriSimDB backing store tests");
     verisimdb_step.dependOn(&run_verisimdb_tests.step);
 
+    // --- Coprocessor dispatch module ---
+    const coprocessor_mod = b.addModule("boj_coprocessor", .{
+        .root_source_file = b.path("src/coprocessor.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+
+    const coprocessor_lib = b.addLibrary(.{
+        .name = "boj_coprocessor",
+        .root_module = coprocessor_mod,
+    });
+    b.installArtifact(coprocessor_lib);
+
+    const coprocessor_tests = b.addTest(.{
+        .root_module = coprocessor_mod,
+    });
+    const run_coprocessor_tests = b.addRunArtifact(coprocessor_tests);
+
+    const coprocessor_step = b.step("coprocessor", "Run coprocessor dispatch tests");
+    coprocessor_step.dependOn(&run_coprocessor_tests.step);
+
     // --- End-to-end order-ticket tests ---
     const e2e_mod = b.addModule("boj_e2e_order", .{
         .root_source_file = b.path("src/e2e_order.zig"),
@@ -169,4 +190,5 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&run_guardian_tests.step);
     test_step.dependOn(&run_e2e_tests.step);
     test_step.dependOn(&run_verisimdb_tests.step);
+    test_step.dependOn(&run_coprocessor_tests.step);
 }

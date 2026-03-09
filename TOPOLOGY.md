@@ -1,6 +1,6 @@
 <!-- SPDX-License-Identifier: PMPL-1.0-or-later -->
 <!-- TOPOLOGY.md — Project architecture map and completion dashboard -->
-<!-- Last updated: 2026-03-09 (18 cartridges, 218+ tests, 18 .so files, Grade C Beta) -->
+<!-- Last updated: 2026-03-09 (18 cartridges, 264 tests, 18 .so files, Grade B RC) -->
 
 # Bundle of Joy Server — Project Topology
 
@@ -49,10 +49,10 @@
  │  Menu.idr        │ │  verisimdb.zig    │ │                    │
  │  Federation.idr  │ │  guardian.zig     │ │  order-ticket.scm  │
  │  Guardian.idr    │ │  readiness.zig    │ │  matrix view       │
- │                  │ │  bench.zig        │ │  cartridge detail  │
- │  + 18 cartridge  │ │  e2e_order.zig    │ │                    │
- │    ABI modules   │ │  + 18 cartridge   │ │                    │
- │    (20 .idr)     │ │    FFI modules    │ │                    │
+ │                  │ │  coprocessor.zig  │ │  cartridge detail  │
+ │  + 18 cartridge  │ │  bench.zig        │ │                    │
+ │    ABI modules   │ │  e2e_order.zig    │ │                    │
+ │    (20 .idr)     │ │  + 18 cartridge   │ │                    │
  │                  │ │    (54 .zig)      │ │                    │
  └──────────────────┘ └──────────────────┘ └────────────────────┘
            │                  │                      │
@@ -67,7 +67,7 @@
  │  bsp-mcp        feedback-mcp                                 │
  │                                                               │
  │  Each: abi/ (Idris2) + ffi/ (Zig) + adapter/ (V-lang)       │
- │  18/18 have .so builds  |  218+ tests total                  │
+ │  18/18 have .so builds  |  264 tests total                  │
  └───────────────────────────────────────────────────────────────┘
            │
            ▼
@@ -152,7 +152,7 @@ Feedback   │  ██  │      │      │      │      │       │      �
 | feedback-o-tron (18th cartridge) | `██████████` 100%         | Full ABI+FFI   |
 | PanLL BoJ panel                  | `██████████` 100%         | 887 lines, 5 tabs |
 | PanLL bojRouting (10 panels)     | `██████████` 100%         | Conditional dispatch |
-| **Testing (218+ total)**         |                           |                |
+| **Testing (264 total)**         |                           |                |
 | Core FFI tests (105)             | `██████████` 100%         | Passing        |
 | Cartridge FFI tests (113)        | `██████████` 100%         | Passing        |
 | Federation tests (30)            | `██████████` 100%         | Passing        |
@@ -189,28 +189,31 @@ Feedback   │  ██  │      │      │      │      │       │      �
 
 ## Honest Assessment (2026-03-09)
 
-**Overall: Grade C Beta — Dogfooding 6/7 complete**
+**Overall: Grade B RC — All Grade C→B items complete**
 
 What is genuinely done:
 - 18 cartridges with ABI+FFI+Adapter structure (3 at Grade C, 15 at Grade D)
 - 18/18 cartridges have compiled .so shared libraries
-- 218+ tests passing (105 core + 113 cartridge + 30 federation + 12 guardian + 28 readiness + 7 VeriSimDB + 3 e2e)
-- Umoja federation with real UDP networking and 30 tests
+- 264 tests passing (140 core Zig [25 catalogue + 11 loader + 40 federation + 12 guardian + 28 readiness + 7 VeriSimDB + 3 e2e + 14 coprocessor] + 113 cartridge FFI + 11 multi-node federation)
+- Umoja federation with QUIC-first transport (X25519+ChaCha20-Poly1305, UDP fallback, 40 tests)
+- Multi-node federation testing (11 tests, REST API for peer management)
+- Coprocessor dispatch (Axiom.jl-style: detect→select→dispatch→fallback, 14 tests)
 - Guardian resource-aware failure tolerance (12 tests)
 - VeriSimDB backing store e2e through database-mcp (octad CRUD, VQL, drift)
 - Stapeln integration through container-mcp (FFI state machine + API proxy)
 - Zola/ddraig builds through ssg-mcp (end-to-end)
 - feedback-o-tron as 18th cartridge (full stack)
 - PanLL bojRouting wired on 10 panels with conditional dispatch
+- Podman secure instance for community nodes (quadlet, seccomp, read-only rootfs)
 - Complete container ecosystem (Containerfile, compose.toml, vordr.toml)
+- Stable API contract (docs/API-CONTRACT.md)
+- Configurable ports via environment variables
 - CI pipeline active
 - Zero believe_me in actual code
 - PanLL BoJ panel fully implemented (887 lines, 5 tabs) in PanLL repo
 - hexad→octad rename complete across VeriSimDB, BoJ, PanLL
 
-Grade C→B requirements:
-- QUIC-first transport for Umoja federation (replace cleartext UDP)
-- Multi-node federation testing
-- Coprocessor dispatch (Axiom.jl-style GPU/TPU/FPGA)
-- Podman secure instance for community node operators
-- Documentation and stable API contract
+Grade B→A requirements:
+- SLA, monitoring, community cartridge submissions
+- Deploy 4 seed nodes across continents
+- Auto-SDP, DoQ/DoH for Umoja network

@@ -8,7 +8,7 @@ project = "boj-server"
 version = "0.2.0"
 last-updated = "2026-03-09"
 status = "active"
-grade = "C-beta"
+grade = "B-rc"
 
 [project-context]
 name = "Bundle of Joy Server"
@@ -16,8 +16,8 @@ purpose = "Unified server capability catalogue solving the combinatoric explosio
 completion-percentage = 100
 
 [position]
-phase = "dogfooding"
-maturity = "beta"
+phase = "rc"
+maturity = "release-candidate"
 
 [route-to-mvp]
 milestones = [
@@ -29,26 +29,28 @@ milestones = [
   { name = "Phase 5: Umoja federation & PanLL panel", completion = 100 },
   { name = "Phase 6: Remaining cartridges (fill the matrix)", completion = 100 },
   { name = "Phase 7: Polystack deprecation (endgame)", completion = 100 },
+  { name = "Phase 8: Grade C→B (QUIC, multi-node, coprocessor, docs)", completion = 100 },
 ]
 
 # Honest assessment notes:
-# - Phase 5 at 100%: Umoja federation has real UDP + 30 tests,
-#   PanLL BoJ panel fully implemented (887 lines, 5 tabs) in PanLL repo
-# - Phase 6 at 100%: All 18 cartridges have ABI+FFI+Adapter dirs,
-#   all 18/18 .so shared libraries built
-# - Phase 7 at 100%: polystack archived and dependency updated
-# - Grade C dogfooding: 6/7 items complete (VeriSimDB, Zola/ssg, Stapeln/container,
-#   feedback-o-tron, PanLL BoJ panel, PanLL bojRouting on 10 panels)
+# - Phase 8 at 100%: QUIC transport (X25519+ChaCha20-Poly1305), multi-node testing (11 tests),
+#   coprocessor dispatch (14 tests), Podman secure instance, API contract documentation
+# - All Grade C→B items complete
+# - Federation tests: 40 (was 30, +10 QUIC tests)
+# - Coprocessor tests: 14 (new module)
+# - Multi-node tests: 11 (new shell tests)
 
 [quality]
-total-tests = 218
-core-ffi-tests = 105
+total-tests = 264
+core-ffi-tests = 140
 cartridge-ffi-tests = 113
-federation-tests = 30
+federation-tests = 40
+coprocessor-tests = 14
 e2e-tests = 3
 readiness-tests = 28
 guardian-tests = 12
 verisimdb-tests = 7
+multinode-tests = 11
 cartridge-shared-libs = 18
 # All 18/18 .so files built.
 cartridges-total = 18
@@ -61,7 +63,7 @@ believe-me-count = 0
 [maintenance]
 must = [
   "Order-ticket end-to-end flow test (done)",
-  "Cartridge .so/.dylib shared library builds (17/17 done)",
+  "Cartridge .so/.dylib shared library builds (18/18 done)",
   "CI/CD pipeline (zig-test.yml — done)",
   "Hash verification wired to mount (done)",
   "Distinct error codes for all failure modes (done)",
@@ -72,24 +74,28 @@ should = [
   "Readiness Grade A tests (done — 7 production tests)",
   "PanLL module mapping (DONE — 887-line view, 5 tabs, clade definition)",
   "Cartridge hot-reload (done — unmount/verify/remount)",
+  "QUIC-first transport (DONE — X25519+ChaCha20-Poly1305, 10 QUIC tests)",
+  "Multi-node federation testing (DONE — 11 tests, REST API peering)",
+  "Coprocessor dispatch (DONE — Axiom.jl-style, 14 tests)",
+  "Podman secure instance (DONE — quadlet, seccomp, read-only rootfs)",
+  "Stable API contract (DONE — docs/API-CONTRACT.md)",
 ]
 could = [
   "WASM cartridge support",
-  "Multi-node integration tests",
   "Teranga menu runtime generation",
   "Register domain for named Cloudflare tunnel",
 ]
 
 [blockers-and-issues]
-# No blockers. Grade C dogfooding 6/7 complete.
-# Only remaining: domain registration for named tunnel.
+# No blockers. Grade B RC complete.
 
 [critical-next-actions]
 actions = [
   "Register domain (hiddenhashtag.dev or alternative) for named tunnel",
-  "QUIC-first transport for Umoja federation (Grade C→B)",
-  "Multi-node federation testing (Grade C→B)",
-  "Documentation and stable API contract (Grade C→B)",
+  "SLA and monitoring (Grade B→A)",
+  "Deploy 4 seed nodes across continents (Grade B→A)",
+  "Auto-SDP, DoQ/DoH for Umoja network (Grade B→A)",
+  "Community cartridge submission process (Grade B→A)",
 ]
 
 [dogfooding-status]
@@ -99,6 +105,14 @@ container = "done — container-mcp with FFI state machine + Stapeln API proxy"
 feedback = "done — feedback-mcp (18th cartridge), full ABI+FFI+Adapter+.so"
 panll-panel = "done — Boj.res panel, 5 tabs, cartridge matrix"
 panll-routing = "done — bojRouting toggle on 10 panels (VeriSimDB, Editor Bridge, Build Dashboard, VM Inspector, Echidna, Aerie, Coprocessors, Automation Router, MyLang, TypeLL)"
+
+[grade-b-status]
+quic-transport = "done — X25519 ECDH + ChaCha20-Poly1305 AEAD, backward compatible"
+multinode-testing = "done — 2-node federation test script, REST API peering, 11 tests"
+coprocessor-dispatch = "done — detect→select→dispatch→fallback, env-driven, 14 tests"
+podman-secure = "done — quadlet + seccomp profile + read-only rootfs + resource limits"
+api-contract = "done — docs/API-CONTRACT.md, all endpoints documented"
+configurable-ports = "done — BOJ_REST_PORT, BOJ_GRPC_PORT, BOJ_GRAPHQL_PORT env vars"
 
 [maintenance-status]
 last-run-utc = "2026-03-09"
@@ -115,5 +129,5 @@ replaces = ["polystack"]
 [architecture]
 stack = "Idris2 (ABI) -> Zig (FFI) -> V-lang (Adapter)"
 model = "2D matrix: protocol types (columns) x capability domains (rows)"
-distribution = "Community-hosted nodes with gossip protocol and hash attestation"
+distribution = "Community-hosted nodes with QUIC gossip protocol and hash attestation"
 cultural-pillars = ["Teranga (hospitality)", "Umoja (unity)", "Ayo (joy)"]

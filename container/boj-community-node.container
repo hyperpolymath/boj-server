@@ -1,0 +1,80 @@
+# SPDX-License-Identifier: PMPL-1.0-or-later
+# Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+#
+# Podman Quadlet — Secure community node instance for BoJ Server.
+#
+# This file defines a hardened container configuration for community
+# node operators running BoJ federation nodes. Install to:
+#   ~/.config/containers/systemd/boj-community-node.container
+#
+# Then enable with:
+#   systemctl --user daemon-reload
+#   systemctl --user start boj-community-node
+#
+# Security features:
+#   - Read-only root filesystem
+#   - No new privileges
+#   - Dropped all capabilities (re-add only NET_BIND_SERVICE if needed)
+#   - Seccomp default profile
+#   - Memory and CPU limits
+#   - Named persistent volume for state
+
+[Unit]
+Description=Bundle of Joy Server — Community Federation Node
+Documentation=https://github.com/hyperpolymath/boj-server
+After=network-online.target
+Wants=network-online.target
+
+[Container]
+Image=ghcr.io/hyperpolymath/boj-server:latest
+ContainerName=boj-node
+
+# Network: expose REST, gRPC, GraphQL, and federation ports
+PublishPort=7700:7700
+PublishPort=7701:7701
+PublishPort=7702:7702
+PublishPort=9999:9999/udp
+
+# Persistent data volume
+Volume=boj-node-data:/data:Z
+
+# Environment
+Environment=APP_HOST=[::]
+Environment=APP_PORT=7700
+Environment=APP_DATA_DIR=/data
+Environment=APP_LOG_FORMAT=json
+Environment=BOJ_QUIC=1
+Environment=BOJ_FEDERATION_PORT=9999
+
+# Security hardening
+ReadOnly=true
+NoNewPrivileges=true
+DropCapability=ALL
+
+# Tmpfs for any runtime-writable paths the app might need
+Tmpfs=/tmp:size=64m,noexec,nosuid,nodev
+
+# Resource limits (conservative defaults for community nodes)
+PodmanArgs=--memory=512m --memory-swap=512m --cpus=2.0 --pids-limit=128
+
+# Health check
+HealthCmd=curl -sf http://localhost:7700/health || exit 1
+HealthInterval=30s
+HealthTimeout=5s
+HealthStartPeriod=15s
+HealthRetries=3
+
+# Logging
+LogDriver=journald
+
+# Restart policy
+AutoUpdate=registry
+
+[Service]
+Restart=on-failure
+RestartSec=10s
+TimeoutStartSec=30s
+TimeoutStopSec=15s
+
+[Install]
+WantedBy=default.target
