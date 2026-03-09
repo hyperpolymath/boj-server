@@ -8,6 +8,7 @@ project = "boj-server"
 version = "0.2.0"
 last-updated = "2026-03-09"
 status = "active"
+grade = "C-beta"
 
 [project-context]
 name = "Bundle of Joy Server"
@@ -15,8 +16,8 @@ purpose = "Unified server capability catalogue solving the combinatoric explosio
 completion-percentage = 100
 
 [position]
-phase = "implementation"
-maturity = "alpha"
+phase = "dogfooding"
+maturity = "beta"
 
 [route-to-mvp]
 milestones = [
@@ -33,9 +34,11 @@ milestones = [
 # Honest assessment notes:
 # - Phase 5 at 100%: Umoja federation has real UDP + 30 tests,
 #   PanLL BoJ panel fully implemented (887 lines, 5 tabs) in PanLL repo
-# - Phase 6 at 100%: All 17 cartridges have ABI+FFI+Adapter dirs,
-#   all 17/17 .so shared libraries built
+# - Phase 6 at 100%: All 18 cartridges have ABI+FFI+Adapter dirs,
+#   all 18/18 .so shared libraries built
 # - Phase 7 at 100%: polystack archived and dependency updated
+# - Grade C dogfooding: 6/7 items complete (VeriSimDB, Zola/ssg, Stapeln/container,
+#   feedback-o-tron, PanLL BoJ panel, PanLL bojRouting on 10 panels)
 
 [quality]
 total-tests = 218
@@ -46,10 +49,10 @@ e2e-tests = 3
 readiness-tests = 28
 guardian-tests = 12
 verisimdb-tests = 7
-cartridge-shared-libs = 14
-# All 17/17 .so files built.
-cartridges-total = 17
-cartridges-with-so = 17
+cartridge-shared-libs = 18
+# All 18/18 .so files built.
+cartridges-total = 18
+cartridges-with-so = 18
 benchmark = true
 ci-pipeline = "zig-test.yml"
 topology = true
@@ -74,21 +77,28 @@ could = [
   "WASM cartridge support",
   "Multi-node integration tests",
   "Teranga menu runtime generation",
-  "Container end-to-end test",
-  "Grade D -> C dogfooding with real project",
+  "Register domain for named Cloudflare tunnel",
 ]
 
 [blockers-and-issues]
-# No blockers. All v0.2.0 deliverables complete.
-# Container ecosystem present but not tested end-to-end (stretch goal).
+# No blockers. Grade C dogfooding 6/7 complete.
+# Only remaining: domain registration for named tunnel.
 
 [critical-next-actions]
 actions = [
-  "Dogfood with a real project (IDApTIK or similar) for Grade C promotion",
-  "End-to-end container test (Containerfile + compose.toml + vordr.toml)",
-  "Teranga menu runtime generation",
-  "Multi-node integration tests",
+  "Register domain (hiddenhashtag.dev or alternative) for named tunnel",
+  "QUIC-first transport for Umoja federation (Grade C→B)",
+  "Multi-node federation testing (Grade C→B)",
+  "Documentation and stable API contract (Grade C→B)",
 ]
+
+[dogfooding-status]
+verisimdb = "done — database-mcp e2e on port 8180 (octad CRUD, VQL, drift)"
+ssg = "done — ssg-mcp builds Zola sites end-to-end"
+container = "done — container-mcp with FFI state machine + Stapeln API proxy"
+feedback = "done — feedback-mcp (18th cartridge), full ABI+FFI+Adapter+.so"
+panll-panel = "done — Boj.res panel, 5 tabs, cartridge matrix"
+panll-routing = "done — bojRouting toggle on 10 panels (VeriSimDB, Editor Bridge, Build Dashboard, VM Inspector, Echidna, Aerie, Coprocessors, Automation Router, MyLang, TypeLL)"
 
 [maintenance-status]
 last-run-utc = "2026-03-09"
