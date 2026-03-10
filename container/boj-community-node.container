@@ -45,6 +45,11 @@ Environment=APP_DATA_DIR=/data
 Environment=APP_LOG_FORMAT=json
 Environment=BOJ_QUIC=1
 Environment=BOJ_FEDERATION_PORT=9999
+# Node auto-joins the Umoja federation on startup using these seed nodes.
+# Override with a comma-separated list if running a private network.
+# Environment=BOJ_SEED_NODES=eu.boj.hyperpolymath.dev:9999,us.boj.hyperpolymath.dev:9999
+# Node ID is auto-generated and persisted in the data volume.
+# Set explicitly to override: Environment=BOJ_NODE_ID=my-node-name
 
 # Security hardening
 ReadOnly=true
