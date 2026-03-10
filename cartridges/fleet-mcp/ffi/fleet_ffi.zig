@@ -39,14 +39,20 @@ const MAX_GATES: usize = 6;
 var passed_gates: [MAX_GATES]bool = .{ false, false, false, false, false, false };
 var gate_scores: [MAX_GATES]c_int = .{ 0, 0, 0, 0, 0, 0 };
 
+var mutex: std.Thread.Mutex = .{};
+
 /// Reset all gate results.
 pub export fn fleet_reset() void {
+    mutex.lock();
+    defer mutex.unlock();
     for (&passed_gates) |*g| g.* = false;
     for (&gate_scores) |*s| s.* = 0;
 }
 
 /// Record a gate scan result.
 pub export fn fleet_record_gate(gate: c_int, passed: c_int, score: c_int) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (gate < 1 or gate > 6) return -1;
     const idx: usize = @intCast(gate - 1);
     passed_gates[idx] = passed != 0;
@@ -56,12 +62,16 @@ pub export fn fleet_record_gate(gate: c_int, passed: c_int, score: c_int) c_int 
 
 /// Check if mandatory gates (Rhodibot, Echidnabot, Panicbot) have passed.
 pub export fn fleet_has_mandatory() c_int {
+    mutex.lock();
+    defer mutex.unlock();
     // Rhodibot=0, Echidnabot=1, Panicbot=3
     return if (passed_gates[0] and passed_gates[1] and passed_gates[3]) 1 else 0;
 }
 
 /// Check if all six gates have passed.
 pub export fn fleet_has_all() c_int {
+    mutex.lock();
+    defer mutex.unlock();
     for (passed_gates) |g| {
         if (!g) return 0;
     }
@@ -70,8 +80,18 @@ pub export fn fleet_has_all() c_int {
 
 /// Derive repository status from current gate results.
 pub export fn fleet_status() c_int {
-    if (fleet_has_all() == 1) return @intFromEnum(RepoStatus.healthy);
-    if (fleet_has_mandatory() == 1) return @intFromEnum(RepoStatus.degraded);
+    mutex.lock();
+    defer mutex.unlock();
+    // Inline checks to avoid deadlock (fleet_has_all/fleet_has_mandatory also lock)
+    const all_passed = blk: {
+        for (passed_gates) |g| {
+            if (!g) break :blk false;
+        }
+        break :blk true;
+    };
+    if (all_passed) return @intFromEnum(RepoStatus.healthy);
+    // Mandatory: Rhodibot=0, Echidnabot=1, Panicbot=3
+    if (passed_gates[0] and passed_gates[1] and passed_gates[3]) return @intFromEnum(RepoStatus.degraded);
     for (passed_gates) |g| {
         if (g) return @intFromEnum(RepoStatus.scanning);
     }
@@ -80,6 +100,8 @@ pub export fn fleet_status() c_int {
 
 /// Get the score for a specific gate.
 pub export fn fleet_gate_score(gate: c_int) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (gate < 1 or gate > 6) return -1;
     return gate_scores[@intCast(gate - 1)];
 }
@@ -102,11 +124,15 @@ pub export fn boj_cartridge_deinit() void {
 
 /// Return the cartridge name as a null-terminated C string.
 pub export fn boj_cartridge_name() [*:0]const u8 {
+    mutex.lock();
+    defer mutex.unlock();
     return "fleet-mcp";
 }
 
 /// Return the cartridge version as a null-terminated C string.
 pub export fn boj_cartridge_version() [*:0]const u8 {
+    mutex.lock();
+    defer mutex.unlock();
     return "0.1.0";
 }
 

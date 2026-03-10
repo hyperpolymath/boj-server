@@ -52,6 +52,8 @@ const empty_slot: ClusterSlot = .{
 
 var clusters: [MAX_CLUSTERS]ClusterSlot = [_]ClusterSlot{empty_slot} ** MAX_CLUSTERS;
 
+var mutex: std.Thread.Mutex = .{};
+
 /// Validate a state transition (matches Idris2 canTransition).
 fn isValidTransition(from: K8sState, to: K8sState) bool {
     return switch (from) {
@@ -75,6 +77,8 @@ fn setNamespace(slot: *ClusterSlot, ns: [*:0]const u8) void {
 
 /// Connect to a Kubernetes cluster. Returns slot index or -1 on failure.
 pub export fn k8s_connect(tool: c_int) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     for (&clusters, 0..) |*slot, i| {
         if (!slot.active) {
             slot.active = true;
@@ -90,6 +94,8 @@ pub export fn k8s_connect(tool: c_int) c_int {
 
 /// Select a namespace on a connected cluster.
 pub export fn k8s_select_namespace(slot_idx: c_int, ns: [*:0]const u8) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (slot_idx < 0 or slot_idx >= MAX_CLUSTERS) return -1;
     const idx: usize = @intCast(slot_idx);
     if (!clusters[idx].active) return -1;
@@ -102,6 +108,8 @@ pub export fn k8s_select_namespace(slot_idx: c_int, ns: [*:0]const u8) c_int {
 
 /// Begin an operation (transition NamespaceSelected -> Operating).
 pub export fn k8s_begin_operation(slot_idx: c_int) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (slot_idx < 0 or slot_idx >= MAX_CLUSTERS) return -1;
     const idx: usize = @intCast(slot_idx);
     if (!clusters[idx].active) return -1;
@@ -113,6 +121,8 @@ pub export fn k8s_begin_operation(slot_idx: c_int) c_int {
 
 /// End an operation (transition Operating -> NamespaceSelected).
 pub export fn k8s_end_operation(slot_idx: c_int) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (slot_idx < 0 or slot_idx >= MAX_CLUSTERS) return -1;
     const idx: usize = @intCast(slot_idx);
     if (!clusters[idx].active) return -1;
@@ -124,6 +134,8 @@ pub export fn k8s_end_operation(slot_idx: c_int) c_int {
 
 /// Disconnect from a cluster (transition ClusterConnected -> Disconnected).
 pub export fn k8s_disconnect(slot_idx: c_int) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (slot_idx < 0 or slot_idx >= MAX_CLUSTERS) return -1;
     const idx: usize = @intCast(slot_idx);
     if (!clusters[idx].active) return -1;
@@ -138,6 +150,8 @@ pub export fn k8s_disconnect(slot_idx: c_int) c_int {
 
 /// Get the state of a cluster session.
 pub export fn k8s_state(slot_idx: c_int) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (slot_idx < 0 or slot_idx >= MAX_CLUSTERS) return -1;
     const idx: usize = @intCast(slot_idx);
     if (!clusters[idx].active) return @intFromEnum(K8sState.disconnected);
@@ -146,6 +160,8 @@ pub export fn k8s_state(slot_idx: c_int) c_int {
 
 /// Validate a state transition (C-ABI export).
 pub export fn k8s_can_transition(from: c_int, to: c_int) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     const f: K8sState = @enumFromInt(from);
     const t: K8sState = @enumFromInt(to);
     return if (isValidTransition(f, t)) 1 else 0;
@@ -153,6 +169,8 @@ pub export fn k8s_can_transition(from: c_int, to: c_int) c_int {
 
 /// Reset all cluster sessions (for testing).
 pub export fn k8s_reset() void {
+    mutex.lock();
+    defer mutex.unlock();
     for (&clusters) |*slot| {
         slot.* = empty_slot;
     }
@@ -175,11 +193,15 @@ pub export fn boj_cartridge_deinit() void {
 
 /// Return the cartridge name as a null-terminated C string.
 pub export fn boj_cartridge_name() [*:0]const u8 {
+    mutex.lock();
+    defer mutex.unlock();
     return "k8s-mcp";
 }
 
 /// Return the cartridge version as a null-terminated C string.
 pub export fn boj_cartridge_version() [*:0]const u8 {
+    mutex.lock();
+    defer mutex.unlock();
     return "0.1.0";
 }
 

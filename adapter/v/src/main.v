@@ -719,6 +719,28 @@ fn error_response(status_code int, message string) http.Response {
 	}
 }
 
+// Shell argument sanitizer — strips characters that enable command injection.
+// Rejects input containing shell metacharacters rather than trying to escape them,
+// because escaping is fragile and locale-dependent.
+fn sanitize_shell_arg(input string) !string {
+	// Reject empty input
+	if input.trim_space() == '' {
+		return error('empty argument')
+	}
+	// Allow only safe characters: alphanumeric, hyphen, underscore, dot, slash, colon, @, +, =, space
+	// This covers file paths, hostnames, image tags, domain names, and similar
+	for c in input.bytes() {
+		if (c >= `a` && c <= `z`) || (c >= `A` && c <= `Z`) || (c >= `0` && c <= `9`) {
+			continue
+		}
+		if c == `-` || c == `_` || c == `.` || c == `/` || c == `:` || c == `@` || c == `+` || c == `=` || c == ` ` {
+			continue
+		}
+		return error('unsafe character in argument: 0x${c:02x}')
+	}
+	return input
+}
+
 // Handler structs (V 0.5.0 uses Handler interface, not function closures)
 
 struct RestHandler {
@@ -1326,8 +1348,12 @@ fn invoke_database(tool string, args string) http.Response {
 		params := json.decode(map[string]string, args) or {
 			return error_response(400, 'create_octad requires {"name": "...", "type": "service|entity|resource"}')
 		}
-		name := params['name'] or { '' }
-		entity_type := params['type'] or { 'entity' }
+		name := sanitize_shell_arg(params['name'] or { '' }) or {
+			return error_response(400, 'invalid name: ${err.msg()}')
+		}
+		entity_type := sanitize_shell_arg(params['type'] or { 'entity' }) or {
+			return error_response(400, 'invalid type: ${err.msg()}')
+		}
 		if name == '' {
 			return error_response(400, 'create_octad requires "name"')
 		}
@@ -1341,7 +1367,12 @@ fn invoke_database(tool string, args string) http.Response {
 		}))
 	}
 	if tool == 'query' {
-		result := os.execute("curl -sf --max-time 5 -X POST -H 'Content-Type: application/json' -d '${args}' ${verisimdb_url}/vql/execute 2>/dev/null")
+		// Write query body to temp file to avoid shell injection via -d argument
+		vql_tmp := '/tmp/boj-vql-query.json'
+		os.write_file(vql_tmp, args) or {
+			return error_response(500, 'failed to write VQL query temp file')
+		}
+		result := os.execute("curl -sf --max-time 5 -X POST -H 'Content-Type: application/json' -d @${vql_tmp} ${verisimdb_url}/vql/execute 2>/dev/null")
 		if result.exit_code == 0 {
 			return json_response(json.encode({
 				'tool':   'query'
@@ -1359,7 +1390,9 @@ fn invoke_database(tool string, args string) http.Response {
 		params := json.decode(map[string]string, args) or {
 			return error_response(400, 'drift requires {"id": "octad-id"}')
 		}
-		entity_id := params['id'] or { '' }
+		entity_id := sanitize_shell_arg(params['id'] or { '' }) or {
+			return error_response(400, 'invalid id: ${err.msg()}')
+		}
 		if entity_id == '' {
 			return error_response(400, 'drift requires "id"')
 		}
@@ -1387,8 +1420,12 @@ fn invoke_ssg(tool string, args string) http.Response {
 		params := json.decode(map[string]string, args) or {
 			return error_response(400, 'ssg build requires {"engine": "zola|hugo", "path": "/path/to/site"}')
 		}
-		engine := params['engine'] or { 'zola' }
-		site_path := params['path'] or { '.' }
+		engine := sanitize_shell_arg(params['engine'] or { 'zola' }) or {
+			return error_response(400, 'invalid engine: ${err.msg()}')
+		}
+		site_path := sanitize_shell_arg(params['path'] or { '.' }) or {
+			return error_response(400, 'invalid path: ${err.msg()}')
+		}
 
 		mut cmd := ''
 		if engine == 'zola' { cmd = 'cd ${site_path} && zola build 2>&1' }
@@ -1411,8 +1448,12 @@ fn invoke_ssg(tool string, args string) http.Response {
 		params := json.decode(map[string]string, args) or {
 			return error_response(400, 'ssg preview requires {"engine": "zola|hugo", "path": "/path/to/site"}')
 		}
-		engine := params['engine'] or { 'zola' }
-		site_path := params['path'] or { '.' }
+		engine := sanitize_shell_arg(params['engine'] or { 'zola' }) or {
+			return error_response(400, 'invalid engine: ${err.msg()}')
+		}
+		site_path := sanitize_shell_arg(params['path'] or { '.' }) or {
+			return error_response(400, 'invalid path: ${err.msg()}')
+		}
 
 		check := os.execute('pgrep -f "${engine} serve" 2>/dev/null')
 		if check.exit_code == 0 {
@@ -1486,8 +1527,12 @@ fn invoke_container(tool string, args string) http.Response {
 		params := json.decode(map[string]string, args) or {
 			return error_response(400, 'container build requires {"path": "/path/to/project", "tag": "image:tag"}')
 		}
-		build_path := params['path'] or { '.' }
-		tag := params['tag'] or { 'boj-build:latest' }
+		build_path := sanitize_shell_arg(params['path'] or { '.' }) or {
+			return error_response(400, 'invalid path: ${err.msg()}')
+		}
+		tag := sanitize_shell_arg(params['tag'] or { 'boj-build:latest' }) or {
+			return error_response(400, 'invalid tag: ${err.msg()}')
+		}
 		runtime_name := params['runtime'] or { 'podman' }
 
 		// Allocate a state machine slot for lifecycle tracking
@@ -1615,7 +1660,9 @@ fn invoke_container(tool string, args string) http.Response {
 		params := json.decode(map[string]string, args) or {
 			return error_response(400, 'logs requires {"name": "container-name"}')
 		}
-		name := params['name'] or { '' }
+		name := sanitize_shell_arg(params['name'] or { '' }) or {
+			return error_response(400, 'invalid name: ${err.msg()}')
+		}
 		if name == '' {
 			return error_response(400, 'logs requires {"name": "container-name"}')
 		}
@@ -1646,7 +1693,9 @@ fn invoke_container(tool string, args string) http.Response {
 		params := json.decode(map[string]string, args) or {
 			return error_response(400, 'stapeln_validate requires {"stack_id": "1"}')
 		}
-		stack_id := params['stack_id'] or { '1' }
+		stack_id := sanitize_shell_arg(params['stack_id'] or { '1' }) or {
+			return error_response(400, 'invalid stack_id: ${err.msg()}')
+		}
 		resp := http.post('${stapeln_url}/api/stacks/${stack_id}/validate', '') or {
 			return error_response(502, 'stapeln not reachable: ${err.msg()}')
 		}
@@ -1660,7 +1709,9 @@ fn invoke_container(tool string, args string) http.Response {
 		params := json.decode(map[string]string, args) or {
 			return error_response(400, 'stapeln_security requires {"stack_id": "1"}')
 		}
-		stack_id := params['stack_id'] or { '1' }
+		stack_id := sanitize_shell_arg(params['stack_id'] or { '1' }) or {
+			return error_response(400, 'invalid stack_id: ${err.msg()}')
+		}
 		resp := http.post('${stapeln_url}/api/stacks/${stack_id}/security-scan', '') or {
 			return error_response(502, 'stapeln not reachable: ${err.msg()}')
 		}
@@ -1674,7 +1725,9 @@ fn invoke_container(tool string, args string) http.Response {
 		params := json.decode(map[string]string, args) or {
 			return error_response(400, 'stapeln_gaps requires {"stack_id": "1"}')
 		}
-		stack_id := params['stack_id'] or { '1' }
+		stack_id := sanitize_shell_arg(params['stack_id'] or { '1' }) or {
+			return error_response(400, 'invalid stack_id: ${err.msg()}')
+		}
 		resp := http.post('${stapeln_url}/api/stacks/${stack_id}/gap-analysis', '') or {
 			return error_response(502, 'stapeln not reachable: ${err.msg()}')
 		}
@@ -1688,8 +1741,12 @@ fn invoke_container(tool string, args string) http.Response {
 		params := json.decode(map[string]string, args) or {
 			return error_response(400, 'stapeln_generate requires {"stack_id": "1", "format": "docker_compose"}')
 		}
-		stack_id := params['stack_id'] or { '1' }
-		format := params['format'] or { 'all' }
+		stack_id := sanitize_shell_arg(params['stack_id'] or { '1' }) or {
+			return error_response(400, 'invalid stack_id: ${err.msg()}')
+		}
+		format := sanitize_shell_arg(params['format'] or { 'all' }) or {
+			return error_response(400, 'invalid format: ${err.msg()}')
+		}
 		resp := http.post('${stapeln_url}/api/stacks/${stack_id}/generate?format=${format}', '') or {
 			return error_response(502, 'stapeln not reachable: ${err.msg()}')
 		}
@@ -1750,7 +1807,9 @@ fn invoke_git(tool string, args string) http.Response {
 		params := json.decode(map[string]string, args) or {
 			return error_response(400, 'git status requires {"path": "/path/to/repo"}')
 		}
-		repo_path := params['path'] or { '.' }
+		repo_path := sanitize_shell_arg(params['path'] or { '.' }) or {
+			return error_response(400, 'invalid path: ${err.msg()}')
+		}
 		result := os.execute('cd ${repo_path} && git status --porcelain 2>/dev/null')
 		status_str := if result.exit_code == 0 { 'ok' } else { 'error' }
 		return json_response(json.encode({
@@ -1781,8 +1840,12 @@ fn invoke_proof(tool string, args string) http.Response {
 		params := json.decode(map[string]string, args) or {
 			return error_response(400, 'proof check requires {"path": "/path/to/file.idr", "backend": "idris2"}')
 		}
-		file_path := params['path'] or { '' }
-		backend := params['backend'] or { 'idris2' }
+		file_path := sanitize_shell_arg(params['path'] or { '' }) or {
+			return error_response(400, 'invalid path: ${err.msg()}')
+		}
+		backend := sanitize_shell_arg(params['backend'] or { 'idris2' }) or {
+			return error_response(400, 'invalid backend: ${err.msg()}')
+		}
 
 		if file_path == '' {
 			return error_response(400, 'proof check requires "path" to source file')
@@ -1834,7 +1897,9 @@ fn invoke_cloud(tool string, args string) http.Response {
 		params := json.decode(map[string]string, args) or {
 			return error_response(400, 'dns_lookup requires {"domain": "example.com"}')
 		}
-		domain := params['domain'] or { '' }
+		domain := sanitize_shell_arg(params['domain'] or { '' }) or {
+			return error_response(400, 'invalid domain: ${err.msg()}')
+		}
 		if domain == '' {
 			return error_response(400, 'dns_lookup requires "domain"')
 		}
@@ -1906,8 +1971,12 @@ fn invoke_secrets(tool string, args string) http.Response {
 		params := json.decode(map[string]string, args) or {
 			return error_response(400, 'encrypt requires {"path": "/path/to/file", "backend": "age"}')
 		}
-		file_path := params['path'] or { '' }
-		backend := params['backend'] or { 'age' }
+		file_path := sanitize_shell_arg(params['path'] or { '' }) or {
+			return error_response(400, 'invalid path: ${err.msg()}')
+		}
+		backend := sanitize_shell_arg(params['backend'] or { 'age' }) or {
+			return error_response(400, 'invalid backend: ${err.msg()}')
+		}
 		if file_path == '' {
 			return error_response(400, 'encrypt requires "path"')
 		}
@@ -1954,8 +2023,12 @@ fn invoke_queues(tool string, args string) http.Response {
 		params := json.decode(map[string]string, args) or {
 			return error_response(400, 'publish requires {"channel": "...", "message": "..."}')
 		}
-		channel := params['channel'] or { '' }
-		message := params['message'] or { '' }
+		channel := sanitize_shell_arg(params['channel'] or { '' }) or {
+			return error_response(400, 'invalid channel: ${err.msg()}')
+		}
+		message := sanitize_shell_arg(params['message'] or { '' }) or {
+			return error_response(400, 'invalid message: ${err.msg()}')
+		}
 		if channel == '' || message == '' {
 			return error_response(400, 'publish requires "channel" and "message"')
 		}
@@ -1988,8 +2061,12 @@ fn invoke_iac(tool string, args string) http.Response {
 		params := json.decode(map[string]string, args) or {
 			return error_response(400, 'validate requires {"path": "/path/to/config.ncl", "backend": "nickel"}')
 		}
-		file_path := params['path'] or { '' }
-		backend := params['backend'] or { 'nickel' }
+		file_path := sanitize_shell_arg(params['path'] or { '' }) or {
+			return error_response(400, 'invalid path: ${err.msg()}')
+		}
+		backend := sanitize_shell_arg(params['backend'] or { 'nickel' }) or {
+			return error_response(400, 'invalid backend: ${err.msg()}')
+		}
 		if file_path == '' {
 			return error_response(400, 'validate requires "path"')
 		}
@@ -2012,7 +2089,9 @@ fn invoke_iac(tool string, args string) http.Response {
 		params := json.decode(map[string]string, args) or {
 			return error_response(400, 'eval requires {"path": "/path/to/config.ncl"}')
 		}
-		file_path := params['path'] or { '' }
+		file_path := sanitize_shell_arg(params['path'] or { '' }) or {
+			return error_response(400, 'invalid path: ${err.msg()}')
+		}
 		if file_path == '' {
 			return error_response(400, 'eval requires "path"')
 		}
@@ -2122,7 +2201,9 @@ fn invoke_fleet(tool string, args string) http.Response {
 		params := json.decode(map[string]string, args) or {
 			return error_response(400, 'scan requires {"repo": "owner/repo"}')
 		}
-		repo := params['repo'] or { '' }
+		repo := sanitize_shell_arg(params['repo'] or { '' }) or {
+			return error_response(400, 'invalid repo: ${err.msg()}')
+		}
 		if repo == '' {
 			return error_response(400, 'scan requires "repo"')
 		}
@@ -2139,7 +2220,9 @@ fn invoke_fleet(tool string, args string) http.Response {
 		params := json.decode(map[string]string, args) or {
 			return error_response(400, 'findings requires {"repo": "owner/repo"}')
 		}
-		repo := params['repo'] or { '' }
+		repo := sanitize_shell_arg(params['repo'] or { '' }) or {
+			return error_response(400, 'invalid repo: ${err.msg()}')
+		}
 		if repo == '' {
 			return error_response(400, 'findings requires "repo"')
 		}
@@ -2174,7 +2257,9 @@ fn invoke_lsp(tool string, args string) http.Response {
 		params := json.decode(map[string]string, args) or {
 			return error_response(400, 'diagnostics requires {"path": "/path/to/file"}')
 		}
-		file_path := params['path'] or { '' }
+		file_path := sanitize_shell_arg(params['path'] or { '' }) or {
+			return error_response(400, 'invalid path: ${err.msg()}')
+		}
 		if file_path == '' {
 			return error_response(400, 'diagnostics requires "path"')
 		}
@@ -2217,7 +2302,9 @@ fn invoke_dap(tool string, args string) http.Response {
 		params := json.decode(map[string]string, args) or {
 			return error_response(400, 'attach requires {"pid": "12345", "adapter": "lldb"}')
 		}
-		pid := params['pid'] or { '' }
+		pid := sanitize_shell_arg(params['pid'] or { '' }) or {
+			return error_response(400, 'invalid pid: ${err.msg()}')
+		}
 		if pid == '' {
 			return error_response(400, 'attach requires "pid"')
 		}
@@ -2253,8 +2340,12 @@ fn invoke_bsp(tool string, args string) http.Response {
 		params := json.decode(map[string]string, args) or {
 			return error_response(400, 'build requires {"path": "/path/to/project", "backend": "just"}')
 		}
-		project_path := params['path'] or { '' }
-		backend := params['backend'] or { 'just' }
+		project_path := sanitize_shell_arg(params['path'] or { '' }) or {
+			return error_response(400, 'invalid path: ${err.msg()}')
+		}
+		backend := sanitize_shell_arg(params['backend'] or { 'just' }) or {
+			return error_response(400, 'invalid backend: ${err.msg()}')
+		}
 		if project_path == '' {
 			return error_response(400, 'build requires "path"')
 		}
@@ -2278,7 +2369,9 @@ fn invoke_bsp(tool string, args string) http.Response {
 		params := json.decode(map[string]string, args) or {
 			return error_response(400, 'targets requires {"path": "/path/to/project"}')
 		}
-		project_path := params['path'] or { '' }
+		project_path := sanitize_shell_arg(params['path'] or { '' }) or {
+			return error_response(400, 'invalid path: ${err.msg()}')
+		}
 		if project_path == '' {
 			return error_response(400, 'targets requires "path"')
 		}

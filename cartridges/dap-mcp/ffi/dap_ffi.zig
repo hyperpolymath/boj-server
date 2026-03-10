@@ -68,6 +68,8 @@ const SessionSlot = struct {
 
 var sessions: [MAX_SESSIONS]SessionSlot = [_]SessionSlot{.{}} ** MAX_SESSIONS;
 
+var mutex: std.Thread.Mutex = .{};
+
 /// Validate a state transition (matches Idris2 canTransition).
 fn isValidTransition(from: DapState, to: DapState) bool {
     return switch (from) {
@@ -83,6 +85,8 @@ fn isValidTransition(from: DapState, to: DapState) bool {
 
 /// Initialise a new DAP session. Returns slot index or -1 on failure.
 pub export fn dap_init() c_int {
+    mutex.lock();
+    defer mutex.unlock();
     for (&sessions, 0..) |*slot, i| {
         if (!slot.active) {
             slot.* = SessionSlot{};
@@ -95,6 +99,8 @@ pub export fn dap_init() c_int {
 
 /// Launch the debug adapter (NotStarted -> Launched).
 pub export fn dap_launch(slot_idx: c_int) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (slot_idx < 0 or slot_idx >= MAX_SESSIONS) return -1;
     const idx: usize = @intCast(slot_idx);
     if (!sessions[idx].active) return -1;
@@ -105,6 +111,8 @@ pub export fn dap_launch(slot_idx: c_int) c_int {
 
 /// Send ConfigurationDone (Launched -> Configured).
 pub export fn dap_configure(slot_idx: c_int) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (slot_idx < 0 or slot_idx >= MAX_SESSIONS) return -1;
     const idx: usize = @intCast(slot_idx);
     if (!sessions[idx].active) return -1;
@@ -115,6 +123,8 @@ pub export fn dap_configure(slot_idx: c_int) c_int {
 
 /// Start execution (Configured -> Running or Stopped -> Running for continue/step).
 pub export fn dap_continue(slot_idx: c_int) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (slot_idx < 0 or slot_idx >= MAX_SESSIONS) return -1;
     const idx: usize = @intCast(slot_idx);
     if (!sessions[idx].active) return -1;
@@ -125,6 +135,8 @@ pub export fn dap_continue(slot_idx: c_int) c_int {
 
 /// Target stopped (Running -> Stopped).
 pub export fn dap_stopped(slot_idx: c_int, reason: c_int) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (slot_idx < 0 or slot_idx >= MAX_SESSIONS) return -1;
     const idx: usize = @intCast(slot_idx);
     if (!sessions[idx].active) return -1;
@@ -136,6 +148,8 @@ pub export fn dap_stopped(slot_idx: c_int, reason: c_int) c_int {
 
 /// Target terminated (Running/Stopped -> Terminated).
 pub export fn dap_terminate(slot_idx: c_int) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (slot_idx < 0 or slot_idx >= MAX_SESSIONS) return -1;
     const idx: usize = @intCast(slot_idx);
     if (!sessions[idx].active) return -1;
@@ -146,6 +160,8 @@ pub export fn dap_terminate(slot_idx: c_int) c_int {
 
 /// Disconnect adapter.
 pub export fn dap_disconnect(slot_idx: c_int) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (slot_idx < 0 or slot_idx >= MAX_SESSIONS) return -1;
     const idx: usize = @intCast(slot_idx);
     if (!sessions[idx].active) return -1;
@@ -156,6 +172,8 @@ pub export fn dap_disconnect(slot_idx: c_int) c_int {
 
 /// Get the state of a session.
 pub export fn dap_state(slot_idx: c_int) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (slot_idx < 0 or slot_idx >= MAX_SESSIONS) return -1;
     const idx: usize = @intCast(slot_idx);
     if (!sessions[idx].active) return @intFromEnum(DapState.not_started);
@@ -164,6 +182,8 @@ pub export fn dap_state(slot_idx: c_int) c_int {
 
 /// Can we inspect variables/stack? (only in stopped state)
 pub export fn dap_can_inspect(slot_idx: c_int) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (slot_idx < 0 or slot_idx >= MAX_SESSIONS) return 0;
     const idx: usize = @intCast(slot_idx);
     return if (sessions[idx].active and sessions[idx].state == .stopped) 1 else 0;
@@ -171,6 +191,8 @@ pub export fn dap_can_inspect(slot_idx: c_int) c_int {
 
 /// Can we set breakpoints? (in launched, configured, or stopped states)
 pub export fn dap_can_set_breakpoints(slot_idx: c_int) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (slot_idx < 0 or slot_idx >= MAX_SESSIONS) return 0;
     const idx: usize = @intCast(slot_idx);
     if (!sessions[idx].active) return 0;
@@ -182,10 +204,17 @@ pub export fn dap_can_set_breakpoints(slot_idx: c_int) c_int {
 
 /// Add a breakpoint. Returns breakpoint index or -1 on failure.
 pub export fn dap_add_breakpoint(slot_idx: c_int, kind: c_int) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (slot_idx < 0 or slot_idx >= MAX_SESSIONS) return -1;
     const idx: usize = @intCast(slot_idx);
     if (!sessions[idx].active) return -1;
-    if (dap_can_set_breakpoints(slot_idx) == 0) return -2;
+    // Inline breakpoint check to avoid deadlock (dap_can_set_breakpoints also locks)
+    const can_set = switch (sessions[idx].state) {
+        .launched, .configured, .stopped => true,
+        else => false,
+    };
+    if (!can_set) return -2;
     if (sessions[idx].breakpoint_count >= MAX_BREAKPOINTS) return -3;
 
     for (&sessions[idx].breakpoints, 0..) |*bp, bi| {
@@ -202,6 +231,8 @@ pub export fn dap_add_breakpoint(slot_idx: c_int, kind: c_int) c_int {
 
 /// Validate a state transition (C-ABI export).
 pub export fn dap_can_transition(from: c_int, to: c_int) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     const f: DapState = @enumFromInt(from);
     const t: DapState = @enumFromInt(to);
     return if (isValidTransition(f, t)) 1 else 0;
@@ -209,6 +240,8 @@ pub export fn dap_can_transition(from: c_int, to: c_int) c_int {
 
 /// Release a session slot.
 pub export fn dap_release(slot_idx: c_int) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (slot_idx < 0 or slot_idx >= MAX_SESSIONS) return -1;
     const idx: usize = @intCast(slot_idx);
     if (!sessions[idx].active) return -1;
@@ -218,6 +251,8 @@ pub export fn dap_release(slot_idx: c_int) c_int {
 
 /// Reset all sessions.
 pub export fn dap_reset_all() void {
+    mutex.lock();
+    defer mutex.unlock();
     for (&sessions) |*slot| {
         slot.* = SessionSlot{};
     }
@@ -237,10 +272,14 @@ pub export fn boj_cartridge_deinit() void {
 }
 
 pub export fn boj_cartridge_name() [*:0]const u8 {
+    mutex.lock();
+    defer mutex.unlock();
     return "dap-mcp";
 }
 
 pub export fn boj_cartridge_version() [*:0]const u8 {
+    mutex.lock();
+    defer mutex.unlock();
     return "0.1.0";
 }
 

@@ -77,6 +77,8 @@ const SessionSlot = struct {
 
 var sessions: [MAX_SESSIONS]SessionSlot = [_]SessionSlot{.{}} ** MAX_SESSIONS;
 
+var mutex: std.Thread.Mutex = .{};
+
 /// Validate a state transition (matches Idris2 canTransition).
 fn isValidTransition(from: BspState, to: BspState) bool {
     return switch (from) {
@@ -91,6 +93,8 @@ fn isValidTransition(from: BspState, to: BspState) bool {
 
 /// Initialise a new BSP session. Returns slot index or -1 on failure.
 pub export fn bsp_init() c_int {
+    mutex.lock();
+    defer mutex.unlock();
     for (&sessions, 0..) |*slot, i| {
         if (!slot.active) {
             slot.* = SessionSlot{};
@@ -103,6 +107,8 @@ pub export fn bsp_init() c_int {
 
 /// Start initialization (Uninitialized -> Initializing).
 pub export fn bsp_start_init(slot_idx: c_int) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (slot_idx < 0 or slot_idx >= MAX_SESSIONS) return -1;
     const idx: usize = @intCast(slot_idx);
     if (!sessions[idx].active) return -1;
@@ -113,6 +119,8 @@ pub export fn bsp_start_init(slot_idx: c_int) c_int {
 
 /// Register a build capability during initialization.
 pub export fn bsp_register_capability(slot_idx: c_int, cap: c_int) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (slot_idx < 0 or slot_idx >= MAX_SESSIONS) return -1;
     const idx: usize = @intCast(slot_idx);
     if (!sessions[idx].active) return -1;
@@ -125,6 +133,8 @@ pub export fn bsp_register_capability(slot_idx: c_int, cap: c_int) c_int {
 
 /// Mark initialization complete (Initializing -> Ready).
 pub export fn bsp_ready(slot_idx: c_int) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (slot_idx < 0 or slot_idx >= MAX_SESSIONS) return -1;
     const idx: usize = @intCast(slot_idx);
     if (!sessions[idx].active) return -1;
@@ -135,6 +145,8 @@ pub export fn bsp_ready(slot_idx: c_int) c_int {
 
 /// Start a build (Ready -> Building).
 pub export fn bsp_build(slot_idx: c_int) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (slot_idx < 0 or slot_idx >= MAX_SESSIONS) return -1;
     const idx: usize = @intCast(slot_idx);
     if (!sessions[idx].active) return -1;
@@ -145,6 +157,8 @@ pub export fn bsp_build(slot_idx: c_int) c_int {
 
 /// Build complete (Building -> Ready).
 pub export fn bsp_build_done(slot_idx: c_int) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (slot_idx < 0 or slot_idx >= MAX_SESSIONS) return -1;
     const idx: usize = @intCast(slot_idx);
     if (!sessions[idx].active) return -1;
@@ -155,6 +169,8 @@ pub export fn bsp_build_done(slot_idx: c_int) c_int {
 
 /// Request shutdown.
 pub export fn bsp_shutdown(slot_idx: c_int) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (slot_idx < 0 or slot_idx >= MAX_SESSIONS) return -1;
     const idx: usize = @intCast(slot_idx);
     if (!sessions[idx].active) return -1;
@@ -165,6 +181,8 @@ pub export fn bsp_shutdown(slot_idx: c_int) c_int {
 
 /// Exit.
 pub export fn bsp_exit(slot_idx: c_int) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (slot_idx < 0 or slot_idx >= MAX_SESSIONS) return -1;
     const idx: usize = @intCast(slot_idx);
     if (!sessions[idx].active) return -1;
@@ -175,6 +193,8 @@ pub export fn bsp_exit(slot_idx: c_int) c_int {
 
 /// Get the state of a session.
 pub export fn bsp_state(slot_idx: c_int) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (slot_idx < 0 or slot_idx >= MAX_SESSIONS) return -1;
     const idx: usize = @intCast(slot_idx);
     if (!sessions[idx].active) return @intFromEnum(BspState.uninitialized);
@@ -183,6 +203,8 @@ pub export fn bsp_state(slot_idx: c_int) c_int {
 
 /// Can we submit build requests?
 pub export fn bsp_can_build(slot_idx: c_int) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (slot_idx < 0 or slot_idx >= MAX_SESSIONS) return 0;
     const idx: usize = @intCast(slot_idx);
     return if (sessions[idx].active and sessions[idx].state == .ready) 1 else 0;
@@ -190,6 +212,8 @@ pub export fn bsp_can_build(slot_idx: c_int) c_int {
 
 /// Is a build in progress?
 pub export fn bsp_is_building(slot_idx: c_int) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (slot_idx < 0 or slot_idx >= MAX_SESSIONS) return 0;
     const idx: usize = @intCast(slot_idx);
     return if (sessions[idx].active and sessions[idx].state == .building) 1 else 0;
@@ -197,6 +221,8 @@ pub export fn bsp_is_building(slot_idx: c_int) c_int {
 
 /// Register a build target. Returns target index or -1 on failure.
 pub export fn bsp_add_target(slot_idx: c_int, kind: c_int) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (slot_idx < 0 or slot_idx >= MAX_SESSIONS) return -1;
     const idx: usize = @intCast(slot_idx);
     if (!sessions[idx].active) return -1;
@@ -216,6 +242,8 @@ pub export fn bsp_add_target(slot_idx: c_int, kind: c_int) c_int {
 
 /// Check if a session has a specific capability.
 pub export fn bsp_has_capability(slot_idx: c_int, cap: c_int) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (slot_idx < 0 or slot_idx >= MAX_SESSIONS) return 0;
     const idx: usize = @intCast(slot_idx);
     if (!sessions[idx].active) return 0;
@@ -226,6 +254,8 @@ pub export fn bsp_has_capability(slot_idx: c_int, cap: c_int) c_int {
 
 /// Validate a state transition (C-ABI export).
 pub export fn bsp_can_transition(from: c_int, to: c_int) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     const f: BspState = @enumFromInt(from);
     const t: BspState = @enumFromInt(to);
     return if (isValidTransition(f, t)) 1 else 0;
@@ -233,6 +263,8 @@ pub export fn bsp_can_transition(from: c_int, to: c_int) c_int {
 
 /// Release a session slot.
 pub export fn bsp_release(slot_idx: c_int) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (slot_idx < 0 or slot_idx >= MAX_SESSIONS) return -1;
     const idx: usize = @intCast(slot_idx);
     if (!sessions[idx].active) return -1;
@@ -242,6 +274,8 @@ pub export fn bsp_release(slot_idx: c_int) c_int {
 
 /// Reset all sessions.
 pub export fn bsp_reset_all() void {
+    mutex.lock();
+    defer mutex.unlock();
     for (&sessions) |*slot| {
         slot.* = SessionSlot{};
     }
@@ -261,10 +295,14 @@ pub export fn boj_cartridge_deinit() void {
 }
 
 pub export fn boj_cartridge_name() [*:0]const u8 {
+    mutex.lock();
+    defer mutex.unlock();
     return "bsp-mcp";
 }
 
 pub export fn boj_cartridge_version() [*:0]const u8 {
+    mutex.lock();
+    defer mutex.unlock();
     return "0.1.0";
 }
 

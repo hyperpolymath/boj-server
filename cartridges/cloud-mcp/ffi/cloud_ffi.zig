@@ -46,6 +46,8 @@ var sessions: [MAX_SESSIONS]SessionSlot = [_]SessionSlot{.{
     .provider = .aws,
 }} ** MAX_SESSIONS;
 
+var mutex: std.Thread.Mutex = .{};
+
 /// Validate a state transition (matches Idris2 canTransition).
 fn isValidTransition(from: SessionState, to: SessionState) bool {
     return switch (from) {
@@ -58,6 +60,8 @@ fn isValidTransition(from: SessionState, to: SessionState) bool {
 
 /// Authenticate with a provider. Returns slot index or -1 on failure.
 pub export fn cloud_authenticate(provider: c_int) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     for (&sessions, 0..) |*slot, i| {
         if (!slot.active) {
             slot.active = true;
@@ -71,6 +75,8 @@ pub export fn cloud_authenticate(provider: c_int) c_int {
 
 /// Logout from a provider session by slot index.
 pub export fn cloud_logout(slot_idx: c_int) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (slot_idx < 0 or slot_idx >= MAX_SESSIONS) return -1;
     const idx: usize = @intCast(slot_idx);
     if (!sessions[idx].active) return -1;
@@ -83,6 +89,8 @@ pub export fn cloud_logout(slot_idx: c_int) c_int {
 
 /// Begin an operation (transition Authenticated -> Operating).
 pub export fn cloud_begin_operation(slot_idx: c_int) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (slot_idx < 0 or slot_idx >= MAX_SESSIONS) return -1;
     const idx: usize = @intCast(slot_idx);
     if (!sessions[idx].active) return -1;
@@ -94,6 +102,8 @@ pub export fn cloud_begin_operation(slot_idx: c_int) c_int {
 
 /// End an operation (transition Operating -> Authenticated).
 pub export fn cloud_end_operation(slot_idx: c_int) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (slot_idx < 0 or slot_idx >= MAX_SESSIONS) return -1;
     const idx: usize = @intCast(slot_idx);
     if (!sessions[idx].active) return -1;
@@ -105,6 +115,8 @@ pub export fn cloud_end_operation(slot_idx: c_int) c_int {
 
 /// Get the state of a session.
 pub export fn cloud_state(slot_idx: c_int) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (slot_idx < 0 or slot_idx >= MAX_SESSIONS) return -1;
     const idx: usize = @intCast(slot_idx);
     if (!sessions[idx].active) return @intFromEnum(SessionState.unauthenticated);
@@ -113,6 +125,8 @@ pub export fn cloud_state(slot_idx: c_int) c_int {
 
 /// Validate a state transition (C-ABI export).
 pub export fn cloud_can_transition(from: c_int, to: c_int) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     const f: SessionState = @enumFromInt(from);
     const t: SessionState = @enumFromInt(to);
     return if (isValidTransition(f, t)) 1 else 0;
@@ -120,6 +134,8 @@ pub export fn cloud_can_transition(from: c_int, to: c_int) c_int {
 
 /// Reset all sessions (for testing).
 pub export fn cloud_reset() void {
+    mutex.lock();
+    defer mutex.unlock();
     for (&sessions) |*slot| {
         slot.active = false;
         slot.state = .unauthenticated;
@@ -143,11 +159,15 @@ pub export fn boj_cartridge_deinit() void {
 
 /// Return the cartridge name as a null-terminated C string.
 pub export fn boj_cartridge_name() [*:0]const u8 {
+    mutex.lock();
+    defer mutex.unlock();
     return "cloud-mcp";
 }
 
 /// Return the cartridge version as a null-terminated C string.
 pub export fn boj_cartridge_version() [*:0]const u8 {
+    mutex.lock();
+    defer mutex.unlock();
     return "0.1.0";
 }
 

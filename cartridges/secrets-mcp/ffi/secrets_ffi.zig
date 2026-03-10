@@ -48,6 +48,8 @@ var vaults: [MAX_VAULTS]VaultSlot = [_]VaultSlot{.{
     .access_count = 0,
 }} ** MAX_VAULTS;
 
+var mutex: std.Thread.Mutex = .{};
+
 /// Validate a state transition (matches Idris2 canTransition).
 fn isValidTransition(from: VaultState, to: VaultState) bool {
     return switch (from) {
@@ -61,6 +63,8 @@ fn isValidTransition(from: VaultState, to: VaultState) bool {
 
 /// Unseal a vault. Returns slot index or -1 on failure.
 pub export fn sec_unseal(backend: c_int) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     for (&vaults, 0..) |*slot, i| {
         if (!slot.active) {
             slot.active = true;
@@ -75,6 +79,8 @@ pub export fn sec_unseal(backend: c_int) c_int {
 
 /// Authenticate with an unsealed vault (transition Unsealed -> Authenticated).
 pub export fn sec_authenticate(slot_idx: c_int) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (slot_idx < 0 or slot_idx >= MAX_VAULTS) return -1;
     const idx: usize = @intCast(slot_idx);
     if (!vaults[idx].active) return -1;
@@ -86,6 +92,8 @@ pub export fn sec_authenticate(slot_idx: c_int) c_int {
 
 /// Begin a secret access (transition Authenticated -> Accessing).
 pub export fn sec_begin_access(slot_idx: c_int) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (slot_idx < 0 or slot_idx >= MAX_VAULTS) return -1;
     const idx: usize = @intCast(slot_idx);
     if (!vaults[idx].active) return -1;
@@ -98,6 +106,8 @@ pub export fn sec_begin_access(slot_idx: c_int) c_int {
 /// End a secret access (transition Accessing -> Authenticated).
 /// Increments the audit access count.
 pub export fn sec_end_access(slot_idx: c_int) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (slot_idx < 0 or slot_idx >= MAX_VAULTS) return -1;
     const idx: usize = @intCast(slot_idx);
     if (!vaults[idx].active) return -1;
@@ -110,6 +120,8 @@ pub export fn sec_end_access(slot_idx: c_int) c_int {
 
 /// Seal the vault (transition Unsealed -> Sealed).
 pub export fn sec_seal(slot_idx: c_int) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (slot_idx < 0 or slot_idx >= MAX_VAULTS) return -1;
     const idx: usize = @intCast(slot_idx);
     if (!vaults[idx].active) return -1;
@@ -123,6 +135,8 @@ pub export fn sec_seal(slot_idx: c_int) c_int {
 
 /// Get the state of a vault.
 pub export fn sec_state(slot_idx: c_int) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (slot_idx < 0 or slot_idx >= MAX_VAULTS) return -1;
     const idx: usize = @intCast(slot_idx);
     if (!vaults[idx].active) return @intFromEnum(VaultState.sealed);
@@ -131,6 +145,8 @@ pub export fn sec_state(slot_idx: c_int) c_int {
 
 /// Get the access count for audit purposes.
 pub export fn sec_access_count(slot_idx: c_int) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (slot_idx < 0 or slot_idx >= MAX_VAULTS) return -1;
     const idx: usize = @intCast(slot_idx);
     if (!vaults[idx].active) return 0;
@@ -139,6 +155,8 @@ pub export fn sec_access_count(slot_idx: c_int) c_int {
 
 /// Validate a state transition (C-ABI export).
 pub export fn sec_can_transition(from: c_int, to: c_int) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     const f: VaultState = @enumFromInt(from);
     const t: VaultState = @enumFromInt(to);
     return if (isValidTransition(f, t)) 1 else 0;
@@ -146,6 +164,8 @@ pub export fn sec_can_transition(from: c_int, to: c_int) c_int {
 
 /// Reset all vaults (for testing).
 pub export fn sec_reset() void {
+    mutex.lock();
+    defer mutex.unlock();
     for (&vaults) |*slot| {
         slot.active = false;
         slot.state = .sealed;
@@ -170,11 +190,15 @@ pub export fn boj_cartridge_deinit() void {
 
 /// Return the cartridge name as a null-terminated C string.
 pub export fn boj_cartridge_name() [*:0]const u8 {
+    mutex.lock();
+    defer mutex.unlock();
     return "secrets-mcp";
 }
 
 /// Return the cartridge version as a null-terminated C string.
 pub export fn boj_cartridge_version() [*:0]const u8 {
+    mutex.lock();
+    defer mutex.unlock();
     return "0.1.0";
 }
 

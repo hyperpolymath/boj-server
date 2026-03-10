@@ -48,6 +48,8 @@ var queues: [MAX_QUEUES]QueueSlot = [_]QueueSlot{.{
     .msg_count = 0,
 }} ** MAX_QUEUES;
 
+var mutex: std.Thread.Mutex = .{};
+
 /// Validate a state transition (matches Idris2 canTransition).
 fn isValidTransition(from: QueueState, to: QueueState) bool {
     return switch (from) {
@@ -61,6 +63,8 @@ fn isValidTransition(from: QueueState, to: QueueState) bool {
 
 /// Connect to a queue backend. Returns slot index or -1 on failure.
 pub export fn queue_connect(backend: c_int) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     for (&queues, 0..) |*slot, i| {
         if (!slot.active) {
             slot.active = true;
@@ -75,6 +79,8 @@ pub export fn queue_connect(backend: c_int) c_int {
 
 /// Subscribe to a topic (transition Connected -> Subscribed).
 pub export fn queue_subscribe(slot_idx: c_int) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (slot_idx < 0 or slot_idx >= MAX_QUEUES) return -1;
     const idx: usize = @intCast(slot_idx);
     if (!queues[idx].active) return -1;
@@ -86,6 +92,8 @@ pub export fn queue_subscribe(slot_idx: c_int) c_int {
 
 /// Begin consuming a message (transition Subscribed -> Consuming).
 pub export fn queue_begin_consume(slot_idx: c_int) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (slot_idx < 0 or slot_idx >= MAX_QUEUES) return -1;
     const idx: usize = @intCast(slot_idx);
     if (!queues[idx].active) return -1;
@@ -98,6 +106,8 @@ pub export fn queue_begin_consume(slot_idx: c_int) c_int {
 /// Acknowledge a consumed message (transition Consuming -> Subscribed).
 /// Increments the message count.
 pub export fn queue_ack(slot_idx: c_int) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (slot_idx < 0 or slot_idx >= MAX_QUEUES) return -1;
     const idx: usize = @intCast(slot_idx);
     if (!queues[idx].active) return -1;
@@ -111,6 +121,8 @@ pub export fn queue_ack(slot_idx: c_int) c_int {
 /// Publish a message (requires at least Connected state).
 /// Does not change state — publish is a side-effect operation.
 pub export fn queue_publish(slot_idx: c_int) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (slot_idx < 0 or slot_idx >= MAX_QUEUES) return -1;
     const idx: usize = @intCast(slot_idx);
     if (!queues[idx].active) return -1;
@@ -123,6 +135,8 @@ pub export fn queue_publish(slot_idx: c_int) c_int {
 
 /// Unsubscribe from a topic (transition Subscribed -> Connected).
 pub export fn queue_unsubscribe(slot_idx: c_int) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (slot_idx < 0 or slot_idx >= MAX_QUEUES) return -1;
     const idx: usize = @intCast(slot_idx);
     if (!queues[idx].active) return -1;
@@ -134,6 +148,8 @@ pub export fn queue_unsubscribe(slot_idx: c_int) c_int {
 
 /// Disconnect from the queue backend (transition Connected -> Disconnected).
 pub export fn queue_disconnect(slot_idx: c_int) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (slot_idx < 0 or slot_idx >= MAX_QUEUES) return -1;
     const idx: usize = @intCast(slot_idx);
     if (!queues[idx].active) return -1;
@@ -147,6 +163,8 @@ pub export fn queue_disconnect(slot_idx: c_int) c_int {
 
 /// Get the state of a queue connection.
 pub export fn queue_state(slot_idx: c_int) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (slot_idx < 0 or slot_idx >= MAX_QUEUES) return -1;
     const idx: usize = @intCast(slot_idx);
     if (!queues[idx].active) return @intFromEnum(QueueState.disconnected);
@@ -155,6 +173,8 @@ pub export fn queue_state(slot_idx: c_int) c_int {
 
 /// Get the message count for a queue connection.
 pub export fn queue_msg_count(slot_idx: c_int) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (slot_idx < 0 or slot_idx >= MAX_QUEUES) return -1;
     const idx: usize = @intCast(slot_idx);
     if (!queues[idx].active) return 0;
@@ -163,6 +183,8 @@ pub export fn queue_msg_count(slot_idx: c_int) c_int {
 
 /// Validate a state transition (C-ABI export).
 pub export fn queue_can_transition(from: c_int, to: c_int) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     const f: QueueState = @enumFromInt(from);
     const t: QueueState = @enumFromInt(to);
     return if (isValidTransition(f, t)) 1 else 0;
@@ -170,6 +192,8 @@ pub export fn queue_can_transition(from: c_int, to: c_int) c_int {
 
 /// Reset all queue connections (for testing).
 pub export fn queue_reset() void {
+    mutex.lock();
+    defer mutex.unlock();
     for (&queues) |*slot| {
         slot.active = false;
         slot.state = .disconnected;
@@ -194,11 +218,15 @@ pub export fn boj_cartridge_deinit() void {
 
 /// Return the cartridge name as a null-terminated C string.
 pub export fn boj_cartridge_name() [*:0]const u8 {
+    mutex.lock();
+    defer mutex.unlock();
     return "queues-mcp";
 }
 
 /// Return the cartridge version as a null-terminated C string.
 pub export fn boj_cartridge_version() [*:0]const u8 {
+    mutex.lock();
+    defer mutex.unlock();
     return "0.1.0";
 }
 

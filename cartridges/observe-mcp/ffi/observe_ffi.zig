@@ -49,6 +49,8 @@ var sources: [MAX_SOURCES]SourceSlot = [_]SourceSlot{.{
     .query_count = 0,
 }} ** MAX_SOURCES;
 
+var mutex: std.Thread.Mutex = .{};
+
 /// Validate a state transition (matches Idris2 canTransition).
 fn isValidTransition(from: ObserveState, to: ObserveState) bool {
     return switch (from) {
@@ -62,6 +64,8 @@ fn isValidTransition(from: ObserveState, to: ObserveState) bool {
 
 /// Register a new observability source. Returns slot index or -1 on failure.
 pub export fn obs_register(backend: c_int) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     for (&sources, 0..) |*slot, i| {
         if (!slot.active) {
             slot.active = true;
@@ -83,6 +87,8 @@ fn readySource(idx: usize) c_int {
 
 /// Begin a query (transition QueryReady -> Querying).
 pub export fn obs_begin_query(slot_idx: c_int) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (slot_idx < 0 or slot_idx >= MAX_SOURCES) return -1;
     const idx: usize = @intCast(slot_idx);
     if (!sources[idx].active) return -1;
@@ -101,6 +107,8 @@ pub export fn obs_begin_query(slot_idx: c_int) c_int {
 
 /// End a query successfully (transition Querying -> QueryReady).
 pub export fn obs_end_query(slot_idx: c_int) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (slot_idx < 0 or slot_idx >= MAX_SOURCES) return -1;
     const idx: usize = @intCast(slot_idx);
     if (!sources[idx].active) return -1;
@@ -113,6 +121,8 @@ pub export fn obs_end_query(slot_idx: c_int) c_int {
 
 /// Unregister a source (transition QueryReady -> Unconfigured).
 pub export fn obs_unregister(slot_idx: c_int) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (slot_idx < 0 or slot_idx >= MAX_SOURCES) return -1;
     const idx: usize = @intCast(slot_idx);
     if (!sources[idx].active) return -1;
@@ -126,6 +136,8 @@ pub export fn obs_unregister(slot_idx: c_int) c_int {
 
 /// Get the state of a source.
 pub export fn obs_state(slot_idx: c_int) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (slot_idx < 0 or slot_idx >= MAX_SOURCES) return -1;
     const idx: usize = @intCast(slot_idx);
     if (!sources[idx].active) return @intFromEnum(ObserveState.unconfigured);
@@ -134,6 +146,8 @@ pub export fn obs_state(slot_idx: c_int) c_int {
 
 /// Get the query count for a source (for backpressure tracking).
 pub export fn obs_query_count(slot_idx: c_int) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (slot_idx < 0 or slot_idx >= MAX_SOURCES) return -1;
     const idx: usize = @intCast(slot_idx);
     if (!sources[idx].active) return 0;
@@ -142,6 +156,8 @@ pub export fn obs_query_count(slot_idx: c_int) c_int {
 
 /// Validate a state transition (C-ABI export).
 pub export fn obs_can_transition(from: c_int, to: c_int) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     const f: ObserveState = @enumFromInt(from);
     const t: ObserveState = @enumFromInt(to);
     return if (isValidTransition(f, t)) 1 else 0;
@@ -149,6 +165,8 @@ pub export fn obs_can_transition(from: c_int, to: c_int) c_int {
 
 /// Reset all sources (for testing).
 pub export fn obs_reset() void {
+    mutex.lock();
+    defer mutex.unlock();
     for (&sources) |*slot| {
         slot.active = false;
         slot.state = .unconfigured;
@@ -173,11 +191,15 @@ pub export fn boj_cartridge_deinit() void {
 
 /// Return the cartridge name as a null-terminated C string.
 pub export fn boj_cartridge_name() [*:0]const u8 {
+    mutex.lock();
+    defer mutex.unlock();
     return "observe-mcp";
 }
 
 /// Return the cartridge version as a null-terminated C string.
 pub export fn boj_cartridge_version() [*:0]const u8 {
+    mutex.lock();
+    defer mutex.unlock();
     return "0.1.0";
 }
 

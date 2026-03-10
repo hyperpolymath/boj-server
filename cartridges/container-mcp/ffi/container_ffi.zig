@@ -48,6 +48,8 @@ var containers: [MAX_CONTAINERS]ContainerSlot = [_]ContainerSlot{.{
     .image_name_hash = 0,
 }} ** MAX_CONTAINERS;
 
+var mutex: std.Thread.Mutex = .{};
+
 /// Validate a state transition (matches Idris2 canTransition).
 fn isValidTransition(from: CtrState, to: CtrState) bool {
     return switch (from) {
@@ -72,6 +74,8 @@ fn hashName(name: [*:0]const u8) u32 {
 
 /// Build a container image. Returns slot index or -1 on failure.
 pub export fn ctr_build(runtime: c_int, image_name: [*:0]const u8) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     for (&containers, 0..) |*slot, i| {
         if (!slot.active) {
             slot.active = true;
@@ -86,6 +90,8 @@ pub export fn ctr_build(runtime: c_int, image_name: [*:0]const u8) c_int {
 
 /// Create a container from a built image.
 pub export fn ctr_create(slot_idx: c_int) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (slot_idx < 0 or slot_idx >= MAX_CONTAINERS) return -1;
     const idx: usize = @intCast(slot_idx);
     if (!containers[idx].active) return -1;
@@ -97,6 +103,8 @@ pub export fn ctr_create(slot_idx: c_int) c_int {
 
 /// Start a created or stopped container.
 pub export fn ctr_start(slot_idx: c_int) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (slot_idx < 0 or slot_idx >= MAX_CONTAINERS) return -1;
     const idx: usize = @intCast(slot_idx);
     if (!containers[idx].active) return -1;
@@ -108,6 +116,8 @@ pub export fn ctr_start(slot_idx: c_int) c_int {
 
 /// Stop a running container.
 pub export fn ctr_stop(slot_idx: c_int) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (slot_idx < 0 or slot_idx >= MAX_CONTAINERS) return -1;
     const idx: usize = @intCast(slot_idx);
     if (!containers[idx].active) return -1;
@@ -119,6 +129,8 @@ pub export fn ctr_stop(slot_idx: c_int) c_int {
 
 /// Remove a stopped or created container.
 pub export fn ctr_remove(slot_idx: c_int) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (slot_idx < 0 or slot_idx >= MAX_CONTAINERS) return -1;
     const idx: usize = @intCast(slot_idx);
     if (!containers[idx].active) return -1;
@@ -131,6 +143,8 @@ pub export fn ctr_remove(slot_idx: c_int) c_int {
 
 /// Get the state of a container.
 pub export fn ctr_state(slot_idx: c_int) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (slot_idx < 0 or slot_idx >= MAX_CONTAINERS) return -1;
     const idx: usize = @intCast(slot_idx);
     if (!containers[idx].active) return @intFromEnum(CtrState.none);
@@ -139,6 +153,8 @@ pub export fn ctr_state(slot_idx: c_int) c_int {
 
 /// Validate a state transition (C-ABI export).
 pub export fn ctr_can_transition(from: c_int, to: c_int) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     const f: CtrState = @enumFromInt(from);
     const t: CtrState = @enumFromInt(to);
     return if (isValidTransition(f, t)) 1 else 0;
@@ -146,6 +162,8 @@ pub export fn ctr_can_transition(from: c_int, to: c_int) c_int {
 
 /// Reset all containers (for testing).
 pub export fn ctr_reset() void {
+    mutex.lock();
+    defer mutex.unlock();
     for (&containers) |*slot| {
         slot.active = false;
         slot.state = .none;
@@ -170,11 +188,15 @@ pub export fn boj_cartridge_deinit() void {
 
 /// Return the cartridge name as a null-terminated C string.
 pub export fn boj_cartridge_name() [*:0]const u8 {
+    mutex.lock();
+    defer mutex.unlock();
     return "container-mcp";
 }
 
 /// Return the cartridge version as a null-terminated C string.
 pub export fn boj_cartridge_version() [*:0]const u8 {
+    mutex.lock();
+    defer mutex.unlock();
     return "0.1.0";
 }
 

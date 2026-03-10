@@ -48,6 +48,8 @@ var workspaces: [MAX_WORKSPACES]WorkspaceSlot = [_]WorkspaceSlot{.{
     .plan_hash = 0,
 }} ** MAX_WORKSPACES;
 
+var mutex: std.Thread.Mutex = .{};
+
 /// Validate a state transition (matches Idris2 canTransition).
 fn isValidTransition(from: IacState, to: IacState) bool {
     return switch (from) {
@@ -62,6 +64,8 @@ fn isValidTransition(from: IacState, to: IacState) bool {
 
 /// Initialise a new workspace. Returns slot index or -1 on failure.
 pub export fn iac_init(tool: c_int) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     for (&workspaces, 0..) |*slot, i| {
         if (!slot.active) {
             slot.active = true;
@@ -76,6 +80,8 @@ pub export fn iac_init(tool: c_int) c_int {
 
 /// Generate a plan for a workspace.
 pub export fn iac_plan(slot_idx: c_int, plan_hash: u32) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (slot_idx < 0 or slot_idx >= MAX_WORKSPACES) return -1;
     const idx: usize = @intCast(slot_idx);
     if (!workspaces[idx].active) return -1;
@@ -89,6 +95,8 @@ pub export fn iac_plan(slot_idx: c_int, plan_hash: u32) c_int {
 /// Apply the planned changes. REQUIRES state to be Planned (not Initialized).
 /// This is the key safety invariant: you cannot apply without planning first.
 pub export fn iac_apply(slot_idx: c_int) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (slot_idx < 0 or slot_idx >= MAX_WORKSPACES) return -1;
     const idx: usize = @intCast(slot_idx);
     if (!workspaces[idx].active) return -1;
@@ -104,6 +112,8 @@ pub export fn iac_apply(slot_idx: c_int) c_int {
 
 /// Destroy all resources and return to Uninitialized.
 pub export fn iac_destroy(slot_idx: c_int) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (slot_idx < 0 or slot_idx >= MAX_WORKSPACES) return -1;
     const idx: usize = @intCast(slot_idx);
     if (!workspaces[idx].active) return -1;
@@ -117,6 +127,8 @@ pub export fn iac_destroy(slot_idx: c_int) c_int {
 
 /// Get the state of a workspace.
 pub export fn iac_state(slot_idx: c_int) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (slot_idx < 0 or slot_idx >= MAX_WORKSPACES) return -1;
     const idx: usize = @intCast(slot_idx);
     if (!workspaces[idx].active) return @intFromEnum(IacState.uninitialized);
@@ -125,6 +137,8 @@ pub export fn iac_state(slot_idx: c_int) c_int {
 
 /// Check whether a workspace has an active plan.
 pub export fn iac_has_plan(slot_idx: c_int) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (slot_idx < 0 or slot_idx >= MAX_WORKSPACES) return 0;
     const idx: usize = @intCast(slot_idx);
     if (!workspaces[idx].active) return 0;
@@ -133,6 +147,8 @@ pub export fn iac_has_plan(slot_idx: c_int) c_int {
 
 /// Validate a state transition (C-ABI export).
 pub export fn iac_can_transition(from: c_int, to: c_int) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     const f: IacState = @enumFromInt(from);
     const t: IacState = @enumFromInt(to);
     return if (isValidTransition(f, t)) 1 else 0;
@@ -140,6 +156,8 @@ pub export fn iac_can_transition(from: c_int, to: c_int) c_int {
 
 /// Reset all workspaces (for testing).
 pub export fn iac_reset() void {
+    mutex.lock();
+    defer mutex.unlock();
     for (&workspaces) |*slot| {
         slot.active = false;
         slot.state = .uninitialized;
@@ -164,11 +182,15 @@ pub export fn boj_cartridge_deinit() void {
 
 /// Return the cartridge name as a null-terminated C string.
 pub export fn boj_cartridge_name() [*:0]const u8 {
+    mutex.lock();
+    defer mutex.unlock();
     return "iac-mcp";
 }
 
 /// Return the cartridge version as a null-terminated C string.
 pub export fn boj_cartridge_version() [*:0]const u8 {
+    mutex.lock();
+    defer mutex.unlock();
     return "0.1.0";
 }
 

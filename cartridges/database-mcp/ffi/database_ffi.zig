@@ -51,6 +51,8 @@ var connections: [MAX_CONNECTIONS]ConnectionSlot = [_]ConnectionSlot{.{
     .backend = .sqlite,
 }} ** MAX_CONNECTIONS;
 
+var mutex: std.Thread.Mutex = .{};
+
 /// Validate a state transition (matches Idris2 canTransition).
 fn isValidTransition(from: ConnState, to: ConnState) bool {
     return switch (from) {
@@ -63,6 +65,8 @@ fn isValidTransition(from: ConnState, to: ConnState) bool {
 
 /// Open a new connection. Returns slot index or -1 on failure.
 pub export fn db_connect(backend: c_int) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     for (&connections, 0..) |*slot, i| {
         if (!slot.active) {
             slot.active = true;
@@ -76,6 +80,8 @@ pub export fn db_connect(backend: c_int) c_int {
 
 /// Close a connection by slot index.
 pub export fn db_disconnect(slot_idx: c_int) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (slot_idx < 0 or slot_idx >= MAX_CONNECTIONS) return -1;
     const idx: usize = @intCast(slot_idx);
     if (!connections[idx].active) return -1;
@@ -88,6 +94,8 @@ pub export fn db_disconnect(slot_idx: c_int) c_int {
 
 /// Get the state of a connection.
 pub export fn db_state(slot_idx: c_int) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (slot_idx < 0 or slot_idx >= MAX_CONNECTIONS) return -1;
     const idx: usize = @intCast(slot_idx);
     if (!connections[idx].active) return @intFromEnum(ConnState.disconnected);
@@ -96,6 +104,8 @@ pub export fn db_state(slot_idx: c_int) c_int {
 
 /// Begin a query (transition Connected -> Querying).
 pub export fn db_begin_query(slot_idx: c_int) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (slot_idx < 0 or slot_idx >= MAX_CONNECTIONS) return -1;
     const idx: usize = @intCast(slot_idx);
     if (!connections[idx].active) return -1;
@@ -107,6 +117,8 @@ pub export fn db_begin_query(slot_idx: c_int) c_int {
 
 /// End a query successfully (transition Querying -> Connected).
 pub export fn db_end_query(slot_idx: c_int) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (slot_idx < 0 or slot_idx >= MAX_CONNECTIONS) return -1;
     const idx: usize = @intCast(slot_idx);
     if (!connections[idx].active) return -1;
@@ -118,6 +130,8 @@ pub export fn db_end_query(slot_idx: c_int) c_int {
 
 /// Record a query error (transition Querying -> Error).
 pub export fn db_query_error(slot_idx: c_int) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (slot_idx < 0 or slot_idx >= MAX_CONNECTIONS) return -1;
     const idx: usize = @intCast(slot_idx);
     if (!connections[idx].active) return -1;
@@ -129,6 +143,8 @@ pub export fn db_query_error(slot_idx: c_int) c_int {
 
 /// Validate a state transition (C-ABI export).
 pub export fn db_can_transition(from: c_int, to: c_int) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     const f: ConnState = @enumFromInt(from);
     const t: ConnState = @enumFromInt(to);
     return if (isValidTransition(f, t)) 1 else 0;
@@ -136,6 +152,8 @@ pub export fn db_can_transition(from: c_int, to: c_int) c_int {
 
 /// Reset all connections (for testing).
 pub export fn db_reset() void {
+    mutex.lock();
+    defer mutex.unlock();
     for (&connections) |*slot| {
         slot.active = false;
         slot.state = .disconnected;
@@ -160,11 +178,15 @@ pub export fn boj_cartridge_deinit() void {
 
 /// Return the cartridge name as a null-terminated C string.
 pub export fn boj_cartridge_name() [*:0]const u8 {
+    mutex.lock();
+    defer mutex.unlock();
     return "database-mcp";
 }
 
 /// Return the cartridge version as a null-terminated C string.
 pub export fn boj_cartridge_version() [*:0]const u8 {
+    mutex.lock();
+    defer mutex.unlock();
     return "0.1.0";
 }
 

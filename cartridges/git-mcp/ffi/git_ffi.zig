@@ -48,6 +48,8 @@ var forges: [MAX_FORGES]ForgeSlot = [_]ForgeSlot{.{
     .selected_repo_hash = 0,
 }} ** MAX_FORGES;
 
+var mutex: std.Thread.Mutex = .{};
+
 /// Validate a state transition (matches Idris2 canTransition).
 fn isValidTransition(from: GitState, to: GitState) bool {
     return switch (from) {
@@ -76,6 +78,8 @@ fn hashRepo(owner: [*:0]const u8, name: [*:0]const u8) u64 {
 
 /// Authenticate with a forge. Returns slot index or -1 on failure.
 pub export fn git_authenticate(forge_type: c_int) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     for (&forges, 0..) |*slot, i| {
         if (!slot.active) {
             slot.active = true;
@@ -90,6 +94,8 @@ pub export fn git_authenticate(forge_type: c_int) c_int {
 
 /// Select a repository context (transition Authenticated -> RepoSelected).
 pub export fn git_select_repo(slot_idx: c_int, owner: [*:0]const u8, name: [*:0]const u8) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (slot_idx < 0 or slot_idx >= MAX_FORGES) return -1;
     const idx: usize = @intCast(slot_idx);
     if (!forges[idx].active) return -1;
@@ -102,6 +108,8 @@ pub export fn git_select_repo(slot_idx: c_int, owner: [*:0]const u8, name: [*:0]
 
 /// Begin an operation (transition RepoSelected -> Operating).
 pub export fn git_begin_operation(slot_idx: c_int) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (slot_idx < 0 or slot_idx >= MAX_FORGES) return -1;
     const idx: usize = @intCast(slot_idx);
     if (!forges[idx].active) return -1;
@@ -113,6 +121,8 @@ pub export fn git_begin_operation(slot_idx: c_int) c_int {
 
 /// End an operation successfully (transition Operating -> RepoSelected).
 pub export fn git_end_operation(slot_idx: c_int) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (slot_idx < 0 or slot_idx >= MAX_FORGES) return -1;
     const idx: usize = @intCast(slot_idx);
     if (!forges[idx].active) return -1;
@@ -124,6 +134,8 @@ pub export fn git_end_operation(slot_idx: c_int) c_int {
 
 /// Logout from forge (transition Authenticated -> Unauthenticated).
 pub export fn git_logout(slot_idx: c_int) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (slot_idx < 0 or slot_idx >= MAX_FORGES) return -1;
     const idx: usize = @intCast(slot_idx);
     if (!forges[idx].active) return -1;
@@ -137,6 +149,8 @@ pub export fn git_logout(slot_idx: c_int) c_int {
 
 /// Get the state of a forge session.
 pub export fn git_state(slot_idx: c_int) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (slot_idx < 0 or slot_idx >= MAX_FORGES) return -1;
     const idx: usize = @intCast(slot_idx);
     if (!forges[idx].active) return @intFromEnum(GitState.unauthenticated);
@@ -145,6 +159,8 @@ pub export fn git_state(slot_idx: c_int) c_int {
 
 /// Validate a state transition (C-ABI export).
 pub export fn git_can_transition(from: c_int, to: c_int) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     const f: GitState = @enumFromInt(from);
     const t: GitState = @enumFromInt(to);
     return if (isValidTransition(f, t)) 1 else 0;
@@ -152,6 +168,8 @@ pub export fn git_can_transition(from: c_int, to: c_int) c_int {
 
 /// Reset all forge sessions (for testing).
 pub export fn git_reset() void {
+    mutex.lock();
+    defer mutex.unlock();
     for (&forges) |*slot| {
         slot.active = false;
         slot.state = .unauthenticated;
@@ -176,11 +194,15 @@ pub export fn boj_cartridge_deinit() void {
 
 /// Return the cartridge name as a null-terminated C string.
 pub export fn boj_cartridge_name() [*:0]const u8 {
+    mutex.lock();
+    defer mutex.unlock();
     return "git-mcp";
 }
 
 /// Return the cartridge version as a null-terminated C string.
 pub export fn boj_cartridge_version() [*:0]const u8 {
+    mutex.lock();
+    defer mutex.unlock();
     return "0.1.0";
 }
 

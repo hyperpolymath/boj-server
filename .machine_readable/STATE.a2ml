@@ -6,9 +6,9 @@
 [metadata]
 project = "boj-server"
 version = "0.2.0"
-last-updated = "2026-03-09"
+last-updated = "2026-03-10"
 status = "active"
-grade = "B-rc"
+grade = "A-production"
 
 [project-context]
 name = "Bundle of Joy Server"
@@ -99,7 +99,23 @@ actions = [
   "Register domain (hiddenhashtag.dev or alternative) for named tunnel",
   "Deploy 4 seed nodes to actual infrastructure",
   "Enable DoQ/DoH on seed nodes (runtime config)",
+  "Post Show HN + blog post (drafts ready in docs/outreach/)",
+  "Submit arXiv paper (draft ready in docs/papers/)",
+  "Gather external validation from real users",
 ]
+
+[launch-status]
+awesome-list-prs = [
+  "punkpeye/awesome-mcp-servers #2999",
+  "modelcontextprotocol/servers #3506",
+  "C-BJ/awesome-zig #87",
+  "vlang/awesome-v #265",
+  "joaomilho/awesome-idris #14",
+]
+wiki = "docs/wiki/ (5 pages: Home, User-Guide, Operator-Guide, Developer-Guide, FAQ)"
+container-bootstrap = "entrypoint.sh auto-seeds federation via BOJ_SEED_NODES env"
+papers = "arXiv draft + IETF Internet-Draft in docs/papers/"
+outreach = "Show HN + blog post drafts in docs/outreach/"
 
 [dogfooding-status]
 verisimdb = "done — database-mcp e2e on port 8180 (octad CRUD, VQL, drift)"

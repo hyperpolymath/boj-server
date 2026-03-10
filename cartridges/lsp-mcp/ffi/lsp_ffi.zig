@@ -73,6 +73,8 @@ const SessionSlot = struct {
 
 var sessions: [MAX_SESSIONS]SessionSlot = [_]SessionSlot{.{}} ** MAX_SESSIONS;
 
+var mutex: std.Thread.Mutex = .{};
+
 /// Validate a state transition (matches Idris2 canTransition).
 fn isValidTransition(from: LspState, to: LspState) bool {
     return switch (from) {
@@ -86,6 +88,8 @@ fn isValidTransition(from: LspState, to: LspState) bool {
 
 /// Initialise a new LSP session. Returns slot index or -1 on failure.
 pub export fn lsp_init() c_int {
+    mutex.lock();
+    defer mutex.unlock();
     for (&sessions, 0..) |*slot, i| {
         if (!slot.active) {
             slot.* = SessionSlot{};
@@ -99,6 +103,8 @@ pub export fn lsp_init() c_int {
 
 /// Transition to initializing (Uninitialized -> Initializing).
 pub export fn lsp_start_init(slot_idx: c_int) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (slot_idx < 0 or slot_idx >= MAX_SESSIONS) return -1;
     const idx: usize = @intCast(slot_idx);
     if (!sessions[idx].active) return -1;
@@ -109,6 +115,8 @@ pub export fn lsp_start_init(slot_idx: c_int) c_int {
 
 /// Register a capability during initialization.
 pub export fn lsp_register_capability(slot_idx: c_int, cap: c_int) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (slot_idx < 0 or slot_idx >= MAX_SESSIONS) return -1;
     const idx: usize = @intCast(slot_idx);
     if (!sessions[idx].active) return -1;
@@ -122,6 +130,8 @@ pub export fn lsp_register_capability(slot_idx: c_int, cap: c_int) c_int {
 
 /// Mark initialization complete (Initializing -> Running).
 pub export fn lsp_initialized(slot_idx: c_int) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (slot_idx < 0 or slot_idx >= MAX_SESSIONS) return -1;
     const idx: usize = @intCast(slot_idx);
     if (!sessions[idx].active) return -1;
@@ -132,6 +142,8 @@ pub export fn lsp_initialized(slot_idx: c_int) c_int {
 
 /// Request shutdown (Running -> ShuttingDown).
 pub export fn lsp_shutdown(slot_idx: c_int) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (slot_idx < 0 or slot_idx >= MAX_SESSIONS) return -1;
     const idx: usize = @intCast(slot_idx);
     if (!sessions[idx].active) return -1;
@@ -142,6 +154,8 @@ pub export fn lsp_shutdown(slot_idx: c_int) c_int {
 
 /// Exit (ShuttingDown/Running/Initializing -> Exited).
 pub export fn lsp_exit(slot_idx: c_int) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (slot_idx < 0 or slot_idx >= MAX_SESSIONS) return -1;
     const idx: usize = @intCast(slot_idx);
     if (!sessions[idx].active) return -1;
@@ -152,6 +166,8 @@ pub export fn lsp_exit(slot_idx: c_int) c_int {
 
 /// Get the state of a session.
 pub export fn lsp_state(slot_idx: c_int) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (slot_idx < 0 or slot_idx >= MAX_SESSIONS) return -1;
     const idx: usize = @intCast(slot_idx);
     if (!sessions[idx].active) return @intFromEnum(LspState.uninitialized);
@@ -160,6 +176,8 @@ pub export fn lsp_state(slot_idx: c_int) c_int {
 
 /// Check if a session has a specific capability.
 pub export fn lsp_has_capability(slot_idx: c_int, cap: c_int) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (slot_idx < 0 or slot_idx >= MAX_SESSIONS) return -1;
     const idx: usize = @intCast(slot_idx);
     if (!sessions[idx].active) return 0;
@@ -170,6 +188,8 @@ pub export fn lsp_has_capability(slot_idx: c_int, cap: c_int) c_int {
 
 /// Validate a state transition (C-ABI export).
 pub export fn lsp_can_transition(from: c_int, to: c_int) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     const f: LspState = @enumFromInt(from);
     const t: LspState = @enumFromInt(to);
     return if (isValidTransition(f, t)) 1 else 0;
@@ -177,6 +197,8 @@ pub export fn lsp_can_transition(from: c_int, to: c_int) c_int {
 
 /// Release a session slot.
 pub export fn lsp_release(slot_idx: c_int) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (slot_idx < 0 or slot_idx >= MAX_SESSIONS) return -1;
     const idx: usize = @intCast(slot_idx);
     if (!sessions[idx].active) return -1;
@@ -186,6 +208,8 @@ pub export fn lsp_release(slot_idx: c_int) c_int {
 
 /// Reset all sessions (for testing).
 pub export fn lsp_reset_all() void {
+    mutex.lock();
+    defer mutex.unlock();
     for (&sessions) |*slot| {
         slot.* = SessionSlot{};
     }
@@ -205,10 +229,14 @@ pub export fn boj_cartridge_deinit() void {
 }
 
 pub export fn boj_cartridge_name() [*:0]const u8 {
+    mutex.lock();
+    defer mutex.unlock();
     return "lsp-mcp";
 }
 
 pub export fn boj_cartridge_version() [*:0]const u8 {
+    mutex.lock();
+    defer mutex.unlock();
     return "0.1.0";
 }
 

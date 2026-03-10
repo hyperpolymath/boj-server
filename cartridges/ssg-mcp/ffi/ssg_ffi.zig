@@ -51,6 +51,8 @@ var sites: [MAX_SITES]SiteSlot = [_]SiteSlot{.{
     .content_hash = 0,
 }} ** MAX_SITES;
 
+var mutex: std.Thread.Mutex = .{};
+
 /// Validate a state transition (matches Idris2 canTransition).
 fn isValidTransition(from: SsgState, to: SsgState) bool {
     return switch (from) {
@@ -66,6 +68,8 @@ fn isValidTransition(from: SsgState, to: SsgState) bool {
 
 /// Load content into a new site. Returns slot index or -1 on failure.
 pub export fn ssg_load_content(engine: c_int, content_hash: u32) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     for (&sites, 0..) |*slot, i| {
         if (!slot.active) {
             slot.active = true;
@@ -80,6 +84,8 @@ pub export fn ssg_load_content(engine: c_int, content_hash: u32) c_int {
 
 /// Build the static site.
 pub export fn ssg_build(slot_idx: c_int) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (slot_idx < 0 or slot_idx >= MAX_SITES) return -1;
     const idx: usize = @intCast(slot_idx);
     if (!sites[idx].active) return -1;
@@ -91,6 +97,8 @@ pub export fn ssg_build(slot_idx: c_int) c_int {
 
 /// Start preview server. REQUIRES state to be Built (not ContentLoaded).
 pub export fn ssg_preview(slot_idx: c_int) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (slot_idx < 0 or slot_idx >= MAX_SITES) return -1;
     const idx: usize = @intCast(slot_idx);
     if (!sites[idx].active) return -1;
@@ -104,6 +112,8 @@ pub export fn ssg_preview(slot_idx: c_int) c_int {
 
 /// Mark preview as complete, transition to ReadyToDeploy.
 pub export fn ssg_ready_deploy(slot_idx: c_int) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (slot_idx < 0 or slot_idx >= MAX_SITES) return -1;
     const idx: usize = @intCast(slot_idx);
     if (!sites[idx].active) return -1;
@@ -116,6 +126,8 @@ pub export fn ssg_ready_deploy(slot_idx: c_int) c_int {
 /// Deploy the site. REQUIRES state to be ReadyToDeploy (not Built).
 /// This is the key safety invariant: you cannot deploy without previewing first.
 pub export fn ssg_deploy(slot_idx: c_int) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (slot_idx < 0 or slot_idx >= MAX_SITES) return -1;
     const idx: usize = @intCast(slot_idx);
     if (!sites[idx].active) return -1;
@@ -129,6 +141,8 @@ pub export fn ssg_deploy(slot_idx: c_int) c_int {
 
 /// Clean build artifacts and reset to Empty.
 pub export fn ssg_clean(slot_idx: c_int) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (slot_idx < 0 or slot_idx >= MAX_SITES) return -1;
     const idx: usize = @intCast(slot_idx);
     if (!sites[idx].active) return -1;
@@ -142,6 +156,8 @@ pub export fn ssg_clean(slot_idx: c_int) c_int {
 
 /// Get the state of a site.
 pub export fn ssg_state(slot_idx: c_int) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (slot_idx < 0 or slot_idx >= MAX_SITES) return -1;
     const idx: usize = @intCast(slot_idx);
     if (!sites[idx].active) return @intFromEnum(SsgState.empty);
@@ -150,6 +166,8 @@ pub export fn ssg_state(slot_idx: c_int) c_int {
 
 /// Validate a state transition (C-ABI export).
 pub export fn ssg_can_transition(from: c_int, to: c_int) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     const f: SsgState = @enumFromInt(from);
     const t: SsgState = @enumFromInt(to);
     return if (isValidTransition(f, t)) 1 else 0;
@@ -157,6 +175,8 @@ pub export fn ssg_can_transition(from: c_int, to: c_int) c_int {
 
 /// Reset all sites (for testing).
 pub export fn ssg_reset() void {
+    mutex.lock();
+    defer mutex.unlock();
     for (&sites) |*slot| {
         slot.active = false;
         slot.state = .empty;
@@ -181,11 +201,15 @@ pub export fn boj_cartridge_deinit() void {
 
 /// Return the cartridge name as a null-terminated C string.
 pub export fn boj_cartridge_name() [*:0]const u8 {
+    mutex.lock();
+    defer mutex.unlock();
     return "ssg-mcp";
 }
 
 /// Return the cartridge version as a null-terminated C string.
 pub export fn boj_cartridge_version() [*:0]const u8 {
+    mutex.lock();
+    defer mutex.unlock();
     return "0.1.0";
 }
 

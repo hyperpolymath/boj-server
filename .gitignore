@@ -109,3 +109,10 @@ cartridges/*/ffi/zig-out/
 
 # Cartridge Idris2 build artifacts
 cartridges/*/abi/build/
+
+# V-lang build artifacts
+adapter/v/boj-server
+v.mod.lock
+
+# Hypatia scanner logs
+.hypatia/

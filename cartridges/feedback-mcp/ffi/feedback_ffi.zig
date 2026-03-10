@@ -71,6 +71,8 @@ var channels: [MAX_CHANNELS]ChannelSlot = [_]ChannelSlot{.{
     .neutral_count = 0,
 }} ** MAX_CHANNELS;
 
+var mutex: std.Thread.Mutex = .{};
+
 /// Validate a state transition (matches Idris2 canTransition).
 fn isValidTransition(from: FeedbackState, to: FeedbackState) bool {
     return switch (from) {
@@ -84,6 +86,8 @@ fn isValidTransition(from: FeedbackState, to: FeedbackState) bool {
 
 /// Register a new feedback channel. Returns slot index or -1 on failure.
 pub export fn fb_register(channel_type: c_int) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     for (&channels, 0..) |*slot, i| {
         if (!slot.active) {
             slot.active = true;
@@ -101,6 +105,8 @@ pub export fn fb_register(channel_type: c_int) c_int {
 
 /// Transition a channel to collecting state.
 pub export fn fb_start_collecting(slot_idx: c_int) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (slot_idx < 0 or slot_idx >= MAX_CHANNELS) return -1;
     const idx: usize = @intCast(slot_idx);
     if (!channels[idx].active) return -1;
@@ -111,6 +117,8 @@ pub export fn fb_start_collecting(slot_idx: c_int) c_int {
 
 /// Submit feedback to a channel (must be in collecting state).
 pub export fn fb_submit(slot_idx: c_int, sentiment: c_int) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (slot_idx < 0 or slot_idx >= MAX_CHANNELS) return -1;
     const idx: usize = @intCast(slot_idx);
     if (!channels[idx].active) return -1;
@@ -135,6 +143,8 @@ pub export fn fb_submit(slot_idx: c_int, sentiment: c_int) c_int {
 
 /// Get the state of a channel.
 pub export fn fb_state(slot_idx: c_int) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (slot_idx < 0 or slot_idx >= MAX_CHANNELS) return -1;
     const idx: usize = @intCast(slot_idx);
     if (!channels[idx].active) return @intFromEnum(FeedbackState.inactive);
@@ -143,6 +153,8 @@ pub export fn fb_state(slot_idx: c_int) c_int {
 
 /// Get the feedback count for a channel.
 pub export fn fb_count(slot_idx: c_int) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (slot_idx < 0 or slot_idx >= MAX_CHANNELS) return -1;
     const idx: usize = @intCast(slot_idx);
     if (!channels[idx].active) return 0;
@@ -151,6 +163,8 @@ pub export fn fb_count(slot_idx: c_int) c_int {
 
 /// Get the positive feedback count for a channel.
 pub export fn fb_positive_count(slot_idx: c_int) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (slot_idx < 0 or slot_idx >= MAX_CHANNELS) return 0;
     const idx: usize = @intCast(slot_idx);
     return @intCast(channels[idx].positive_count);
@@ -158,6 +172,8 @@ pub export fn fb_positive_count(slot_idx: c_int) c_int {
 
 /// Get the negative feedback count for a channel.
 pub export fn fb_negative_count(slot_idx: c_int) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (slot_idx < 0 or slot_idx >= MAX_CHANNELS) return 0;
     const idx: usize = @intCast(slot_idx);
     return @intCast(channels[idx].negative_count);
@@ -165,6 +181,8 @@ pub export fn fb_negative_count(slot_idx: c_int) c_int {
 
 /// Get the neutral feedback count for a channel.
 pub export fn fb_neutral_count(slot_idx: c_int) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (slot_idx < 0 or slot_idx >= MAX_CHANNELS) return 0;
     const idx: usize = @intCast(slot_idx);
     return @intCast(channels[idx].neutral_count);
@@ -172,6 +190,8 @@ pub export fn fb_neutral_count(slot_idx: c_int) c_int {
 
 /// Deregister a channel (must be in collecting state).
 pub export fn fb_deregister(slot_idx: c_int) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (slot_idx < 0 or slot_idx >= MAX_CHANNELS) return -1;
     const idx: usize = @intCast(slot_idx);
     if (!channels[idx].active) return -1;
@@ -183,6 +203,8 @@ pub export fn fb_deregister(slot_idx: c_int) c_int {
 
 /// Validate a state transition (C-ABI export).
 pub export fn fb_can_transition(from: c_int, to: c_int) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     const f: FeedbackState = @enumFromInt(from);
     const t: FeedbackState = @enumFromInt(to);
     return if (isValidTransition(f, t)) 1 else 0;
@@ -190,6 +212,8 @@ pub export fn fb_can_transition(from: c_int, to: c_int) c_int {
 
 /// Reset all channels (for testing).
 pub export fn fb_reset() void {
+    mutex.lock();
+    defer mutex.unlock();
     for (&channels) |*slot| {
         slot.active = false;
         slot.state = .inactive;
@@ -217,11 +241,15 @@ pub export fn boj_cartridge_deinit() void {
 
 /// Return the cartridge name as a null-terminated C string.
 pub export fn boj_cartridge_name() [*:0]const u8 {
+    mutex.lock();
+    defer mutex.unlock();
     return "feedback-mcp";
 }
 
 /// Return the cartridge version as a null-terminated C string.
 pub export fn boj_cartridge_version() [*:0]const u8 {
+    mutex.lock();
+    defer mutex.unlock();
     return "0.1.0";
 }
 

@@ -50,6 +50,8 @@ var sessions: [MAX_SESSIONS]SessionSlot = [_]SessionSlot{.{
     .backend = .z3,
 }} ** MAX_SESSIONS;
 
+var mutex: std.Thread.Mutex = .{};
+
 /// Validate a state transition (matches Idris2 canTransition).
 fn isValidTransition(from: ProofState, to: ProofState) bool {
     return switch (from) {
@@ -63,6 +65,8 @@ fn isValidTransition(from: ProofState, to: ProofState) bool {
 
 /// Initialise a new proof session. Returns slot index or -1 on failure.
 pub export fn proof_init(backend: c_int) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     for (&sessions, 0..) |*slot, i| {
         if (!slot.active) {
             slot.active = true;
@@ -76,6 +80,8 @@ pub export fn proof_init(backend: c_int) c_int {
 
 /// Load a proof obligation (transition Idle -> Loading).
 pub export fn proof_load(slot_idx: c_int, backend: c_int) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (slot_idx < 0 or slot_idx >= MAX_SESSIONS) return -1;
     const idx: usize = @intCast(slot_idx);
     if (!sessions[idx].active) return -1;
@@ -88,6 +94,8 @@ pub export fn proof_load(slot_idx: c_int, backend: c_int) c_int {
 
 /// Start verification (transition Loading -> Verifying).
 pub export fn proof_verify(slot_idx: c_int) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (slot_idx < 0 or slot_idx >= MAX_SESSIONS) return -1;
     const idx: usize = @intCast(slot_idx);
     if (!sessions[idx].active) return -1;
@@ -99,6 +107,8 @@ pub export fn proof_verify(slot_idx: c_int) c_int {
 
 /// Mark verification as successful (transition Verifying -> Verified).
 pub export fn proof_succeed(slot_idx: c_int) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (slot_idx < 0 or slot_idx >= MAX_SESSIONS) return -1;
     const idx: usize = @intCast(slot_idx);
     if (!sessions[idx].active) return -1;
@@ -110,6 +120,8 @@ pub export fn proof_succeed(slot_idx: c_int) c_int {
 
 /// Mark verification as failed (transition Verifying -> Failed).
 pub export fn proof_fail(slot_idx: c_int) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (slot_idx < 0 or slot_idx >= MAX_SESSIONS) return -1;
     const idx: usize = @intCast(slot_idx);
     if (!sessions[idx].active) return -1;
@@ -121,6 +133,8 @@ pub export fn proof_fail(slot_idx: c_int) c_int {
 
 /// Get the result of a completed verification. Returns state or -1 on error.
 pub export fn proof_get_result(slot_idx: c_int) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (slot_idx < 0 or slot_idx >= MAX_SESSIONS) return -1;
     const idx: usize = @intCast(slot_idx);
     if (!sessions[idx].active) return -1;
@@ -129,6 +143,8 @@ pub export fn proof_get_result(slot_idx: c_int) c_int {
 
 /// Reset a session to idle (from Verified, Failed, or Loading).
 pub export fn proof_reset(slot_idx: c_int) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (slot_idx < 0 or slot_idx >= MAX_SESSIONS) return -1;
     const idx: usize = @intCast(slot_idx);
     if (!sessions[idx].active) return -1;
@@ -140,6 +156,8 @@ pub export fn proof_reset(slot_idx: c_int) c_int {
 
 /// Get the state of a session.
 pub export fn proof_state(slot_idx: c_int) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (slot_idx < 0 or slot_idx >= MAX_SESSIONS) return -1;
     const idx: usize = @intCast(slot_idx);
     if (!sessions[idx].active) return @intFromEnum(ProofState.idle);
@@ -148,6 +166,8 @@ pub export fn proof_state(slot_idx: c_int) c_int {
 
 /// Validate a state transition (C-ABI export).
 pub export fn proof_can_transition(from: c_int, to: c_int) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     const f: ProofState = @enumFromInt(from);
     const t: ProofState = @enumFromInt(to);
     return if (isValidTransition(f, t)) 1 else 0;
@@ -155,6 +175,8 @@ pub export fn proof_can_transition(from: c_int, to: c_int) c_int {
 
 /// Release a session slot entirely.
 pub export fn proof_release(slot_idx: c_int) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (slot_idx < 0 or slot_idx >= MAX_SESSIONS) return -1;
     const idx: usize = @intCast(slot_idx);
     if (!sessions[idx].active) return -1;
@@ -166,6 +188,8 @@ pub export fn proof_release(slot_idx: c_int) c_int {
 
 /// Reset all sessions (for testing).
 pub export fn proof_reset_all() void {
+    mutex.lock();
+    defer mutex.unlock();
     for (&sessions) |*slot| {
         slot.active = false;
         slot.state = .idle;
@@ -189,11 +213,15 @@ pub export fn boj_cartridge_deinit() void {
 
 /// Return the cartridge name as a null-terminated C string.
 pub export fn boj_cartridge_name() [*:0]const u8 {
+    mutex.lock();
+    defer mutex.unlock();
     return "proof-mcp";
 }
 
 /// Return the cartridge version as a null-terminated C string.
 pub export fn boj_cartridge_version() [*:0]const u8 {
+    mutex.lock();
+    defer mutex.unlock();
     return "0.1.0";
 }
 

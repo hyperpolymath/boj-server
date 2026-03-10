@@ -15,6 +15,9 @@
 *.ads   text eol=lf diff=ada
 *.hs    text eol=lf
 *.chpl  text eol=lf
+*.v     text eol=lf
+*.zig   text eol=lf
+*.idr   text eol=lf
 *.scm   text eol=lf
 *.ncl   text eol=lf
 *.nix   text eol=lf
@@ -48,6 +51,9 @@ Containerfile  text eol=lf
 *.woff2 binary
 *.zip   binary
 *.gz    binary
+*.so    binary
+*.dylib binary
+*.dll   binary
 
 # Lock files
 Cargo.lock  text eol=lf -diff

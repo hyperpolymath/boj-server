@@ -40,6 +40,8 @@ var sessions: [MAX_SESSIONS]Session = [_]Session{.{
     .was_halted = false,
 }} ** MAX_SESSIONS;
 
+var mutex: std.Thread.Mutex = .{};
+
 /// Validate a state transition.
 fn isValidTransition(from: AgentState, to: AgentState) bool {
     return switch (from) {
@@ -53,6 +55,8 @@ fn isValidTransition(from: AgentState, to: AgentState) bool {
 
 /// Create a new agent session. Returns session index or -1.
 pub export fn agent_new_session() c_int {
+    mutex.lock();
+    defer mutex.unlock();
     for (&sessions, 0..) |*s, i| {
         if (!s.active) {
             s.active = true;
@@ -67,6 +71,8 @@ pub export fn agent_new_session() c_int {
 
 /// End a session.
 pub export fn agent_end_session(idx: c_int) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (idx < 0 or idx >= MAX_SESSIONS) return -1;
     sessions[@intCast(idx)].active = false;
     return 0;
@@ -74,6 +80,8 @@ pub export fn agent_end_session(idx: c_int) c_int {
 
 /// Attempt a state transition. Returns 0 on success, -1 invalid, -2 not found.
 pub export fn agent_transition(idx: c_int, to: c_int) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (idx < 0 or idx >= MAX_SESSIONS) return -2;
     const i: usize = @intCast(idx);
     if (!sessions[i].active) return -2;
@@ -95,6 +103,8 @@ pub export fn agent_transition(idx: c_int, to: c_int) c_int {
 
 /// Get current state of a session.
 pub export fn agent_state(idx: c_int) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (idx < 0 or idx >= MAX_SESSIONS) return -1;
     const i: usize = @intCast(idx);
     if (!sessions[i].active) return -1;
@@ -103,6 +113,8 @@ pub export fn agent_state(idx: c_int) c_int {
 
 /// Get loop count for a session.
 pub export fn agent_loop_count(idx: c_int) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (idx < 0 or idx >= MAX_SESSIONS) return -1;
     const i: usize = @intCast(idx);
     if (!sessions[i].active) return -1;
@@ -111,6 +123,8 @@ pub export fn agent_loop_count(idx: c_int) c_int {
 
 /// Validate a transition without executing it (C-ABI export).
 pub export fn agent_validate_ooda(from: c_int, to: c_int) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     const f: AgentState = @enumFromInt(from);
     const t: AgentState = @enumFromInt(to);
     return if (isValidTransition(f, t)) 1 else 0;
@@ -118,6 +132,8 @@ pub export fn agent_validate_ooda(from: c_int, to: c_int) c_int {
 
 /// Get next standard state in the OODA sequence.
 pub export fn agent_next_state(current: c_int) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     const s: AgentState = @enumFromInt(current);
     return @intFromEnum(switch (s) {
         .observe => AgentState.orient,
@@ -130,6 +146,8 @@ pub export fn agent_next_state(current: c_int) c_int {
 
 /// Reset all sessions (for testing).
 pub export fn agent_reset() void {
+    mutex.lock();
+    defer mutex.unlock();
     for (&sessions) |*s| {
         s.active = false;
         s.state = .observe;
@@ -156,11 +174,15 @@ pub export fn boj_cartridge_deinit() void {
 
 /// Return the cartridge name as a null-terminated C string.
 pub export fn boj_cartridge_name() [*:0]const u8 {
+    mutex.lock();
+    defer mutex.unlock();
     return "agent-mcp";
 }
 
 /// Return the cartridge version as a null-terminated C string.
 pub export fn boj_cartridge_version() [*:0]const u8 {
+    mutex.lock();
+    defer mutex.unlock();
     return "0.2.0";
 }
 
@@ -215,6 +237,8 @@ pub const MemoryType = enum(c_int) {
 
 /// Whether a tool call has side effects.
 pub export fn agent_tool_has_side_effects(tc: c_int) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     const t: ToolCall = @enumFromInt(tc);
     return switch (t) {
         .execute, .communicate, .delegate, .escalate => 1,
@@ -224,6 +248,8 @@ pub export fn agent_tool_has_side_effects(tc: c_int) c_int {
 
 /// Whether a tool call requires a safety pre-check.
 pub export fn agent_tool_requires_safety(tc: c_int) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     const t: ToolCall = @enumFromInt(tc);
     return switch (t) {
         .execute, .delegate, .escalate => 1,
@@ -233,6 +259,8 @@ pub export fn agent_tool_requires_safety(tc: c_int) c_int {
 
 /// Whether a safety check outcome allows execution.
 pub export fn agent_safety_allows_exec(sc: c_int) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     const s: SafetyCheck = @enumFromInt(sc);
     return switch (s) {
         .approved, .sandboxed => 1,
@@ -242,6 +270,8 @@ pub export fn agent_safety_allows_exec(sc: c_int) c_int {
 
 /// Whether a safety check needs human intervention.
 pub export fn agent_safety_needs_human(sc: c_int) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     const s: SafetyCheck = @enumFromInt(sc);
     return switch (s) {
         .escalated, .human_required => 1,
@@ -251,12 +281,16 @@ pub export fn agent_safety_needs_human(sc: c_int) c_int {
 
 /// Whether a coordination strategy involves multiple agents.
 pub export fn agent_coordination_is_multi(c: c_int) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     const coord: Coordination = @enumFromInt(c);
     return if (coord != .solo) 1 else 0;
 }
 
 /// Whether a memory type persists across sessions.
 pub export fn agent_memory_is_persistent(m: c_int) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     const mem: MemoryType = @enumFromInt(m);
     return if (mem != .working) 1 else 0;
 }
