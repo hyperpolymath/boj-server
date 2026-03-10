@@ -81,7 +81,17 @@ Eq MenuTier where
 -- ═══════════════════════════════════════════════════════════════════════════
 
 ||| A cartridge is a formally verified, swappable capability module.
-||| It occupies one or more cells in the 2D matrix.
+||| It occupies one or more cells in the capability matrix.
+|||
+||| The matrix has two primary dimensions (protocol x domain) and an
+||| optional third dimension (backend) for provider specialisation.
+||| The backend field defaults to "universal" for cartridges that are
+||| backend-agnostic; community extensions can specialise it to target
+||| specific providers (e.g. "postgresql", "podman", "aws").
+|||
+||| This third axis is NOT a scope increase — it exists solely so that
+||| external developers can extend the catalogue along a natural seam
+||| without modifying core infrastructure.  See docs/EXTENSIBILITY.md.
 public export
 record Cartridge where
   constructor MkCartridge
@@ -92,6 +102,7 @@ record Cartridge where
   domain     : CapabilityDomain
   protocols  : List ProtocolType
   binaryHash : String
+  backend    : String    -- "universal" | provider-specific label
 
 -- ═══════════════════════════════════════════════════════════════════════════
 -- IsUnbreakable Proof
@@ -129,6 +140,20 @@ Eq MatrixCell where
 public export
 cartridgeCells : Cartridge -> List MatrixCell
 cartridgeCells c = map (\p => MkCell p (domain c)) (protocols c)
+
+||| Check whether a cartridge targets a specific backend.
+public export
+isBackendSpecific : Cartridge -> Bool
+isBackendSpecific c = backend c /= "universal"
+
+||| Find cartridges by backend provider.
+public export
+byBackend : String -> List Cartridge -> List Cartridge
+byBackend b [] = []
+byBackend b (c :: cs) =
+  if backend c == b
+    then c :: byBackend b cs
+    else byBackend b cs
 
 -- ═══════════════════════════════════════════════════════════════════════════
 -- Catalogue Queries

@@ -195,6 +195,12 @@ var last_net_error: c_int = 0;
 var packets_sent: usize = 0;
 var packets_received: usize = 0;
 
+/// Thread-safety mutex for all C-ABI exported functions.
+/// Protects all module-level global state (including QUIC globals declared
+/// below near the QUIC transport section: transport_mode, quic_sessions,
+/// quic_local_secret, quic_local_public, quic_keypair_valid).
+var mutex: std.Thread.Mutex = .{};
+
 // ═══════════════════════════════════════════════════════════════════════
 // Internal helpers
 // ═══════════════════════════════════════════════════════════════════════
@@ -431,7 +437,7 @@ fn findOrAddPeerByAddr(addr: *const std.posix.sockaddr.in6) c_int {
 
     if (host_len == 0 or host_len > MAX_HOST_LEN) return -1;
 
-    return umoja_add_peer(addr_buf[0..host_len].ptr, host_len, port);
+    return umoja_add_peer_impl(addr_buf[0..host_len].ptr, host_len, port);
 }
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -444,15 +450,15 @@ pub export fn umoja_set_node_id(
     id_ptr: [*]const u8,
     id_len: usize,
 ) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (id_len == 0 or id_len > MAX_NODE_ID_LEN) return -1;
     local_node_id_len = copyBounded(&local_node_id, id_ptr, id_len);
     return 0;
 }
 
-/// Bind a UDP socket to the given port for federation communication.
-/// Uses IPv6 dual-stack (receives both IPv4-mapped and IPv6).
-/// Returns 0 on success, -1 on error.
-pub export fn umoja_bind(port: u16) c_int {
+/// Internal bind logic (caller must hold mutex).
+fn umoja_bind_impl(port: u16) c_int {
     if (socket_bound) return -1; // already bound
     if (port == 0) return -1;
 
@@ -492,9 +498,17 @@ pub export fn umoja_bind(port: u16) c_int {
     return 0;
 }
 
-/// Close the UDP socket and reset networking state.
-/// Returns 0 on success, -1 if not bound.
-pub export fn umoja_unbind() c_int {
+/// Bind a UDP socket to the given port for federation communication.
+/// Uses IPv6 dual-stack (receives both IPv4-mapped and IPv6).
+/// Returns 0 on success, -1 on error.
+pub export fn umoja_bind(port: u16) c_int {
+    mutex.lock();
+    defer mutex.unlock();
+    return umoja_bind_impl(port);
+}
+
+/// Internal unbind logic (caller must hold mutex).
+fn umoja_unbind_impl() c_int {
     if (!socket_bound) return -1;
 
     std.posix.close(udp_fd);
@@ -507,23 +521,39 @@ pub export fn umoja_unbind() c_int {
     return 0;
 }
 
+/// Close the UDP socket and reset networking state.
+/// Returns 0 on success, -1 if not bound.
+pub export fn umoja_unbind() c_int {
+    mutex.lock();
+    defer mutex.unlock();
+    return umoja_unbind_impl();
+}
+
 /// Return 1 if the UDP socket is bound, 0 otherwise.
 pub export fn umoja_is_bound() c_int {
+    mutex.lock();
+    defer mutex.unlock();
     return if (socket_bound) 1 else 0;
 }
 
 /// Return the last network error code (for diagnostics).
 pub export fn umoja_last_net_error() c_int {
+    mutex.lock();
+    defer mutex.unlock();
     return last_net_error;
 }
 
 /// Return the number of packets sent since bind.
 pub export fn umoja_packets_sent() usize {
+    mutex.lock();
+    defer mutex.unlock();
     return packets_sent;
 }
 
 /// Return the number of packets received since bind.
 pub export fn umoja_packets_received() usize {
+    mutex.lock();
+    defer mutex.unlock();
     return packets_received;
 }
 
@@ -535,6 +565,8 @@ pub export fn umoja_packets_received() usize {
 /// Sends our local catalogue digest in a GOSSIP_DIGEST packet.
 /// Returns 0 on success, -1 on error.
 pub export fn umoja_send_digest(peer_idx: usize) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (!socket_bound) return -1;
     if (!local_digest_valid) return -1;
     if (!validPeer(peer_idx)) return -1;
@@ -549,6 +581,8 @@ pub export fn umoja_send_digest(peer_idx: usize) c_int {
 /// Send a handshake initiation packet to a peer.
 /// Returns 0 on success, -1 on error.
 pub export fn umoja_send_handshake(peer_idx: usize) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (!socket_bound) return -1;
     if (!validPeer(peer_idx)) return -1;
 
@@ -567,6 +601,8 @@ pub export fn umoja_send_handshake(peer_idx: usize) c_int {
 /// Send a heartbeat packet to a peer.
 /// Returns 0 on success, -1 on error.
 pub export fn umoja_send_heartbeat(peer_idx: usize) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (!socket_bound) return -1;
     if (!validPeer(peer_idx)) return -1;
 
@@ -587,8 +623,8 @@ pub export fn umoja_send_heartbeat(peer_idx: usize) c_int {
 ///   - HANDSHAKE_REPLY: transitions to exchanged
 ///   - HEARTBEAT: updates last_seen
 ///
-/// Returns the packet tag on success (>0), 0 if no packet available, -1 on error.
-pub export fn umoja_recv_and_process() c_int {
+/// Internal recv-and-process logic (caller must hold mutex).
+fn umoja_recv_and_process_impl() c_int {
     if (!socket_bound) return -1;
 
     var buf: [MAX_PACKET_LEN]u8 = undefined;
@@ -671,6 +707,13 @@ pub export fn umoja_recv_and_process() c_int {
     return @intCast(pkt.tag);
 }
 
+/// Returns the packet tag on success (>0), 0 if no packet available, -1 on error.
+pub export fn umoja_recv_and_process() c_int {
+    mutex.lock();
+    defer mutex.unlock();
+    return umoja_recv_and_process_impl();
+}
+
 /// Discover peers by sending a broadcast discovery packet to the given
 /// target address (e.g. "ff02::b04" for multicast or "::1" for loopback testing).
 /// Then processes up to DISCOVERY_RECV_ATTEMPTS incoming responses.
@@ -680,6 +723,8 @@ pub export fn umoja_discover_udp(
     target_len: usize,
     target_port: u16,
 ) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (!socket_bound) return -1;
     if (target_len == 0 or target_len > MAX_HOST_LEN) return -1;
 
@@ -707,7 +752,7 @@ pub export fn umoja_discover_udp(
     const before = peer_count;
     var attempts: usize = 0;
     while (attempts < DISCOVERY_RECV_ATTEMPTS) : (attempts += 1) {
-        const tag = umoja_recv_and_process();
+        const tag = umoja_recv_and_process_impl();
         if (tag <= 0) break; // no more packets
     }
 
@@ -723,7 +768,9 @@ pub export fn umoja_discover_udp(
 /// If a UDP socket is bound, it is closed first.
 /// Returns 0 on success.
 pub export fn boj_federation_init() c_int {
-    if (socket_bound) _ = umoja_unbind();
+    mutex.lock();
+    defer mutex.unlock();
+    if (socket_bound) _ = umoja_unbind_impl();
     nodes = [_]FederationNode{FederationNode{}} ** MAX_NODES;
     node_count = 0;
     peers = [_]PeerNode{PeerNode{}} ** MAX_PEERS;
@@ -746,6 +793,8 @@ pub export fn boj_federation_init() c_int {
 
 /// Clean up the federation registry and Umoja gossip state.
 pub export fn boj_federation_deinit() void {
+    mutex.lock();
+    defer mutex.unlock();
     nodes = [_]FederationNode{FederationNode{}} ** MAX_NODES;
     node_count = 0;
     peers = [_]PeerNode{PeerNode{}} ** MAX_PEERS;
@@ -766,6 +815,8 @@ pub export fn boj_federation_register_node(
     region_ptr: [*]const u8,
     region_len: usize,
 ) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     // Validate input lengths.
     if (id_len == 0 or id_len > MAX_NODE_ID_LEN) return -1;
     if (region_len > MAX_REGION_LEN) return -1;
@@ -794,6 +845,8 @@ pub export fn boj_federation_register_node(
 /// Updates the timestamp and sets status to alive.
 /// Returns 0 on success, -1 if the index is invalid.
 pub export fn boj_federation_heartbeat(index: usize) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (!validSlot(index)) return -1;
 
     nodes[index].last_heartbeat = std.time.timestamp();
@@ -804,6 +857,8 @@ pub export fn boj_federation_heartbeat(index: usize) c_int {
 /// Mark a node as suspected (missed heartbeats).
 /// Returns 0 on success, -1 if the index is invalid.
 pub export fn boj_federation_suspect(index: usize) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (!validSlot(index)) return -1;
 
     nodes[index].status = .suspected;
@@ -813,6 +868,8 @@ pub export fn boj_federation_suspect(index: usize) c_int {
 /// Declare a node dead (confirmed failure).
 /// Returns 0 on success, -1 if the index is invalid.
 pub export fn boj_federation_declare_dead(index: usize) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (!validSlot(index)) return -1;
 
     nodes[index].status = .dead;
@@ -821,11 +878,15 @@ pub export fn boj_federation_declare_dead(index: usize) c_int {
 
 /// Return the number of registered (active) nodes.
 pub export fn boj_federation_node_count() usize {
+    mutex.lock();
+    defer mutex.unlock();
     return node_count;
 }
 
 /// Return the number of nodes with status == alive.
 pub export fn boj_federation_alive_count() usize {
+    mutex.lock();
+    defer mutex.unlock();
     var count: usize = 0;
     for (&nodes) |*n| {
         if (n.active and n.status == .alive) count += 1;
@@ -836,6 +897,8 @@ pub export fn boj_federation_alive_count() usize {
 /// Get the status of a node by index.
 /// Returns the status integer (0-3), or -1 if the index is invalid.
 pub export fn boj_federation_node_status(index: usize) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (!validSlot(index)) return -1;
 
     return @intFromEnum(nodes[index].status);
@@ -848,6 +911,8 @@ pub export fn boj_federation_set_catalogue_hash(
     hash_ptr: [*]const u8,
     hash_len: usize,
 ) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (!validSlot(index)) return -1;
     if (hash_len == 0 or hash_len > MAX_HASH_LEN) return -1;
 
@@ -864,6 +929,8 @@ pub export fn boj_federation_set_catalogue_hash(
 /// Returns 1 if synced (hashes match and both are non-empty),
 /// 0 if not synced, or -1 if either index is invalid.
 pub export fn boj_federation_check_sync(idx_a: usize, idx_b: usize) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (!validSlot(idx_a) or !validSlot(idx_b)) return -1;
 
     const a = &nodes[idx_a];
@@ -893,6 +960,8 @@ pub export fn boj_federation_check_sync(idx_a: usize, idx_b: usize) c_int {
 /// number of peers already known, serving as the interface contract.
 /// Returns the number of discovered peers (>= 0).
 pub export fn umoja_discover_nodes() c_int {
+    mutex.lock();
+    defer mutex.unlock();
     // Simulated discovery: return current peer count.
     // Real implementation would:
     //   1. Bind UDP socket to 0.0.0.0:9999
@@ -902,9 +971,8 @@ pub export fn umoja_discover_nodes() c_int {
     return @intCast(peer_count);
 }
 
-/// Manually add a peer by host and port.
-/// Returns the peer index on success, -1 if full or invalid input.
-pub export fn umoja_add_peer(
+/// Internal add-peer logic (caller must hold mutex).
+fn umoja_add_peer_impl(
     host_ptr: [*]const u8,
     host_len: usize,
     port: u16,
@@ -940,9 +1008,23 @@ pub export fn umoja_add_peer(
     return @intCast(slot);
 }
 
+/// Manually add a peer by host and port.
+/// Returns the peer index on success, -1 if full or invalid input.
+pub export fn umoja_add_peer(
+    host_ptr: [*]const u8,
+    host_len: usize,
+    port: u16,
+) c_int {
+    mutex.lock();
+    defer mutex.unlock();
+    return umoja_add_peer_impl(host_ptr, host_len, port);
+}
+
 /// Remove a peer by index.
 /// Returns 0 on success, -1 if the index is invalid.
 pub export fn umoja_remove_peer(index: usize) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (!validPeer(index)) return -1;
 
     peers[index] = PeerNode{};
@@ -952,6 +1034,8 @@ pub export fn umoja_remove_peer(index: usize) c_int {
 
 /// Return the number of known peers.
 pub export fn umoja_peer_count() usize {
+    mutex.lock();
+    defer mutex.unlock();
     return peer_count;
 }
 
@@ -971,6 +1055,8 @@ pub export fn umoja_peer_count() usize {
 /// The simulated version picks a random peer, marks it as seen,
 /// and increments the gossip round counter.
 pub export fn umoja_gossip_round() c_int {
+    mutex.lock();
+    defer mutex.unlock();
     const maybe_idx = pickRandomPeer();
     if (maybe_idx) |idx| {
         peers[idx].last_seen = std.time.timestamp();
@@ -988,6 +1074,8 @@ pub export fn umoja_receive_digest(
     digest_ptr: [*]const u8,
     digest_len: usize,
 ) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (!validPeer(peer_idx)) return -1;
     if (digest_len != DIGEST_LEN) return -1;
 
@@ -1001,6 +1089,8 @@ pub export fn umoja_receive_digest(
 /// Writes up to out_len bytes into out_ptr.
 /// Returns the number of bytes written (32 on success, 0 if no digest computed).
 pub export fn umoja_get_digest(out_ptr: [*]u8, out_len: usize) usize {
+    mutex.lock();
+    defer mutex.unlock();
     if (!local_digest_valid) return 0;
     const write_len = @min(out_len, DIGEST_LEN);
     @memcpy(out_ptr[0..write_len], local_digest[0..write_len]);
@@ -1022,6 +1112,8 @@ pub export fn umoja_compute_digest(
     hashes_len: [*]const usize,
     entry_count: usize,
 ) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (entry_count == 0 or entry_count > MAX_DIGEST_ENTRIES) return -1;
 
     // Build formatted entry strings for sorting.
@@ -1101,6 +1193,8 @@ pub export fn umoja_compute_digest(
 /// and marks the exchange timestamp.
 /// Returns 0 on success, -1 if peer index invalid.
 pub export fn umoja_handshake(peer_idx: usize) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (!validPeer(peer_idx)) return -1;
 
     peers[peer_idx].handshake_state = .pending;
@@ -1112,6 +1206,8 @@ pub export fn umoja_handshake(peer_idx: usize) c_int {
 /// This is typically called after receiving the peer's handshake response.
 /// Returns 0 on success, -1 if peer index invalid or not in pending state.
 pub export fn umoja_handshake_exchanged(peer_idx: usize) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (!validPeer(peer_idx)) return -1;
     if (peers[peer_idx].handshake_state != .pending) return -1;
 
@@ -1125,6 +1221,8 @@ pub export fn umoja_handshake_exchanged(peer_idx: usize) c_int {
 /// compare them. Sets state to 'verified' on match, 'rejected' on mismatch.
 /// Returns 1 if verified, 0 if rejected, -1 if peer invalid or no digests.
 pub export fn umoja_verify_attestation(peer_idx: usize) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (!validPeer(peer_idx)) return -1;
     if (!local_digest_valid) return -1;
     if (!peers[peer_idx].has_digest) return -1;
@@ -1144,6 +1242,8 @@ pub export fn umoja_verify_attestation(peer_idx: usize) c_int {
 /// Get the handshake state of a peer.
 /// Returns the state integer (0-4), or -1 if peer index invalid.
 pub export fn umoja_handshake_state(peer_idx: usize) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (!validPeer(peer_idx)) return -1;
     return @intFromEnum(peers[peer_idx].handshake_state);
 }
@@ -1155,6 +1255,8 @@ pub export fn umoja_handshake_state(peer_idx: usize) c_int {
 /// Record a heartbeat for a peer. Updates last_seen timestamp.
 /// Returns 0 on success, -1 if peer index invalid.
 pub export fn umoja_heartbeat(peer_idx: usize) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (!validPeer(peer_idx)) return -1;
 
     peers[peer_idx].last_seen = std.time.timestamp();
@@ -1163,6 +1265,8 @@ pub export fn umoja_heartbeat(peer_idx: usize) c_int {
 
 /// Get the number of completed gossip rounds.
 pub export fn umoja_gossip_round_count() usize {
+    mutex.lock();
+    defer mutex.unlock();
     return gossip_round_count;
 }
 
@@ -1398,6 +1502,8 @@ fn sendToPeerRaw(peer_idx: usize, buf: []const u8) c_int {
 /// Falls back to cleartext parsing if decryption fails.
 /// Returns the packet tag on success, 0 if no data, -1 on error.
 pub export fn umoja_recv_and_process_quic() c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (!socket_bound) return -1;
 
     var buf: [MAX_PACKET_LEN + QUIC_OVERHEAD]u8 = undefined;
@@ -1564,7 +1670,9 @@ fn handleQuicKeyReply(raw: []const u8, src_addr: *std.posix.sockaddr.in6) c_int 
 /// be encrypted once per-peer key exchange completes.
 /// Returns 0 on success, -1 on error.
 pub export fn umoja_bind_quic(port: u16) c_int {
-    const result = umoja_bind(port);
+    mutex.lock();
+    defer mutex.unlock();
+    const result = umoja_bind_impl(port);
     if (result != 0) return result;
 
     generateQuicKeypair();
@@ -1579,12 +1687,16 @@ pub export fn umoja_bind_quic(port: u16) c_int {
 
 /// Get the current transport mode: 0 = UDP, 1 = QUIC.
 pub export fn umoja_transport_mode() c_int {
+    mutex.lock();
+    defer mutex.unlock();
     return @intFromEnum(transport_mode);
 }
 
 /// Set transport mode explicitly. 0 = UDP, 1 = QUIC.
 /// Returns 0 on success, -1 on invalid mode.
 pub export fn umoja_set_transport_mode(mode: c_int) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (mode == 0) {
         transport_mode = .udp;
         return 0;
@@ -1603,6 +1715,8 @@ pub export fn umoja_set_transport_mode(mode: c_int) c_int {
 /// all subsequent packets are encrypted.
 /// Returns 0 on success, -1 on error.
 pub export fn umoja_quic_key_exchange(peer_idx: usize) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (!socket_bound) return -1;
     if (!validPeer(peer_idx)) return -1;
     if (!quic_keypair_valid) return -1;
@@ -1624,12 +1738,16 @@ pub export fn umoja_quic_key_exchange(peer_idx: usize) c_int {
 /// Check whether a QUIC session is established with a peer.
 /// Returns 1 if established, 0 if not, -1 if invalid peer.
 pub export fn umoja_quic_session_established(peer_idx: usize) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (!validPeer(peer_idx)) return -1;
     return if (quic_sessions[peer_idx].established) 1 else 0;
 }
 
 /// Get the number of encrypted packets sent to a peer (via nonce counter).
 pub export fn umoja_quic_packets_encrypted(peer_idx: usize) usize {
+    mutex.lock();
+    defer mutex.unlock();
     if (peer_idx >= MAX_PEERS) return 0;
     return quic_sessions[peer_idx].send_nonce_counter;
 }

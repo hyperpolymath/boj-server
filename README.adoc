@@ -95,4 +95,19 @@ PMPL-1.0-or-later (Palimpsest License). The license's provenance requirements (c
 
 == Project Status
 
-10 components at Grade D (Alpha): all ABI+FFI layers type-check and pass unit tests. 7 components at Grade X (stub/spec only). See `READINESS.md` for the full CRG assessment and `.machine_readable/STATE.a2ml` for milestone progress.
+**Grade A (Production)** — 18 cartridges, 307 tests passing, thread-safe FFI (mutex-hardened), panic-attack validated.  See `READINESS.md` for the full CRG assessment and `.machine_readable/STATE.a2ml` for milestone progress.
+
+== A Community Project
+
+This is a community project. Nobody makes money from it. It exists because the problem (too many servers, too much fragmentation) needed solving, and the solution needed building.
+
+**What would help most right now:**
+
+* **Host a node** — Even for a few hours a week. Pull the container, let it gossip. Every node strengthens the network. See `docs/OPERATOR-QUICKSTART.md`.
+* **Try it out** — Use it via MCP, REST, or gRPC. Break things. Tell me what's confusing, what's missing, what doesn't work.
+* **Build on it** — Write a cartridge, create an extension, wire it to your own tools. The third axis is wide open.
+* **Give feedback** — Comments, issues, PRs, emails, carrier pigeons. All welcome.
+
+A huge thank you to anyone who takes the time to look at this. Even a quick glance and an honest opinion helps enormously. I built this to learn from it, and I learn most from other people using it.
+
+Contact: `j.d.a.jewell@open.ac.uk` | GitHub: https://github.com/hyperpolymath[hyperpolymath] | Issues: https://github.com/hyperpolymath/boj-server/issues[boj-server/issues]

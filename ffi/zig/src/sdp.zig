@@ -65,6 +65,7 @@ var banned: [MAX_BANNED]BannedPeer = [_]BannedPeer{.{}} ** MAX_BANNED;
 var ban_count: usize = 0;
 var sdp_enabled: bool = false;
 var open_mode: bool = true; // when true, unauthenticated peers are allowed (seed bootstrapping)
+var mutex: std.Thread.Mutex = .{};
 
 // ═══════════════════════════════════════════════════════════════════════
 // Internal API
@@ -168,45 +169,65 @@ fn recordAuthFailure(id_ptr: [*]const u8, id_len: usize) void {
 // ═══════════════════════════════════════════════════════════════════════
 
 export fn boj_sdp_init() i32 {
+    mutex.lock();
+    defer mutex.unlock();
     init();
     return 0;
 }
 
 export fn boj_sdp_deinit() void {
+    mutex.lock();
+    defer mutex.unlock();
     auth_count = 0;
     ban_count = 0;
     sdp_enabled = false;
 }
 
 export fn boj_sdp_authorise(id_ptr: [*]const u8, id_len: usize, rate_limit: u32) i32 {
+    mutex.lock();
+    defer mutex.unlock();
     return authorisePeer(id_ptr, id_len, rate_limit);
 }
 
 export fn boj_sdp_check(id_ptr: [*]const u8, id_len: usize) u8 {
+    mutex.lock();
+    defer mutex.unlock();
     return checkAccess(id_ptr, id_len);
 }
 
 export fn boj_sdp_record_auth_failure(id_ptr: [*]const u8, id_len: usize) void {
+    mutex.lock();
+    defer mutex.unlock();
     recordAuthFailure(id_ptr, id_len);
 }
 
 export fn boj_sdp_ban(id_ptr: [*]const u8, id_len: usize, reason: u8) void {
+    mutex.lock();
+    defer mutex.unlock();
     banPeer(id_ptr, id_len, reason);
 }
 
 export fn boj_sdp_is_banned(id_ptr: [*]const u8, id_len: usize) u8 {
+    mutex.lock();
+    defer mutex.unlock();
     return if (isBanned(id_ptr, id_len)) 1 else 0;
 }
 
 export fn boj_sdp_set_open_mode(mode: u8) void {
+    mutex.lock();
+    defer mutex.unlock();
     open_mode = mode != 0;
 }
 
 export fn boj_sdp_peer_count() usize {
+    mutex.lock();
+    defer mutex.unlock();
     return auth_count;
 }
 
 export fn boj_sdp_ban_count() usize {
+    mutex.lock();
+    defer mutex.unlock();
     return ban_count;
 }
 

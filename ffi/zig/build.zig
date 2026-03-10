@@ -229,6 +229,22 @@ pub fn build(b: *std.Build) void {
     const sdp_step = b.step("sdp", "Run Auto-SDP perimeter tests");
     sdp_step.dependOn(&run_sdp_tests.step);
 
+    // --- Seam checks (panic-attack–style integration contract validation) ---
+    const seams_mod = b.addModule("boj_seams", .{
+        .root_source_file = b.path("src/seams.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    seams_mod.addImport("catalogue", catalogue_mod);
+
+    const seams_tests = b.addTest(.{
+        .root_module = seams_mod,
+    });
+    const run_seams_tests = b.addRunArtifact(seams_tests);
+
+    const seams_step = b.step("seams", "Run integration seam checks (panic-attack style)");
+    seams_step.dependOn(&run_seams_tests.step);
+
     // --- End-to-end order-ticket tests ---
     const e2e_mod = b.addModule("boj_e2e_order", .{
         .root_source_file = b.path("src/e2e_order.zig"),
@@ -258,4 +274,5 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&run_sla_tests.step);
     test_step.dependOn(&run_community_tests.step);
     test_step.dependOn(&run_sdp_tests.step);
+    test_step.dependOn(&run_seams_tests.step);
 }

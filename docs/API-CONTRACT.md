@@ -57,9 +57,12 @@ All ports are configurable via environment variables:
 ```json
 {
   "tool": "tool_name",
-  "params": { "key": "value" }
+  "args": "{\"key\": \"value\"}"
 }
 ```
+
+Note: `args` is a JSON-encoded string, not a nested object.
+This allows cartridge handlers to parse arguments in their own format.
 
 #### Invoke Response Format
 
@@ -83,7 +86,17 @@ All ports are configurable via environment variables:
 
 | Method | Path | Stability | Description |
 |--------|------|-----------|-------------|
-| GET | `/matrix` | **stable** | Full 2D capability matrix (protocols x domains) |
+| GET | `/matrix` | **stable** | Full capability matrix (protocols x domains, optionally grouped by backend) |
+
+### Backend (Third Axis — Extension Point)
+
+Every cartridge has a `backend` field (default: `"universal"`).
+Community extensions can specialise it to target a specific provider.
+See `docs/EXTENSIBILITY.md` for full details.
+
+| Method | Path | Stability | Description |
+|--------|------|-----------|-------------|
+| GET | `/cartridges?backend={label}` | experimental | Filter cartridges by backend |
 
 ### Umoja Federation
 

@@ -1,0 +1,32 @@
+# SPDX-License-Identifier: PMPL-1.0-or-later
+# extension.a2ml — Example BoJ extension descriptor
+#
+# Copy this file, fill in the fields, and submit to a BoJ node.
+# See docs/EXTENSIBILITY.md for the full guide.
+
+[extension]
+name = "database-mcp-pg"       # Cartridge name (unique across the catalogue)
+version = "0.1.0"              # Semantic version
+domain = "database"            # Must match a CapabilityDomain row
+backend = "postgresql"         # Your specialisation (the third axis)
+tier = "ayo"                   # Community extensions are always Ayo tier
+protocols = ["mcp", "rest"]    # Which protocol columns this fills
+
+[metadata]
+author = "Your Name <you@example.com>"
+description = "PostgreSQL-native database cartridge for BoJ"
+homepage = ""                  # Optional: URL to source repo
+license = "PMPL-1.0-or-later"
+hash = ""                      # SHA-256 of the compiled .so — filled at build time
+
+[capabilities]
+tools = [
+  "pg_query",                  # List the tools your cartridge provides
+  "pg_schema",
+  "pg_migrate",
+]
+
+# Optional: declare resource requirements for coprocessor dispatch
+[resources]
+cpu-only = true                # Does not need GPU/accelerator
+memory-mb = 64                 # Approximate memory footprint

@@ -14,6 +14,7 @@
 module main
 
 import json
+import net
 import net.http
 import os
 import time
@@ -23,7 +24,9 @@ import time
 // ═══════════════════════════════════════════════════════════════════════
 
 #flag -L../../ffi/zig/zig-out/lib
-#flag -lboj_catalogue
+// NOTE: libboj_loader includes catalogue symbols (loader imports catalogue),
+// so we only link loader to avoid duplicate symbol errors.
+// #flag -lboj_catalogue  — included transitively via loader
 #flag -lboj_loader
 #flag -lboj_federation
 #flag -lboj_coprocessor
@@ -32,6 +35,8 @@ import time
 #flag -lboj_sdp
 #flag -L../../cartridges/container-mcp/ffi/zig-out/lib
 #flag -lcontainer_mcp
+#flag -L../../cartridges/feedback-mcp/ffi/zig-out/lib
+#flag -lfeedback_mcp
 
 fn C.boj_catalogue_init() int
 fn C.boj_catalogue_deinit()
@@ -47,6 +52,10 @@ fn C.boj_catalogue_status(index usize) int
 fn C.boj_catalogue_version() &u8
 fn C.boj_catalogue_set_hash(index usize, hash_ptr &u8, hash_len usize) int
 fn C.boj_catalogue_get_hash(index usize, out_ptr &u8) usize
+fn C.boj_catalogue_set_backend(backend_ptr &u8, backend_len usize) int
+fn C.boj_menu_backend(index usize, out_ptr &u8, out_len usize) usize
+fn C.boj_menu_name(index usize, out_ptr &u8, out_len usize) usize
+fn C.boj_menu_json(out_ptr &u8, out_len usize) usize
 fn C.boj_loader_verify(path_ptr &u8, path_len usize, expected_hex_ptr &u8, expected_hex_len usize) int
 
 // Umoja federation C FFI declarations
@@ -105,6 +114,20 @@ fn C.boj_community_count() usize
 fn C.boj_community_count_approved() usize
 fn C.boj_community_count_pending() usize
 fn C.boj_community_find(name_ptr &u8, name_len usize) int
+
+// Feedback-MCP C FFI declarations (feedback-o-tron state machine)
+fn C.fb_register(channel_type int) int
+fn C.fb_start_collecting(slot_idx int) int
+fn C.fb_submit(slot_idx int, sentiment int) int
+fn C.fb_state(slot_idx int) int
+fn C.fb_count(slot_idx int) int
+fn C.fb_positive_count(slot_idx int) int
+fn C.fb_negative_count(slot_idx int) int
+fn C.fb_neutral_count(slot_idx int) int
+fn C.fb_deregister(slot_idx int) int
+fn C.fb_can_transition(from int, to int) int
+fn C.fb_reset()
+fn C.boj_cartridge_init() int
 
 // Auto-SDP C FFI declarations
 fn C.boj_sdp_init() int
@@ -2270,53 +2293,123 @@ fn invoke_bsp(tool string, args string) http.Response {
 }
 
 // --- feedback-mcp: feedback-o-tron feedback collection and sentiment tracking ---
+// Wired to Zig FFI (fb_register, fb_submit, etc.) for real state-machine execution.
+// This is the self-dogfooding loop: BoJ collects feedback on itself via its own
+// feedback cartridge.
+
+// Channel name → FFI channel type mapping
+fn fb_channel_type(name string) int {
+	return match name {
+		'web_form' { 1 }
+		'api' { 2 }
+		'email' { 3 }
+		'irc' { 4 }
+		'mastodon' { 5 }
+		'gitea' { 6 }
+		else { 99 } // custom
+	}
+}
+
+// Sentiment name → FFI sentiment value mapping
+fn fb_sentiment_val(name string) int {
+	return match name {
+		'positive' { 1 }
+		'negative' { -1 }
+		'neutral' { 0 }
+		else { -99 } // unclassified
+	}
+}
+
+// State int → label
+fn fb_state_label(state int) string {
+	return match state {
+		0 { 'inactive' }
+		1 { 'channel_registered' }
+		2 { 'collecting' }
+		3 { 'processing' }
+		4 { 'error' }
+		else { 'unknown' }
+	}
+}
 
 fn invoke_feedback(tool string, args string) http.Response {
 	if tool == 'list_channels' {
 		return json_response(json.encode({
 			'tool':      'list_channels'
-			'available': 'web_form,api,email,irc,mastodon,gitea'
+			'available': 'web_form,api,email,irc,mastodon,gitea,custom'
+		}))
+	}
+	if tool == 'open_channel' {
+		params := json.decode(map[string]string, args) or {
+			return error_response(400, 'open_channel requires {"channel": "api"}')
+		}
+		channel := params['channel'] or { '' }
+		if channel == '' {
+			return error_response(400, 'open_channel requires "channel"')
+		}
+		slot := C.fb_register(fb_channel_type(channel))
+		if slot < 0 {
+			return error_response(503, 'no feedback channel slots available (max 8)')
+		}
+		return json_response(json.encode({
+			'tool':    'open_channel'
+			'channel': channel
+			'slot':    '${slot}'
+			'state':   'channel_registered'
 		}))
 	}
 	if tool == 'submit' {
 		params := json.decode(map[string]string, args) or {
-			return error_response(400, 'submit requires {"channel": "api", "sentiment": "positive|neutral|negative", "message": "..."}')
+			return error_response(400, 'submit requires {"slot": "0", "sentiment": "positive|neutral|negative"}')
 		}
-		channel := params['channel'] or { '' }
+		slot_str := params['slot'] or { '0' }
 		sentiment := params['sentiment'] or { 'neutral' }
-		message := params['message'] or { '' }
-		if channel == '' {
-			return error_response(400, 'submit requires "channel"')
+		slot := slot_str.int()
+		result := C.fb_submit(slot, fb_sentiment_val(sentiment))
+		if result == -1 {
+			return error_response(400, 'invalid slot ${slot_str}')
 		}
-		// Map sentiment to value
-		sent_val := if sentiment == 'positive' { '1' }
-			else if sentiment == 'negative' { '-1' }
-			else { '0' }
+		if result == -2 {
+			return error_response(400, 'channel not in collecting state')
+		}
 		return json_response(json.encode({
 			'tool':      'submit'
-			'channel':   channel
+			'slot':      slot_str
 			'sentiment': sentiment
-			'message':   message
+			'count':     '${result}'
 			'status':    'recorded'
-			'sent_val':  sent_val
 		}))
 	}
 	if tool == 'summary' {
-		// Return a summary of all feedback channels
+		// Query all 8 possible slots
+		mut active_channels := []map[string]string{}
+		for i in 0 .. 8 {
+			state := C.fb_state(i)
+			if state > 0 { // not inactive
+				active_channels << {
+					'slot':     '${i}'
+					'state':    fb_state_label(state)
+					'total':    '${C.fb_count(i)}'
+					'positive': '${C.fb_positive_count(i)}'
+					'negative': '${C.fb_negative_count(i)}'
+					'neutral':  '${C.fb_neutral_count(i)}'
+				}
+			}
+		}
 		return json_response(json.encode({
-			'tool':    'summary'
-			'status':  'ok'
-			'message': 'Feedback-o-tron summary. Channels: web_form, api, email, irc, mastodon, gitea. Use submit to record feedback.'
+			'tool':             'summary'
+			'active_channels':  '${active_channels.len}'
+			'status':           'ok'
 		}))
 	}
 	if tool == 'status' {
 		return json_response(json.encode({
 			'tool':    'status'
 			'state':   'active'
-			'message': 'feedback-o-tron is running. Submit feedback via the submit tool.'
+			'message': 'feedback-o-tron is running. FFI state machine wired.'
 		}))
 	}
-	return error_response(400, 'unknown feedback-mcp tool: "${tool}" — available: list_channels, submit, summary, status')
+	return error_response(400, 'unknown feedback-mcp tool: "${tool}" — available: list_channels, open_channel, submit, summary, status')
 }
 
 struct CartridgeDetail {
@@ -2715,10 +2808,170 @@ fn handle_sdp_status() http.Response {
 }
 
 // ═══════════════════════════════════════════════════════════════════════
+// MCP Stdio Bridge (JSON-RPC 2.0 over stdin/stdout)
+// ═══════════════════════════════════════════════════════════════════════
+//
+// Usage: boj-server --mcp
+//
+// Speaks the Model Context Protocol so AI tools (Claude Code, Cursor, etc.)
+// can consume BoJ cartridges natively.  Each mounted cartridge's tools
+// become MCP tools.  The bridge reads JSON-RPC from stdin and writes
+// responses to stdout — no HTTP server needed.
+//
+// Add to claude_desktop_config.json:
+//   { "mcpServers": { "boj": { "command": "/path/to/boj-server", "args": ["--mcp"] } } }
+
+struct McpRequest {
+	jsonrpc string
+	method  string
+	id      int
+	params  map[string]string
+}
+
+fn mcp_response(id int, result string) string {
+	return '{"jsonrpc":"2.0","id":${id},"result":${result}}'
+}
+
+fn mcp_error(id int, code int, message string) string {
+	return '{"jsonrpc":"2.0","id":${id},"error":{"code":${code},"message":"${message}"}}'
+}
+
+fn mcp_tools_list(app &BojApp) string {
+	// Build tool list from all registered cartridges
+	mut tools := []string{}
+	for c in app.cartridges {
+		cart_tools := mcp_cartridge_tools(c.name)
+		for t in cart_tools {
+			tools << t
+		}
+	}
+	return '[${tools.join(",")}]'
+}
+
+fn mcp_cartridge_tools(cname string) []string {
+	// Return MCP tool definitions for a cartridge.
+	// Each tool is a JSON object with name, description, and inputSchema.
+	base := cname.replace('-mcp', '')
+	return [
+		'{"name":"${cname}/status","description":"Get ${base} cartridge status","inputSchema":{"type":"object","properties":{}}}',
+	]
+}
+
+fn mcp_handle_tool_call(app &BojApp, tool_name string, args string) string {
+	// Parse tool name as "cartridge-name/tool"
+	parts := tool_name.split('/')
+	if parts.len != 2 {
+		return '{"content":[{"type":"text","text":"unknown tool: ${tool_name}"}],"isError":true}'
+	}
+	cname := parts[0]
+	tool := parts[1]
+
+	// Find and mount the cartridge if needed
+	for i, c in app.cartridges {
+		if c.name == cname {
+			if C.boj_catalogue_is_mounted(usize(i)) != 1 {
+				C.boj_catalogue_mount(usize(i))
+			}
+			break
+		}
+	}
+
+	// Route to the cartridge invoke handler
+	invoke_args := if args.len > 0 { args } else { '{}' }
+	resp := handle_cartridge_invoke(app, cname, '{"tool":"${tool}","args":"${invoke_args}"}')
+	body := resp.body
+	return '{"content":[{"type":"text","text":${json.encode(body)}}]}'
+}
+
+fn run_mcp_stdio() {
+	// Initialise the catalogue (same as server mode)
+	mut app := BojApp.new()
+	app.init_catalogue() or {
+		eprintln('FATAL: ${err.msg()}')
+		exit(1)
+	}
+	defer { C.boj_catalogue_deinit() }
+
+	// Initialise feedback FFI
+	C.boj_cartridge_init()
+
+	// Register all 18 built-in cartridges
+	app.register_builtin_cartridges() or {
+		eprintln('FATAL: ${err.msg()}')
+		exit(1)
+	}
+
+	// Mount all ready cartridges
+	count := int(C.boj_catalogue_count())
+	for i in 0 .. count {
+		C.boj_catalogue_mount(usize(i))
+	}
+
+	app_ref := &app
+
+	// MCP stdio loop: read JSON-RPC from stdin, write to stdout
+	for {
+		line := os.get_raw_line()
+		if line.len == 0 {
+			break // EOF
+		}
+		trimmed := line.trim_space()
+		if trimmed.len == 0 {
+			continue
+		}
+
+		// Parse JSON-RPC request
+		req := json.decode(McpRequest, trimmed) or {
+			println(mcp_error(0, -32700, 'parse error'))
+			continue
+		}
+
+		// Dispatch by method
+		response := match req.method {
+			'initialize' {
+				mcp_response(req.id, '{"protocolVersion":"2024-11-05","capabilities":{"tools":{"listChanged":false}},"serverInfo":{"name":"boj-server","version":"0.1.0"}}')
+			}
+			'notifications/initialized' {
+				// Client acknowledgment — no response needed
+				''
+			}
+			'tools/list' {
+				tools := mcp_tools_list(app_ref)
+				mcp_response(req.id, '{"tools":${tools}}')
+			}
+			'tools/call' {
+				tool_name := req.params['name'] or { '' }
+				tool_args := req.params['arguments'] or { '{}' }
+				result := mcp_handle_tool_call(app_ref, tool_name, tool_args)
+				mcp_response(req.id, result)
+			}
+			'ping' {
+				mcp_response(req.id, '{}')
+			}
+			else {
+				mcp_error(req.id, -32601, 'method not found: ${req.method}')
+			}
+		}
+
+		if response.len > 0 {
+			println(response)
+		}
+	}
+}
+
+// ═══════════════════════════════════════════════════════════════════════
 // Main
 // ═══════════════════════════════════════════════════════════════════════
 
 fn main() {
+	// MCP stdio mode: boj-server --mcp
+	// Speaks JSON-RPC 2.0 over stdin/stdout (Model Context Protocol).
+	// This is the native MCP bridge — AI tools consume this directly.
+	if '--mcp' in os.args {
+		run_mcp_stdio()
+		return
+	}
+
 	println('BoJ Server v0.1.0 — The Teranga Console')
 	println('Phase 3: V-lang triple adapter (REST+gRPC+GraphQL)')
 	println('')
@@ -2771,6 +3024,10 @@ fn main() {
 	C.boj_sdp_init()
 	println('SDP: perimeter active (open mode for seed bootstrapping)')
 
+	// Initialise feedback-o-tron (self-dogfooding: BoJ collects feedback on itself)
+	C.boj_cartridge_init()
+	println('Feedback: feedback-o-tron initialised')
+
 	// Register built-in cartridges
 	app.register_builtin_cartridges() or {
 		eprintln('FATAL: ${err.msg()}')
@@ -2789,25 +3046,42 @@ fn main() {
 	grpc_port := os.getenv_opt('BOJ_GRPC_PORT') or { '7701' }
 	graphql_port := os.getenv_opt('BOJ_GRAPHQL_PORT') or { '7702' }
 
+	// Pre-bind listeners (V 0.5.0 http.Server auto-bind is broken;
+	// pre-binding with net.listen_tcp works reliably).
+	rest_listener := net.listen_tcp(.ip, '0.0.0.0:${rest_port}') or {
+		eprintln('FATAL: cannot bind REST on :${rest_port}: ${err}')
+		exit(1)
+	}
 	println('Starting REST  on :${rest_port}')
 	mut rest_srv := &http.Server{
-		addr: ':${rest_port}'
+		listener: rest_listener
 		handler: RestHandler{app: app_ref}
+		show_startup_message: false
 	}
 	spawn rest_srv.listen_and_serve()
 
+	gql_listener := net.listen_tcp(.ip, '0.0.0.0:${graphql_port}') or {
+		eprintln('FATAL: cannot bind GraphQL on :${graphql_port}: ${err}')
+		exit(1)
+	}
 	println('Starting GraphQL on :${graphql_port}')
 	mut gql_srv := &http.Server{
-		addr: ':${graphql_port}'
+		listener: gql_listener
 		handler: GraphQLHandler{app: app_ref}
+		show_startup_message: false
 	}
 	spawn gql_srv.listen_and_serve()
 
 	// gRPC-compat — JSON-over-HTTP until vlib gains protobuf support.
+	grpc_listener := net.listen_tcp(.ip, '0.0.0.0:${grpc_port}') or {
+		eprintln('FATAL: cannot bind gRPC on :${grpc_port}: ${err}')
+		exit(1)
+	}
 	println('Starting gRPC-compat on :${grpc_port} (JSON-over-HTTP, service/method paths)')
 	mut grpc_srv := &http.Server{
-		addr: ':${grpc_port}'
+		listener: grpc_listener
 		handler: GrpcHandler{app: app_ref}
+		show_startup_message: false
 	}
 	spawn grpc_srv.listen_and_serve()
 

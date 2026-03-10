@@ -73,6 +73,12 @@ const MAX_ORDER_SIZE: usize = 16;
 // ═══════════════════════════════════════════════════════════════════════
 
 /// A registered cartridge in the catalogue.
+///
+/// The `backend` field is the optional third axis of the capability matrix.
+/// It defaults to "universal" for cartridges that are provider-agnostic.
+/// Community extensions can specialise it (e.g. "postgresql", "podman", "aws")
+/// to target a specific backend without modifying core infrastructure.
+/// See docs/EXTENSIBILITY.md for the rationale and extension mechanism.
 const CartridgeEntry = struct {
     name: [64]u8,
     name_len: usize,
@@ -85,6 +91,8 @@ const CartridgeEntry = struct {
     binary_hash: [64]u8,
     hash_len: usize,
     mounted: bool,
+    backend: [32]u8,    // "universal" or provider-specific label
+    backend_len: usize,
 };
 
 /// Global catalogue state.
@@ -92,13 +100,20 @@ var catalogue: [MAX_CARTRIDGES]CartridgeEntry = undefined;
 var catalogue_count: usize = 0;
 var initialised: bool = false;
 
+/// Thread-safety mutex — protects all global state in this module.
+/// Every C-ABI export acquires this before touching globals.
+var mutex: std.Thread.Mutex = .{};
+
 // ═══════════════════════════════════════════════════════════════════════
 // Lifecycle
 // ═══════════════════════════════════════════════════════════════════════
 
 /// Initialise the catalogue. Must be called before any other function.
 pub export fn boj_catalogue_init() c_int {
+    mutex.lock();
+    defer mutex.unlock();
     catalogue_count = 0;
+    const universal = "universal";
     for (&catalogue) |*entry| {
         entry.mounted = false;
         entry.name_len = 0;
@@ -106,6 +121,8 @@ pub export fn boj_catalogue_init() c_int {
         entry.hash_len = 0;
         entry.status = .development;
         entry.protocols = .{ false, false, false, false, false, false, false, false, false };
+        @memcpy(entry.backend[0..universal.len], universal);
+        entry.backend_len = universal.len;
     }
     initialised = true;
     return 0;
@@ -113,6 +130,8 @@ pub export fn boj_catalogue_init() c_int {
 
 /// Shut down the catalogue. Unmounts all cartridges.
 pub export fn boj_catalogue_deinit() void {
+    mutex.lock();
+    defer mutex.unlock();
     for (&catalogue) |*entry| {
         entry.mounted = false;
     }
@@ -135,6 +154,8 @@ pub export fn boj_catalogue_register(
     tier: c_int,
     domain: c_int,
 ) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (!initialised) return -1;
     if (catalogue_count >= MAX_CARTRIDGES) return -1;
     if (name_len > 64 or version_len > 16) return -1;
@@ -150,6 +171,9 @@ pub export fn boj_catalogue_register(
     entry.mounted = false;
     entry.protocols = .{ false, false, false, false, false, false, false, false, false };
     entry.hash_len = 0;
+    const universal = "universal";
+    @memcpy(entry.backend[0..universal.len], universal);
+    entry.backend_len = universal.len;
 
     catalogue_count += 1;
     return 0;
@@ -157,10 +181,36 @@ pub export fn boj_catalogue_register(
 
 /// Add a protocol to the last registered cartridge.
 pub export fn boj_catalogue_add_protocol(protocol: c_int) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (!initialised or catalogue_count == 0) return -1;
     if (protocol < 1 or protocol > 9) return -1;
     catalogue[catalogue_count - 1].protocols[@as(usize, @intCast(protocol)) - 1] = true;
     return 0;
+}
+
+/// Set the backend for the last registered cartridge.
+/// Defaults to "universal" if never called.
+/// This is the third-axis extension point (see docs/EXTENSIBILITY.md).
+pub export fn boj_catalogue_set_backend(backend_ptr: [*]const u8, backend_len: usize) c_int {
+    mutex.lock();
+    defer mutex.unlock();
+    if (!initialised or catalogue_count == 0) return -1;
+    if (backend_len > 32) return -1;
+    @memcpy(catalogue[catalogue_count - 1].backend[0..backend_len], backend_ptr[0..backend_len]);
+    catalogue[catalogue_count - 1].backend_len = backend_len;
+    return 0;
+}
+
+/// Get the backend label for a cartridge by index.
+/// Copies into out_ptr, returns length (or 0 on error).
+pub export fn boj_menu_backend(index: usize, out_ptr: [*]u8, out_len: usize) usize {
+    mutex.lock();
+    defer mutex.unlock();
+    if (!initialised or index >= catalogue_count) return 0;
+    const len = @min(catalogue[index].backend_len, out_len);
+    @memcpy(out_ptr[0..len], catalogue[index].backend[0..len]);
+    return len;
 }
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -171,6 +221,8 @@ pub export fn boj_catalogue_add_protocol(protocol: c_int) c_int {
 /// SAFETY: Only mounts if status == Ready (matching IsUnbreakable proof).
 /// Returns 0 on success, -1 if not ready, -2 if not found.
 pub export fn boj_catalogue_mount(index: usize) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (!initialised or index >= catalogue_count) return -2;
     if (catalogue[index].status != .ready) return -1;
     catalogue[index].mounted = true;
@@ -179,6 +231,8 @@ pub export fn boj_catalogue_mount(index: usize) c_int {
 
 /// Unmount a cartridge by index.
 pub export fn boj_catalogue_unmount(index: usize) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (!initialised or index >= catalogue_count) return -2;
     catalogue[index].mounted = false;
     return 0;
@@ -186,6 +240,8 @@ pub export fn boj_catalogue_unmount(index: usize) c_int {
 
 /// Check if a cartridge is mounted.
 pub export fn boj_catalogue_is_mounted(index: usize) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (!initialised or index >= catalogue_count) return -1;
     return if (catalogue[index].mounted) 1 else 0;
 }
@@ -196,11 +252,15 @@ pub export fn boj_catalogue_is_mounted(index: usize) c_int {
 
 /// Get the total number of registered cartridges.
 pub export fn boj_catalogue_count() usize {
+    mutex.lock();
+    defer mutex.unlock();
     return catalogue_count;
 }
 
 /// Get the number of ready cartridges.
 pub export fn boj_catalogue_count_ready() usize {
+    mutex.lock();
+    defer mutex.unlock();
     var count: usize = 0;
     for (catalogue[0..catalogue_count]) |entry| {
         if (entry.status == .ready) count += 1;
@@ -210,6 +270,8 @@ pub export fn boj_catalogue_count_ready() usize {
 
 /// Get the number of mounted cartridges.
 pub export fn boj_catalogue_count_mounted() usize {
+    mutex.lock();
+    defer mutex.unlock();
     var count: usize = 0;
     for (catalogue[0..catalogue_count]) |entry| {
         if (entry.mounted) count += 1;
@@ -219,6 +281,8 @@ pub export fn boj_catalogue_count_mounted() usize {
 
 /// Get the status of a cartridge by index.
 pub export fn boj_catalogue_status(index: usize) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (index >= catalogue_count) return -1;
     return @intFromEnum(catalogue[index].status);
 }
@@ -227,6 +291,8 @@ pub export fn boj_catalogue_status(index: usize) c_int {
 /// hash_ptr: pointer to hex string. hash_len: must be <= 64.
 /// Returns 0 on success, -1 on failure.
 pub export fn boj_catalogue_set_hash(index: usize, hash_ptr: [*]const u8, hash_len: usize) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (!initialised or index >= catalogue_count) return -1;
     if (hash_len > 64) return -1;
     @memcpy(catalogue[index].binary_hash[0..hash_len], hash_ptr[0..hash_len]);
@@ -237,6 +303,8 @@ pub export fn boj_catalogue_set_hash(index: usize, hash_ptr: [*]const u8, hash_l
 /// Get the binary hash for a cartridge by index.
 /// Writes the hash into out_ptr, returns the hash length (0 if no hash set).
 pub export fn boj_catalogue_get_hash(index: usize, out_ptr: [*]u8) usize {
+    mutex.lock();
+    defer mutex.unlock();
     if (!initialised or index >= catalogue_count) return 0;
     const len = catalogue[index].hash_len;
     if (len > 0) {
@@ -262,6 +330,8 @@ pub export fn boj_catalogue_version() [*:0]const u8 {
 /// Get the name of a cartridge by index. Copies into out_ptr.
 /// Returns the name length, or 0 if index is invalid.
 pub export fn boj_menu_name(index: usize, out_ptr: [*]u8, out_len: usize) usize {
+    mutex.lock();
+    defer mutex.unlock();
     if (!initialised or index >= catalogue_count) return 0;
     const len = @min(catalogue[index].name_len, out_len);
     @memcpy(out_ptr[0..len], catalogue[index].name[0..len]);
@@ -271,6 +341,8 @@ pub export fn boj_menu_name(index: usize, out_ptr: [*]u8, out_len: usize) usize 
 /// Get the version of a cartridge by index. Copies into out_ptr.
 /// Returns the version length, or 0 if index is invalid.
 pub export fn boj_menu_version(index: usize, out_ptr: [*]u8, out_len: usize) usize {
+    mutex.lock();
+    defer mutex.unlock();
     if (!initialised or index >= catalogue_count) return 0;
     const len = @min(catalogue[index].version_len, out_len);
     @memcpy(out_ptr[0..len], catalogue[index].version[0..len]);
@@ -280,6 +352,8 @@ pub export fn boj_menu_version(index: usize, out_ptr: [*]u8, out_len: usize) usi
 /// Get the tier of a cartridge by index.
 /// Returns 0=Teranga, 1=Shield, 2=Ayo, or -1 on error.
 pub export fn boj_menu_tier(index: usize) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (!initialised or index >= catalogue_count) return -1;
     return @intFromEnum(catalogue[index].tier);
 }
@@ -287,6 +361,8 @@ pub export fn boj_menu_tier(index: usize) c_int {
 /// Get the domain of a cartridge by index.
 /// Returns the domain integer (1-13), or -1 on error.
 pub export fn boj_menu_domain(index: usize) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (!initialised or index >= catalogue_count) return -1;
     return @intFromEnum(catalogue[index].domain);
 }
@@ -294,6 +370,8 @@ pub export fn boj_menu_domain(index: usize) c_int {
 /// Check if a cartridge supports a given protocol.
 /// Returns 1 if supported, 0 if not, -1 on error.
 pub export fn boj_menu_has_protocol(index: usize, protocol: c_int) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (!initialised or index >= catalogue_count) return -1;
     if (protocol < 1 or protocol > 9) return -1;
     return if (catalogue[index].protocols[@as(usize, @intCast(protocol)) - 1]) 1 else 0;
@@ -302,12 +380,16 @@ pub export fn boj_menu_has_protocol(index: usize, protocol: c_int) c_int {
 /// Check if a cartridge is available (status == Ready).
 /// Returns 1 if available, 0 if not, -1 on error.
 pub export fn boj_menu_available(index: usize) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (!initialised or index >= catalogue_count) return -1;
     return if (catalogue[index].status == .ready) 1 else 0;
 }
 
 /// Count cartridges by tier.
 pub export fn boj_menu_count_by_tier(tier_int: c_int) usize {
+    mutex.lock();
+    defer mutex.unlock();
     if (!initialised) return 0;
     const tier: MenuTier = @enumFromInt(tier_int);
     var count: usize = 0;
@@ -319,6 +401,8 @@ pub export fn boj_menu_count_by_tier(tier_int: c_int) usize {
 
 /// Count available (Ready) cartridges by tier.
 pub export fn boj_menu_count_available_by_tier(tier_int: c_int) usize {
+    mutex.lock();
+    defer mutex.unlock();
     if (!initialised) return 0;
     const tier: MenuTier = @enumFromInt(tier_int);
     var count: usize = 0;
@@ -336,6 +420,8 @@ pub export fn boj_menu_validate_order(
     name_lens: [*]const usize,
     count: usize,
 ) usize {
+    mutex.lock();
+    defer mutex.unlock();
     if (!initialised) return 0;
     if (count > MAX_ORDER_SIZE) return 0;
 
@@ -359,6 +445,8 @@ pub export fn boj_menu_validate_order(
 /// Returns the number of bytes written, or 0 on error.
 /// This is the primary discovery endpoint for AI agents.
 pub export fn boj_menu_json(out_ptr: [*]u8, out_len: usize) usize {
+    mutex.lock();
+    defer mutex.unlock();
     if (!initialised) return 0;
 
     const tier_labels = [_][]const u8{ "teranga", "shield", "ayo" };
@@ -411,6 +499,13 @@ pub export fn boj_menu_json(out_ptr: [*]u8, out_len: usize) usize {
         const status_label = status_labels[@as(usize, @intCast(@intFromEnum(entry.status)))];
         @memcpy(buf[pos..][0..status_label.len], status_label);
         pos += status_label.len;
+
+        const mid_backend = "\",\"backend\":\"";
+        @memcpy(buf[pos..][0..mid_backend.len], mid_backend);
+        pos += mid_backend.len;
+
+        @memcpy(buf[pos..][0..entry.backend_len], entry.backend[0..entry.backend_len]);
+        pos += entry.backend_len;
 
         const mid4 = if (entry.status == .ready)
             "\",\"available\":true,\"protocols\":["
@@ -619,6 +714,32 @@ test "menu validate order" {
     try std.testing.expectEqual(@as(usize, 0), boj_menu_validate_order(&names3, &lens3, 1));
 }
 
+test "backend defaults to universal" {
+    _ = boj_catalogue_init();
+    defer boj_catalogue_deinit();
+
+    const name = "db-universal";
+    _ = boj_catalogue_register(name.ptr, name.len, "1.0".ptr, 3, 1, 0, 3);
+
+    var buf: [32]u8 = undefined;
+    const len = boj_menu_backend(0, &buf, 32);
+    try std.testing.expectEqualSlices(u8, "universal", buf[0..len]);
+}
+
+test "backend can be specialised" {
+    _ = boj_catalogue_init();
+    defer boj_catalogue_deinit();
+
+    const name = "db-postgres";
+    _ = boj_catalogue_register(name.ptr, name.len, "1.0".ptr, 3, 2, 0, 3); // ayo tier
+    const pg = "postgresql";
+    _ = boj_catalogue_set_backend(pg.ptr, pg.len);
+
+    var buf: [32]u8 = undefined;
+    const len = boj_menu_backend(0, &buf, 32);
+    try std.testing.expectEqualSlices(u8, "postgresql", buf[0..len]);
+}
+
 test "menu JSON generation" {
     _ = boj_catalogue_init();
     defer boj_catalogue_deinit();
@@ -636,6 +757,7 @@ test "menu JSON generation" {
     try std.testing.expect(std.mem.indexOf(u8, json, "\"menu\":\"teranga\"") != null);
     try std.testing.expect(std.mem.indexOf(u8, json, "\"database-mcp\"") != null);
     try std.testing.expect(std.mem.indexOf(u8, json, "\"available\":true") != null);
+    try std.testing.expect(std.mem.indexOf(u8, json, "\"backend\":\"universal\"") != null);
     try std.testing.expect(std.mem.indexOf(u8, json, "\"mcp\"") != null);
     try std.testing.expect(std.mem.indexOf(u8, json, "\"rest\"") != null);
 }

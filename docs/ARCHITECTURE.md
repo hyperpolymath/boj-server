@@ -109,6 +109,33 @@ BoJ doesn't start from scratch:
 - **polystack** (13 components — being superseded by BoJ): capability domain mapping
 - **stapeln**: container supply chain
 
+## Thread Safety
+
+All 9 Zig FFI modules (`database.zig`, `secrets.zig`, `observe.zig`, `fleet.zig`, `nesy.zig`, `federation.zig`, `lsp.zig`, `dap.zig`, `bsp.zig`) use `std.Thread.Mutex` to guarantee safe concurrent access from V-lang HTTP worker threads.
+
+**Mutex discipline:**
+
+- Every `pub export fn` (C-ABI boundary) acquires the module's mutex before touching any global state and releases it on return via `defer`.
+- 55 global variables are protected across 120+ exported functions.
+- No Zig FFI function can be entered concurrently on two threads with conflicting access to the same global.
+
+**Deadlock prevention:**
+
+Some exported functions need to call other exported functions within the same module (e.g. `federation.zig` where a gossip handler invokes node-lookup logic). If both the caller and callee acquire the same mutex, the thread deadlocks on itself. The solution is a two-tier naming convention:
+
+1. `pub export fn boj_federation_*` — acquires the mutex, called only from V-lang / external C code.
+2. `fn federation_*_impl` — mutex-free internal implementation, called by other functions that already hold the lock.
+
+Exported functions delegate to `_impl` helpers, and re-entrant internal call paths use `_impl` directly, so the mutex is acquired exactly once per external call.
+
+**Concurrency model:**
+
+V-lang's HTTP server spawns worker threads that call into Zig FFI concurrently. Because every C-ABI entry point serialises on the module mutex, workers never observe torn or partially-updated state. The cost is per-module serialisation, which is acceptable at current scale; future work may introduce per-resource fine-grained locks if profiling warrants it.
+
+**panic-attack validation:**
+
+The panic-attack security scanner validated the thread-safety model across all 9 modules. Results: 1 expected weak point (QUIC crypto — inherent to the protocol's 0-RTT replay window, mitigated at the application layer), 0 critical vulnerabilities.
+
 ## License
 
 PMPL-1.0-or-later. The license's provenance requirements (crypto signatures, emotional lineage) align directly with the hash attestation model — the legal framework and the technical framework say the same thing.

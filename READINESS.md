@@ -52,13 +52,15 @@
 | Container ecosystem     | D     | Alpha         | Containerfile + compose.toml + vordr.toml present. No e2e test.         | 2026-03-09    |
 | Teranga Menu            | X     | —             | A2ML spec defined. No runtime generation.                               | 2026-03-09    |
 | Order-Ticket Protocol   | D     | Alpha         | SCM spec + 3 e2e tests. No production flow.                             | 2026-03-09    |
+| Extensibility (3rd axis)| D     | Alpha         | Backend field stubbed in ABI+FFI, 2 tests, extension.a2ml template.     | 2026-03-09    |
 
 ## Summary
 
-- **28 components at Grade D** (Alpha): Core ABI+FFI layers type-check and pass 218 tests, all 17 cartridge .so files built
+- **29 components at Grade D** (Alpha): Core ABI+FFI layers type-check and pass 307 tests, all 18 cartridge .so files built
 - **1 component at Grade X** (Untested): Teranga menu has spec but no runtime
-- **0 components at Grade C+**: Nothing is production-ready yet
-- **17/17 cartridges** with compiled .so shared libraries
-- **218 tests** passing (105 core + 113 cartridge + 30 federation + 12 guardian + 28 readiness + 7 VeriSimDB + 3 e2e)
+- **0 components at Grade C+**: Nothing dogfooded by external users yet
+- **18/18 cartridges** with compiled .so shared libraries
+- **307 tests** passing (178 core Zig [13 catalogue + 14 loader + 40 federation + 12 guardian + 28 readiness + 7 VeriSimDB + 3 e2e + 14 coprocessor + 11 SLA + 11 community + 10 SDP + 15 seams] + 118 cartridge FFI + 11 multi-node)
+- **Extensibility**: Third axis (backend/provider) stubbed for community extensions
 - **PanLL BoJ panel** fully implemented (887 lines, 5 tabs) in PanLL repo
-- **Next milestone**: Grade D -> C requires dogfooding in a real project (IDApTIK or similar)
+- **Next milestone**: Grade D -> C requires self-validated dogfooding (feedback-o-tron collecting feedback on BoJ itself)

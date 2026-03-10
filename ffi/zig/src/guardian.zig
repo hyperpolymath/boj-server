@@ -181,6 +181,9 @@ var log_count: usize = 0;
 /// Health check interval (configurable).
 var health_interval: i64 = DEFAULT_HEALTH_INTERVAL;
 
+/// Thread-safety mutex for all C-ABI export functions.
+var mutex: std.Thread.Mutex = .{};
+
 // ═══════════════════════════════════════════════════════════════════════
 // Internal Helpers
 // ═══════════════════════════════════════════════════════════════════════
@@ -244,6 +247,8 @@ fn worseSeverity(a: Severity, b: Severity) Severity {
 
 /// Initialise the guardian. Must be called at BoJ startup.
 pub export fn boj_guardian_init() c_int {
+    mutex.lock();
+    defer mutex.unlock();
     profiles = [_]CartridgeProfile{CartridgeProfile{}} ** MAX_TRACKED;
     profile_count = 0;
     system_snapshot = SystemSnapshot{};
@@ -261,6 +266,8 @@ pub export fn boj_guardian_init() c_int {
 
 /// Shut down the guardian.
 pub export fn boj_guardian_deinit() void {
+    mutex.lock();
+    defer mutex.unlock();
     profiles = [_]CartridgeProfile{CartridgeProfile{}} ** MAX_TRACKED;
     profile_count = 0;
     initialised = false;
@@ -278,6 +285,8 @@ pub export fn boj_guardian_track(
     name_len: usize,
     pid: u32,
 ) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (!initialised) return -1;
     if (name_len == 0 or name_len > MAX_NAME_LEN) return -1;
     if (profile_count >= MAX_TRACKED) return -1;
@@ -304,6 +313,8 @@ pub export fn boj_guardian_track(
 
 /// Untrack a cartridge (called on unmount).
 pub export fn boj_guardian_untrack(index: usize) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (!initialised or index >= MAX_TRACKED or !profiles[index].active) return -1;
 
     const msg = "Cartridge untracked";
@@ -327,6 +338,8 @@ pub export fn boj_guardian_update_resources(
     open_fds: u32,
     child_procs: u32,
 ) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (!initialised or index >= MAX_TRACKED or !profiles[index].active) return -1;
 
     profiles[index].memory_bytes = memory_bytes;
@@ -358,6 +371,8 @@ pub export fn boj_guardian_update_system(
     boj_processes: u32,
     load_average_100: u32,
 ) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (!initialised) return -1;
 
     system_snapshot.total_memory_mb = total_memory_mb;
@@ -406,6 +421,8 @@ pub export fn boj_guardian_update_system(
 
 /// Record a successful health check for a cartridge.
 pub export fn boj_guardian_health_ok(index: usize) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (!initialised or index >= MAX_TRACKED or !profiles[index].active) return -1;
 
     profiles[index].health_pings += 1;
@@ -426,6 +443,8 @@ pub export fn boj_guardian_health_ok(index: usize) c_int {
 /// Record a failed health check for a cartridge.
 /// May trip the circuit breaker.
 pub export fn boj_guardian_health_fail(index: usize) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (!initialised or index >= MAX_TRACKED or !profiles[index].active) return -1;
 
     const now = std.time.timestamp();
@@ -458,6 +477,8 @@ pub export fn boj_guardian_health_fail(index: usize) c_int {
 /// Transitions Open → HalfOpen if cooldown elapsed.
 /// Returns the new circuit state.
 pub export fn boj_guardian_check_recovery(index: usize) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (!initialised or index >= MAX_TRACKED or !profiles[index].active) return -1;
 
     if (profiles[index].circuit_state == .open) {
@@ -479,12 +500,16 @@ pub export fn boj_guardian_check_recovery(index: usize) c_int {
 /// Check whether a new mount should be allowed.
 /// Returns 1 if allowed, 0 if rejected (system overloaded).
 pub export fn boj_guardian_allow_mount() c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (!initialised) return 0;
     return if (mounts_rejected) 0 else 1;
 }
 
 /// Get current system severity level.
 pub export fn boj_guardian_severity() c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (!initialised) return 0;
     return @intFromEnum(system_snapshot.severity);
 }
@@ -495,11 +520,15 @@ pub export fn boj_guardian_severity() c_int {
 
 /// Get the number of tracked cartridges.
 pub export fn boj_guardian_tracked_count() usize {
+    mutex.lock();
+    defer mutex.unlock();
     return profile_count;
 }
 
 /// Get the number of cartridges with open (tripped) circuit breakers.
 pub export fn boj_guardian_tripped_count() usize {
+    mutex.lock();
+    defer mutex.unlock();
     var count: usize = 0;
     for (&profiles) |*p| {
         if (p.active and p.circuit_state == .open) count += 1;
@@ -509,6 +538,8 @@ pub export fn boj_guardian_tripped_count() usize {
 
 /// Get the number of unhealthy cartridges (3+ consecutive failed pings).
 pub export fn boj_guardian_unhealthy_count() usize {
+    mutex.lock();
+    defer mutex.unlock();
     var count: usize = 0;
     for (&profiles) |*p| {
         if (p.active and p.failed_pings >= 3) count += 1;
@@ -518,50 +549,68 @@ pub export fn boj_guardian_unhealthy_count() usize {
 
 /// Get whether mounts are currently being rejected.
 pub export fn boj_guardian_mounts_rejected() c_int {
+    mutex.lock();
+    defer mutex.unlock();
     return if (mounts_rejected) 1 else 0;
 }
 
 /// Get the circuit breaker state for a cartridge.
 pub export fn boj_guardian_circuit_state(index: usize) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (!initialised or index >= MAX_TRACKED or !profiles[index].active) return -1;
     return @intFromEnum(profiles[index].circuit_state);
 }
 
 /// Get consecutive failed pings for a cartridge.
 pub export fn boj_guardian_failed_pings(index: usize) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (!initialised or index >= MAX_TRACKED or !profiles[index].active) return -1;
     return @intCast(profiles[index].failed_pings);
 }
 
 /// Get memory usage in bytes for a cartridge.
 pub export fn boj_guardian_memory(index: usize) u64 {
+    mutex.lock();
+    defer mutex.unlock();
     if (!initialised or index >= MAX_TRACKED or !profiles[index].active) return 0;
     return profiles[index].memory_bytes;
 }
 
 /// Get CPU usage percentage for a cartridge.
 pub export fn boj_guardian_cpu(index: usize) u32 {
+    mutex.lock();
+    defer mutex.unlock();
     if (!initialised or index >= MAX_TRACKED or !profiles[index].active) return 0;
     return profiles[index].cpu_percent;
 }
 
 /// Get system CPU usage.
 pub export fn boj_guardian_system_cpu() u32 {
+    mutex.lock();
+    defer mutex.unlock();
     return system_snapshot.cpu_usage_percent;
 }
 
 /// Get system available memory (MB).
 pub export fn boj_guardian_system_avail_mem() u32 {
+    mutex.lock();
+    defer mutex.unlock();
     return system_snapshot.available_memory_mb;
 }
 
 /// Get BoJ-managed process count.
 pub export fn boj_guardian_boj_processes() u32 {
+    mutex.lock();
+    defer mutex.unlock();
     return system_snapshot.boj_processes;
 }
 
 /// Get the diagnostic log entry count.
 pub export fn boj_guardian_log_count() usize {
+    mutex.lock();
+    defer mutex.unlock();
     return log_count;
 }
 
@@ -576,6 +625,8 @@ pub export fn boj_guardian_log_entry(
     action_out: *c_int,
     timestamp_out: *i64,
 ) usize {
+    mutex.lock();
+    defer mutex.unlock();
     if (index >= log_count) return 0;
 
     // Index 0 = most recent (reverse ring buffer order).
@@ -595,6 +646,8 @@ pub export fn boj_guardian_log_entry(
 
 /// Set the health check interval (seconds).
 pub export fn boj_guardian_set_health_interval(seconds: i64) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (seconds < 1 or seconds > 3600) return -1;
     health_interval = seconds;
     return 0;
@@ -602,11 +655,15 @@ pub export fn boj_guardian_set_health_interval(seconds: i64) c_int {
 
 /// Get the health check interval (seconds).
 pub export fn boj_guardian_get_health_interval() i64 {
+    mutex.lock();
+    defer mutex.unlock();
     return health_interval;
 }
 
 /// Set the circuit breaker threshold for a cartridge.
 pub export fn boj_guardian_set_circuit_threshold(index: usize, threshold: u32) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (!initialised or index >= MAX_TRACKED or !profiles[index].active) return -1;
     if (threshold == 0) return -1;
     profiles[index].circuit_threshold = threshold;
@@ -615,6 +672,8 @@ pub export fn boj_guardian_set_circuit_threshold(index: usize, threshold: u32) c
 
 /// Set the circuit breaker cooldown for a cartridge.
 pub export fn boj_guardian_set_circuit_cooldown(index: usize, seconds: i64) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (!initialised or index >= MAX_TRACKED or !profiles[index].active) return -1;
     if (seconds < 1) return -1;
     profiles[index].circuit_cooldown = seconds;
@@ -629,6 +688,8 @@ pub export fn boj_guardian_set_circuit_cooldown(index: usize, seconds: i64) c_in
 /// Format: "SEV=N CPIU=N% MEM=N/NMB PROCS=N TRACKED=N UNHEALTHY=N TRIPPED=N MOUNTS=OK|REJECTED"
 /// Returns the number of bytes written.
 pub export fn boj_guardian_diagnostic_summary(out_ptr: [*]u8, out_len: usize) usize {
+    mutex.lock();
+    defer mutex.unlock();
     if (!initialised or out_len < 128) return 0;
 
     const sev_names = [_][]const u8{ "NOMINAL", "ADVISORY", "CAUTION", "WARNING", "CRITICAL" };

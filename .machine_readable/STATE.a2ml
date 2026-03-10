@@ -42,8 +42,8 @@ milestones = [
 # - Multi-node tests: 11 (shell tests)
 
 [quality]
-total-tests = 296
-core-ffi-tests = 172
+total-tests = 307
+core-ffi-tests = 178
 cartridge-ffi-tests = 113
 federation-tests = 40
 coprocessor-tests = 14
@@ -116,6 +116,32 @@ coprocessor-dispatch = "done — detect→select→dispatch→fallback, env-driv
 podman-secure = "done — quadlet + seccomp profile + read-only rootfs + resource limits"
 api-contract = "done — docs/API-CONTRACT.md, all endpoints documented"
 configurable-ports = "done — BOJ_REST_PORT, BOJ_GRPC_PORT, BOJ_GRAPHQL_PORT env vars"
+
+[seam-checks]
+module = "ffi/zig/src/seams.zig"
+tests = 15
+pattern = "panic-attack diagnostics (integration contract validation)"
+categories = "enum-encoding, mount-safety, hash-attestation, backend-axis, lifecycle, json-contract, protocol-range, order-validation, thread-safety"
+result = "silent signature (all pass)"
+
+[thread-safety]
+pattern = "std.Thread.Mutex per FFI module, lock at C-ABI export boundary"
+modules-hardened = 9
+exports-protected = 120
+global-vars-guarded = 55
+deadlock-prevention = "internal _impl functions for re-entrant call paths"
+panic-attack-result = "1 weak point (QUIC crypto, expected), 0 critical vulns in Zig FFI"
+
+[mcp-bridge]
+mode = "--mcp flag on boj-server binary"
+protocol = "JSON-RPC 2.0 over stdin/stdout (MCP 2024-11-05)"
+tools = 18
+usage = "boj-server --mcp (add to claude_desktop_config.json)"
+
+[extensibility]
+backend-axis = "stubbed — third dimension (domain x protocol x backend) for community extensions"
+extension-descriptor = "docs/examples/extension.a2ml"
+documentation = "docs/EXTENSIBILITY.md"
 
 [grade-a-status]
 sla-monitoring = "done — 3-tier (community/standard/premium), percentile tracking, 11 tests"

@@ -74,6 +74,7 @@ var entry_count: usize = 0;
 /// Statistics.
 var reads: usize = 0;
 var writes: usize = 0;
+var mutex: std.Thread.Mutex = .{};
 
 // ═══════════════════════════════════════════════════════════════════════
 // Internal helpers
@@ -110,6 +111,8 @@ pub export fn verisimdb_store_init(
     endpoint_ptr: [*]const u8,
     ep_len: usize,
 ) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     // Reset state.
     entries = [_]StoreEntry{.{}} ** MAX_ENTRIES;
     entry_count = 0;
@@ -129,6 +132,8 @@ pub export fn verisimdb_store_init(
 
 /// Deinitialise the store.
 pub export fn verisimdb_store_deinit() void {
+    mutex.lock();
+    defer mutex.unlock();
     entries = [_]StoreEntry{.{}} ** MAX_ENTRIES;
     entry_count = 0;
     initialised = false;
@@ -137,11 +142,15 @@ pub export fn verisimdb_store_deinit() void {
 
 /// Get the current storage mode. Returns 0 (in_memory) or 1 (persistent).
 pub export fn verisimdb_store_mode() c_int {
+    mutex.lock();
+    defer mutex.unlock();
     return @intFromEnum(mode);
 }
 
 /// Check if the store is initialised.
 pub export fn verisimdb_store_ready() c_int {
+    mutex.lock();
+    defer mutex.unlock();
     return if (initialised) 1 else 0;
 }
 
@@ -153,6 +162,8 @@ pub export fn verisimdb_store_put(
     value_ptr: [*]const u8,
     value_len: usize,
 ) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (!initialised) return -1;
     if (key_len == 0 or key_len > MAX_KEY_LEN) return -1;
     if (value_len > MAX_VALUE_LEN) return -1;
@@ -191,6 +202,8 @@ pub export fn verisimdb_store_get(
     out_ptr: [*]u8,
     out_len: usize,
 ) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (!initialised) return -1;
     if (key_len == 0 or key_len > MAX_KEY_LEN) return -1;
 
@@ -210,6 +223,8 @@ pub export fn verisimdb_store_delete(
     key_ptr: [*]const u8,
     key_len: usize,
 ) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (!initialised) return -1;
     if (key_len == 0 or key_len > MAX_KEY_LEN) return -1;
 
@@ -224,16 +239,22 @@ pub export fn verisimdb_store_delete(
 
 /// Return the number of entries in the store.
 pub export fn verisimdb_store_count() usize {
+    mutex.lock();
+    defer mutex.unlock();
     return entry_count;
 }
 
 /// Return the total number of reads since init.
 pub export fn verisimdb_store_reads() usize {
+    mutex.lock();
+    defer mutex.unlock();
     return reads;
 }
 
 /// Return the total number of writes since init.
 pub export fn verisimdb_store_writes() usize {
+    mutex.lock();
+    defer mutex.unlock();
     return writes;
 }
 

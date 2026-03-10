@@ -76,6 +76,7 @@ var cartridge_slas: [MAX_CARTRIDGES]CartridgeSla = [_]CartridgeSla{.{}} ** MAX_C
 var sla_count: usize = 0;
 var system_sla: SystemSla = .{};
 var initialised: bool = false;
+var mutex: std.Thread.Mutex = .{};
 
 // ═══════════════════════════════════════════════════════════════════════
 // Internal API
@@ -188,67 +189,97 @@ fn meetsSla(idx: usize) bool {
 // ═══════════════════════════════════════════════════════════════════════
 
 export fn boj_sla_init() i32 {
+    mutex.lock();
+    defer mutex.unlock();
     init();
     return 0;
 }
 
 export fn boj_sla_deinit() void {
+    mutex.lock();
+    defer mutex.unlock();
     sla_count = 0;
     system_sla = .{};
     initialised = false;
 }
 
 export fn boj_sla_register(name_ptr: [*]const u8, name_len: usize, tier: u8) i32 {
+    mutex.lock();
+    defer mutex.unlock();
     if (!initialised) init();
     const sla_tier: SlaTier = @enumFromInt(@min(tier, 2));
     return registerCartridge(name_ptr, name_len, sla_tier);
 }
 
 export fn boj_sla_record_invocation(idx: usize, latency_us: u32, success: u8) void {
+    mutex.lock();
+    defer mutex.unlock();
     recordInvocation(idx, latency_us, success != 0);
 }
 
 export fn boj_sla_record_health(idx: usize, healthy: u8) void {
+    mutex.lock();
+    defer mutex.unlock();
     recordHealthCheck(idx, healthy != 0);
 }
 
 export fn boj_sla_uptime(idx: usize) u32 {
+    mutex.lock();
+    defer mutex.unlock();
     return uptimePercent(idx);
 }
 
 export fn boj_sla_error_rate(idx: usize) u32 {
+    mutex.lock();
+    defer mutex.unlock();
     return errorRate(idx);
 }
 
 export fn boj_sla_p50(idx: usize) u32 {
+    mutex.lock();
+    defer mutex.unlock();
     return percentile(idx, 50);
 }
 
 export fn boj_sla_p95(idx: usize) u32 {
+    mutex.lock();
+    defer mutex.unlock();
     return percentile(idx, 95);
 }
 
 export fn boj_sla_p99(idx: usize) u32 {
+    mutex.lock();
+    defer mutex.unlock();
     return percentile(idx, 99);
 }
 
 export fn boj_sla_meets_target(idx: usize) u8 {
+    mutex.lock();
+    defer mutex.unlock();
     return if (meetsSla(idx)) 1 else 0;
 }
 
 export fn boj_sla_total_requests() u64 {
+    mutex.lock();
+    defer mutex.unlock();
     return system_sla.total_requests;
 }
 
 export fn boj_sla_total_errors() u64 {
+    mutex.lock();
+    defer mutex.unlock();
     return system_sla.total_errors;
 }
 
 export fn boj_sla_cartridge_count() usize {
+    mutex.lock();
+    defer mutex.unlock();
     return sla_count;
 }
 
 export fn boj_sla_cartridge_invocations(idx: usize) u64 {
+    mutex.lock();
+    defer mutex.unlock();
     if (idx >= sla_count) return 0;
     return cartridge_slas[idx].total_invocations;
 }

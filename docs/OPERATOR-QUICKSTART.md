@@ -1,0 +1,286 @@
+<!-- SPDX-License-Identifier: PMPL-1.0-or-later -->
+# Operator Quickstart — Umoja Community Node
+
+Run a BoJ federation node and join the Umoja gossip network.
+Total setup time: under 5 minutes.
+
+## Prerequisites
+
+- **Podman 4.0+** (never Docker)
+- **IPv6 connectivity** (dual-stack preferred; IPv4-only is not supported)
+- **UDP port 9999** open inbound (federation gossip)
+- **TCP port 7700** open inbound (REST health/status)
+- Ports 7701 (gRPC) and 7702 (GraphQL) are optional depending on your use case
+
+Verify Podman:
+
+```bash
+podman --version   # Must be 4.0+
+podman info --format '{{.Host.NetworkBackend}}'  # Should show "netavark"
+```
+
+## One-Command Setup (Podman Quadlet)
+
+Copy the quadlet file and start the service:
+
+```bash
+mkdir -p ~/.config/containers/systemd
+
+curl -fsSL https://raw.githubusercontent.com/hyperpolymath/boj-server/main/container/boj-community-node.container \
+  -o ~/.config/containers/systemd/boj-community-node.container
+
+systemctl --user daemon-reload
+systemctl --user start boj-community-node
+```
+
+Your node is now running with security hardening (read-only rootfs, no new
+privileges, all capabilities dropped, 512 MB memory limit).
+
+Check it started:
+
+```bash
+systemctl --user status boj-community-node
+```
+
+Enable on boot:
+
+```bash
+loginctl enable-linger "$USER"
+systemctl --user enable boj-community-node
+```
+
+## Configuration
+
+Override defaults by editing the quadlet file at
+`~/.config/containers/systemd/boj-community-node.container`.
+
+All configuration is via environment variables in the `[Container]` section:
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `BOJ_NODE_ID` | (auto-generated) | Unique node identifier. Set this to a stable value so your node keeps its identity across restarts. |
+| `BOJ_FEDERATION_PORT` | `9999` | UDP port for Umoja gossip protocol (QUIC transport). |
+| `BOJ_REST_PORT` / `APP_PORT` | `7700` | TCP port for REST API (health, status, matrix). |
+| `BOJ_QUIC` | `1` | Enable QUIC transport (`1` = on, `0` = fall back to plain UDP). |
+| `APP_HOST` | `[::]` | Listen address. `[::]` binds all interfaces (IPv4 + IPv6). |
+| `APP_DATA_DIR` | `/data` | Persistent data directory inside the container. |
+| `APP_LOG_FORMAT` | `json` | Log format (`json` or `text`). |
+
+Example with custom node ID and ports:
+
+```bash
+# In the [Container] section of the quadlet file, add or change:
+Environment=BOJ_NODE_ID=my-london-node
+Environment=BOJ_FEDERATION_PORT=9999
+Environment=APP_PORT=7700
+Environment=BOJ_QUIC=1
+```
+
+If you change ports, update the `PublishPort=` lines to match:
+
+```ini
+PublishPort=8080:8080       # REST on non-default port
+PublishPort=9999:9999/udp   # Federation (UDP)
+```
+
+Then reload:
+
+```bash
+systemctl --user daemon-reload
+systemctl --user restart boj-community-node
+```
+
+## Verification
+
+Once your node is running, confirm it is healthy:
+
+```bash
+# Health check (should return 200)
+curl -s http://localhost:7700/health
+
+# Node status (shows node ID, uptime, peer count, load factor)
+curl -s http://localhost:7700/status | jq .
+
+# Cartridge matrix (which protocol x domain cells are loaded)
+curl -s http://localhost:7700/matrix | jq .
+```
+
+All three should return valid JSON. If `/health` fails, check the logs:
+
+```bash
+journalctl --user -u boj-community-node -f
+```
+
+## Joining the Federation
+
+Your node discovers the network by connecting to seed nodes defined in
+[`container/seed-nodes.toml`](../container/seed-nodes.toml).
+
+The four continental seeds are:
+
+| Seed | Host | Region |
+|------|------|--------|
+| `seed-eu-west` | `eu.boj.hyperpolymath.dev` | London, UK |
+| `seed-eu-central` | `de.boj.hyperpolymath.dev` | Frankfurt, DE |
+| `seed-us-east` | `us.boj.hyperpolymath.dev` | Virginia, US |
+| `seed-ap-south` | `ap.boj.hyperpolymath.dev` | Sydney, AU |
+
+**How gossip works:**
+
+1. Your node contacts at least one seed on UDP port 9999
+2. The seed responds with its current peer list
+3. Your node begins exchanging peer lists every 5 seconds (gossip fanout = 3)
+4. Within ~60 seconds, the full network knows about your node
+5. Heartbeats every 10 seconds confirm liveness; nodes unseen for 30 seconds are marked stale
+
+**Verify federation membership:**
+
+```bash
+# Check your node's peer count
+curl -s http://localhost:7700/status | jq '.peers'
+
+# List known peers
+curl -s http://localhost:7700/status | jq '.peer_list'
+```
+
+A healthy node should show at least 2 peers within a minute of startup.
+
+**Trust model:** Your node must run the canonical (unmodified) binary. The
+network verifies this via SHA-256 hash attestation. Modified binaries are
+excluded from routing but can still run locally.
+
+## Monitoring
+
+### Vordr (runtime monitor)
+
+Vordr watches your node's health, detects crashes, and tracks resource usage.
+Configuration is baked into the container image from
+[`container/vordr.toml`](../container/vordr.toml).
+
+```bash
+# Check vordr status (if installed locally)
+vordr watch --config container/vordr.toml
+vordr status
+vordr report
+```
+
+Default thresholds (from `vordr.toml`):
+
+| Metric | Warn | Critical |
+|--------|------|----------|
+| CPU | 80% | 95% |
+| Memory | 75% | 90% |
+| Disk | 80% | 95% |
+
+### SLA Endpoints
+
+These endpoints are useful for external monitoring (Uptime Kuma, etc.):
+
+```bash
+# Liveness — is the process alive?
+curl -sf http://localhost:7700/health
+
+# Readiness — is the node ready to serve requests?
+curl -sf http://localhost:7700/ready
+
+# Federation status — is the node connected to peers?
+curl -s http://localhost:7700/status | jq '{peers: .peers, load: .load_factor}'
+```
+
+### Container health via Podman
+
+```bash
+podman healthcheck run boj-node
+podman inspect boj-node --format '{{.State.Health.Status}}'
+```
+
+## Troubleshooting
+
+### Port conflicts
+
+```
+Error: port 7700 already in use
+```
+
+Another service is using port 7700. Either stop it or change `APP_PORT` and the
+matching `PublishPort=` in the quadlet file.
+
+```bash
+# Find what is using the port
+ss -tlnp | grep 7700
+```
+
+### UDP port 9999 blocked (no peers)
+
+If your node starts but never discovers peers, UDP 9999 is likely blocked.
+
+```bash
+# Test UDP connectivity to a seed node
+nc -zu eu.boj.hyperpolymath.dev 9999 && echo "OK" || echo "BLOCKED"
+
+# Check firewall rules (firewalld on Fedora)
+sudo firewall-cmd --list-ports
+sudo firewall-cmd --add-port=9999/udp --permanent
+sudo firewall-cmd --reload
+```
+
+If you are behind CGNAT or a strict corporate firewall that blocks UDP, set
+`BOJ_QUIC=0` to try plain UDP fallback. If that also fails, you may need to
+use a VPN or VPS with open UDP.
+
+### IPv6 not working
+
+BoJ requires IPv6. Verify your host has a global IPv6 address:
+
+```bash
+ip -6 addr show scope global
+```
+
+If empty, you need to enable IPv6 on your network. Common fixes:
+
+- **Home router:** Enable IPv6 in router settings (most ISPs support it)
+- **VPS:** Most providers enable IPv6 by default; check your control panel
+- **Podman:** Ensure `podman network inspect podman | jq '.[0].subnets'`
+  shows an IPv6 subnet. If not:
+
+```bash
+podman network rm podman
+podman network create --ipv6 podman
+systemctl --user restart boj-community-node
+```
+
+### Container won't start (read-only filesystem errors)
+
+The container runs with a read-only root filesystem. If the application writes
+to unexpected paths, you will see permission errors. The `/tmp` tmpfs and
+`/data` volume are the only writable locations. Check logs:
+
+```bash
+journalctl --user -u boj-community-node --no-pager -n 50
+```
+
+### OOM killed (out of memory)
+
+The default memory limit is 512 MB. If your node is OOM-killed, increase it in
+the quadlet file:
+
+```ini
+PodmanArgs=--memory=1g --memory-swap=1g --cpus=2.0 --pids-limit=128
+```
+
+### Auto-updates
+
+The quadlet includes `AutoUpdate=registry`, so Podman will pull new images
+automatically if you enable the timer:
+
+```bash
+systemctl --user enable --now podman-auto-update.timer
+```
+
+## Further Reading
+
+- [FEDERATION.md](FEDERATION.md) — Full federation architecture and trust model
+- [ARCHITECTURE.md](ARCHITECTURE.md) — BoJ 2D matrix design
+- [`container/`](../container/) — All container configuration files
+- [`container/seed-nodes.toml`](../container/seed-nodes.toml) — Seed node list and network parameters
+- [`container/vordr.toml`](../container/vordr.toml) — Monitoring configuration

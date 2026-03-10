@@ -150,6 +150,8 @@ export fn boj_loader_set_hash(
     hash_ptr: [*]const u8,
     hash_len: usize,
 ) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (hash_len != HASH_HEX_LEN) return -1;
     // Delegate to catalogue — import at comptime
     const catalogue = @import("catalogue.zig");
@@ -166,6 +168,8 @@ export fn boj_loader_verify(
     expected_hex_ptr: [*]const u8,
     expected_hex_len: usize,
 ) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (expected_hex_len != HASH_HEX_LEN) return -1;
     const result = verifyHash(
         path_ptr[0..path_len],
@@ -220,6 +224,9 @@ const WasmCartridgeSlot = struct {
 var wasm_slots: [MAX_WASM_CARTRIDGES]WasmCartridgeSlot = [_]WasmCartridgeSlot{.{}} ** MAX_WASM_CARTRIDGES;
 var wasm_count: usize = 0;
 
+/// Module-level mutex for thread-safe access to global state from C-ABI exports.
+var mutex: std.Thread.Mutex = .{};
+
 /// Validate that a file is a valid WASM module.
 /// Checks magic bytes and version header.
 /// Returns the module size in bytes, or 0 if invalid.
@@ -251,6 +258,8 @@ pub export fn boj_wasm_register(
     path_len: usize,
     catalogue_idx: c_int,
 ) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (path_len == 0 or path_len > MAX_WASM_PATH_LEN) return -1;
     if (wasm_count >= MAX_WASM_CARTRIDGES) return -1;
 
@@ -285,6 +294,8 @@ pub export fn boj_wasm_register(
 /// Unregister a WASM cartridge slot.
 /// Returns 0 on success, -1 on error.
 pub export fn boj_wasm_unregister(slot_idx: usize) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (slot_idx >= MAX_WASM_CARTRIDGES or !wasm_slots[slot_idx].active) return -1;
     wasm_slots[slot_idx] = WasmCartridgeSlot{};
     wasm_count -= 1;
@@ -293,12 +304,16 @@ pub export fn boj_wasm_unregister(slot_idx: usize) c_int {
 
 /// Get the number of registered WASM cartridges.
 pub export fn boj_wasm_count() usize {
+    mutex.lock();
+    defer mutex.unlock();
     return wasm_count;
 }
 
 /// Check if a WASM slot is valid and verified.
 /// Returns 1 if valid, 0 if not, -1 on error.
 pub export fn boj_wasm_is_valid(slot_idx: usize) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (slot_idx >= MAX_WASM_CARTRIDGES or !wasm_slots[slot_idx].active) return -1;
     return if (wasm_slots[slot_idx].module_valid and wasm_slots[slot_idx].hash_verified) 1 else 0;
 }
@@ -306,6 +321,8 @@ pub export fn boj_wasm_is_valid(slot_idx: usize) c_int {
 /// Get the WASM module size in bytes.
 /// Returns the size, or 0 on error.
 pub export fn boj_wasm_module_size(slot_idx: usize) u64 {
+    mutex.lock();
+    defer mutex.unlock();
     if (slot_idx >= MAX_WASM_CARTRIDGES or !wasm_slots[slot_idx].active) return 0;
     return wasm_slots[slot_idx].module_size;
 }
@@ -313,6 +330,8 @@ pub export fn boj_wasm_module_size(slot_idx: usize) u64 {
 /// Get the hash of a WASM module. Copies into out_ptr.
 /// Returns HASH_HEX_LEN on success, 0 on error.
 pub export fn boj_wasm_hash(slot_idx: usize, out_ptr: [*]u8) usize {
+    mutex.lock();
+    defer mutex.unlock();
     if (slot_idx >= MAX_WASM_CARTRIDGES or !wasm_slots[slot_idx].active) return 0;
     if (!wasm_slots[slot_idx].hash_verified) return 0;
     @memcpy(out_ptr[0..HASH_HEX_LEN], &wasm_slots[slot_idx].hash);
@@ -327,6 +346,8 @@ pub export fn boj_wasm_verify(
     expected_hex_ptr: [*]const u8,
     expected_hex_len: usize,
 ) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     if (expected_hex_len != HASH_HEX_LEN) return -1;
     const result = verifyHash(
         path_ptr[0..path_len],
@@ -341,12 +362,16 @@ pub export fn boj_wasm_validate(
     path_ptr: [*]const u8,
     path_len: usize,
 ) c_int {
+    mutex.lock();
+    defer mutex.unlock();
     const size = validateWasmModule(path_ptr[0..path_len]) catch return -1;
     return if (size > 0) 1 else 0;
 }
 
 /// Reset all WASM cartridge slots.
 pub export fn boj_wasm_reset() void {
+    mutex.lock();
+    defer mutex.unlock();
     wasm_slots = [_]WasmCartridgeSlot{.{}} ** MAX_WASM_CARTRIDGES;
     wasm_count = 0;
 }

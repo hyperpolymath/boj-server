@@ -61,6 +61,7 @@ const Submission = struct {
 var submissions: [MAX_SUBMISSIONS]Submission = [_]Submission{.{}} ** MAX_SUBMISSIONS;
 var submission_count: usize = 0;
 var initialised: bool = false;
+var mutex: std.Thread.Mutex = .{};
 
 // ═══════════════════════════════════════════════════════════════════════
 // Internal API
@@ -166,11 +167,15 @@ fn countByStatus(status: ReviewStatus) usize {
 // ═══════════════════════════════════════════════════════════════════════
 
 export fn boj_community_init() i32 {
+    mutex.lock();
+    defer mutex.unlock();
     init();
     return 0;
 }
 
 export fn boj_community_deinit() void {
+    mutex.lock();
+    defer mutex.unlock();
     submission_count = 0;
     initialised = false;
 }
@@ -185,32 +190,46 @@ export fn boj_community_submit(
     hash_ptr: [*]const u8,
     hash_len: usize,
 ) i32 {
+    mutex.lock();
+    defer mutex.unlock();
     if (!initialised) init();
     return submit(name_ptr, name_len, author_ptr, author_len, desc_ptr, desc_len, hash_ptr, hash_len);
 }
 
 export fn boj_community_set_status(idx: usize, status: u8) i32 {
+    mutex.lock();
+    defer mutex.unlock();
     return setStatus(idx, @enumFromInt(@min(status, 4)));
 }
 
 export fn boj_community_status(idx: usize) u8 {
+    mutex.lock();
+    defer mutex.unlock();
     if (idx >= submission_count) return 0;
     return @intFromEnum(submissions[idx].status);
 }
 
 export fn boj_community_count() usize {
+    mutex.lock();
+    defer mutex.unlock();
     return submission_count;
 }
 
 export fn boj_community_count_approved() usize {
+    mutex.lock();
+    defer mutex.unlock();
     return countByStatus(.approved);
 }
 
 export fn boj_community_count_pending() usize {
+    mutex.lock();
+    defer mutex.unlock();
     return countByStatus(.submitted) + countByStatus(.under_review);
 }
 
 export fn boj_community_find(name_ptr: [*]const u8, name_len: usize) i32 {
+    mutex.lock();
+    defer mutex.unlock();
     if (findByName(name_ptr, name_len)) |idx| {
         return @intCast(idx);
     }

@@ -1,0 +1,46 @@
+<!-- SPDX-License-Identifier: PMPL-1.0-or-later -->
+<!-- Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk> -->
+
+# Bundle of Joy (BoJ) Server
+
+BoJ solves the combinatoric explosion of developer server protocols. Instead of hunting across dozens of MCP, LSP, DAP, and other servers, AI goes to **one place** -- the Teranga menu -- and orders what it needs.
+
+Capabilities are organised as a 2D matrix: **rows** are capability domains (what a server does), **columns** are protocol types (how you talk to it), and **cells** are formally verified, swappable **cartridges**. Each cartridge is built from three layers: Idris2 (proofs), Zig (native execution), and V-lang (network adapter exposing REST + gRPC + GraphQL).
+
+The server is **distributed**: community nodes volunteer compute time via the Umoja federation (like Tor/IPFS), with cryptographic hash attestation ensuring binary integrity.
+
+## Wiki Contents
+
+| Guide | Audience | What it covers |
+|-------|----------|----------------|
+| [User Guide](User-Guide) | People **using** BoJ via MCP or REST | Quick start, MCP setup, cartridge reference, common workflows |
+| [Operator Guide](Operator-Guide) | People **hosting** BoJ nodes | System requirements, Podman setup, federation, monitoring, security |
+| [Developer Guide](Developer-Guide) | People **developing** BoJ | Architecture, building from source, adding cartridges, testing |
+| [FAQ](FAQ) | Everyone | Common questions about naming, architecture, security, federation |
+
+## Key Resources
+
+- **Repository**: [github.com/hyperpolymath/boj-server](https://github.com/hyperpolymath/boj-server)
+- **API Contract**: [`docs/API-CONTRACT.md`](../API-CONTRACT.md) -- stable REST, gRPC, and GraphQL endpoints
+- **Architecture**: [`docs/ARCHITECTURE.md`](../ARCHITECTURE.md) -- full design document
+- **Topology**: [`TOPOLOGY.md`](../../TOPOLOGY.md) -- completion dashboard and system diagram
+- **Extensibility**: [`docs/EXTENSIBILITY.md`](../EXTENSIBILITY.md) -- third-axis extension mechanism
+
+## Current Status
+
+18 cartridges with compiled `.so` shared libraries, 307+ tests passing, Umoja federation with QUIC+UDP transport, MCP stdio bridge, and a PanLL panel for visual management. See [TOPOLOGY.md](../../TOPOLOGY.md) for the full completion dashboard.
+
+## This is a Community Project
+
+BoJ is built for everyone, by anyone willing to help. No one profits from it. The code, the network, and the ideas belong to the community.
+
+**How you can help:**
+
+- **Host a node** — Even briefly. Every node strengthens the Umoja federation. See the [Operator Guide](Operator-Guide).
+- **Try it** — Use it, break it, tell us what's wrong. Honest feedback is the most valuable contribution.
+- **Build** — Write a cartridge, create a HAT bridge to your tools, extend the third axis. See the [Developer Guide](Developer-Guide).
+- **Talk about it** — Share it, critique it, write about it. We learn from every perspective.
+
+Thank you to everyone who takes the time to look. This project exists to be tried, tested, and improved together.
+
+**Contact:** j.d.a.jewell@open.ac.uk | [GitHub Issues](https://github.com/hyperpolymath/boj-server/issues) | [Contributing](../../CONTRIBUTING.md)

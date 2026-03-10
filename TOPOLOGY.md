@@ -108,6 +108,8 @@ Feedback   │  ██  │      │      │      │      │       │      �
            └──────┴──────┴──────┴──────┴──────┴───────┴──────┴──────┴──────┘
 
   ██ = ABI + FFI + Adapter complete (18 cartridges, multi-protocol)
+  All cells have backend="universal". Third axis (backend/provider)
+  stubbed for community extensions — see docs/EXTENSIBILITY.md
 ```
 
 ## Completion Dashboard
@@ -152,8 +154,8 @@ Feedback   │  ██  │      │      │      │      │       │      �
 | feedback-o-tron (18th cartridge) | `██████████` 100%         | Full ABI+FFI   |
 | PanLL BoJ panel                  | `██████████` 100%         | 887 lines, 5 tabs |
 | PanLL bojRouting (10 panels)     | `██████████` 100%         | Conditional dispatch |
-| **Testing (296 total)**         |                           |                |
-| Core FFI tests (105)             | `██████████` 100%         | Passing        |
+| **Testing (305 total)**         |                           |                |
+| Core FFI tests (176)             | `██████████` 100%         | Passing        |
 | Cartridge FFI tests (113)        | `██████████` 100%         | Passing        |
 | Federation tests (30)            | `██████████` 100%         | Passing        |
 | Guardian tests (12)              | `██████████` 100%         | Passing        |
@@ -194,7 +196,12 @@ Feedback   │  ██  │      │      │      │      │       │      �
 What is genuinely done:
 - 18 cartridges with ABI+FFI+Adapter structure (3 at Grade C, 15 at Grade D)
 - 18/18 cartridges have compiled .so shared libraries
-- 296 tests passing (172 core Zig [25 catalogue + 11 loader + 40 federation + 12 guardian + 28 readiness + 7 VeriSimDB + 3 e2e + 14 coprocessor + 11 SLA + 11 community + 10 SDP] + 113 cartridge FFI + 11 multi-node federation)
+- 307 tests passing (178 core Zig [13 catalogue + 14 loader + 40 federation + 12 guardian + 28 readiness + 7 VeriSimDB + 3 e2e + 14 coprocessor + 11 SLA + 11 community + 10 SDP + 15 seams] + 118 cartridge FFI + 11 multi-node)
+- Thread-safety hardening: std.Thread.Mutex on all 9 FFI modules (55 globals, 120 exports)
+- panic-attack assail: 1 weak point (QUIC crypto, expected), 0 critical Zig vulns, 0 cross-language vulns
+- MCP stdio bridge (boj-server --mcp, JSON-RPC 2.0, all 18 cartridges as MCP tools)
+- Seam checks (panic-attack–style integration contract validation, 13 tests, silent signature)
+- Third-axis extensibility (backend/provider dimension) stubbed for community extensions
 - Umoja federation with QUIC-first transport (X25519+ChaCha20-Poly1305, UDP fallback, 40 tests)
 - Multi-node federation testing (11 tests, REST API for peer management)
 - Coprocessor dispatch (Axiom.jl-style: detect→select→dispatch→fallback, 14 tests)

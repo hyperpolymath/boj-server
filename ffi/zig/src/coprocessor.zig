@@ -99,6 +99,7 @@ var affinities: [MAX_CARTRIDGES]CartridgeAffinity = [_]CartridgeAffinity{.{}} **
 var affinity_count: usize = 0;
 
 var initialised: bool = false;
+var mutex: std.Thread.Mutex = .{};
 
 // ═══════════════════════════════════════════════════════════════════════
 // Detection
@@ -232,12 +233,16 @@ fn findAffinity(name_ptr: [*]const u8, name_len: usize) ?usize {
 
 /// Initialise coprocessor subsystem. Returns 0 on success.
 export fn boj_coprocessor_init()i32 {
+    mutex.lock();
+    defer mutex.unlock();
     init();
     return 0;
 }
 
 /// Deinitialise coprocessor subsystem.
 export fn boj_coprocessor_deinit()void {
+    mutex.lock();
+    defer mutex.unlock();
     device_count = 0;
     affinity_count = 0;
     initialised = false;
@@ -247,23 +252,31 @@ export fn boj_coprocessor_deinit()void {
 
 /// Return the number of detected devices (including CPU).
 export fn boj_coprocessor_device_count()usize {
+    mutex.lock();
+    defer mutex.unlock();
     return device_count;
 }
 
 /// Return the kind of device at the given index (AcceleratorKind as u8).
 export fn boj_coprocessor_device_kind(idx: usize)u8 {
+    mutex.lock();
+    defer mutex.unlock();
     if (idx >= device_count) return 0;
     return @intFromEnum(devices[idx].kind);
 }
 
 /// Return the status of device at the given index (DeviceStatus as u8).
 export fn boj_coprocessor_device_status(idx: usize)u8 {
+    mutex.lock();
+    defer mutex.unlock();
     if (idx >= device_count) return 0;
     return @intFromEnum(devices[idx].status);
 }
 
 /// Return the dispatch count of device at the given index.
 export fn boj_coprocessor_device_dispatches(idx: usize)u64 {
+    mutex.lock();
+    defer mutex.unlock();
     if (idx >= device_count) return 0;
     return devices[idx].dispatch_count;
 }
@@ -277,6 +290,8 @@ export fn boj_coprocessor_register(
     kinds_ptr: [*]const u8,
     kinds_len: usize,
 )i32 {
+    mutex.lock();
+    defer mutex.unlock();
     if (!initialised) init();
     const actual_len = @min(kinds_len, MAX_AFFINITY);
     var kinds_buf: [MAX_AFFINITY]AcceleratorKind = undefined;
@@ -289,6 +304,8 @@ export fn boj_coprocessor_register(
 /// Select best device for a cartridge by affinity index.
 /// Returns the AcceleratorKind (u8). Sets was_fallback via the out pointer.
 export fn boj_coprocessor_select(affinity_idx: usize, was_fallback: *u8)u8 {
+    mutex.lock();
+    defer mutex.unlock();
     const result = selectDevice(affinity_idx);
     was_fallback.* = if (result.was_fallback) 1 else 0;
     return @intFromEnum(result.device_kind);
@@ -301,9 +318,15 @@ export fn boj_coprocessor_select_by_name(
     name_len: usize,
     was_fallback: *u8,
 )u8 {
+    mutex.lock();
+    defer mutex.unlock();
     if (!initialised) init();
     if (findAffinity(name_ptr, name_len)) |idx| {
-        return boj_coprocessor_select(idx, was_fallback);
+        // Call selectDevice directly (not boj_coprocessor_select) to avoid deadlock —
+        // we already hold the mutex.
+        const result = selectDevice(idx);
+        was_fallback.* = if (result.was_fallback) 1 else 0;
+        return @intFromEnum(result.device_kind);
     }
     was_fallback.* = 1;
     return 0; // cpu
@@ -311,6 +334,8 @@ export fn boj_coprocessor_select_by_name(
 
 /// Record a dispatch event for tracking. Returns 0 on success.
 export fn boj_coprocessor_record_dispatch(device_idx: usize, latency_us: u64)i32 {
+    mutex.lock();
+    defer mutex.unlock();
     if (device_idx >= device_count) return -1;
     recordDispatch(device_idx, latency_us);
     return 0;
@@ -318,11 +343,15 @@ export fn boj_coprocessor_record_dispatch(device_idx: usize, latency_us: u64)i32
 
 /// Return the number of registered cartridge affinities.
 export fn boj_coprocessor_affinity_count()usize {
+    mutex.lock();
+    defer mutex.unlock();
     return affinity_count;
 }
 
 /// Check if an accelerator of the given kind is available.
 export fn boj_coprocessor_has_accelerator(kind: u8)u8 {
+    mutex.lock();
+    defer mutex.unlock();
     for (devices[0..device_count]) |dev| {
         if (@intFromEnum(dev.kind) == kind and dev.status == .available) return 1;
     }
