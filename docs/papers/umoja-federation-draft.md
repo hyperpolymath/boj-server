@@ -219,10 +219,15 @@ Bootstrap → Discovery → Handshake → Active → Suspected → Dead
 
 ### 3.2. Transport
 
-#### 3.2.1. QUIC-First Transport (Default)
+#### 3.2.1. Encrypted Transport (Default)
 
-The protocol's primary transport uses QUIC [RFC 9000] semantics with
-the following cryptographic primitives:
+The protocol's primary transport uses AEAD-encrypted UDP datagrams with
+the following cryptographic primitives. Note: while internally referred
+to as "QUIC mode" in the reference implementation, this transport does
+not implement the full QUIC protocol [RFC 9000] (no connection IDs,
+streams, flow control, or congestion control). It uses QUIC's
+cryptographic choices (X25519 + ChaCha20-Poly1305) applied directly to
+UDP datagrams:
 
 - **Key exchange**: X25519 Elliptic Curve Diffie-Hellman [RFC 7748].
   Each node generates a long-lived identity keypair at bind time. A
@@ -261,8 +266,8 @@ via the `BOJ_FEDERATION_PORT` environment variable.
 
 ### 3.3. Packet Types
 
-| Tag (cleartext) | Tag (QUIC) | Name                | Direction       |
-|:---------------:|:----------:|---------------------|-----------------|
+| Tag (cleartext) | Tag (encrypted) | Name                | Direction       |
+|:---------------:|:---------------:|---------------------|-----------------|
 | 0x01            | 0x81       | DISCOVER            | Multicast / Unicast |
 | 0x02            | 0x82       | DISCOVER_REPLY      | Unicast         |
 | 0x03            | 0x83       | GOSSIP_DIGEST       | Unicast         |
@@ -546,11 +551,22 @@ layer that enforces zero-trust principles at the transport level:
 
 ### 8.5. Transport Security
 
-- QUIC-mode (X25519 + ChaCha20-Poly1305) provides confidentiality,
-  integrity, and replay protection for all gossip traffic.
+- Encrypted mode (X25519 + ChaCha20-Poly1305) provides confidentiality
+  and integrity for all gossip traffic. Note that the current design
+  uses long-lived identity keypairs without ephemeral key exchange,
+  which does not provide forward secrecy. Future revisions of this
+  protocol SHOULD incorporate ephemeral ECDH or a full QUIC handshake
+  to achieve forward secrecy.
+- The shared secret derived from X25519 SHOULD be processed through
+  HKDF [RFC 5869] before use as a ChaCha20-Poly1305 key, rather than
+  used directly. The reference implementation currently uses the raw
+  shared secret; this is a known limitation.
+- Implementations MUST track received nonces per peer to prevent replay
+  attacks. Nonces SHOULD be counter-based (monotonically increasing)
+  rather than random to enable efficient duplicate detection.
 - UDP fallback mode provides none of these properties and MUST NOT be
   used in production.
-- Implementations SHOULD default to QUIC mode and require explicit
+- Implementations SHOULD default to encrypted mode and require explicit
   configuration to enable UDP fallback.
 
 ### 8.6. No Code Execution
@@ -573,10 +589,12 @@ This document requests registration of the following port number:
 |-------------|-------------|-------------------|-------------|
 | umoja-fed   | 9999        | UDP               | Umoja Federation Protocol |
 
-**Note:** Port 9999 is currently unassigned in the IANA Service Name
-and Transport Protocol Port Number Registry. If 9999 is assigned before
-this document is published, an alternative port in the dynamic/private
-range will be requested.
+**Note:** Port 9999 is currently assigned to the "distinct" service in
+the IANA Service Name and Transport Protocol Port Number Registry. The
+reference implementation uses 9999 as a configurable default. A formal
+port allocation from the User Ports range (1024-49151) will be
+requested if this protocol progresses beyond Experimental status.
+Implementations MUST support configurable port assignment.
 
 ### 9.2. IPv6 Multicast Address
 
@@ -610,6 +628,10 @@ address from the Link-Local Scope Multicast Addresses registry:
 
 - **[RFC 8439]** Nir, Y. and A. Langley, "ChaCha20 and Poly1305 for
   IETF Protocols", RFC 8439, DOI 10.17487/RFC8439, June 2018.
+
+- **[RFC 5869]** Krawczyk, H. and P. Eronen, "HMAC-based
+  Extract-and-Expand Key Derivation Function (HKDF)", RFC 5869,
+  DOI 10.17487/RFC5869, May 2010.
 
 ### 10.2. Informative References
 

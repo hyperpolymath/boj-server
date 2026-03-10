@@ -704,26 +704,26 @@ https://github.com/hyperpolymath/panic-attacker
 | `Boj.Catalogue` | Cartridge registry, IsUnbreakable proof, matrix queries | 221 |
 | `Boj.Federation` | Umoja node identity, hash attestation, gossip | 165 |
 | `Boj.Guardian` | Resource monitoring, circuit breaker, self-diagnostics | 299 |
-| `Boj.Menu` | Teranga menu discovery protocol | --- |
-| 18 cartridge ABIs | Per-cartridge safety proofs (`SafeX.idr`) | --- |
+| `Boj.Menu` | Teranga menu discovery protocol | ~85 |
+| 18 cartridge ABIs | Per-cartridge safety proofs (`SafeX.idr`) | ~720 (~40 each) |
 
 ## Appendix B: Zig FFI Module Listing
 
 | Module | C-ABI Exports | Mutex-Protected Globals | Tests |
 |--------|---------------|------------------------|-------|
-| `catalogue.zig` | 20 | 3 | 13 |
-| `loader.zig` | --- | --- | 14 |
-| `federation.zig` | 30+ | 8 | 40 |
-| `guardian.zig` | --- | --- | 12 |
-| `readiness.zig` | --- | --- | 28 |
-| `verisimdb.zig` | --- | --- | 7 |
-| `coprocessor.zig` | --- | --- | 14 |
-| `sla.zig` | --- | --- | 11 |
-| `community.zig` | --- | --- | 11 |
-| `sdp.zig` | --- | --- | 10 |
-| `seams.zig` | --- | --- | 15 |
-| `e2e_order.zig` | --- | --- | 3 |
-| `bench.zig` | --- | --- | --- |
+| `catalogue.zig` | 26 | 6 | 13 |
+| `loader.zig` | 11 | 2 | 14 |
+| `federation.zig` | 44 | 21 | 40 |
+| `guardian.zig` | 29 | 9 | 12 |
+| `readiness.zig` | 8 | 3 | 28 |
+| `verisimdb.zig` | 10 | 8 | 7 |
+| `coprocessor.zig` | 12 | 5 | 14 |
+| `sla.zig` | 15 | 4 | 11 |
+| `community.zig` | 9 | 3 | 11 |
+| `sdp.zig` | 10 | 6 | 10 |
+| `seams.zig` | 0 | 0 | 15 |
+| `e2e_order.zig` | 0 | 0 | 3 |
+| `bench.zig` | 0 | 0 | 0 (benchmark only) |
 | 18 cartridge FFIs | 4 each | 1 each | 118 total |
 
 ## Appendix C: Reproducibility
