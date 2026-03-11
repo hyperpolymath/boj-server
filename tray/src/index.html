@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<!-- SPDX-License-Identifier: PMPL-1.0-or-later -->
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BoJ Node Operator</title>
+  <style>
+    :root {
+      --bg: #1a1a2e;
+      --surface: #16213e;
+      --accent: #0f3460;
+      --green: #4ecca3;
+      --red: #e74c3c;
+      --yellow: #f1c40f;
+      --text: #eee;
+      --muted: #888;
+      --radius: 8px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      overflow-y: auto;
+    }
+    header {
+      background: var(--surface);
+      padding: 16px 20px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      border-bottom: 1px solid var(--accent);
+    }
+    header h1 { font-size: 18px; font-weight: 600; }
+    .status-dot {
+      width: 12px; height: 12px;
+      border-radius: 50%;
+      background: var(--muted);
+      flex-shrink: 0;
+    }
+    .status-dot.healthy { background: var(--green); }
+    .status-dot.unhealthy { background: var(--red); }
+
+    main { padding: 20px; display: flex; flex-direction: column; gap: 16px; }
+
+    .card {
+      background: var(--surface);
+      border-radius: var(--radius);
+      padding: 16px;
+      border: 1px solid var(--accent);
+    }
+    .card h2 {
+      font-size: 14px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--muted);
+      margin-bottom: 12px;
+    }
+
+    /* Stats grid */
+    .stats {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    .stat { text-align: center; }
+    .stat .value { font-size: 28px; font-weight: 700; color: var(--green); }
+    .stat .label { font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+    /* Resource sliders */
+    .resource-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 10px;
+    }
+    .resource-row label { width: 100px; font-size: 13px; }
+    .resource-row input[type="range"] { flex: 1; accent-color: var(--green); }
+    .resource-row .val { width: 60px; text-align: right; font-size: 13px; color: var(--green); }
+
+    /* Cartridge list */
+    .cartridge-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 0;
+      border-bottom: 1px solid var(--accent);
+    }
+    .cartridge-item:last-child { border-bottom: none; }
+    .cartridge-item .name { flex: 1; font-size: 14px; }
+    .cartridge-item .badge {
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 10px;
+      background: var(--accent);
+    }
+    .badge.ready { color: var(--green); }
+    .badge.error { color: var(--red); }
+    .badge.downloading { color: var(--yellow); }
+
+    /* Toggle switch */
+    .toggle {
+      position: relative;
+      width: 36px; height: 20px;
+      background: var(--accent);
+      border-radius: 10px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .toggle.on { background: var(--green); }
+    .toggle::after {
+      content: "";
+      position: absolute;
+      top: 2px; left: 2px;
+      width: 16px; height: 16px;
+      border-radius: 50%;
+      background: var(--text);
+      transition: transform 0.2s;
+    }
+    .toggle.on::after { transform: translateX(16px); }
+
+    /* Buttons */
+    .btn {
+      padding: 8px 16px;
+      border: none;
+      border-radius: var(--radius);
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 500;
+    }
+    .btn-primary { background: var(--green); color: var(--bg); }
+    .btn-danger { background: var(--red); color: white; }
+    .btn-ghost {
+      background: transparent;
+      color: var(--muted);
+      border: 1px solid var(--accent);
+    }
+
+    .actions { display: flex; gap: 8px; margin-top: 12px; }
+
+    #add-source {
+      display: flex; gap: 8px; margin-top: 12px;
+    }
+    #add-source input {
+      flex: 1;
+      padding: 8px;
+      border: 1px solid var(--accent);
+      border-radius: var(--radius);
+      background: var(--bg);
+      color: var(--text);
+      font-size: 13px;
+    }
+
+    footer {
+      padding: 12px 20px;
+      text-align: center;
+      font-size: 11px;
+      color: var(--muted);
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="status-dot" id="status-dot"></div>
+    <h1>BoJ Node Operator</h1>
+  </header>
+
+  <main>
+    <!-- Server Status -->
+    <div class="card">
+      <h2>Server Status</h2>
+      <div class="stats">
+        <div class="stat">
+          <div class="value" id="uptime">--</div>
+          <div class="label">Uptime</div>
+        </div>
+        <div class="stat">
+          <div class="value" id="cartridges-count">--</div>
+          <div class="label">Cartridges</div>
+        </div>
+        <div class="stat">
+          <div class="value" id="peers-count">--</div>
+          <div class="label">Peers</div>
+        </div>
+        <div class="stat">
+          <div class="value" id="requests-count">--</div>
+          <div class="label">Requests</div>
+        </div>
+      </div>
+      <div class="actions">
+        <button class="btn btn-danger" id="restart-btn">Restart Server</button>
+      </div>
+    </div>
+
+    <!-- Resource Allocation -->
+    <div class="card">
+      <h2>Resource Allocation</h2>
+      <div class="resource-row">
+        <label>CPU Limit</label>
+        <input type="range" id="cpu-slider" min="10" max="100" step="5" value="50" />
+        <span class="val" id="cpu-val">50%</span>
+      </div>
+      <div class="resource-row">
+        <label>Memory</label>
+        <input type="range" id="mem-slider" min="128" max="4096" step="128" value="512" />
+        <span class="val" id="mem-val">512 MB</span>
+      </div>
+      <div class="resource-row">
+        <label>Bandwidth</label>
+        <input type="range" id="bw-slider" min="0" max="10000" step="100" value="0" />
+        <span class="val" id="bw-val">Unlimited</span>
+      </div>
+      <div class="actions">
+        <button class="btn btn-primary" id="save-prefs-btn">Save Preferences</button>
+      </div>
+    </div>
+
+    <!-- Cartridges -->
+    <div class="card">
+      <h2>Cartridges</h2>
+      <div id="cartridge-list">
+        <div style="color: var(--muted); font-size: 13px;">Loading…</div>
+      </div>
+      <div id="add-source">
+        <input type="text" id="source-input" placeholder="GitHub URL or registry ID…" />
+        <button class="btn btn-primary" id="add-btn">Add</button>
+      </div>
+    </div>
+  </main>
+
+  <footer>Bundle of Joy — Volunteer Node Operator v0.1.0</footer>
+
+  <script>
+    const { invoke } = window.__TAURI__.core;
+    const { listen } = window.__TAURI__.event;
+
+    // ── Helpers ──────────────────────────────────────────────────
+    function formatUptime(secs) {
+      if (secs < 60) return `${secs}s`;
+      if (secs < 3600) return `${Math.floor(secs / 60)}m`;
+      const h = Math.floor(secs / 3600);
+      const m = Math.floor((secs % 3600) / 60);
+      return `${h}h ${m}m`;
+    }
+
+    function formatRequests(n) {
+      if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+      if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
+      return String(n);
+    }
+
+    // ── Status updates ──────────────────────────────────────────
+    function updateStatus(status) {
+      const dot = document.getElementById("status-dot");
+      dot.className = "status-dot " + (status.healthy ? "healthy" : "unhealthy");
+
+      document.getElementById("uptime").textContent = formatUptime(status.uptime_secs);
+      document.getElementById("cartridges-count").textContent = status.cartridges_loaded;
+      document.getElementById("peers-count").textContent = status.peers_connected;
+      document.getElementById("requests-count").textContent = formatRequests(status.requests_served);
+    }
+
+    // Listen for backend health poll events
+    listen("server-status", (event) => {
+      updateStatus(event.payload);
+    });
+
+    // Initial fetch
+    invoke("get_server_status")
+      .then(updateStatus)
+      .catch(() => updateStatus({ healthy: false, uptime_secs: 0, cartridges_loaded: 0, peers_connected: 0, requests_served: 0 }));
+
+    // ── Resource sliders ────────────────────────────────────────
+    const cpuSlider = document.getElementById("cpu-slider");
+    const memSlider = document.getElementById("mem-slider");
+    const bwSlider = document.getElementById("bw-slider");
+    const cpuVal = document.getElementById("cpu-val");
+    const memVal = document.getElementById("mem-val");
+    const bwVal = document.getElementById("bw-val");
+
+    cpuSlider.addEventListener("input", () => { cpuVal.textContent = cpuSlider.value + "%"; });
+    memSlider.addEventListener("input", () => { memVal.textContent = memSlider.value + " MB"; });
+    bwSlider.addEventListener("input", () => {
+      bwVal.textContent = bwSlider.value === "0" ? "Unlimited" : bwSlider.value + " kbps";
+    });
+
+    // Load saved prefs
+    invoke("get_resource_prefs").then((prefs) => {
+      cpuSlider.value = prefs.cpu_percent;
+      cpuVal.textContent = prefs.cpu_percent + "%";
+      memSlider.value = prefs.memory_mb;
+      memVal.textContent = prefs.memory_mb + " MB";
+      bwSlider.value = prefs.bandwidth_kbps;
+      bwVal.textContent = prefs.bandwidth_kbps === 0 ? "Unlimited" : prefs.bandwidth_kbps + " kbps";
+    }).catch(() => {});
+
+    document.getElementById("save-prefs-btn").addEventListener("click", () => {
+      invoke("set_resource_prefs", {
+        prefs: {
+          cpu_percent: parseInt(cpuSlider.value),
+          memory_mb: parseInt(memSlider.value),
+          bandwidth_kbps: parseInt(bwSlider.value),
+          run_when: "Always",
+        }
+      }).catch((e) => console.error("Failed to save prefs:", e));
+    });
+
+    // ── Cartridges ──────────────────────────────────────────────
+    function renderCartridges(cartridges) {
+      const list = document.getElementById("cartridge-list");
+      if (cartridges.length === 0) {
+        list.innerHTML = '<div style="color: var(--muted); font-size: 13px;">No cartridges loaded</div>';
+        return;
+      }
+      list.innerHTML = cartridges.map((c) => `
+        <div class="cartridge-item">
+          <div class="toggle ${c.enabled ? 'on' : ''}" data-name="${c.name}" data-enabled="${c.enabled}"></div>
+          <span class="name">${c.name}</span>
+          <span class="badge ${c.status}">${c.status}</span>
+        </div>
+      `).join("");
+
+      // Attach toggle handlers
+      list.querySelectorAll(".toggle").forEach((el) => {
+        el.addEventListener("click", () => {
+          const name = el.dataset.name;
+          const newState = el.dataset.enabled !== "true";
+          invoke("toggle_cartridge", { name, enabled: newState })
+            .then(loadCartridges)
+            .catch((e) => console.error("Toggle failed:", e));
+        });
+      });
+    }
+
+    function loadCartridges() {
+      invoke("get_cartridges")
+        .then(renderCartridges)
+        .catch(() => renderCartridges([]));
+    }
+    loadCartridges();
+
+    document.getElementById("add-btn").addEventListener("click", () => {
+      const input = document.getElementById("source-input");
+      const url = input.value.trim();
+      if (!url) return;
+      invoke("add_cartridge_source", { url })
+        .then(() => { input.value = ""; loadCartridges(); })
+        .catch((e) => console.error("Add failed:", e));
+    });
+
+    // ── Restart ─────────────────────────────────────────────────
+    document.getElementById("restart-btn").addEventListener("click", () => {
+      invoke("restart_server").catch((e) => console.error("Restart failed:", e));
+    });
+  </script>
+</body>
+</html>
