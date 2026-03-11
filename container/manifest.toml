@@ -7,8 +7,8 @@
 
 [metadata]
 name = "boj-server"
-version = "0.1.0"
-revision = 1
+version = "0.2.0"
+revision = 2
 summary = "Unified server capability catalogue with formally verified cartridges, distributed community hosting, and the Teranga menu system"
 description = """
 Bundle of Joy Server — containerised service packaged as a verified
