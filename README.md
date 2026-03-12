@@ -55,7 +55,9 @@ cd ../../ffi/zig && zig build
 
 # Run tests
 cd ffi/zig && zig build test
-```
+```<a href="https://glama.ai/mcp/servers/hyperpolymath/boj-server">
+  <img width="380" height="200" src="https://glama.ai/mcp/servers/hyperpolymath/boj-server/badge" />
+</a>
 
 ## Distributed Hosting (Umoja Network)
 
