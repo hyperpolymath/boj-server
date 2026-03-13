@@ -1,0 +1,103 @@
+# SPDX-License-Identifier: PMPL-1.0-or-later
+# Hypatia Scorecard Rules — CI/CD security posture checks
+#
+# These rules teach Hypatia to monitor and enforce OpenSSF Scorecard
+# compliance across the BoJ server and any repo that includes them.
+#
+# Rule severity aligns with Scorecard alert levels.
+
+rules:
+  # --- HIGH severity (Scorecard High) ---
+
+  branch-protection:
+    severity: high
+    description: "Main branch must require PR reviews and dismiss stale approvals"
+    checks:
+      - required_approving_review_count >= 1
+      - dismiss_stale_reviews == true
+      - require_code_owner_reviews == true
+      - enforce_admins == true
+    remediation: |
+      gh api repos/{owner}/{repo}/branches/main/protection/required_pull_request_reviews \
+        -X PATCH --input - <<< '{"required_approving_review_count":1,"require_code_owner_reviews":true,"dismiss_stale_reviews":true}'
+
+  code-review:
+    severity: high
+    description: "All changes to main must go through reviewed pull requests"
+    checks:
+      - no_direct_pushes_to_main
+      - all_merged_prs_have_approvals
+    remediation: "Enable branch protection with required reviews (see branch-protection rule)"
+
+  maintained:
+    severity: high
+    description: "Repository must show recent activity (commits within 90 days)"
+    checks:
+      - last_commit_age_days <= 90
+      - open_issues_responded_within_days <= 14
+    remediation: "Ensure regular commits and issue triage"
+
+  # --- MEDIUM severity ---
+
+  fuzzing:
+    severity: medium
+    description: "Repository must have fuzz testing (ClusterFuzzLite, OSS-Fuzz, or custom)"
+    checks:
+      - workflow_exists: fuzz.yml
+      - fuzz_targets_exist: true
+    remediation: "Add .github/workflows/fuzz.yml with fuzz test targets"
+
+  pinned-dependencies:
+    severity: medium
+    description: "All GitHub Actions must use SHA-pinned references, not tag refs"
+    checks:
+      - no_tag_refs_in_workflows
+    pattern: 'uses:\s+[\w-]+/[\w-]+@v\d'
+    remediation: "Replace @v* tags with @SHA pins. Use: gh api repos/{owner}/{action}/git/refs/tags/{tag} to get SHA"
+
+  # --- LOW severity ---
+
+  cii-best-practices:
+    severity: low
+    description: "Repository should be registered at bestpractices.coreinfrastructure.org"
+    checks:
+      - badge_url_in_readme: true
+    remediation: "Register at https://www.bestpractices.dev/en and add badge to README"
+
+  security-policy:
+    severity: medium
+    description: "SECURITY.md must exist (root, .github/, or docs/)"
+    checks:
+      - file_exists_any:
+          - SECURITY.md
+          - .github/SECURITY.md
+          - docs/SECURITY.md
+    remediation: "Add SECURITY.md with vulnerability reporting instructions"
+
+  # --- Workflow-specific rules ---
+
+  action-sha-pinning:
+    severity: high
+    description: "Every 'uses:' line in workflows must reference a full 40-char SHA"
+    scan_paths:
+      - .github/workflows/*.yml
+    pattern: 'uses:\s+[\w-]+/[\w-]+@(?![0-9a-f]{40})'
+    exclude_pattern: 'uses:\s+\./|uses:\s+docker://'
+    remediation: "Pin to SHA: uses: owner/action@FULL_SHA # vX.Y.Z"
+
+  workflow-permissions:
+    severity: high
+    description: "Every workflow must declare top-level 'permissions:' (prefer read-all)"
+    scan_paths:
+      - .github/workflows/*.yml
+    checks:
+      - top_level_permissions_declared
+    remediation: "Add 'permissions: read-all' at workflow level, then grant per-job"
+
+  spdx-headers:
+    severity: low
+    description: "Every workflow must have an SPDX license header"
+    scan_paths:
+      - .github/workflows/*.yml
+    pattern: '^# SPDX-License-Identifier:'
+    remediation: "Add '# SPDX-License-Identifier: PMPL-1.0-or-later' as first line"
