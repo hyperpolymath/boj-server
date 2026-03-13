@@ -315,6 +315,10 @@ mut:
 	start_time  time.Time
 	node_id     string
 	region      string
+	hostname    string
+	rest_port   string
+	grpc_port   string
+	graphql_port string
 	event_queue EventQueue
 }
 
@@ -324,6 +328,10 @@ fn BojApp.new() BojApp {
 		start_time: time.now()
 		node_id: os.getenv_opt('BOJ_NODE_ID') or { 'local-0' }
 		region: os.getenv_opt('BOJ_REGION') or { 'local' }
+		hostname: os.getenv_opt('BOJ_HOSTNAME') or { 'localhost' }
+		rest_port: os.getenv_opt('BOJ_REST_PORT') or { '7700' }
+		grpc_port: os.getenv_opt('BOJ_GRPC_PORT') or { '7701' }
+		graphql_port: os.getenv_opt('BOJ_GRAPHQL_PORT') or { '7702' }
 		event_queue: EventQueue.new()
 	}
 }
@@ -3130,6 +3138,16 @@ fn main() {
 	total := C.boj_catalogue_count()
 	ready := C.boj_catalogue_count_ready()
 	println('Catalogue: ${total} cartridges registered, ${ready} ready')
+
+	// Mount all ready cartridges so they can serve requests
+	mut mounted_count := usize(0)
+	for i in 0 .. int(total) {
+		result := C.boj_catalogue_mount(usize(i))
+		if result == 0 {
+			mounted_count++
+		}
+	}
+	println('Mounted: ${mounted_count}/${total} cartridges')
 	println('')
 
 	app_ref := &app
