@@ -51,12 +51,40 @@ function sendError(id, code, message) {
 
 // --- Fetch menu from BoJ REST API ---
 
+// Static cartridge manifest for offline/inspection mode
+const OFFLINE_MENU = {
+  tier_teranga: [
+    { name: "database-mcp", version: "0.1.0", domain: "Database", protocols: ["MCP","REST","gRPC"], status: "Available", available: true },
+    { name: "nesy-mcp", version: "0.1.0", domain: "NeSy", protocols: ["NeSy","MCP","REST"], status: "Available", available: true },
+    { name: "fleet-mcp", version: "0.1.0", domain: "Fleet", protocols: ["Fleet","MCP","REST"], status: "Available", available: true },
+    { name: "agent-mcp", version: "0.1.0", domain: "Cloud", protocols: ["Agentic","MCP","REST","gRPC"], status: "Available", available: true },
+    { name: "cloud-mcp", version: "0.1.0", domain: "Cloud", protocols: ["MCP","REST","gRPC"], status: "Available", available: true },
+    { name: "container-mcp", version: "0.1.0", domain: "Container", protocols: ["MCP","REST"], status: "Available", available: true },
+    { name: "k8s-mcp", version: "0.1.0", domain: "Kubernetes", protocols: ["MCP","REST","gRPC"], status: "Available", available: true },
+    { name: "git-mcp", version: "0.1.0", domain: "Git/VCS", protocols: ["MCP","REST"], status: "Available", available: true },
+    { name: "queues-mcp", version: "0.1.0", domain: "Queues", protocols: ["MCP","REST","gRPC"], status: "Available", available: true },
+    { name: "iac-mcp", version: "0.1.0", domain: "IaC", protocols: ["MCP","REST"], status: "Available", available: true },
+    { name: "observe-mcp", version: "0.1.0", domain: "Observability", protocols: ["MCP","REST","gRPC"], status: "Available", available: true },
+    { name: "ssg-mcp", version: "0.1.0", domain: "SSG", protocols: ["MCP","REST"], status: "Available", available: true },
+    { name: "lsp-mcp", version: "0.1.0", domain: "Cloud", protocols: ["LSP","MCP","REST"], status: "Available", available: true },
+    { name: "dap-mcp", version: "0.1.0", domain: "Cloud", protocols: ["DAP","MCP","REST"], status: "Available", available: true },
+    { name: "bsp-mcp", version: "0.1.0", domain: "Cloud", protocols: ["BSP","MCP","REST"], status: "Available", available: true },
+    { name: "feedback-mcp", version: "0.1.0", domain: "Feedback", protocols: ["MCP","REST"], status: "Available", available: true },
+  ],
+  tier_shield: [
+    { name: "secrets-mcp", version: "0.1.0", domain: "Secrets", protocols: ["MCP","REST"], status: "Available", available: true },
+    { name: "proof-mcp", version: "0.1.0", domain: "Proof", protocols: ["MCP","REST"], status: "Available", available: true },
+  ],
+  tier_ayo: [],
+  summary: { total: 18, ready: 18, mounted: 0 },
+};
+
 async function fetchMenu() {
   try {
     const res = await fetch(`${BOJ_BASE}/menu`);
     return await res.json();
   } catch {
-    return null;
+    return OFFLINE_MENU;
   }
 }
 
@@ -65,7 +93,7 @@ async function fetchHealth() {
     const res = await fetch(`${BOJ_BASE}/health`);
     return await res.json();
   } catch {
-    return { status: "unreachable" };
+    return { status: "offline", message: "BoJ REST API not reachable. Start the server with: systemctl --user start boj-server" };
   }
 }
 
@@ -74,7 +102,7 @@ async function fetchCartridges() {
     const res = await fetch(`${BOJ_BASE}/cartridges`);
     return await res.json();
   } catch {
-    return null;
+    return { note: "Offline mode — cartridge matrix available when BoJ REST API is running", cartridges: Object.keys(OFFLINE_MENU.tier_teranga.concat(OFFLINE_MENU.tier_shield).reduce((acc, c) => { acc[c.name] = c.domain; return acc; }, {})) };
   }
 }
 
@@ -86,8 +114,8 @@ async function invokeCartridge(name, params) {
       body: JSON.stringify(params || {}),
     });
     return await res.json();
-  } catch (err) {
-    return { error: err.message };
+  } catch {
+    return { error: "BoJ REST API not reachable. Invocation requires a running server.", cartridge: name, hint: "Start with: systemctl --user start boj-server" };
   }
 }
 
@@ -96,7 +124,9 @@ async function fetchCartridgeInfo(name) {
     const res = await fetch(`${BOJ_BASE}/cartridge/${name}`);
     return await res.json();
   } catch {
-    return null;
+    const all = OFFLINE_MENU.tier_teranga.concat(OFFLINE_MENU.tier_shield);
+    const found = all.find(c => c.name === name);
+    return found || { error: `Unknown cartridge: ${name}` };
   }
 }
 
