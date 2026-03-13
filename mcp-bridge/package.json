@@ -1,0 +1,33 @@
+{
+  "name": "@hyperpolymath/boj-server",
+  "version": "0.2.0",
+  "description": "Bundle of Joy (BoJ) MCP Server — cartridge-based DevOps toolkit with 18 domain cartridges (database, container, git, k8s, observability, secrets, IaC, and more)",
+  "license": "MPL-2.0",
+  "author": "Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/hyperpolymath/boj-server.git"
+  },
+  "keywords": [
+    "mcp",
+    "mcp-server",
+    "devops",
+    "containers",
+    "kubernetes",
+    "database",
+    "git",
+    "observability",
+    "iac",
+    "secrets"
+  ],
+  "type": "module",
+  "bin": {
+    "boj-server": "./main.js"
+  },
+  "files": [
+    "main.js"
+  ],
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
