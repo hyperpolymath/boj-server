@@ -1,6 +1,6 @@
 <!-- SPDX-License-Identifier: PMPL-1.0-or-later -->
 <!-- TOPOLOGY.md — Project architecture map and completion dashboard -->
-<!-- Last updated: 2026-03-09 (18 cartridges, 295 tests, 18 .so files, Grade A Production) -->
+<!-- Last updated: 2026-03-13 (18 cartridges, 307 tests, 18 .so files, all mounted, Grade B RC) -->
 
 # Bundle of Joy Server — Project Topology
 
@@ -67,7 +67,7 @@
  │  bsp-mcp        feedback-mcp                                 │
  │                                                               │
  │  Each: abi/ (Idris2) + ffi/ (Zig) + adapter/ (V-lang)       │
- │  18/18 have .so builds  |  296 tests total                  │
+ │  18/18 mounted + serving  |  307 tests total                  │
  └───────────────────────────────────────────────────────────────┘
            │
            ▼
@@ -92,22 +92,23 @@ Fleet      │  ██  │      │      │      │      │       │  █�
 NeSy       │  ██  │      │      │      │  ██  │       │      │      │  ██  │
 Agent      │  ██  │      │      │      │      │  ██   │      │  ██  │  ██  │
 Cloud      │  ██  │      │      │      │      │       │      │  ██  │  ██  │
-Container  │  ██  │      │      │      │      │       │      │  ██  │  ██  │
+Container  │  ██  │      │      │      │      │       │      │      │  ██  │
 K8s        │  ██  │      │      │      │      │       │      │  ██  │  ██  │
-Git/VCS    │  ██  │      │      │      │      │       │      │  ██  │  ██  │
-Secrets    │  ██  │      │      │      │      │       │      │  ██  │  ██  │
+Git/VCS    │  ██  │      │      │      │      │       │      │      │  ██  │
+Secrets    │  ██  │      │      │      │      │       │      │      │  ██  │
 Queues     │  ██  │      │      │      │      │       │      │  ██  │  ██  │
-IaC        │  ██  │      │      │      │      │       │      │  ██  │  ██  │
+IaC        │  ██  │      │      │      │      │       │      │      │  ██  │
 Observe    │  ██  │      │      │      │      │       │      │  ██  │  ██  │
-SSG        │  ██  │      │      │      │      │       │      │  ██  │  ██  │
-Proof      │  ██  │      │      │      │      │       │      │  ██  │  ██  │
-LSP        │  ██  │  ██  │      │      │      │       │      │  ██  │  ██  │
-DAP        │  ██  │      │  ██  │      │      │       │      │  ██  │  ██  │
-BSP        │  ██  │      │      │  ██  │      │       │      │  ██  │  ██  │
-Feedback   │  ██  │      │      │      │      │       │      │  ██  │  ██  │
+SSG        │  ██  │      │      │      │      │       │      │      │  ██  │
+Proof      │  ██  │      │      │      │      │       │      │      │  ██  │
+LSP        │  ██  │  ██  │      │      │      │       │      │      │  ██  │
+DAP        │  ██  │      │  ██  │      │      │       │      │      │  ██  │
+BSP        │  ██  │      │      │  ██  │      │       │      │      │  ██  │
+Feedback   │  ██  │      │      │      │      │       │      │      │  ██  │
            └──────┴──────┴──────┴──────┴──────┴───────┴──────┴──────┴──────┘
 
-  ██ = ABI + FFI + Adapter complete (18 cartridges, multi-protocol)
+  ██ = ABI + FFI + Adapter complete, mounted and serving
+  gRPC on: database, agent, cloud, k8s, queues, observe (6/18)
   All cells have backend="universal". Third axis (backend/provider)
   stubbed for community extensions — see docs/EXTENSIBILITY.md
 ```
@@ -154,7 +155,7 @@ Feedback   │  ██  │      │      │      │      │       │      �
 | feedback-o-tron (18th cartridge) | `██████████` 100%         | Full ABI+FFI   |
 | PanLL BoJ panel                  | `██████████` 100%         | 887 lines, 5 tabs |
 | PanLL bojRouting (10 panels)     | `██████████` 100%         | Conditional dispatch |
-| **Testing (305 total)**         |                           |                |
+| **Testing (307 total)**         |                           |                |
 | Core FFI tests (176)             | `██████████` 100%         | Passing        |
 | Cartridge FFI tests (113)        | `██████████` 100%         | Passing        |
 | Federation tests (30)            | `██████████` 100%         | Passing        |
@@ -228,3 +229,5 @@ What is genuinely done:
 Remaining:
 - Deploy seed nodes to actual infrastructure
 - Domain registration for named Cloudflare tunnel
+- OpenSSF CII badge registration
+- OSS-Fuzz integration
