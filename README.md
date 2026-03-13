@@ -9,6 +9,9 @@ Unified server capability catalogue with formally verified cartridges, distribut
 <a href="https://glama.ai/mcp/servers/hyperpolymath/boj-server">
   <img width="380" height="200" src="https://glama.ai/mcp/servers/hyperpolymath/boj-server/badge" alt="BoJ MCP Server on Glama" />
 </a>
+<a href="https://www.bestpractices.dev/projects/12164">
+  <img src="https://www.bestpractices.dev/projects/12164/badge" alt="OpenSSF Best Practices passing (115%)" />
+</a>
 
 ## What is this?
 
