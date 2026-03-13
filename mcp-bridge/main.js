@@ -106,9 +106,16 @@ async function fetchCartridges() {
   }
 }
 
+function isValidCartridgeName(name) {
+  return typeof name === "string" && /^[a-z0-9][a-z0-9-]*$/.test(name) && name.length <= 64;
+}
+
 async function invokeCartridge(name, params) {
+  if (!isValidCartridgeName(name)) {
+    return { error: `Invalid cartridge name: ${name}` };
+  }
   try {
-    const res = await fetch(`${BOJ_BASE}/cartridge/${name}/invoke`, {
+    const res = await fetch(`${BOJ_BASE}/cartridge/${encodeURIComponent(name)}/invoke`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(params || {}),
@@ -120,8 +127,11 @@ async function invokeCartridge(name, params) {
 }
 
 async function fetchCartridgeInfo(name) {
+  if (!isValidCartridgeName(name)) {
+    return { error: `Invalid cartridge name: ${name}` };
+  }
   try {
-    const res = await fetch(`${BOJ_BASE}/cartridge/${name}`);
+    const res = await fetch(`${BOJ_BASE}/cartridge/${encodeURIComponent(name)}`);
     return await res.json();
   } catch {
     const all = OFFLINE_MENU.tier_teranga.concat(OFFLINE_MENU.tier_shield);

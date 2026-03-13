@@ -6,6 +6,10 @@ Unified server capability catalogue with formally verified cartridges, distribut
 > `Set up Bundle of Joy Server from https://github.com/hyperpolymath/boj-server`
 > The AI reads this repo, asks you a few questions, and handles everything.
 
+<a href="https://glama.ai/mcp/servers/hyperpolymath/boj-server">
+  <img width="380" height="200" src="https://glama.ai/mcp/servers/hyperpolymath/boj-server/badge" alt="BoJ MCP Server on Glama" />
+</a>
+
 ## What is this?
 
 BoJ solves the **combinatoric explosion of developer server protocols**. Instead of hunting across dozens of MCP, LSP, DAP, and other servers, AI goes to ONE place — the Teranga menu — and orders what it needs.
@@ -93,9 +97,7 @@ cd ../../ffi/zig && zig build
 
 # Run tests
 cd ffi/zig && zig build test
-```<a href="https://glama.ai/mcp/servers/hyperpolymath/boj-server">
-  <img width="380" height="200" src="https://glama.ai/mcp/servers/hyperpolymath/boj-server/badge" />
-</a>
+```
 
 ## Distributed Hosting (Umoja Network)
 
@@ -126,7 +128,7 @@ PMPL-1.0-or-later (Palimpsest License). The license's provenance requirements (c
 
 ## Project Status
 
-**Grade A (Production)** — 18 cartridges, 307 tests passing, thread-safe FFI (mutex-hardened), panic-attack validated. See `READINESS.md` for the full CRG assessment and `.machine_readable/STATE.a2ml` for milestone progress.
+**Grade A (Production)** — 18 cartridges, 307 tests passing, thread-safe FFI (mutex-hardened), panic-attack validated. See `docs/READINESS.md` for the full CRG assessment and `.machine_readable/STATE.a2ml` for milestone progress.
 
 ## A Community Project
 
