@@ -40,6 +40,44 @@ AI agents act as the "Maître D'" — presenting the menu to users as honoured g
 
 See: `.machine_readable/servers/menu.a2ml`
 
+## MCP Installation
+
+The BoJ server exposes its cartridges via MCP (Model Context Protocol) over stdio.
+
+**Prerequisites:** The BoJ REST server must be running on port 7700 (see Quick Start below).
+
+### Claude Code
+
+Add to `~/.config/claude/mcp_servers.json`:
+
+```json
+{
+  "boj-server": {
+    "command": "node",
+    "args": ["/path/to/boj-server/mcp-bridge/main.js"],
+    "env": { "BOJ_URL": "http://localhost:7700" }
+  }
+}
+```
+
+### Other MCP Clients
+
+```bash
+node mcp-bridge/main.js
+# or
+deno run --allow-net --allow-env mcp-bridge/main.js
+```
+
+### MCP Tools
+
+| Tool | Description |
+|------|-------------|
+| `boj_health` | Server health check |
+| `boj_menu` | List all cartridges (tiers, domains, protocols) |
+| `boj_cartridges` | Protocol x domain capability matrix |
+| `boj_cartridge_info` | Detailed info for a specific cartridge |
+| `boj_cartridge_invoke` | Execute a cartridge operation |
+
 ## Quick Start
 
 ```bash
