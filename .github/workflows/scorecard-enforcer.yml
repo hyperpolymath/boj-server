@@ -57,8 +57,8 @@ jobs:
 
       - name: Check SECURITY.md exists
         run: |
-          if [ ! -f "SECURITY.md" ]; then
-            echo "::error::SECURITY.md is required"
+          if [ ! -f "SECURITY.md" ] && [ ! -f ".github/SECURITY.md" ] && [ ! -f "docs/SECURITY.md" ]; then
+            echo "::error::SECURITY.md is required (root, .github/, or docs/)"
             exit 1
           fi
 
