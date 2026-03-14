@@ -2547,7 +2547,42 @@ fn invoke_agent(tool string, args string) http.Response {
 			'message':    'Fleet agents not yet connected to BoJ dispatch.'
 		}))
 	}
-	return error_response(400, 'unknown agent-mcp tool: "${tool}" — available: list_agents, dispatch, status')
+	if tool == 'detect_runtimes' {
+		// Detect available agent runtimes on the system
+		mut runtimes := []string{}
+		claude_check := os.execute('command -v claude 2>/dev/null')
+		if claude_check.exit_code == 0 { runtimes << 'claude:${claude_check.output.trim_space()}' }
+		aider_check := os.execute('command -v aider 2>/dev/null')
+		if aider_check.exit_code == 0 { runtimes << 'aider:${aider_check.output.trim_space()}' }
+		cursor_check := os.execute('command -v cursor 2>/dev/null')
+		if cursor_check.exit_code == 0 { runtimes << 'cursor:${cursor_check.output.trim_space()}' }
+		return json_response(json.encode({
+			'tool':     'detect_runtimes'
+			'runtimes': runtimes.join(',')
+			'count':    '${runtimes.len}'
+			'status':   'detected'
+		}))
+	}
+	if tool == 'system_load' {
+		// Check system load to determine if agent workloads are feasible
+		loadavg := os.execute('cat /proc/loadavg 2>/dev/null')
+		if loadavg.exit_code != 0 {
+			return error_response(500, 'cannot read /proc/loadavg')
+		}
+		parts := loadavg.output.trim_space().split(' ')
+		load_1m := if parts.len > 0 { parts[0] } else { '?' }
+		load_5m := if parts.len > 1 { parts[1] } else { '?' }
+		load_15m := if parts.len > 2 { parts[2] } else { '?' }
+		return json_response(json.encode({
+			'tool':     'system_load'
+			'load_1m':  load_1m
+			'load_5m':  load_5m
+			'load_15m': load_15m
+			'raw':      loadavg.output.trim_space()
+			'status':   'ok'
+		}))
+	}
+	return error_response(400, 'unknown agent-mcp tool: "${tool}" — available: list_agents, dispatch, status, detect_runtimes, system_load')
 }
 
 // --- nesy-mcp: neurosymbolic reasoning ---
@@ -2589,7 +2624,33 @@ fn invoke_nesy(tool string, args string) http.Response {
 		}
 		return error_response(400, 'unsupported nesy backend: "${backend}" — available: z3-smt')
 	}
-	return error_response(400, 'unknown nesy-mcp tool: "${tool}" — available: list_backends, query')
+	if tool == 'scan_proven' {
+		// Count Idris2 source files in proven repo
+		file_count := os.execute('find /var/mnt/eclipse/repos/proven/src -name "*.idr" 2>/dev/null | wc -l')
+		// Count believe_me occurrences (banned pattern)
+		believe_count := os.execute('grep -r "believe_me" /var/mnt/eclipse/repos/proven/src --include="*.idr" 2>/dev/null | wc -l')
+		return json_response(json.encode({
+			'tool':            'scan_proven'
+			'idr_file_count':  file_count.output.trim_space()
+			'believe_me_hits': believe_count.output.trim_space()
+			'healthy':         if believe_count.output.trim_space() == '0' { 'true' } else { 'false' }
+			'status':          if file_count.exit_code == 0 { 'scanned' } else { 'repo_not_found' }
+		}))
+	}
+	if tool == 'check_echidna' {
+		// Check if echidna binary is available
+		echidna_bin := os.execute('command -v echidna 2>/dev/null')
+		// Count Idris2 modules in echidna if repo exists
+		mod_count := os.execute('find /var/mnt/eclipse/repos/proven/src -name "*.idr" -type f 2>/dev/null | wc -l')
+		return json_response(json.encode({
+			'tool':           'check_echidna'
+			'binary_found':   if echidna_bin.exit_code == 0 { 'true' } else { 'false' }
+			'binary_path':    echidna_bin.output.trim_space()
+			'module_count':   mod_count.output.trim_space()
+			'status':         'checked'
+		}))
+	}
+	return error_response(400, 'unknown nesy-mcp tool: "${tool}" — available: list_backends, query, scan_proven, check_echidna')
 }
 
 // --- fleet-mcp: gitbot fleet management ---
@@ -2936,7 +2997,41 @@ fn invoke_feedback(tool string, args string) http.Response {
 			'message': 'feedback-o-tron is running. FFI state machine wired.'
 		}))
 	}
-	return error_response(400, 'unknown feedback-mcp tool: "${tool}" — available: list_channels, open_channel, submit, summary, status')
+	if tool == 'export_feedback' {
+		// List feedback NDJSON files in the PanLL feedback directory
+		result := os.execute('ls -la /tmp/panll/feedback/ 2>/dev/null')
+		if result.exit_code != 0 {
+			return json_response(json.encode({
+				'tool':    'export_feedback'
+				'files':   ''
+				'message': 'No feedback directory found at /tmp/panll/feedback/'
+				'status':  'empty'
+			}))
+		}
+		return json_response(json.encode({
+			'tool':    'export_feedback'
+			'listing': result.output.trim_space()
+			'status':  'ok'
+		}))
+	}
+	if tool == 'count_feedback' {
+		// Count total feedback entries across all NDJSON files
+		result := os.execute('wc -l /tmp/panll/feedback/*.ndjson 2>/dev/null')
+		if result.exit_code != 0 {
+			return json_response(json.encode({
+				'tool':        'count_feedback'
+				'total_lines': '0'
+				'message':     'No feedback NDJSON files found'
+				'status':      'empty'
+			}))
+		}
+		return json_response(json.encode({
+			'tool':    'count_feedback'
+			'output':  result.output.trim_space()
+			'status':  'ok'
+		}))
+	}
+	return error_response(400, 'unknown feedback-mcp tool: "${tool}" — available: list_channels, open_channel, submit, summary, status, export_feedback, count_feedback')
 }
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -3035,7 +3130,41 @@ fn invoke_ml(tool string, args string) http.Response {
 			'message': 'ml-mcp is running. Providers: huggingface.'
 		}))
 	}
-	return error_response(400, 'unknown ml-mcp tool: "${tool}" — available: list_providers, authenticate, status')
+	if tool == 'list_local_models' {
+		// Show cached HuggingFace models on this machine
+		result := os.execute('ls ~/.cache/huggingface/hub/ 2>/dev/null | head -20')
+		if result.exit_code != 0 || result.output.trim_space() == '' {
+			return json_response(json.encode({
+				'tool':    'list_local_models'
+				'models':  ''
+				'message': 'No cached HuggingFace models found in ~/.cache/huggingface/hub/'
+				'status':  'empty'
+			}))
+		}
+		return json_response(json.encode({
+			'tool':    'list_local_models'
+			'models':  result.output.trim_space()
+			'status':  'ok'
+		}))
+	}
+	if tool == 'gpu_status' {
+		// Check GPU availability via nvidia-smi
+		result := os.execute('nvidia-smi --query-gpu=name,memory.used,memory.total,utilization.gpu --format=csv,noheader 2>/dev/null')
+		if result.exit_code != 0 {
+			return json_response(json.encode({
+				'tool':    'gpu_status'
+				'gpu':     'none'
+				'message': 'nvidia-smi not available or no NVIDIA GPU detected'
+				'status':  'unavailable'
+			}))
+		}
+		return json_response(json.encode({
+			'tool':    'gpu_status'
+			'gpu':     result.output.trim_space()
+			'status':  'ok'
+		}))
+	}
+	return error_response(400, 'unknown ml-mcp tool: "${tool}" — available: list_providers, authenticate, status, list_local_models, gpu_status')
 }
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -3085,7 +3214,43 @@ fn invoke_research(tool string, args string) http.Response {
 			'message': 'research-mcp is running. Providers: semantic_scholar, openalex.'
 		}))
 	}
-	return error_response(400, 'unknown research-mcp tool: "${tool}" — available: list_providers, authenticate, status')
+	if tool == 'search_local' {
+		// Find local bibliography files across the repos directory
+		result := os.execute('find /var/mnt/eclipse/repos -name "*.bib" -o -name "*.ris" 2>/dev/null | head -20')
+		if result.exit_code != 0 || result.output.trim_space() == '' {
+			return json_response(json.encode({
+				'tool':    'search_local'
+				'files':   ''
+				'message': 'No .bib or .ris files found in /var/mnt/eclipse/repos'
+				'status':  'empty'
+			}))
+		}
+		return json_response(json.encode({
+			'tool':    'search_local'
+			'files':   result.output.trim_space()
+			'count':   '${result.output.trim_space().split('\n').len}'
+			'status':  'ok'
+		}))
+	}
+	if tool == 'zotero_status' {
+		// Check if Zotero database exists locally
+		result := os.execute('ls ~/Zotero/zotero.sqlite 2>/dev/null && echo "Zotero database found"')
+		if result.exit_code != 0 {
+			return json_response(json.encode({
+				'tool':    'zotero_status'
+				'found':   'false'
+				'message': 'Zotero database not found at ~/Zotero/zotero.sqlite'
+				'status':  'not_installed'
+			}))
+		}
+		return json_response(json.encode({
+			'tool':    'zotero_status'
+			'found':   'true'
+			'message': result.output.trim_space()
+			'status':  'ok'
+		}))
+	}
+	return error_response(400, 'unknown research-mcp tool: "${tool}" — available: list_providers, authenticate, status, search_local, zotero_status')
 }
 
 // --- ums-mcp: IDApTIK Level Architect (Universal Map System) ---
