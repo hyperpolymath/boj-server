@@ -116,3 +116,19 @@ v.mod.lock
 
 # Hypatia scanner logs
 .hypatia/
+
+# SQLite database files (created during testing/use)
+*.sqlite
+*.sqlite3
+*.db
+
+# VeriSimDB local data
+.verisimdb/
+
+# Shared library build outputs (cartridge .so files)
+*.so
+*.dylib
+
+# Zig global cache
+.zig-cache/
+zig-out/
