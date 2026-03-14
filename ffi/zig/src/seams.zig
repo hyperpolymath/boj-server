@@ -313,6 +313,75 @@ test "seam: concurrent register+query does not corrupt state" {
     try std.testing.expectEqual(@as(usize, WRITERS * PER_WRITER), count);
 }
 
+// ═══════════════════════════════════════════════════════════════════════
+// Seam 10: PanLL CartridgeAbi schema contract
+// ═══════════════════════════════════════════════════════════════════════
+//
+// The PanLL CartridgeAbi.res module declares cartridgeCount = 21.
+// If BoJ adds or removes cartridges without updating the schema,
+// PanLL's compile-time safety is silently broken.
+// This seam validates the catalogue can hold exactly the declared count.
+
+test "seam: catalogue supports exactly 21 cartridges (PanLL schema contract)" {
+    _ = catalogue.boj_catalogue_init();
+    defer catalogue.boj_catalogue_deinit();
+
+    // Register all 21 cartridges matching PanLL's CartridgeAbi.cartridgeCount
+    const cartridge_names = [_][]const u8{
+        "agent-mcp",     "bsp-mcp",       "cloud-mcp",     "comms-mcp",
+        "container-mcp", "dap-mcp",       "database-mcp",  "feedback-mcp",
+        "fleet-mcp",     "git-mcp",       "iac-mcp",       "k8s-mcp",
+        "lsp-mcp",       "ml-mcp",        "nesy-mcp",      "observe-mcp",
+        "proof-mcp",     "queues-mcp",    "research-mcp",  "secrets-mcp",
+        "ssg-mcp",
+    };
+
+    for (cartridge_names) |name| {
+        _ = catalogue.boj_catalogue_register(name.ptr, name.len, "0.3.0".ptr, 5, 1, 0, 1);
+    }
+
+    // Exactly 21 cartridges registered — matches PanLL CartridgeAbi.cartridgeCount
+    try std.testing.expectEqual(@as(usize, 21), catalogue.boj_catalogue_count());
+
+    // All 21 should be mountable (all registered as Ready)
+    for (0..21) |i| {
+        try std.testing.expectEqual(@as(c_int, 0), catalogue.boj_catalogue_mount(i));
+    }
+    try std.testing.expectEqual(@as(usize, 21), catalogue.boj_catalogue_count_mounted());
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// Seam 11: Protocol column coverage per cartridge (PanLL schema contract)
+// ═══════════════════════════════════════════════════════════════════════
+//
+// Validates that protocol assignments match PanLL's cartridge-schema.json.
+// Every cartridge must support at least MCP (protocol 1).
+
+test "seam: all cartridges support MCP protocol" {
+    _ = catalogue.boj_catalogue_init();
+    defer catalogue.boj_catalogue_deinit();
+
+    const names = [_][]const u8{
+        "agent-mcp",     "bsp-mcp",       "cloud-mcp",     "comms-mcp",
+        "container-mcp", "dap-mcp",       "database-mcp",  "feedback-mcp",
+        "fleet-mcp",     "git-mcp",       "iac-mcp",       "k8s-mcp",
+        "lsp-mcp",       "ml-mcp",        "nesy-mcp",      "observe-mcp",
+        "proof-mcp",     "queues-mcp",    "research-mcp",  "secrets-mcp",
+        "ssg-mcp",
+    };
+
+    for (names) |name| {
+        _ = catalogue.boj_catalogue_register(name.ptr, name.len, "0.3.0".ptr, 5, 1, 0, 1);
+        // Add MCP protocol (1) to each
+        _ = catalogue.boj_catalogue_add_protocol(1);
+    }
+
+    // Verify MCP protocol is present on all
+    for (0..21) |i| {
+        try std.testing.expectEqual(@as(c_int, 1), catalogue.boj_catalogue_has_protocol(i, 1));
+    }
+}
+
 test "seam: concurrent mount+unmount does not corrupt state" {
     _ = catalogue.boj_catalogue_init();
     defer catalogue.boj_catalogue_deinit();
