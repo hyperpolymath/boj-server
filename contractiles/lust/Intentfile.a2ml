@@ -1,0 +1,61 @@
+# SPDX-License-Identifier: PMPL-1.0-or-later
+# Intentfile (A2ML Canonical)
+# Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath)
+
+@abstract:
+Declared future intent for boj-server — MCP server for Butler of Joy.
+Tracks features, integrations, and quality goals.
+@end
+
+@requires:
+- section: Features
+- section: Integrations
+- section: Quality
+@end
+
+## Features
+
+### cartridge-system
+- description: Complete cartridge-based extensibility system
+- status: in-progress
+- priority: critical
+- evidence: command: grep -q 'cartridge' package.json
+
+### cloud-integrations
+- description: Cloudflare, Vercel, and Verpex cloud management
+- status: in-progress
+- priority: high
+- evidence: command: grep -q 'cloudflare' package.json
+
+### comms-integrations
+- description: Gmail and Calendar communication tools
+- status: in-progress
+- priority: high
+- evidence: command: grep -q 'gmail' package.json
+
+## Integrations
+
+### abi-ffi-layer
+- description: Add Idris2 ABI / Zig FFI layer
+- status: declared
+- priority: medium
+- evidence: src/abi/ exists
+
+### rescript-migration
+- description: Migrate JS to ReScript where applicable
+- status: declared
+- priority: medium
+- evidence: command: find . -name '*.res' | wc -l | grep -v '^0$'
+
+## Quality
+
+### test-coverage
+- description: Achieve meaningful test coverage
+- status: declared
+- priority: medium
+
+### contractile-ci
+- description: Run contractile checks in CI pipeline
+- status: declared
+- priority: high
+- evidence: command: grep -q 'contractile' .github/workflows/*.yml 2>/dev/null

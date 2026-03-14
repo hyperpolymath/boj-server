@@ -1,0 +1,59 @@
+# SPDX-License-Identifier: PMPL-1.0-or-later
+# Mustfile (A2ML Canonical)
+# Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath)
+
+@abstract:
+Physical State contract for boj-server — MCP server for Butler of Joy.
+Ensures required files exist, no banned patterns, and SPDX compliance.
+@end
+
+@requires:
+- section: Checks
+@end
+
+## Checks
+
+### license-present
+- description: LICENSE file must exist
+- run: test -f LICENSE
+- severity: critical
+
+### readme-present
+- description: README must exist
+- run: test -f README.adoc || test -f README.md
+- severity: critical
+
+### security-md-present
+- description: SECURITY.md must exist
+- run: test -f SECURITY.md
+- severity: critical
+
+### justfile-present
+- description: Justfile must exist
+- run: test -f Justfile
+- severity: critical
+
+### package-json-present
+- description: package.json must exist (MCP server entry point)
+- run: test -f package.json
+- severity: critical
+
+### no-banned-files
+- description: No Dockerfiles or Makefiles
+- run: test ! -f Dockerfile && test ! -f Makefile
+- severity: critical
+
+### no-env-files
+- description: No .env files committed
+- run: test ! -f .env && test ! -f .env.local
+- severity: critical
+
+### spdx-headers
+- description: JS source files should have SPDX headers
+- run: find . -name '*.js' -not -path '*/node_modules/*' | head -20 | xargs -r grep -L 'SPDX-License-Identifier' | wc -l | grep -q '^0$'
+- severity: warning
+
+### mcp-bridge-exists
+- description: MCP bridge entry point must exist
+- run: test -f mcp-bridge/main.js
+- severity: critical
