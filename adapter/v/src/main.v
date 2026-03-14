@@ -33,7 +33,7 @@ import time
 #flag -lboj_sla
 #flag -lboj_community
 #flag -lboj_sdp
-// Cartridge libraries — all 21 cartridges linked for full catalogue mounting.
+// Cartridge libraries — all 22 cartridges linked for full catalogue mounting.
 // Each cartridge .so is built by: cd cartridges/<name>/ffi && zig build
 #flag -L../../cartridges/agent-mcp/ffi/zig-out/lib
 #flag -lagent_mcp
@@ -77,6 +77,8 @@ import time
 #flag -lsecrets_mcp
 #flag -L../../cartridges/ssg-mcp/ffi/zig-out/lib
 #flag -lssg_mcp
+#flag -L../../cartridges/ums-mcp/ffi/zig-out/lib
+#flag -lums_mcp
 
 fn C.boj_catalogue_init() int
 fn C.boj_catalogue_deinit()
@@ -216,6 +218,7 @@ enum CapabilityDomain {
 	fleet_dom = 12
 	nesy_dom = 13
 	feedback = 14
+	ums = 15
 }
 
 enum MenuTier {
@@ -263,6 +266,7 @@ fn domain_label(d CapabilityDomain) string {
 		.fleet_dom { 'Fleet' }
 		.nesy_dom { 'NeSy' }
 		.feedback { 'Feedback' }
+		.ums { 'UMS' }
 	}
 }
 
@@ -646,6 +650,15 @@ fn (mut app BojApp) register_builtin_cartridges() ! {
 			status: .ready
 			tier: .teranga
 			domain: .cloud
+			protocols: [ProtocolType.mcp, .rest]
+			index: 0
+		},
+		CartridgeInfo{
+			name: 'ums-mcp'
+			version: '0.1.0'
+			status: .ready
+			tier: .shield
+			domain: .ums
 			protocols: [ProtocolType.mcp, .rest]
 			index: 0
 		},
@@ -1376,8 +1389,9 @@ fn handle_cartridge_invoke(app &BojApp, cname string, body string) http.Response
 	if cname == 'comms-mcp' { return invoke_comms(invoke_req.tool, invoke_req.args) }
 	if cname == 'ml-mcp' { return invoke_ml(invoke_req.tool, invoke_req.args) }
 	if cname == 'research-mcp' { return invoke_research(invoke_req.tool, invoke_req.args) }
+	if cname == 'ums-mcp' { return invoke_ums(invoke_req.tool, invoke_req.args) }
 
-	// All 18 cartridges should have handlers above — this is a safety fallback
+	// All cartridges should have handlers above — this is a safety fallback
 	return json_response(json.encode({
 		'cartridge': cname
 		'tool':      invoke_req.tool
@@ -2819,6 +2833,226 @@ fn invoke_research(tool string, args string) http.Response {
 		}))
 	}
 	return error_response(400, 'unknown research-mcp tool: "${tool}" — available: list_providers, authenticate, status')
+}
+
+// --- ums-mcp: IDApTIK Level Architect (Universal Map System) ---
+
+fn C.ums_create_project(name_ptr &u8, name_len usize) int
+fn C.ums_open_project(name_ptr &u8, name_len usize) int
+fn C.ums_delete_project(slot_idx int) int
+fn C.ums_load_level(slot_idx int, name_ptr &u8, name_len usize) int
+fn C.ums_save_level(slot_idx int) int
+fn C.ums_validate_level_abi(slot_idx int) int
+fn C.ums_list_levels(slot_idx int) int
+fn C.ums_export_level_config(slot_idx int) int
+fn C.ums_load_templates(slot_idx int) int
+fn C.ums_instantiate_template(slot_idx int, tmpl_ptr &u8, tmpl_len usize, name_ptr &u8, name_len usize) int
+fn C.ums_state(slot_idx int) int
+fn C.ums_read_result(slot_idx int, out_ptr &u8, out_cap usize) int
+fn C.ums_close(slot_idx int) int
+fn C.ums_reset()
+
+fn ums_state_label(s int) string {
+	return match s {
+		0 { 'idle' }
+		1 { 'project_open' }
+		2 { 'level_loaded' }
+		3 { 'validating' }
+		4 { 'valid' }
+		5 { 'invalid' }
+		6 { 'saved' }
+		else { 'unknown' }
+	}
+}
+
+fn read_ums_result(slot int) string {
+	mut buf := []u8{len: 8192}
+	rc := C.ums_read_result(slot, buf.data, usize(buf.len))
+	if rc <= 0 {
+		return '{}'
+	}
+	return buf[..rc].bytestr()
+}
+
+fn invoke_ums(tool string, args string) http.Response {
+	if tool == 'create_project' {
+		params := json.decode(map[string]string, args) or {
+			return error_response(400, 'create_project requires {"name": "project-name"}')
+		}
+		name := params['name'] or { '' }
+		if name == '' {
+			return error_response(400, 'create_project requires "name"')
+		}
+		slot := C.ums_create_project(name.str, usize(name.len))
+		if slot < 0 {
+			return error_response(503, 'no UMS session slots available')
+		}
+		return json_response(json.encode({
+			'tool':   'create_project'
+			'name':   name
+			'slot':   '${slot}'
+			'state':  'project_open'
+			'result': read_ums_result(slot)
+		}))
+	}
+	if tool == 'open_project' {
+		params := json.decode(map[string]string, args) or {
+			return error_response(400, 'open_project requires {"name": "project-name"}')
+		}
+		name := params['name'] or { '' }
+		if name == '' {
+			return error_response(400, 'open_project requires "name"')
+		}
+		slot := C.ums_open_project(name.str, usize(name.len))
+		if slot < 0 {
+			return error_response(503, 'no UMS session slots available')
+		}
+		return json_response(json.encode({
+			'tool':   'open_project'
+			'name':   name
+			'slot':   '${slot}'
+			'state':  'project_open'
+			'result': read_ums_result(slot)
+		}))
+	}
+	if tool == 'delete_project' {
+		params := json.decode(map[string]string, args) or {
+			return error_response(400, 'delete_project requires {"slot": "0"}')
+		}
+		slot := (params['slot'] or { '0' }).int()
+		rc := C.ums_delete_project(slot)
+		if rc == -1 {
+			return error_response(404, 'slot ${slot} not active')
+		}
+		if rc == -2 {
+			return error_response(409, 'cannot delete: level is loaded (close level first)')
+		}
+		return json_response(json.encode({
+			'tool':   'delete_project'
+			'slot':   '${slot}'
+			'status': 'deleted'
+		}))
+	}
+	if tool == 'load_level' {
+		params := json.decode(map[string]string, args) or {
+			return error_response(400, 'load_level requires {"slot": "0", "name": "level-name"}')
+		}
+		slot := (params['slot'] or { '0' }).int()
+		name := params['name'] or { '' }
+		if name == '' {
+			return error_response(400, 'load_level requires "name"')
+		}
+		rc := C.ums_load_level(slot, name.str, usize(name.len))
+		if rc < 0 {
+			return error_response(409, 'load_level failed on slot ${slot} (code ${rc})')
+		}
+		return json_response(json.encode({
+			'tool':   'load_level'
+			'slot':   '${slot}'
+			'name':   name
+			'state':  ums_state_label(C.ums_state(slot))
+			'result': read_ums_result(slot)
+		}))
+	}
+	if tool == 'save_level' {
+		params := json.decode(map[string]string, args) or {
+			return error_response(400, 'save_level requires {"slot": "0"}')
+		}
+		slot := (params['slot'] or { '0' }).int()
+		rc := C.ums_save_level(slot)
+		if rc < 0 {
+			return error_response(409, 'save_level failed on slot ${slot} (code ${rc}) — must validate first')
+		}
+		return json_response(json.encode({
+			'tool':   'save_level'
+			'slot':   '${slot}'
+			'state':  ums_state_label(C.ums_state(slot))
+			'result': read_ums_result(slot)
+		}))
+	}
+	if tool == 'validate_level_abi' {
+		params := json.decode(map[string]string, args) or {
+			return error_response(400, 'validate_level_abi requires {"slot": "0"}')
+		}
+		slot := (params['slot'] or { '0' }).int()
+		rc := C.ums_validate_level_abi(slot)
+		if rc < 0 {
+			return error_response(409, 'validate_level_abi failed on slot ${slot} (code ${rc})')
+		}
+		return json_response(json.encode({
+			'tool':   'validate_level_abi'
+			'slot':   '${slot}'
+			'state':  ums_state_label(C.ums_state(slot))
+			'result': read_ums_result(slot)
+		}))
+	}
+	if tool == 'list_levels' {
+		params := json.decode(map[string]string, args) or {
+			return error_response(400, 'list_levels requires {"slot": "0"}')
+		}
+		slot := (params['slot'] or { '0' }).int()
+		rc := C.ums_list_levels(slot)
+		if rc < 0 {
+			return error_response(409, 'list_levels failed on slot ${slot} (code ${rc})')
+		}
+		return json_response(json.encode({
+			'tool':   'list_levels'
+			'slot':   '${slot}'
+			'state':  ums_state_label(C.ums_state(slot))
+			'result': read_ums_result(slot)
+		}))
+	}
+	if tool == 'export_level_config' {
+		params := json.decode(map[string]string, args) or {
+			return error_response(400, 'export_level_config requires {"slot": "0"}')
+		}
+		slot := (params['slot'] or { '0' }).int()
+		rc := C.ums_export_level_config(slot)
+		if rc < 0 {
+			return error_response(409, 'export_level_config failed on slot ${slot} (code ${rc})')
+		}
+		return json_response(json.encode({
+			'tool':   'export_level_config'
+			'slot':   '${slot}'
+			'state':  ums_state_label(C.ums_state(slot))
+			'result': read_ums_result(slot)
+		}))
+	}
+	if tool == 'load_templates' {
+		rc := C.ums_load_templates(0)
+		if rc < 0 {
+			return error_response(500, 'load_templates failed')
+		}
+		return json_response(json.encode({
+			'tool':      'load_templates'
+			'templates': '[]'
+			'count':     '0'
+		}))
+	}
+	if tool == 'instantiate_template' {
+		params := json.decode(map[string]string, args) or {
+			return error_response(400, 'instantiate_template requires {"slot": "0", "template": "name", "level_name": "name"}')
+		}
+		slot := (params['slot'] or { '0' }).int()
+		tmpl := params['template'] or { '' }
+		level_name := params['level_name'] or { '' }
+		if tmpl == '' || level_name == '' {
+			return error_response(400, 'instantiate_template requires "template" and "level_name"')
+		}
+		rc := C.ums_instantiate_template(slot, tmpl.str, usize(tmpl.len), level_name.str, usize(level_name.len))
+		if rc < 0 {
+			return error_response(409, 'instantiate_template failed on slot ${slot} (code ${rc})')
+		}
+		return json_response(json.encode({
+			'tool':       'instantiate_template'
+			'slot':       '${slot}'
+			'template':   tmpl
+			'level_name': level_name
+			'state':      ums_state_label(C.ums_state(slot))
+			'result':     read_ums_result(slot)
+		}))
+	}
+	return error_response(400, 'unknown ums-mcp tool: "${tool}" — available: load_level, save_level, validate_level_abi, list_levels, export_level_config, create_project, open_project, delete_project, load_templates, instantiate_template')
 }
 
 struct CartridgeDetail {
