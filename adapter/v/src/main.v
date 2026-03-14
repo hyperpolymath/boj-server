@@ -33,10 +33,50 @@ import time
 #flag -lboj_sla
 #flag -lboj_community
 #flag -lboj_sdp
+// Cartridge libraries — all 21 cartridges linked for full catalogue mounting.
+// Each cartridge .so is built by: cd cartridges/<name>/ffi && zig build
+#flag -L../../cartridges/agent-mcp/ffi/zig-out/lib
+#flag -lagent_mcp
+#flag -L../../cartridges/bsp-mcp/ffi/zig-out/lib
+#flag -lbsp_mcp
+#flag -L../../cartridges/cloud-mcp/ffi/zig-out/lib
+#flag -lcloud_mcp
+#flag -L../../cartridges/comms-mcp/ffi/zig-out/lib
+#flag -lcomms_mcp
 #flag -L../../cartridges/container-mcp/ffi/zig-out/lib
 #flag -lcontainer_mcp
+#flag -L../../cartridges/dap-mcp/ffi/zig-out/lib
+#flag -ldap_mcp
+#flag -L../../cartridges/database-mcp/ffi/zig-out/lib
+#flag -ldatabase_mcp
 #flag -L../../cartridges/feedback-mcp/ffi/zig-out/lib
 #flag -lfeedback_mcp
+#flag -L../../cartridges/fleet-mcp/ffi/zig-out/lib
+#flag -lfleet_mcp
+#flag -L../../cartridges/git-mcp/ffi/zig-out/lib
+#flag -lgit_mcp
+#flag -L../../cartridges/iac-mcp/ffi/zig-out/lib
+#flag -liac_mcp
+#flag -L../../cartridges/k8s-mcp/ffi/zig-out/lib
+#flag -lk8s_mcp
+#flag -L../../cartridges/lsp-mcp/ffi/zig-out/lib
+#flag -llsp_mcp
+#flag -L../../cartridges/ml-mcp/ffi/zig-out/lib
+#flag -lml_mcp
+#flag -L../../cartridges/nesy-mcp/ffi/zig-out/lib
+#flag -lnesy_mcp
+#flag -L../../cartridges/observe-mcp/ffi/zig-out/lib
+#flag -lobserve_mcp
+#flag -L../../cartridges/proof-mcp/ffi/zig-out/lib
+#flag -lproof_mcp
+#flag -L../../cartridges/queues-mcp/ffi/zig-out/lib
+#flag -lqueues_mcp
+#flag -L../../cartridges/research-mcp/ffi/zig-out/lib
+#flag -lresearch_mcp
+#flag -L../../cartridges/secrets-mcp/ffi/zig-out/lib
+#flag -lsecrets_mcp
+#flag -L../../cartridges/ssg-mcp/ffi/zig-out/lib
+#flag -lssg_mcp
 
 fn C.boj_catalogue_init() int
 fn C.boj_catalogue_deinit()
@@ -579,6 +619,33 @@ fn (mut app BojApp) register_builtin_cartridges() ! {
 			status: .ready
 			tier: .teranga
 			domain: .feedback
+			protocols: [ProtocolType.mcp, .rest]
+			index: 0
+		},
+		CartridgeInfo{
+			name: 'comms-mcp'
+			version: '0.1.0'
+			status: .ready
+			tier: .teranga
+			domain: .cloud
+			protocols: [ProtocolType.mcp, .rest]
+			index: 0
+		},
+		CartridgeInfo{
+			name: 'ml-mcp'
+			version: '0.1.0'
+			status: .ready
+			tier: .teranga
+			domain: .cloud
+			protocols: [ProtocolType.mcp, .rest]
+			index: 0
+		},
+		CartridgeInfo{
+			name: 'research-mcp'
+			version: '0.1.0'
+			status: .ready
+			tier: .teranga
+			domain: .cloud
 			protocols: [ProtocolType.mcp, .rest]
 			index: 0
 		},
@@ -1306,6 +1373,9 @@ fn handle_cartridge_invoke(app &BojApp, cname string, body string) http.Response
 	if cname == 'dap-mcp' { return invoke_dap(invoke_req.tool, invoke_req.args) }
 	if cname == 'bsp-mcp' { return invoke_bsp(invoke_req.tool, invoke_req.args) }
 	if cname == 'feedback-mcp' { return invoke_feedback(invoke_req.tool, invoke_req.args) }
+	if cname == 'comms-mcp' { return invoke_comms(invoke_req.tool, invoke_req.args) }
+	if cname == 'ml-mcp' { return invoke_ml(invoke_req.tool, invoke_req.args) }
+	if cname == 'research-mcp' { return invoke_research(invoke_req.tool, invoke_req.args) }
 
 	// All 18 cartridges should have handlers above — this is a safety fallback
 	return json_response(json.encode({
@@ -2600,6 +2670,155 @@ fn invoke_feedback(tool string, args string) http.Response {
 		}))
 	}
 	return error_response(400, 'unknown feedback-mcp tool: "${tool}" — available: list_channels, open_channel, submit, summary, status')
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// Comms-MCP — Communications cartridge (Gmail, Calendar)
+// ═══════════════════════════════════════════════════════════════════════
+
+fn C.comms_authenticate(provider int) int
+fn C.comms_logout(slot int) int
+fn C.comms_begin_operation(slot int) int
+fn C.comms_end_operation(slot int) int
+fn C.comms_state(slot int) int
+fn C.comms_can_transition(from int, to int) int
+fn C.comms_reset() int
+
+fn invoke_comms(tool string, args string) http.Response {
+	if tool == 'list_providers' {
+		return json_response(json.encode({
+			'tool':      'list_providers'
+			'available': 'gmail,calendar'
+		}))
+	}
+	if tool == 'authenticate' {
+		params := json.decode(map[string]string, args) or {
+			return error_response(400, 'authenticate requires {"provider": "gmail|calendar"}')
+		}
+		provider := params['provider'] or { 'gmail' }
+		provider_id := match provider {
+			'gmail' { 1 }
+			'calendar' { 2 }
+			else { 99 }
+		}
+		slot := C.comms_authenticate(provider_id)
+		if slot < 0 {
+			return error_response(503, 'no comms session slots available')
+		}
+		return json_response(json.encode({
+			'tool':     'authenticate'
+			'provider': provider
+			'slot':     '${slot}'
+			'state':    'authenticated'
+		}))
+	}
+	if tool == 'status' {
+		return json_response(json.encode({
+			'tool':    'status'
+			'state':   'active'
+			'message': 'comms-mcp is running. Providers: gmail, calendar.'
+		}))
+	}
+	return error_response(400, 'unknown comms-mcp tool: "${tool}" — available: list_providers, authenticate, status')
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// ML-MCP — Machine Learning cartridge (HuggingFace)
+// ═══════════════════════════════════════════════════════════════════════
+
+fn C.ml_authenticate(provider int) int
+fn C.ml_logout(slot int) int
+fn C.ml_begin_operation(slot int) int
+fn C.ml_end_operation(slot int) int
+fn C.ml_state(slot int) int
+fn C.ml_can_transition(from int, to int) int
+fn C.ml_reset() int
+
+fn invoke_ml(tool string, args string) http.Response {
+	if tool == 'list_providers' {
+		return json_response(json.encode({
+			'tool':      'list_providers'
+			'available': 'huggingface'
+		}))
+	}
+	if tool == 'authenticate' {
+		params := json.decode(map[string]string, args) or {
+			return error_response(400, 'authenticate requires {"provider": "huggingface"}')
+		}
+		provider := params['provider'] or { 'huggingface' }
+		provider_id := match provider {
+			'huggingface' { 1 }
+			else { 99 }
+		}
+		slot := C.ml_authenticate(provider_id)
+		if slot < 0 {
+			return error_response(503, 'no ML session slots available')
+		}
+		return json_response(json.encode({
+			'tool':     'authenticate'
+			'provider': provider
+			'slot':     '${slot}'
+			'state':    'authenticated'
+		}))
+	}
+	if tool == 'status' {
+		return json_response(json.encode({
+			'tool':    'status'
+			'state':   'active'
+			'message': 'ml-mcp is running. Providers: huggingface.'
+		}))
+	}
+	return error_response(400, 'unknown ml-mcp tool: "${tool}" — available: list_providers, authenticate, status')
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// Research-MCP — Academic research cartridge (Semantic Scholar, OpenAlex)
+// ═══════════════════════════════════════════════════════════════════════
+
+fn C.research_authenticate(provider int) int
+fn C.research_logout(slot int) int
+fn C.research_begin_operation(slot int) int
+fn C.research_end_operation(slot int) int
+fn C.research_state(slot int) int
+fn C.research_can_transition(from int, to int) int
+fn C.research_reset() int
+
+fn invoke_research(tool string, args string) http.Response {
+	if tool == 'list_providers' {
+		return json_response(json.encode({
+			'tool':      'list_providers'
+			'available': 'semantic_scholar,openalex'
+		}))
+	}
+	if tool == 'authenticate' {
+		params := json.decode(map[string]string, args) or {
+			return error_response(400, 'authenticate requires {"provider": "semantic_scholar|openalex"}')
+		}
+		provider := params['provider'] or { 'semantic_scholar' }
+		provider_id := match provider {
+			'semantic_scholar' { 2 }
+			'openalex' { 3 }
+			else { 99 }
+		}
+		slot := C.research_authenticate(provider_id)
+		if slot < 0 {
+			return error_response(503, 'no research session slots available')
+		}
+		return json_response(json.encode({
+			'tool':     'authenticate'
+			'provider': provider
+			'slot':     '${slot}'
+			'state':    'authenticated'
+		}))
+	}
+	if tool == 'status' {
+		return json_response(json.encode({
+			'tool':    'status'
+			'state':   'active'
+			'message': 'research-mcp is running. Providers: semantic_scholar, openalex.'
+		}))
+	}
+	return error_response(400, 'unknown research-mcp tool: "${tool}" — available: list_providers, authenticate, status')
 }
 
 struct CartridgeDetail {
