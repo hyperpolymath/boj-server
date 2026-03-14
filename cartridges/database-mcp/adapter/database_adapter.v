@@ -24,6 +24,8 @@ fn C.db_end_query(slot_idx int) int
 fn C.db_query_error(slot_idx int) int
 fn C.db_can_transition(from int, to int) int
 fn C.db_execute_sql(slot u8, sql_ptr &u8, sql_len usize, out_ptr &u8, out_len usize) int
+fn C.db_connect_verisimdb(url_ptr &u8, url_len usize) int
+fn C.db_execute_vql(slot u8, vql_ptr &u8, vql_len usize, out_ptr &u8, out_len usize) int
 fn C.db_reset()
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -185,6 +187,41 @@ pub fn execute_sql(slot int, sql string) !string {
 			-3 { error('slot does not have a sqlite handle (wrong backend?)') }
 			-4 { error('sqlite3_exec failed') }
 			-5 { error('output buffer too small') }
+			else { error('unknown error (code ${result})') }
+		}
+	}
+	return out_buf[..result].bytestr()
+}
+
+pub fn connect_verisimdb(url string) !ConnectResponse {
+	slot := C.db_connect_verisimdb(url.str, usize(url.len))
+	if slot < 0 {
+		return match slot {
+			-1 { error('no connection slots available') }
+			-6 { error('URL empty or too long (max ${512} bytes): ${url}') }
+			else { error('unknown error (code ${slot})') }
+		}
+	}
+	return ConnectResponse{
+		slot: slot
+		backend: 'verisimdb'
+		state: 'connected'
+	}
+}
+
+pub fn execute_vql(slot int, vql string) !string {
+	if slot < 0 || slot > 255 {
+		return error('invalid slot index: ${slot}')
+	}
+	mut out_buf := []u8{len: 65536}
+	result := C.db_execute_vql(u8(slot), vql.str, usize(vql.len), out_buf.data, usize(out_buf.len))
+	if result < 0 {
+		return match result {
+			-1 { error('invalid or inactive slot') }
+			-2 { error('connection not in queryable state') }
+			-5 { error('output buffer too small') }
+			-6 { error('slot does not have a VeriSimDB URL (wrong backend?)') }
+			-7 { error('VQL execution failed (curl returned non-zero)') }
 			else { error('unknown error (code ${result})') }
 		}
 	}

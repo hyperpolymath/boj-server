@@ -1464,7 +1464,50 @@ fn invoke_database(tool string, args string) http.Response {
 			'data':   result_json
 		}))
 	}
-	return error_response(400, 'unknown database-mcp tool: "${tool}" — available: health, list_octads, create_octad, query, drift, list_backends, sql')
+	if tool == 'vql' {
+		// VQL query execution via the Zig state machine (no curl shell-out).
+		// Args: {"url": "http://localhost:8180", "vql": "{\"query\": \"...\"}"}
+		// If url is omitted, falls back to VERISIMDB_URL env or default.
+		params := json.decode(map[string]string, args) or {
+			return error_response(400, 'vql requires {"vql": "<VQL JSON body>"} and optionally {"url": "..."}')
+		}
+		vql_body := params['vql'] or { '' }
+		if vql_body == '' {
+			return error_response(400, 'vql requires a "vql" field with the VQL query JSON body')
+		}
+		url := params['url'] or { verisimdb_url }
+
+		// Connect to VeriSimDB via Zig FFI
+		conn := database_adapter.connect_verisimdb(url) or {
+			return json_response(json.encode({
+				'tool':   'vql'
+				'status': 'error'
+				'error':  'connect failed: ${err.msg()}'
+			}))
+		}
+
+		// Execute the VQL query through the state machine
+		result_json := database_adapter.execute_vql(conn.slot, vql_body) or {
+			// Disconnect on error (error state -> disconnected)
+			database_adapter.disconnect(conn.slot) or {}
+			return json_response(json.encode({
+				'tool':   'vql'
+				'status': 'error'
+				'error':  'VQL query failed: ${err.msg()}'
+			}))
+		}
+
+		// Disconnect after query
+		database_adapter.disconnect(conn.slot) or {}
+
+		return json_response(json.encode({
+			'tool':   'vql'
+			'status': 'ok'
+			'url':    url
+			'data':   result_json
+		}))
+	}
+	return error_response(400, 'unknown database-mcp tool: "${tool}" — available: health, list_octads, create_octad, query, drift, list_backends, sql, vql')
 }
 
 // --- ssg-mcp: Static site generation (Zola, Hugo, ddraig) ---

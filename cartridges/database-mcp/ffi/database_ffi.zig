@@ -43,11 +43,15 @@ pub const QuerySafety = enum(c_int) {
 
 const MAX_CONNECTIONS: usize = 16;
 
+const URL_BUF_SIZE: usize = 512;
+
 const ConnectionSlot = struct {
     active: bool,
     state: ConnState,
     backend: DatabaseBackend,
     db_handle: ?*c.sqlite3,
+    url_buf: [URL_BUF_SIZE]u8,
+    url_len: usize,
 };
 
 var connections: [MAX_CONNECTIONS]ConnectionSlot = [_]ConnectionSlot{.{
@@ -55,6 +59,8 @@ var connections: [MAX_CONNECTIONS]ConnectionSlot = [_]ConnectionSlot{.{
     .state = .disconnected,
     .backend = .sqlite,
     .db_handle = null,
+    .url_buf = [_]u8{0} ** URL_BUF_SIZE,
+    .url_len = 0,
 }} ** MAX_CONNECTIONS;
 
 var mutex: std.Thread.Mutex = .{};
@@ -128,6 +134,38 @@ pub export fn db_connect_sqlite(path_ptr: [*]const u8, path_len: usize) c_int {
     return @intCast(idx);
 }
 
+/// Open a new VeriSimDB connection by URL (e.g. "http://localhost:8180").
+/// Stores the URL in the slot's url_buf for later use by db_execute_vql.
+/// Returns slot index or negative error code:
+///   -1 = no slots available
+///   -6 = URL too long (exceeds URL_BUF_SIZE)
+pub export fn db_connect_verisimdb(url_ptr: [*]const u8, url_len: usize) c_int {
+    mutex.lock();
+    defer mutex.unlock();
+
+    if (url_len == 0 or url_len >= URL_BUF_SIZE) return -6;
+
+    // Find a free slot
+    var free_idx: ?usize = null;
+    for (&connections, 0..) |*slot, i| {
+        _ = slot;
+        if (!connections[i].active) {
+            free_idx = i;
+            break;
+        }
+    }
+    const idx = free_idx orelse return -1;
+
+    // Store the URL
+    @memcpy(connections[idx].url_buf[0..url_len], url_ptr[0..url_len]);
+    connections[idx].url_len = url_len;
+    connections[idx].active = true;
+    connections[idx].state = .connected;
+    connections[idx].backend = .verisimdb;
+    connections[idx].db_handle = null;
+    return @intCast(idx);
+}
+
 /// Close a connection by slot index.
 /// If the slot holds an open sqlite3 handle, closes it first.
 pub export fn db_disconnect(slot_idx: c_int) c_int {
@@ -143,6 +181,9 @@ pub export fn db_disconnect(slot_idx: c_int) c_int {
         _ = c.sqlite3_close(h);
         connections[idx].db_handle = null;
     }
+
+    // Clear stored URL
+    connections[idx].url_len = 0;
 
     connections[idx].active = false;
     connections[idx].state = .disconnected;
@@ -217,6 +258,7 @@ pub export fn db_reset() void {
             _ = c.sqlite3_close(h);
             slot.db_handle = null;
         }
+        slot.url_len = 0;
         slot.active = false;
         slot.state = .disconnected;
     }
@@ -396,6 +438,139 @@ fn appendJsonEscaped(list: *std.ArrayListUnmanaged(u8), alloc: std.mem.Allocator
     }
 }
 
+
+// ═══════════════════════════════════════════════════════════════════════
+// VQL Execution (VeriSimDB — via child curl process)
+// ═══════════════════════════════════════════════════════════════════════
+
+/// Execute a VQL query against a VeriSimDB connection via the Zig state machine.
+///
+/// The stored URL is used to POST to {url}/vql/execute with the VQL query
+/// as the JSON request body. Uses a child curl process for HTTP transport.
+///
+/// Parameters:
+///   slot:    connection slot index (must be connected, backend == verisimdb)
+///   vql_ptr: pointer to the VQL JSON string (request body)
+///   vql_len: byte length of the VQL string
+///   out_ptr: caller-owned buffer for response output
+///   out_len: size of the output buffer
+///
+/// Returns:
+///   >= 0  : number of bytes written to out_ptr
+///   -1    : invalid slot
+///   -2    : invalid state transition (not in connected state)
+///   -6    : no URL stored on this slot (wrong backend)
+///   -7    : curl execution failed (state transitions to Error)
+///   -5    : output buffer too small
+pub export fn db_execute_vql(slot: u8, vql_ptr: [*]const u8, vql_len: usize, out_ptr: [*]u8, out_len: usize) callconv(.c) i32 {
+    // Phase 1: validate and transition state under lock
+    var endpoint_buf: [600]u8 = undefined;
+    var endpoint_total: usize = 0;
+    var vql_buf: [8192]u8 = undefined;
+    var safe_vql_len: usize = 0;
+
+    {
+        mutex.lock();
+        defer mutex.unlock();
+
+        if (slot >= MAX_CONNECTIONS) return -1;
+        const idx: usize = @intCast(slot);
+        if (!connections[idx].active) return -1;
+
+        // Must be in connected state to begin querying
+        if (!isValidTransition(connections[idx].state, .querying)) return -2;
+
+        // Must have a stored URL (verisimdb backend)
+        if (connections[idx].url_len == 0) return -6;
+
+        // Build the full endpoint URL: {base_url}/vql/execute
+        const url_slice = connections[idx].url_buf[0..connections[idx].url_len];
+        const suffix = "/vql/execute";
+        if (url_slice.len + suffix.len >= endpoint_buf.len) return -6;
+        @memcpy(endpoint_buf[0..url_slice.len], url_slice);
+        @memcpy(endpoint_buf[url_slice.len..][0..suffix.len], suffix);
+        endpoint_total = url_slice.len + suffix.len;
+        endpoint_buf[endpoint_total] = 0;
+
+        // Build the VQL body as a null-terminated string for the -d argument
+        safe_vql_len = @min(vql_len, vql_buf.len - 1);
+        @memcpy(vql_buf[0..safe_vql_len], vql_ptr[0..safe_vql_len]);
+        vql_buf[safe_vql_len] = 0;
+
+        // Transition to querying
+        connections[idx].state = .querying;
+    }
+
+    // Phase 2: run curl WITHOUT holding the mutex (blocking I/O)
+    const child_result = runCurlPost(
+        endpoint_buf[0..endpoint_total :0],
+        vql_buf[0..safe_vql_len :0],
+    );
+
+    // Phase 3: update state under lock based on result
+    mutex.lock();
+    defer mutex.unlock();
+
+    const idx: usize = @intCast(slot);
+    // Check if slot is still valid after re-acquiring lock
+    if (!connections[idx].active or connections[idx].state != .querying) {
+        return -1;
+    }
+
+    if (child_result) |result| {
+        defer std.heap.page_allocator.free(result);
+        const written = result.len;
+        if (written > out_len) {
+            connections[idx].state = .err;
+            return -5;
+        }
+        @memcpy(out_ptr[0..written], result[0..written]);
+        connections[idx].state = .connected;
+        return @intCast(written);
+    } else |_| {
+        connections[idx].state = .err;
+        return -7;
+    }
+}
+
+/// Run curl as a child process for an HTTP POST with JSON body.
+/// Returns a heap-allocated slice with stdout output, or an error.
+/// Caller must free the returned slice with page_allocator.free().
+fn runCurlPost(endpoint: [:0]const u8, body: [:0]const u8) ![]u8 {
+    const argv = [_][]const u8{
+        "curl",
+        "-sf",
+        "--max-time",
+        "10",
+        "-X",
+        "POST",
+        "-H",
+        "Content-Type: application/json",
+        "-d",
+        body,
+        endpoint,
+    };
+    var child = std.process.Child.init(&argv, std.heap.page_allocator);
+    child.stdout_behavior = .Pipe;
+    child.stderr_behavior = .Pipe;
+    try child.spawn();
+
+    // Collect stdout via the standard API
+    const alloc = std.heap.page_allocator;
+    var stdout_list: std.ArrayList(u8) = .empty;
+    var stderr_list: std.ArrayList(u8) = .empty;
+    defer stderr_list.deinit(alloc);
+
+    try child.collectOutput(alloc, &stdout_list, &stderr_list, 65536);
+    const term = try child.wait();
+
+    if (term.Exited != 0) {
+        stdout_list.deinit(alloc);
+        return error.CurlFailed;
+    }
+
+    return stdout_list.toOwnedSlice(alloc);
+}
 
 // ═══════════════════════════════════════════════════════════════════════
 // Standard Cartridge Interface (loader expects these 4 C-ABI symbols)
@@ -596,5 +771,74 @@ test "sqlite execute_sql multiple rows" {
     try std.testing.expect(std.mem.indexOf(u8, json_result, "\"b\"") != null);
     try std.testing.expect(std.mem.indexOf(u8, json_result, "\"c\"") != null);
 
+    try std.testing.expectEqual(@as(c_int, 0), db_disconnect(slot_i32));
+}
+
+// ─── VeriSimDB connection lifecycle tests ────────────────────────────
+
+test "verisimdb connect stores URL and disconnects" {
+    db_reset();
+    const url = "http://localhost:8180";
+    const slot = db_connect_verisimdb(url, url.len);
+    try std.testing.expect(slot >= 0);
+    try std.testing.expectEqual(@as(c_int, @intFromEnum(ConnState.connected)), db_state(slot));
+
+    // Verify backend and URL are stored correctly
+    const idx: usize = @intCast(slot);
+    try std.testing.expectEqual(DatabaseBackend.verisimdb, connections[idx].backend);
+    try std.testing.expectEqual(url.len, connections[idx].url_len);
+    try std.testing.expect(std.mem.eql(u8, url, connections[idx].url_buf[0..connections[idx].url_len]));
+
+    // No sqlite handle should be present
+    try std.testing.expect(connections[idx].db_handle == null);
+
+    // Disconnect
+    try std.testing.expectEqual(@as(c_int, 0), db_disconnect(slot));
+    try std.testing.expectEqual(@as(usize, 0), connections[idx].url_len);
+}
+
+test "verisimdb connect rejects empty URL" {
+    db_reset();
+    const slot = db_connect_verisimdb("", 0);
+    try std.testing.expectEqual(@as(c_int, -6), slot);
+}
+
+test "verisimdb connect rejects overlong URL" {
+    db_reset();
+    var long_url: [URL_BUF_SIZE]u8 = [_]u8{'x'} ** URL_BUF_SIZE;
+    const slot = db_connect_verisimdb(&long_url, long_url.len);
+    try std.testing.expectEqual(@as(c_int, -6), slot);
+}
+
+test "verisimdb query lifecycle through state machine" {
+    db_reset();
+    const url = "http://localhost:8180";
+    const slot = db_connect_verisimdb(url, url.len);
+    try std.testing.expect(slot >= 0);
+
+    // Manual state transitions (not calling db_execute_vql since no server)
+    try std.testing.expectEqual(@as(c_int, 0), db_begin_query(slot));
+    try std.testing.expectEqual(@as(c_int, @intFromEnum(ConnState.querying)), db_state(slot));
+    try std.testing.expectEqual(@as(c_int, 0), db_end_query(slot));
+    try std.testing.expectEqual(@as(c_int, @intFromEnum(ConnState.connected)), db_state(slot));
+    try std.testing.expectEqual(@as(c_int, 0), db_disconnect(slot));
+}
+
+test "verisimdb execute_vql rejects non-verisimdb slot" {
+    db_reset();
+    // Connect with sqlite backend (has a handle, not a URL)
+    const path = ":memory:";
+    const slot_i32 = db_connect_sqlite(path, path.len);
+    try std.testing.expect(slot_i32 >= 0);
+    const slot: u8 = @intCast(slot_i32);
+
+    var out_buf: [256]u8 = undefined;
+    const vql = "{\"query\": \"SELECT * FROM test\"}";
+    const rc = db_execute_vql(slot, vql, vql.len, &out_buf, out_buf.len);
+    // Should return -6 (no URL stored — sqlite slot has url_len == 0)
+    try std.testing.expectEqual(@as(i32, -6), rc);
+
+    // URL check occurs before state transition, so state remains connected.
+    try std.testing.expectEqual(@as(c_int, @intFromEnum(ConnState.connected)), db_state(slot_i32));
     try std.testing.expectEqual(@as(c_int, 0), db_disconnect(slot_i32));
 }
