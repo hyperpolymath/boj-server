@@ -13,7 +13,7 @@
 
 const BOJ_BASE = process.env.BOJ_URL || "http://localhost:7700";
 const SERVER_NAME = "boj-server";
-const SERVER_VERSION = "0.2.0";
+const SERVER_VERSION = "0.3.0";
 
 // --- JSON-RPC stdio transport ---
 
@@ -70,13 +70,16 @@ const OFFLINE_MENU = {
     { name: "dap-mcp", version: "0.1.0", domain: "Cloud", protocols: ["DAP","MCP","REST"], status: "Available", available: true },
     { name: "bsp-mcp", version: "0.1.0", domain: "Cloud", protocols: ["BSP","MCP","REST"], status: "Available", available: true },
     { name: "feedback-mcp", version: "0.1.0", domain: "Feedback", protocols: ["MCP","REST"], status: "Available", available: true },
+    { name: "comms-mcp", version: "0.1.0", domain: "Communications", protocols: ["MCP","REST"], status: "Available", available: true },
+    { name: "ml-mcp", version: "0.1.0", domain: "ML/AI", protocols: ["MCP","REST"], status: "Available", available: true },
+    { name: "research-mcp", version: "0.1.0", domain: "Research", protocols: ["MCP","REST"], status: "Available", available: true },
   ],
   tier_shield: [
     { name: "secrets-mcp", version: "0.1.0", domain: "Secrets", protocols: ["MCP","REST"], status: "Available", available: true },
     { name: "proof-mcp", version: "0.1.0", domain: "Proof", protocols: ["MCP","REST"], status: "Available", available: true },
   ],
   tier_ayo: [],
-  summary: { total: 18, ready: 18, mounted: 0 },
+  summary: { total: 21, ready: 21, mounted: 0 },
 };
 
 async function fetchMenu() {
@@ -202,6 +205,111 @@ function cartridgeToTools(cartridges) {
     },
   });
 
+  // Cloud providers
+  tools.push({
+    name: "boj_cloud_verpex",
+    description: "Manage Verpex hosting via cPanel UAPI — domains, DNS, email, databases, SSL, cron, metrics",
+    inputSchema: {
+      type: "object",
+      properties: {
+        operation: { type: "string", enum: ["authenticate", "list-domains", "dns-list", "dns-add", "dns-remove", "email-list", "email-create", "databases-list", "database-create", "ssl-status", "cron-list", "metrics"], description: "The Verpex operation to perform" },
+        hostname: { type: "string", description: "cPanel hostname (for authenticate)" },
+        username: { type: "string", description: "cPanel username (for authenticate)" },
+        api_token: { type: "string", description: "cPanel API token (for authenticate)" },
+        domain: { type: "string", description: "Domain name (for DNS, SSL operations)" },
+        params: { type: "object", description: "Additional operation parameters" },
+      },
+      required: ["operation"],
+    },
+  });
+
+  tools.push({
+    name: "boj_cloud_cloudflare",
+    description: "Manage Cloudflare resources — Workers, D1 databases, KV namespaces, R2 buckets, DNS zones/records",
+    inputSchema: {
+      type: "object",
+      properties: {
+        operation: { type: "string", enum: ["authenticate", "list-workers", "get-worker", "list-d1", "query-d1", "list-kv", "kv-get", "kv-put", "list-r2", "list-dns-zones", "list-dns-records", "add-dns-record"], description: "The Cloudflare operation" },
+        api_token: { type: "string", description: "Cloudflare API token (for authenticate)" },
+        params: { type: "object", description: "Operation parameters" },
+      },
+      required: ["operation"],
+    },
+  });
+
+  tools.push({
+    name: "boj_cloud_vercel",
+    description: "Manage Vercel projects — deployments, domains, environment variables, logs, serverless functions",
+    inputSchema: {
+      type: "object",
+      properties: {
+        operation: { type: "string", enum: ["authenticate", "list-projects", "get-project", "list-deployments", "get-deployment", "list-domains", "list-env-vars", "deployment-logs", "list-functions"], description: "The Vercel operation" },
+        api_token: { type: "string", description: "Vercel API token (for authenticate)" },
+        params: { type: "object", description: "Operation parameters" },
+      },
+      required: ["operation"],
+    },
+  });
+
+  // Communications
+  tools.push({
+    name: "boj_comms_gmail",
+    description: "Gmail operations — send, read, search emails, manage labels",
+    inputSchema: {
+      type: "object",
+      properties: {
+        operation: { type: "string", enum: ["authenticate", "send", "read", "search", "labels"], description: "Gmail operation" },
+        oauth_token: { type: "string", description: "OAuth2 token (for authenticate)" },
+        params: { type: "object", description: "Operation parameters (to, subject, body for send; query for search; message_id for read)" },
+      },
+      required: ["operation"],
+    },
+  });
+
+  tools.push({
+    name: "boj_comms_calendar",
+    description: "Google Calendar operations — list events, create events, check availability",
+    inputSchema: {
+      type: "object",
+      properties: {
+        operation: { type: "string", enum: ["authenticate", "list-events", "create-event", "free-busy"], description: "Calendar operation" },
+        oauth_token: { type: "string", description: "OAuth2 token (for authenticate)" },
+        params: { type: "object", description: "Operation parameters" },
+      },
+      required: ["operation"],
+    },
+  });
+
+  // ML/AI
+  tools.push({
+    name: "boj_ml_huggingface",
+    description: "Hugging Face operations — search models, model info, inference, spaces, datasets",
+    inputSchema: {
+      type: "object",
+      properties: {
+        operation: { type: "string", enum: ["authenticate", "search-models", "model-info", "inference", "list-spaces", "list-datasets"], description: "HuggingFace operation" },
+        api_token: { type: "string", description: "HF API token (for authenticate)" },
+        params: { type: "object", description: "Operation parameters (query for search, model_id for info/inference)" },
+      },
+      required: ["operation"],
+    },
+  });
+
+  // Research
+  tools.push({
+    name: "boj_research",
+    description: "Academic research — search papers, citations, references, authors",
+    inputSchema: {
+      type: "object",
+      properties: {
+        operation: { type: "string", enum: ["authenticate", "search-papers", "paper-details", "citations", "references", "author-search", "author-papers"], description: "Research operation" },
+        api_key: { type: "string", description: "API key (for authenticate)" },
+        params: { type: "object", description: "Operation parameters (query for search, paper_id for details/citations, author_id for author-papers)" },
+      },
+      required: ["operation"],
+    },
+  });
+
   return tools;
 }
 
@@ -292,6 +400,29 @@ async function handleMessage(line) {
               { type: "text", text: JSON.stringify(result, null, 2) },
             ],
           });
+          break;
+        }
+        case "boj_cloud_verpex":
+        case "boj_cloud_cloudflare":
+        case "boj_cloud_vercel": {
+          const result = await invokeCartridge("cloud-mcp", { provider: toolName.replace("boj_cloud_", ""), ...args });
+          sendResult(id, { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] });
+          break;
+        }
+        case "boj_comms_gmail":
+        case "boj_comms_calendar": {
+          const result = await invokeCartridge("comms-mcp", { provider: toolName.replace("boj_comms_", ""), ...args });
+          sendResult(id, { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] });
+          break;
+        }
+        case "boj_ml_huggingface": {
+          const result = await invokeCartridge("ml-mcp", { provider: "huggingface", ...args });
+          sendResult(id, { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] });
+          break;
+        }
+        case "boj_research": {
+          const result = await invokeCartridge("research-mcp", args);
+          sendResult(id, { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] });
           break;
         }
         default:

@@ -1,18 +1,18 @@
 -- SPDX-License-Identifier: PMPL-1.0-or-later
 -- Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
-||| CloudMcp.SafeCloud: Formally verified multi-cloud provider operations.
+||| ResearchMcp.SafeResearch: Formally verified academic research provider operations.
 |||
-||| Cartridge: cloud-mcp
-||| Matrix cell: Cloud domain x {MCP, LSP} protocols
+||| Cartridge: research-mcp
+||| Matrix cell: Research domain x {MCP, LSP} protocols
 |||
-||| This module defines type-safe cloud provider operations with a
+||| This module defines type-safe research provider operations with a
 ||| session state machine that prevents:
 |||   - Operations on unauthenticated providers
 |||   - Credential leaks by tracking auth lifecycle
 |||   - Operations without proper session teardown
 |||
 ||| State machine: Unauthenticated -> Authenticated -> Operating -> Authenticated -> Unauthenticated
-module CloudMcp.SafeCloud
+module ResearchMcp.SafeResearch
 
 import Data.List
 
@@ -58,118 +58,86 @@ canTransition AuthError       Unauthenticated = True
 canTransition _               _               = False
 
 -- ═══════════════════════════════════════════════════════════════════════════
--- Cloud Provider Types
+-- Research Provider Types
 -- ═══════════════════════════════════════════════════════════════════════════
 
-||| Supported cloud providers.
+||| Supported academic research providers.
 public export
-data CloudProvider
-  = AWS            -- Amazon Web Services
-  | GCloud         -- Google Cloud Platform
-  | Azure          -- Microsoft Azure
-  | DigitalOcean   -- DigitalOcean
-  | Verpex         -- Verpex hosting
-  | Cloudflare     -- Cloudflare
-  | Vercel         -- Vercel platform
-  | Custom String  -- User-defined provider
+data ResearchProvider
+  = ScholarGateway    -- Scholar Gateway aggregator
+  | SemanticScholar   -- Semantic Scholar (Allen AI)
+  | OpenAlex          -- OpenAlex open catalogue
+  | Custom String     -- User-defined provider
 
 ||| C-ABI encoding.
 public export
-providerToInt : CloudProvider -> Int
-providerToInt AWS            = 1
-providerToInt GCloud         = 2
-providerToInt Azure          = 3
-providerToInt DigitalOcean   = 4
-providerToInt Verpex         = 5
-providerToInt Cloudflare     = 6
-providerToInt Vercel         = 7
-providerToInt (Custom _)     = 99
+providerToInt : ResearchProvider -> Int
+providerToInt ScholarGateway  = 1
+providerToInt SemanticScholar = 2
+providerToInt OpenAlex        = 3
+providerToInt (Custom _)      = 99
 
 -- ═══════════════════════════════════════════════════════════════════════════
 -- Provider Capabilities
 -- ═══════════════════════════════════════════════════════════════════════════
 
-||| Capabilities a cloud provider may support.
+||| Capabilities a research provider may support.
 public export
 data ProviderCapability
-  = Workers       -- Serverless workers / functions
-  | KV            -- Key-value storage
-  | R2            -- Object storage (R2-style)
-  | DNS           -- DNS zone and record management
-  | Deployments   -- Site / project deployments
-  | D1            -- Serverless SQL databases
-  | Pages         -- Static site hosting / Pages projects
+  = SearchPapers     -- Search for papers
+  | PaperDetails     -- Get paper metadata
+  | Citations        -- Get citations for a paper
+  | References       -- Get references from a paper
+  | AuthorSearch     -- Search for authors
+  | AuthorPapers     -- Get papers by an author
 
 -- ═══════════════════════════════════════════════════════════════════════════
--- Cloudflare Resource Types
+-- Research Resource Types
 -- ═══════════════════════════════════════════════════════════════════════════
 
-||| Resource types available on the Cloudflare provider.
+||| Resource types available on research providers.
 public export
-data CloudflareResource
-  = CfWorker          -- Workers script
-  | CfD1Database      -- D1 serverless SQL database
-  | CfKVNamespace     -- KV namespace
-  | CfR2Bucket        -- R2 object storage bucket
-  | CfDNSZone         -- DNS zone
-  | CfDNSRecord       -- DNS record within a zone
-  | CfPagesProject    -- Pages deployment project
+data ResearchResource
+  = ResPaper         -- Academic paper
+  | ResAuthor        -- Author profile
+  | ResCitation      -- Citation link
+  | ResVenue         -- Conference / journal venue
 
-||| C-ABI encoding for Cloudflare resource types.
+||| C-ABI encoding for research resource types.
 public export
-cfResourceToInt : CloudflareResource -> Int
-cfResourceToInt CfWorker       = 1
-cfResourceToInt CfD1Database   = 2
-cfResourceToInt CfKVNamespace  = 3
-cfResourceToInt CfR2Bucket     = 4
-cfResourceToInt CfDNSZone      = 5
-cfResourceToInt CfDNSRecord    = 6
-cfResourceToInt CfPagesProject = 7
+resResourceToInt : ResearchResource -> Int
+resResourceToInt ResPaper    = 1
+resResourceToInt ResAuthor   = 2
+resResourceToInt ResCitation = 3
+resResourceToInt ResVenue    = 4
 
-||| Map Cloudflare to its supported capabilities.
+||| Map Scholar Gateway to its supported capabilities.
 public export
-cloudflareCapabilities : List ProviderCapability
-cloudflareCapabilities = [Workers, KV, R2, DNS, Deployments, D1, Pages]
+scholarGatewayCapabilities : List ProviderCapability
+scholarGatewayCapabilities = [SearchPapers, PaperDetails, Citations, References, AuthorSearch, AuthorPapers]
 
--- ═══════════════════════════════════════════════════════════════════════════
--- Vercel Resource Types
--- ═══════════════════════════════════════════════════════════════════════════
-
-||| Resource types available on the Vercel provider.
+||| Map Semantic Scholar to its supported capabilities.
 public export
-data VercelResource
-  = VclProject            -- Vercel project
-  | VclDeployment         -- Deployment instance
-  | VclDomain             -- Custom domain
-  | VclEnvVar             -- Environment variable
-  | VclServerlessFunction -- Serverless function (lambda)
+semanticScholarCapabilities : List ProviderCapability
+semanticScholarCapabilities = [SearchPapers, PaperDetails, Citations, References, AuthorSearch, AuthorPapers]
 
-||| C-ABI encoding for Vercel resource types.
+||| Map OpenAlex to its supported capabilities.
 public export
-vclResourceToInt : VercelResource -> Int
-vclResourceToInt VclProject            = 1
-vclResourceToInt VclDeployment         = 2
-vclResourceToInt VclDomain             = 3
-vclResourceToInt VclEnvVar             = 4
-vclResourceToInt VclServerlessFunction = 5
-
-||| Map Vercel to its supported capabilities.
-public export
-vercelCapabilities : List ProviderCapability
-vercelCapabilities = [Deployments, DNS, Workers]
+openAlexCapabilities : List ProviderCapability
+openAlexCapabilities = [SearchPapers, PaperDetails, Citations, References, AuthorSearch, AuthorPapers]
 
 -- ═══════════════════════════════════════════════════════════════════════════
 -- Session Record
 -- ═══════════════════════════════════════════════════════════════════════════
 
-||| A cloud provider session with tracked state.
+||| A research provider session with tracked state.
 public export
 record Session where
   constructor MkSession
   sessionId : String
-  provider  : CloudProvider
+  provider  : ResearchProvider
   state     : SessionState
-  region    : String
+  endpoint  : String
 
 ||| Proof that a session is authenticated (ready for operations).
 public export
@@ -186,24 +154,26 @@ data IsAuthenticated : Session -> Type where
 ||| These map to MCP tool definitions that AI agents can call.
 public export
 data McpTool
-  = ToolAuthenticate   -- Authenticate with a cloud provider
-  | ToolListResources  -- List cloud resources
-  | ToolProvision      -- Provision a new resource
-  | ToolDeprovision    -- Deprovision (tear down) a resource
-  | ToolStatus         -- Provider/resource status
-  | ToolCost           -- Cost estimation/reporting
+  = ToolAuthenticate   -- Authenticate with a research provider
+  | ToolSearchPapers   -- Search for papers
+  | ToolPaperDetails   -- Get paper metadata
+  | ToolCitations      -- Get citations for a paper
+  | ToolReferences     -- Get references from a paper
+  | ToolAuthorSearch   -- Search for authors
+  | ToolAuthorPapers   -- Get papers by an author
   | ToolLogout         -- End provider session
 
 ||| MCP tool name (for JSON-RPC method name).
 public export
 toolName : McpTool -> String
-toolName ToolAuthenticate  = "cloud/authenticate"
-toolName ToolListResources = "cloud/list-resources"
-toolName ToolProvision     = "cloud/provision"
-toolName ToolDeprovision   = "cloud/deprovision"
-toolName ToolStatus        = "cloud/status"
-toolName ToolCost          = "cloud/cost"
-toolName ToolLogout        = "cloud/logout"
+toolName ToolAuthenticate  = "research/authenticate"
+toolName ToolSearchPapers  = "research/papers/search"
+toolName ToolPaperDetails  = "research/papers/details"
+toolName ToolCitations     = "research/papers/citations"
+toolName ToolReferences    = "research/papers/references"
+toolName ToolAuthorSearch  = "research/authors/search"
+toolName ToolAuthorPapers  = "research/authors/papers"
+toolName ToolLogout        = "research/logout"
 
 ||| Which tools require an authenticated session.
 public export
@@ -225,8 +195,8 @@ sessionStateToInt AuthError       = 3
 
 ||| FFI: Validate a state transition.
 export
-cloud_can_transition : Int -> Int -> Int
-cloud_can_transition from to =
+research_can_transition : Int -> Int -> Int
+research_can_transition from to =
   let fromState = case from of
                     0 => Unauthenticated
                     1 => Authenticated
@@ -241,6 +211,6 @@ cloud_can_transition from to =
 
 ||| FFI: Check if a tool requires authentication.
 export
-cloud_tool_requires_auth : Int -> Int
-cloud_tool_requires_auth 1 = 0  -- ToolAuthenticate
-cloud_tool_requires_auth _ = 1  -- All others require auth
+research_tool_requires_auth : Int -> Int
+research_tool_requires_auth 1 = 0  -- ToolAuthenticate
+research_tool_requires_auth _ = 1  -- All others require auth

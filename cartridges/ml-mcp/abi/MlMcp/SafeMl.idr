@@ -1,18 +1,18 @@
 -- SPDX-License-Identifier: PMPL-1.0-or-later
 -- Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
-||| CloudMcp.SafeCloud: Formally verified multi-cloud provider operations.
+||| MlMcp.SafeMl: Formally verified ML/AI provider operations.
 |||
-||| Cartridge: cloud-mcp
-||| Matrix cell: Cloud domain x {MCP, LSP} protocols
+||| Cartridge: ml-mcp
+||| Matrix cell: ML/AI domain x {MCP, LSP} protocols
 |||
-||| This module defines type-safe cloud provider operations with a
+||| This module defines type-safe ML provider operations with a
 ||| session state machine that prevents:
 |||   - Operations on unauthenticated providers
 |||   - Credential leaks by tracking auth lifecycle
 |||   - Operations without proper session teardown
 |||
 ||| State machine: Unauthenticated -> Authenticated -> Operating -> Authenticated -> Unauthenticated
-module CloudMcp.SafeCloud
+module MlMcp.SafeMl
 
 import Data.List
 
@@ -58,118 +58,73 @@ canTransition AuthError       Unauthenticated = True
 canTransition _               _               = False
 
 -- ═══════════════════════════════════════════════════════════════════════════
--- Cloud Provider Types
+-- ML Provider Types
 -- ═══════════════════════════════════════════════════════════════════════════
 
-||| Supported cloud providers.
+||| Supported ML/AI providers.
 public export
-data CloudProvider
-  = AWS            -- Amazon Web Services
-  | GCloud         -- Google Cloud Platform
-  | Azure          -- Microsoft Azure
-  | DigitalOcean   -- DigitalOcean
-  | Verpex         -- Verpex hosting
-  | Cloudflare     -- Cloudflare
-  | Vercel         -- Vercel platform
+data MlProvider
+  = HuggingFace    -- Hugging Face model hub
   | Custom String  -- User-defined provider
 
 ||| C-ABI encoding.
 public export
-providerToInt : CloudProvider -> Int
-providerToInt AWS            = 1
-providerToInt GCloud         = 2
-providerToInt Azure          = 3
-providerToInt DigitalOcean   = 4
-providerToInt Verpex         = 5
-providerToInt Cloudflare     = 6
-providerToInt Vercel         = 7
-providerToInt (Custom _)     = 99
+providerToInt : MlProvider -> Int
+providerToInt HuggingFace  = 1
+providerToInt (Custom _)   = 99
 
 -- ═══════════════════════════════════════════════════════════════════════════
 -- Provider Capabilities
 -- ═══════════════════════════════════════════════════════════════════════════
 
-||| Capabilities a cloud provider may support.
+||| Capabilities an ML provider may support.
 public export
 data ProviderCapability
-  = Workers       -- Serverless workers / functions
-  | KV            -- Key-value storage
-  | R2            -- Object storage (R2-style)
-  | DNS           -- DNS zone and record management
-  | Deployments   -- Site / project deployments
-  | D1            -- Serverless SQL databases
-  | Pages         -- Static site hosting / Pages projects
+  = SearchModels   -- Search for models
+  | ModelInfo      -- Get model metadata
+  | Inference      -- Run model inference
+  | ListSpaces     -- List Spaces (demos)
+  | SpaceInfo      -- Get Space metadata
+  | ListDatasets   -- List datasets
+  | DatasetInfo    -- Get dataset metadata
 
 -- ═══════════════════════════════════════════════════════════════════════════
--- Cloudflare Resource Types
+-- Hugging Face Resource Types
 -- ═══════════════════════════════════════════════════════════════════════════
 
-||| Resource types available on the Cloudflare provider.
+||| Resource types available on the Hugging Face provider.
 public export
-data CloudflareResource
-  = CfWorker          -- Workers script
-  | CfD1Database      -- D1 serverless SQL database
-  | CfKVNamespace     -- KV namespace
-  | CfR2Bucket        -- R2 object storage bucket
-  | CfDNSZone         -- DNS zone
-  | CfDNSRecord       -- DNS record within a zone
-  | CfPagesProject    -- Pages deployment project
+data HuggingFaceResource
+  = HfModel        -- ML model
+  | HfSpace        -- Gradio / Streamlit space
+  | HfDataset      -- Dataset
+  | HfInference    -- Inference endpoint
 
-||| C-ABI encoding for Cloudflare resource types.
+||| C-ABI encoding for Hugging Face resource types.
 public export
-cfResourceToInt : CloudflareResource -> Int
-cfResourceToInt CfWorker       = 1
-cfResourceToInt CfD1Database   = 2
-cfResourceToInt CfKVNamespace  = 3
-cfResourceToInt CfR2Bucket     = 4
-cfResourceToInt CfDNSZone      = 5
-cfResourceToInt CfDNSRecord    = 6
-cfResourceToInt CfPagesProject = 7
+hfResourceToInt : HuggingFaceResource -> Int
+hfResourceToInt HfModel     = 1
+hfResourceToInt HfSpace     = 2
+hfResourceToInt HfDataset   = 3
+hfResourceToInt HfInference = 4
 
-||| Map Cloudflare to its supported capabilities.
+||| Map Hugging Face to its supported capabilities.
 public export
-cloudflareCapabilities : List ProviderCapability
-cloudflareCapabilities = [Workers, KV, R2, DNS, Deployments, D1, Pages]
-
--- ═══════════════════════════════════════════════════════════════════════════
--- Vercel Resource Types
--- ═══════════════════════════════════════════════════════════════════════════
-
-||| Resource types available on the Vercel provider.
-public export
-data VercelResource
-  = VclProject            -- Vercel project
-  | VclDeployment         -- Deployment instance
-  | VclDomain             -- Custom domain
-  | VclEnvVar             -- Environment variable
-  | VclServerlessFunction -- Serverless function (lambda)
-
-||| C-ABI encoding for Vercel resource types.
-public export
-vclResourceToInt : VercelResource -> Int
-vclResourceToInt VclProject            = 1
-vclResourceToInt VclDeployment         = 2
-vclResourceToInt VclDomain             = 3
-vclResourceToInt VclEnvVar             = 4
-vclResourceToInt VclServerlessFunction = 5
-
-||| Map Vercel to its supported capabilities.
-public export
-vercelCapabilities : List ProviderCapability
-vercelCapabilities = [Deployments, DNS, Workers]
+huggingFaceCapabilities : List ProviderCapability
+huggingFaceCapabilities = [SearchModels, ModelInfo, Inference, ListSpaces, SpaceInfo, ListDatasets, DatasetInfo]
 
 -- ═══════════════════════════════════════════════════════════════════════════
 -- Session Record
 -- ═══════════════════════════════════════════════════════════════════════════
 
-||| A cloud provider session with tracked state.
+||| An ML provider session with tracked state.
 public export
 record Session where
   constructor MkSession
   sessionId : String
-  provider  : CloudProvider
+  provider  : MlProvider
   state     : SessionState
-  region    : String
+  namespace : String
 
 ||| Proof that a session is authenticated (ready for operations).
 public export
@@ -186,24 +141,28 @@ data IsAuthenticated : Session -> Type where
 ||| These map to MCP tool definitions that AI agents can call.
 public export
 data McpTool
-  = ToolAuthenticate   -- Authenticate with a cloud provider
-  | ToolListResources  -- List cloud resources
-  | ToolProvision      -- Provision a new resource
-  | ToolDeprovision    -- Deprovision (tear down) a resource
-  | ToolStatus         -- Provider/resource status
-  | ToolCost           -- Cost estimation/reporting
+  = ToolAuthenticate   -- Authenticate with an ML provider
+  | ToolSearchModels   -- Search for models
+  | ToolModelInfo      -- Get model metadata
+  | ToolInference      -- Run model inference
+  | ToolListSpaces     -- List Spaces
+  | ToolSpaceInfo      -- Get Space metadata
+  | ToolListDatasets   -- List datasets
+  | ToolDatasetInfo    -- Get dataset metadata
   | ToolLogout         -- End provider session
 
 ||| MCP tool name (for JSON-RPC method name).
 public export
 toolName : McpTool -> String
-toolName ToolAuthenticate  = "cloud/authenticate"
-toolName ToolListResources = "cloud/list-resources"
-toolName ToolProvision     = "cloud/provision"
-toolName ToolDeprovision   = "cloud/deprovision"
-toolName ToolStatus        = "cloud/status"
-toolName ToolCost          = "cloud/cost"
-toolName ToolLogout        = "cloud/logout"
+toolName ToolAuthenticate  = "ml/authenticate"
+toolName ToolSearchModels  = "ml/models/search"
+toolName ToolModelInfo     = "ml/models/info"
+toolName ToolInference     = "ml/models/inference"
+toolName ToolListSpaces    = "ml/spaces/list"
+toolName ToolSpaceInfo     = "ml/spaces/info"
+toolName ToolListDatasets  = "ml/datasets/list"
+toolName ToolDatasetInfo   = "ml/datasets/info"
+toolName ToolLogout        = "ml/logout"
 
 ||| Which tools require an authenticated session.
 public export
@@ -225,8 +184,8 @@ sessionStateToInt AuthError       = 3
 
 ||| FFI: Validate a state transition.
 export
-cloud_can_transition : Int -> Int -> Int
-cloud_can_transition from to =
+ml_can_transition : Int -> Int -> Int
+ml_can_transition from to =
   let fromState = case from of
                     0 => Unauthenticated
                     1 => Authenticated
@@ -241,6 +200,6 @@ cloud_can_transition from to =
 
 ||| FFI: Check if a tool requires authentication.
 export
-cloud_tool_requires_auth : Int -> Int
-cloud_tool_requires_auth 1 = 0  -- ToolAuthenticate
-cloud_tool_requires_auth _ = 1  -- All others require auth
+ml_tool_requires_auth : Int -> Int
+ml_tool_requires_auth 1 = 0  -- ToolAuthenticate
+ml_tool_requires_auth _ = 1  -- All others require auth

@@ -1,0 +1,11 @@
+-- SPDX-License-Identifier: PMPL-1.0-or-later
+package commsmcp
+
+authors    = "Jonathan D.A. Jewell"
+version    = 0.1.0
+license    = "PMPL-1.0-or-later"
+brief      = "Communications MCP cartridge — Gmail and Google Calendar with session safety"
+
+sourcedir  = "."
+modules    = CommsMcp.SafeComms
+depends    = base, contrib

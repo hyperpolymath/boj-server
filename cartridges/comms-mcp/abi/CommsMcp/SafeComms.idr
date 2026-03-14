@@ -1,18 +1,18 @@
 -- SPDX-License-Identifier: PMPL-1.0-or-later
 -- Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
-||| CloudMcp.SafeCloud: Formally verified multi-cloud provider operations.
+||| CommsMcp.SafeComms: Formally verified communications provider operations.
 |||
-||| Cartridge: cloud-mcp
-||| Matrix cell: Cloud domain x {MCP, LSP} protocols
+||| Cartridge: comms-mcp
+||| Matrix cell: Communications domain x {MCP, LSP} protocols
 |||
-||| This module defines type-safe cloud provider operations with a
+||| This module defines type-safe communications provider operations with a
 ||| session state machine that prevents:
 |||   - Operations on unauthenticated providers
 |||   - Credential leaks by tracking auth lifecycle
 |||   - Operations without proper session teardown
 |||
 ||| State machine: Unauthenticated -> Authenticated -> Operating -> Authenticated -> Unauthenticated
-module CloudMcp.SafeCloud
+module CommsMcp.SafeComms
 
 import Data.List
 
@@ -58,118 +58,98 @@ canTransition AuthError       Unauthenticated = True
 canTransition _               _               = False
 
 -- ═══════════════════════════════════════════════════════════════════════════
--- Cloud Provider Types
+-- Communications Provider Types
 -- ═══════════════════════════════════════════════════════════════════════════
 
-||| Supported cloud providers.
+||| Supported communications providers.
 public export
-data CloudProvider
-  = AWS            -- Amazon Web Services
-  | GCloud         -- Google Cloud Platform
-  | Azure          -- Microsoft Azure
-  | DigitalOcean   -- DigitalOcean
-  | Verpex         -- Verpex hosting
-  | Cloudflare     -- Cloudflare
-  | Vercel         -- Vercel platform
-  | Custom String  -- User-defined provider
+data CommsProvider
+  = Gmail           -- Google Gmail
+  | GoogleCalendar  -- Google Calendar
+  | Custom String   -- User-defined provider
 
 ||| C-ABI encoding.
 public export
-providerToInt : CloudProvider -> Int
-providerToInt AWS            = 1
-providerToInt GCloud         = 2
-providerToInt Azure          = 3
-providerToInt DigitalOcean   = 4
-providerToInt Verpex         = 5
-providerToInt Cloudflare     = 6
-providerToInt Vercel         = 7
+providerToInt : CommsProvider -> Int
+providerToInt Gmail          = 1
+providerToInt GoogleCalendar = 2
 providerToInt (Custom _)     = 99
 
 -- ═══════════════════════════════════════════════════════════════════════════
 -- Provider Capabilities
 -- ═══════════════════════════════════════════════════════════════════════════
 
-||| Capabilities a cloud provider may support.
+||| Capabilities a communications provider may support.
 public export
 data ProviderCapability
-  = Workers       -- Serverless workers / functions
-  | KV            -- Key-value storage
-  | R2            -- Object storage (R2-style)
-  | DNS           -- DNS zone and record management
-  | Deployments   -- Site / project deployments
-  | D1            -- Serverless SQL databases
-  | Pages         -- Static site hosting / Pages projects
+  = SendMessage    -- Send email / message
+  | ReadMessage    -- Read email / message
+  | SearchMessage  -- Search messages
+  | ManageLabels   -- Label / folder management
+  | ListEvents     -- List calendar events
+  | CreateEvent    -- Create calendar events
+  | FreeBusy       -- Free/busy lookup
 
 -- ═══════════════════════════════════════════════════════════════════════════
--- Cloudflare Resource Types
+-- Gmail Resource Types
 -- ═══════════════════════════════════════════════════════════════════════════
 
-||| Resource types available on the Cloudflare provider.
+||| Resource types available on the Gmail provider.
 public export
-data CloudflareResource
-  = CfWorker          -- Workers script
-  | CfD1Database      -- D1 serverless SQL database
-  | CfKVNamespace     -- KV namespace
-  | CfR2Bucket        -- R2 object storage bucket
-  | CfDNSZone         -- DNS zone
-  | CfDNSRecord       -- DNS record within a zone
-  | CfPagesProject    -- Pages deployment project
+data GmailResource
+  = GmMessage      -- Email message
+  | GmThread       -- Email thread
+  | GmLabel        -- Gmail label
+  | GmDraft        -- Draft message
 
-||| C-ABI encoding for Cloudflare resource types.
+||| C-ABI encoding for Gmail resource types.
 public export
-cfResourceToInt : CloudflareResource -> Int
-cfResourceToInt CfWorker       = 1
-cfResourceToInt CfD1Database   = 2
-cfResourceToInt CfKVNamespace  = 3
-cfResourceToInt CfR2Bucket     = 4
-cfResourceToInt CfDNSZone      = 5
-cfResourceToInt CfDNSRecord    = 6
-cfResourceToInt CfPagesProject = 7
+gmResourceToInt : GmailResource -> Int
+gmResourceToInt GmMessage = 1
+gmResourceToInt GmThread  = 2
+gmResourceToInt GmLabel   = 3
+gmResourceToInt GmDraft   = 4
 
-||| Map Cloudflare to its supported capabilities.
+||| Map Gmail to its supported capabilities.
 public export
-cloudflareCapabilities : List ProviderCapability
-cloudflareCapabilities = [Workers, KV, R2, DNS, Deployments, D1, Pages]
+gmailCapabilities : List ProviderCapability
+gmailCapabilities = [SendMessage, ReadMessage, SearchMessage, ManageLabels]
 
 -- ═══════════════════════════════════════════════════════════════════════════
--- Vercel Resource Types
+-- Google Calendar Resource Types
 -- ═══════════════════════════════════════════════════════════════════════════
 
-||| Resource types available on the Vercel provider.
+||| Resource types available on the Google Calendar provider.
 public export
-data VercelResource
-  = VclProject            -- Vercel project
-  | VclDeployment         -- Deployment instance
-  | VclDomain             -- Custom domain
-  | VclEnvVar             -- Environment variable
-  | VclServerlessFunction -- Serverless function (lambda)
+data CalendarResource
+  = CalEvent       -- Calendar event
+  | CalCalendar    -- Calendar itself
+  | CalFreeBusy    -- Free/busy query
 
-||| C-ABI encoding for Vercel resource types.
+||| C-ABI encoding for Calendar resource types.
 public export
-vclResourceToInt : VercelResource -> Int
-vclResourceToInt VclProject            = 1
-vclResourceToInt VclDeployment         = 2
-vclResourceToInt VclDomain             = 3
-vclResourceToInt VclEnvVar             = 4
-vclResourceToInt VclServerlessFunction = 5
+calResourceToInt : CalendarResource -> Int
+calResourceToInt CalEvent    = 1
+calResourceToInt CalCalendar = 2
+calResourceToInt CalFreeBusy = 3
 
-||| Map Vercel to its supported capabilities.
+||| Map Google Calendar to its supported capabilities.
 public export
-vercelCapabilities : List ProviderCapability
-vercelCapabilities = [Deployments, DNS, Workers]
+calendarCapabilities : List ProviderCapability
+calendarCapabilities = [ListEvents, CreateEvent, FreeBusy]
 
 -- ═══════════════════════════════════════════════════════════════════════════
 -- Session Record
 -- ═══════════════════════════════════════════════════════════════════════════
 
-||| A cloud provider session with tracked state.
+||| A communications provider session with tracked state.
 public export
 record Session where
   constructor MkSession
   sessionId : String
-  provider  : CloudProvider
+  provider  : CommsProvider
   state     : SessionState
-  region    : String
+  scope     : String
 
 ||| Proof that a session is authenticated (ready for operations).
 public export
@@ -186,24 +166,28 @@ data IsAuthenticated : Session -> Type where
 ||| These map to MCP tool definitions that AI agents can call.
 public export
 data McpTool
-  = ToolAuthenticate   -- Authenticate with a cloud provider
-  | ToolListResources  -- List cloud resources
-  | ToolProvision      -- Provision a new resource
-  | ToolDeprovision    -- Deprovision (tear down) a resource
-  | ToolStatus         -- Provider/resource status
-  | ToolCost           -- Cost estimation/reporting
+  = ToolAuthenticate   -- Authenticate with a comms provider (OAuth)
+  | ToolSend           -- Send an email (Gmail)
+  | ToolRead           -- Read an email (Gmail)
+  | ToolSearch         -- Search emails (Gmail)
+  | ToolLabels         -- List/manage labels (Gmail)
+  | ToolEvents         -- List calendar events (Google Calendar)
+  | ToolCreateEvent    -- Create a calendar event (Google Calendar)
+  | ToolFreeBusy       -- Query free/busy (Google Calendar)
   | ToolLogout         -- End provider session
 
 ||| MCP tool name (for JSON-RPC method name).
 public export
 toolName : McpTool -> String
-toolName ToolAuthenticate  = "cloud/authenticate"
-toolName ToolListResources = "cloud/list-resources"
-toolName ToolProvision     = "cloud/provision"
-toolName ToolDeprovision   = "cloud/deprovision"
-toolName ToolStatus        = "cloud/status"
-toolName ToolCost          = "cloud/cost"
-toolName ToolLogout        = "cloud/logout"
+toolName ToolAuthenticate = "comms/authenticate"
+toolName ToolSend         = "comms/gmail/send"
+toolName ToolRead         = "comms/gmail/read"
+toolName ToolSearch       = "comms/gmail/search"
+toolName ToolLabels       = "comms/gmail/labels"
+toolName ToolEvents       = "comms/calendar/events"
+toolName ToolCreateEvent  = "comms/calendar/create-event"
+toolName ToolFreeBusy     = "comms/calendar/free-busy"
+toolName ToolLogout       = "comms/logout"
 
 ||| Which tools require an authenticated session.
 public export
@@ -225,8 +209,8 @@ sessionStateToInt AuthError       = 3
 
 ||| FFI: Validate a state transition.
 export
-cloud_can_transition : Int -> Int -> Int
-cloud_can_transition from to =
+comms_can_transition : Int -> Int -> Int
+comms_can_transition from to =
   let fromState = case from of
                     0 => Unauthenticated
                     1 => Authenticated
@@ -241,6 +225,6 @@ cloud_can_transition from to =
 
 ||| FFI: Check if a tool requires authentication.
 export
-cloud_tool_requires_auth : Int -> Int
-cloud_tool_requires_auth 1 = 0  -- ToolAuthenticate
-cloud_tool_requires_auth _ = 1  -- All others require auth
+comms_tool_requires_auth : Int -> Int
+comms_tool_requires_auth 1 = 0  -- ToolAuthenticate
+comms_tool_requires_auth _ = 1  -- All others require auth

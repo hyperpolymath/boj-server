@@ -1,0 +1,11 @@
+-- SPDX-License-Identifier: PMPL-1.0-or-later
+package researchmcp
+
+authors    = "Jonathan D.A. Jewell"
+version    = 0.1.0
+license    = "PMPL-1.0-or-later"
+brief      = "Research MCP cartridge — academic paper search with session safety"
+
+sourcedir  = "."
+modules    = ResearchMcp.SafeResearch
+depends    = base, contrib
