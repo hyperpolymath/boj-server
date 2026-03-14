@@ -1,16 +1,27 @@
-# Clone the repository
+# Contributing to boj-server
+
+## Quick Start
+
+### Clone the repository
+```bash
 git clone https://github.com/hyperpolymath/boj-server.git
 cd boj-server
+```
 
-# Using Nix (recommended for reproducibility)
+### Using Nix (recommended for reproducibility)
+```bash
 nix develop
+```
 
-# Or using toolbox/distrobox
+### Or using toolbox/distrobox
+```bash
 toolbox create boj-server-dev
 toolbox enter boj-server-dev
 # Install dependencies manually
+```
 
-# Verify setup
+### Verify setup
+```bash
 just check   # or: cargo check / mix compile / etc.
 just test    # Run test suite
 ```
@@ -119,3 +130,4 @@ We follow [Conventional Commits](https://www.conventionalcommits.org/):
 [optional body]
 
 [optional footer]
+```

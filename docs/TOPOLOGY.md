@@ -1,6 +1,6 @@
 <!-- SPDX-License-Identifier: PMPL-1.0-or-later -->
 <!-- TOPOLOGY.md — Project architecture map and completion dashboard -->
-<!-- Last updated: 2026-03-13 (18 cartridges, 307 tests, 18 .so files, all mounted, Grade B RC) -->
+<!-- Last updated: 2026-03-14 (18 cartridges, 307 tests, 18 .so files, all mounted, Grade D Alpha) -->
 
 # Bundle of Joy Server — Project Topology
 
@@ -107,7 +107,7 @@ BSP        │  ██  │      │      │  ██  │      │       │   
 Feedback   │  ██  │      │      │      │      │       │      │      │  ██  │
            └──────┴──────┴──────┴──────┴──────┴───────┴──────┴──────┴──────┘
 
-  ██ = ABI + FFI + Adapter complete, mounted and serving
+  ██ = ABI + FFI + Adapter built and .so compiled (Grade D Alpha)
   gRPC on: database, agent, cloud, k8s, queues, observe (6/18)
   All cells have backend="universal". Third axis (backend/provider)
   stubbed for community extensions — see docs/EXTENSIBILITY.md
@@ -118,43 +118,43 @@ Feedback   │  ██  │      │      │      │      │       │      �
 | Component                        | Progress                  | Status         |
 |----------------------------------|---------------------------|----------------|
 | **Core Infrastructure**          |                           |                |
-| Core Catalogue ABI (Idris2)      | `██████████` 100%         | C (Beta)       |
-| Core Catalogue FFI (Zig)         | `██████████` 100%         | C (Beta)       |
-| Dynamic Loader (Zig)             | `██████████` 100%         | C (Beta)       |
-| Guardian module (Zig)            | `██████████` 100%         | C (Beta)       |
-| V-lang Adapter (REST+gRPC+GQL)   | `██████████` 100%         | C (Beta)       |
-| C Headers (generated)            | `██████████` 100%         | C (Beta)       |
+| Core Catalogue ABI (Idris2)      | `████████░░`  80%         | D (Alpha) — type-checks, no runtime tests |
+| Core Catalogue FFI (Zig)         | `████████░░`  80%         | D (Alpha) — builds, tests pass, no real protocol integration |
+| Dynamic Loader (Zig)             | `███████░░░`  70%         | D (Alpha) — hash verify works, no production load testing |
+| Guardian module (Zig)            | `███████░░░`  70%         | D (Alpha) — 12 tests, no real failure scenarios |
+| V-lang Adapter (REST+gRPC+GQL)   | `██████░░░░`  60%         | D (Alpha) — compiles and routes, no external traffic |
+| C Headers (generated)            | `███████░░░`  70%         | D (Alpha) — generated, not tested via C consumer |
 | **Cartridges (18/18 built)**     |                           |                |
-| database-mcp                     | `██████████` 100%         | C (Beta) .so — VeriSimDB e2e |
-| fleet-mcp                        | `██████████` 100%         | D (Alpha) .so  |
-| nesy-mcp                         | `██████████` 100%         | D (Alpha) .so  |
-| agent-mcp                        | `██████████` 100%         | D (Alpha) .so  |
-| cloud-mcp                        | `██████████` 100%         | D (Alpha) .so  |
-| container-mcp                    | `██████████` 100%         | C (Beta) .so — Stapeln wired |
-| k8s-mcp                          | `██████████` 100%         | D (Alpha) .so  |
-| git-mcp                          | `██████████` 100%         | D (Alpha) .so  |
-| secrets-mcp                      | `██████████` 100%         | D (Alpha) .so  |
-| queues-mcp                       | `██████████` 100%         | D (Alpha) .so  |
-| iac-mcp                          | `██████████` 100%         | D (Alpha) .so  |
-| observe-mcp                      | `██████████` 100%         | D (Alpha) .so  |
-| ssg-mcp                          | `██████████` 100%         | C (Beta) .so — Zola e2e |
-| proof-mcp                        | `██████████` 100%         | D (Alpha) .so  |
-| lsp-mcp                          | `██████████` 100%         | D (Alpha) .so  |
-| dap-mcp                          | `██████████` 100%         | D (Alpha) .so  |
-| bsp-mcp                          | `██████████` 100%         | D (Alpha) .so  |
-| feedback-mcp                     | `██████████` 100%         | D (Alpha) .so  |
+| database-mcp                     | `███████░░░`  70%         | D (Alpha) .so — e2e test exists, no real DB workload |
+| fleet-mcp                        | `██████░░░░`  60%         | D (Alpha) .so  |
+| nesy-mcp                         | `██████░░░░`  60%         | D (Alpha) .so  |
+| agent-mcp                        | `██████░░░░`  60%         | D (Alpha) .so  |
+| cloud-mcp                        | `██████░░░░`  60%         | D (Alpha) .so  |
+| container-mcp                    | `██████░░░░`  60%         | D (Alpha) .so — Stapeln wired, not e2e tested |
+| k8s-mcp                          | `██████░░░░`  60%         | D (Alpha) .so  |
+| git-mcp                          | `██████░░░░`  60%         | D (Alpha) .so  |
+| secrets-mcp                      | `██████░░░░`  60%         | D (Alpha) .so  |
+| queues-mcp                       | `██████░░░░`  60%         | D (Alpha) .so  |
+| iac-mcp                          | `██████░░░░`  60%         | D (Alpha) .so  |
+| observe-mcp                      | `██████░░░░`  60%         | D (Alpha) .so  |
+| ssg-mcp                          | `██████░░░░`  60%         | D (Alpha) .so — Zola e2e test exists, not production |
+| proof-mcp                        | `██████░░░░`  60%         | D (Alpha) .so  |
+| lsp-mcp                          | `██████░░░░`  60%         | D (Alpha) .so  |
+| dap-mcp                          | `██████░░░░`  60%         | D (Alpha) .so  |
+| bsp-mcp                          | `██████░░░░`  60%         | D (Alpha) .so  |
+| feedback-mcp                     | `██████░░░░`  60%         | D (Alpha) .so  |
 | **Federation & Distribution**    |                           |                |
-| Umoja federation (QUIC+UDP)      | `██████████` 100%         | C (Beta)       |
-| VeriSimDB backing store          | `██████████` 100%         | C (Beta)       |
-| Hash attestation                 | `██████████` 100%         | C (Beta)       |
-| Gossip protocol                  | `██████████` 100%         | C (Beta)       |
-| **Dogfooding (Grade C)**         |                           |                |
-| VeriSimDB through database-mcp   | `██████████` 100%         | Tested e2e     |
-| Zola/ddraig through ssg-mcp     | `██████████` 100%         | Tested e2e     |
-| Stapeln through container-mcp   | `██████████` 100%         | Wired          |
-| feedback-o-tron (18th cartridge) | `██████████` 100%         | Full ABI+FFI   |
-| PanLL BoJ panel                  | `██████████` 100%         | 887 lines, 5 tabs |
-| PanLL bojRouting (10 panels)     | `██████████` 100%         | Conditional dispatch |
+| Umoja federation (QUIC+UDP)      | `██████░░░░`  60%         | D (Alpha) — tests pass, no real multi-node deployment |
+| VeriSimDB backing store          | `██████░░░░`  60%         | D (Alpha) — 7 tests, no production persistence |
+| Hash attestation                 | `██████░░░░`  60%         | D (Alpha) — implemented, not validated externally |
+| Gossip protocol                  | `██████░░░░`  60%         | D (Alpha) — tested locally, no real network |
+| **Internal Integration**         |                           |                |
+| VeriSimDB through database-mcp   | `██████░░░░`  60%         | D (Alpha) — e2e test, not dogfooded |
+| Zola/ddraig through ssg-mcp     | `██████░░░░`  60%         | D (Alpha) — e2e test, not dogfooded |
+| Stapeln through container-mcp   | `████░░░░░░`  40%         | D (Alpha) — wired, not tested end-to-end |
+| feedback-o-tron (18th cartridge) | `██████░░░░`  60%         | D (Alpha) — full ABI+FFI, not collecting real feedback |
+| PanLL BoJ panel                  | `███████░░░`  70%         | D (Alpha) — 887 lines, 5 tabs, not tested with live data |
+| PanLL bojRouting (10 panels)     | `███████░░░`  70%         | D (Alpha) — conditional dispatch, no live traffic |
 | **Testing (307 total)**         |                           |                |
 | Core FFI tests (176)             | `██████████` 100%         | Passing        |
 | Cartridge FFI tests (113)        | `██████████` 100%         | Passing        |
@@ -166,12 +166,12 @@ Feedback   │  ██  │      │      │      │      │       │      �
 | Benchmarks                       | `██████████` 100%         | Available      |
 | **CI/CD & Container**            |                           |                |
 | CI pipeline (zig-test.yml)       | `██████████` 100%         | Active         |
-| Containerfile (Chainguard)       | `██████████` 100%         | 18 cartridges  |
-| selur-compose orchestration      | `██████████` 100%         | Present        |
-| vordr runtime monitoring         | `██████████` 100%         | Present        |
+| Containerfile (Chainguard)       | `███████░░░`  70%         | D (Alpha) — present, no e2e container test |
+| selur-compose orchestration      | `█████░░░░░`  50%         | D (Alpha) — file present, not validated |
+| vordr runtime monitoring         | `█████░░░░░`  50%         | D (Alpha) — file present, not validated |
 | **Integration**                  |                           |                |
-| PanLL BoJ panel                  | `██████████` 100%         | Complete       |
-| Teranga menu runtime             | `███░░░░░░░`  30%         | Spec only      |
+| PanLL BoJ panel                  | `███████░░░`  70%         | D (Alpha) — code complete, no live data |
+| Teranga menu runtime             | `██░░░░░░░░`  20%         | X (Untested) — spec only, no runtime |
 | READINESS.md                     | `██████████` 100%         | Current        |
 | Polystack deprecation            | `██████████` 100%         | Archived       |
 
@@ -192,10 +192,10 @@ Feedback   │  ██  │      │      │      │      │       │      �
 
 ## Honest Assessment (2026-03-09)
 
-**Overall: Grade B RC — Code complete, needs external validation for Grade A**
+**Overall: Grade D (Alpha) — State machines built, tests passing, no external validation**
 
 What is genuinely done:
-- 18 cartridges with ABI+FFI+Adapter structure (3 at Grade C, 15 at Grade D)
+- 18 cartridges with ABI+FFI+Adapter structure (all at Grade D Alpha)
 - 18/18 cartridges have compiled .so shared libraries
 - 307 tests passing (178 core Zig [13 catalogue + 14 loader + 40 federation + 12 guardian + 28 readiness + 7 VeriSimDB + 3 e2e + 14 coprocessor + 11 SLA + 11 community + 10 SDP + 15 seams] + 118 cartridge FFI + 11 multi-node)
 - Thread-safety hardening: std.Thread.Mutex on all 9 FFI modules (55 globals, 120 exports)

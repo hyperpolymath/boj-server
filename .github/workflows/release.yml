@@ -19,24 +19,56 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+    outputs:
+      hashes: ${{ steps.hash.outputs.hashes }}
     steps:
       - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
 
-      - name: Build
-        run: |
-          echo "Build your artifacts here"
-          # TODO: Replace with your build commands
-          # Examples:
-          #   cargo build --release
-          #   zig build -Doptimize=ReleaseFast
-          #   gleam build
-          #   mix release
+      - name: Install Zig
+        uses: mlugg/setup-zig@d1434d08867e3ee9daa34448df10607b98908d29 # v2
+        with:
+          version: 0.15.2
 
-      # TODO: Upload build artifacts if needed
-      # - uses: actions/upload-artifact@v4
-      #   with:
-      #     name: release-artifacts
-      #     path: target/release/
+      - name: Build core FFI libraries
+        run: cd ffi/zig && zig build -Doptimize=ReleaseSafe
+
+      - name: Build cartridge shared libraries
+        run: |
+          for cart in database-mcp fleet-mcp nesy-mcp agent-mcp cloud-mcp container-mcp k8s-mcp git-mcp secrets-mcp queues-mcp iac-mcp observe-mcp ssg-mcp proof-mcp lsp-mcp dap-mcp bsp-mcp feedback-mcp; do
+            echo "Building $cart .so..."
+            cd "cartridges/$cart/ffi" && zig build -Doptimize=ReleaseSafe
+            cd "$GITHUB_WORKSPACE"
+          done
+
+      - name: Collect release artifacts
+        run: |
+          mkdir -p release-artifacts/core release-artifacts/cartridges
+          # Core static libraries and benchmark binary
+          cp ffi/zig/zig-out/lib/*.a release-artifacts/core/
+          cp ffi/zig/zig-out/bin/boj_bench release-artifacts/core/ 2>/dev/null || true
+          # Cartridge shared libraries
+          for cart in database-mcp fleet-mcp nesy-mcp agent-mcp cloud-mcp container-mcp k8s-mcp git-mcp secrets-mcp queues-mcp iac-mcp observe-mcp ssg-mcp proof-mcp lsp-mcp dap-mcp bsp-mcp feedback-mcp; do
+            cp "cartridges/$cart/ffi/zig-out/lib/"*.so "release-artifacts/cartridges/" 2>/dev/null || true
+          done
+
+      - name: Create release tarball
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          tar czf "boj-server-${VERSION}-linux-x86_64.tar.gz" -C release-artifacts .
+
+      - name: Generate artifact hashes
+        id: hash
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          HASHES=$(sha256sum "boj-server-${VERSION}-linux-x86_64.tar.gz" | base64 -w0)
+          echo "hashes=${HASHES}" >> "$GITHUB_OUTPUT"
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: release-artifacts
+          path: boj-server-*-linux-x86_64.tar.gz
+          retention-days: 5
 
   changelog:
     name: Generate Changelog
@@ -92,11 +124,11 @@ jobs:
     steps:
       - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
 
-      # TODO: Download build artifacts if uploading to the release
-      # - uses: actions/download-artifact@v4
-      #   with:
-      #     name: release-artifacts
-      #     path: artifacts/
+      - name: Download build artifacts
+        uses: actions/download-artifact@95815c38cf2ff2164869cbab79da8d1f422bc89e # v4.2.1
+        with:
+          name: release-artifacts
+          path: artifacts/
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@a06a81a03ee405af7f2048a818ed3f03bbf83c7b # v2
@@ -105,9 +137,8 @@ jobs:
           draft: false
           prerelease: ${{ contains(github.ref_name, '-rc') || contains(github.ref_name, '-beta') || contains(github.ref_name, '-alpha') }}
           generate_release_notes: false
-          # TODO: Add artifact files to the release
-          # files: |
-          #   artifacts/*
+          files: |
+            artifacts/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -122,7 +153,4 @@ jobs:
     # See: https://slsa.dev/spec/v1.0/requirements#build-l3
     uses: slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml@f7dd8c54c2067bafc12ca7a55595d5ee9b75204a # v2.1.0
     with:
-      base64-subjects: ""
-      # TODO: Replace with actual artifact hashes
-      # Generate with: sha256sum artifact | base64 -w0
-      # base64-subjects: "${{ needs.build.outputs.hashes }}"
+      base64-subjects: "${{ needs.build.outputs.hashes }}"

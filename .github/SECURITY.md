@@ -1,23 +1,5 @@
 # Security Policy
 
-<!-- 
-============================================================================
-TEMPLATE INSTRUCTIONS (delete this block before publishing)
-============================================================================
-Replace all {{PLACEHOLDER}} values with your information:
-  boj-server     - Your project name
-  hyperpolymath            - GitHub username or org (e.g., hyperpolymath)
-  boj-server             - Repository name
-  j.d.a.jewell@open.ac.uk   - Security contact email
-  See GitHub profile  - Your PGP key fingerprint (40 chars, no spaces)
-  https://github.com/hyperpolymath.gpg      - URL to your public PGP key
-  github.com/hyperpolymath          - Your website/domain
-  2026     - Current year for copyright
-
-Optional: Remove sections that don't apply (e.g., PGP if you don't use it)
-============================================================================
--->
-
 We take security seriously. We appreciate your efforts to responsibly disclose vulnerabilities and will make every effort to acknowledge your contributions.
 
 ## Table of Contents
@@ -60,7 +42,6 @@ If you cannot use GitHub Security Advisories, you may email us directly:
 |---|---|
 | **Email** | j.d.a.jewell@open.ac.uk |
 | **PGP Key** | [Download Public Key](https://github.com/hyperpolymath.gpg) |
-| **Fingerprint** | `See GitHub profile` |
 
 ```bash
 # Import our PGP key
@@ -334,8 +315,6 @@ To stay informed about security updates:
 | **Low** | Included in next scheduled release |
 
 ### Supported Versions
-
-<!-- Adjust this table to match your actual version support policy -->
 
 | Version | Supported | Notes |
 |---------|-----------|-------|

@@ -294,30 +294,66 @@ clean-all: clean
 # TEST & QUALITY
 # ═══════════════════════════════════════════════════════════════════════════════
 
-# Run all Zig FFI tests
+# Run all Zig FFI tests (catalogue + 17 cartridges, matches CI)
 test *args:
     @echo "Running catalogue FFI tests..."
     cd ffi/zig && zig build test
+    @echo "Running database-mcp FFI tests..."
+    cd cartridges/database-mcp/ffi && zig build test
     @echo "Running fleet-mcp FFI tests..."
     cd cartridges/fleet-mcp/ffi && zig build test
     @echo "Running nesy-mcp FFI tests..."
     cd cartridges/nesy-mcp/ffi && zig build test
-    @echo "Running database-mcp FFI tests..."
-    cd cartridges/database-mcp/ffi && zig build test
     @echo "Running agent-mcp FFI tests..."
     cd cartridges/agent-mcp/ffi && zig build test
-    @echo "Running feedback-mcp FFI tests..."
-    cd cartridges/feedback-mcp/ffi && zig build test
+    @echo "Running cloud-mcp FFI tests..."
+    cd cartridges/cloud-mcp/ffi && zig build test
+    @echo "Running container-mcp FFI tests..."
+    cd cartridges/container-mcp/ffi && zig build test
+    @echo "Running k8s-mcp FFI tests..."
+    cd cartridges/k8s-mcp/ffi && zig build test
+    @echo "Running git-mcp FFI tests..."
+    cd cartridges/git-mcp/ffi && zig build test
+    @echo "Running secrets-mcp FFI tests..."
+    cd cartridges/secrets-mcp/ffi && zig build test
+    @echo "Running queues-mcp FFI tests..."
+    cd cartridges/queues-mcp/ffi && zig build test
+    @echo "Running iac-mcp FFI tests..."
+    cd cartridges/iac-mcp/ffi && zig build test
+    @echo "Running observe-mcp FFI tests..."
+    cd cartridges/observe-mcp/ffi && zig build test
+    @echo "Running ssg-mcp FFI tests..."
+    cd cartridges/ssg-mcp/ffi && zig build test
+    @echo "Running proof-mcp FFI tests..."
+    cd cartridges/proof-mcp/ffi && zig build test
+    @echo "Running lsp-mcp FFI tests..."
+    cd cartridges/lsp-mcp/ffi && zig build test
+    @echo "Running dap-mcp FFI tests..."
+    cd cartridges/dap-mcp/ffi && zig build test
+    @echo "Running bsp-mcp FFI tests..."
+    cd cartridges/bsp-mcp/ffi && zig build test
     @echo "All tests passed!"
 
-# Run tests with verbose output
+# Run tests with verbose output (catalogue + 17 cartridges, matches CI)
 test-verbose:
     cd ffi/zig && zig build test -- --verbose
+    cd cartridges/database-mcp/ffi && zig build test -- --verbose
     cd cartridges/fleet-mcp/ffi && zig build test -- --verbose
     cd cartridges/nesy-mcp/ffi && zig build test -- --verbose
-    cd cartridges/database-mcp/ffi && zig build test -- --verbose
     cd cartridges/agent-mcp/ffi && zig build test -- --verbose
-    cd cartridges/feedback-mcp/ffi && zig build test -- --verbose
+    cd cartridges/cloud-mcp/ffi && zig build test -- --verbose
+    cd cartridges/container-mcp/ffi && zig build test -- --verbose
+    cd cartridges/k8s-mcp/ffi && zig build test -- --verbose
+    cd cartridges/git-mcp/ffi && zig build test -- --verbose
+    cd cartridges/secrets-mcp/ffi && zig build test -- --verbose
+    cd cartridges/queues-mcp/ffi && zig build test -- --verbose
+    cd cartridges/iac-mcp/ffi && zig build test -- --verbose
+    cd cartridges/observe-mcp/ffi && zig build test -- --verbose
+    cd cartridges/ssg-mcp/ffi && zig build test -- --verbose
+    cd cartridges/proof-mcp/ffi && zig build test -- --verbose
+    cd cartridges/lsp-mcp/ffi && zig build test -- --verbose
+    cd cartridges/dap-mcp/ffi && zig build test -- --verbose
+    cd cartridges/bsp-mcp/ffi && zig build test -- --verbose
 
 # Smoke test — type-check core ABI + run one FFI test
 test-smoke:
@@ -510,14 +546,23 @@ deps:
 
 # Audit dependencies for vulnerabilities
 deps-audit:
-    @echo "Auditing for vulnerabilities..."
-    # TODO: Replace with your audit command
-    # Examples:
-    #   cargo audit
-    #   mix audit
-    @command -v trivy >/dev/null && trivy fs --severity HIGH,CRITICAL --quiet . || true
-    @command -v gitleaks >/dev/null && gitleaks detect --source . --no-git --quiet || true
-    @echo "Audit complete"
+    #!/usr/bin/env bash
+    set -euo pipefail
+    echo "Auditing for vulnerabilities..."
+    # Zig compile-time audit: catches dependency issues, undefined behaviour, and test failures
+    echo "Running Zig build + test audit on catalogue..."
+    cd ffi/zig && zig build test
+    cd "$OLDPWD"
+    # Verify zero believe_me (formal verification soundness audit)
+    just verify-no-believe-me
+    # Supplementary scanners (if available)
+    if command -v panic-attack >/dev/null 2>&1; then
+        echo "Running panic-attack assail..."
+        panic-attack assail
+    fi
+    command -v trivy >/dev/null && trivy fs --severity HIGH,CRITICAL --quiet . || true
+    command -v gitleaks >/dev/null && gitleaks detect --source . --no-git --quiet || true
+    echo "Audit complete"
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # DOCUMENTATION

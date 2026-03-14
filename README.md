@@ -131,7 +131,7 @@ PMPL-1.0-or-later (Palimpsest License). The license's provenance requirements (c
 
 ## Project Status
 
-**Grade A (Production)** — 18 cartridges, 307 tests passing, thread-safe FFI (mutex-hardened), panic-attack validated. See `docs/READINESS.md` for the full CRG assessment and `.machine_readable/STATE.a2ml` for milestone progress.
+**Grade D (Alpha)** — 18 cartridges, 307 tests passing, thread-safe FFI (mutex-hardened), panic-attack validated. See `docs/READINESS.md` for the full CRG assessment and `.machine_readable/STATE.a2ml` for milestone progress.
 
 ## A Community Project
 

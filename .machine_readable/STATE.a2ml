@@ -8,16 +8,16 @@ project = "boj-server"
 version = "0.2.0"
 last-updated = "2026-03-10"
 status = "active"
-grade = "A-production"
+grade = "D-alpha"
 
 [project-context]
 name = "Bundle of Joy Server"
 purpose = "Unified server capability catalogue solving the combinatoric explosion of developer server protocols. Provides a 2D matrix of formally verified cartridges (protocol types x capability domains), distributed via community-hosted nodes with hash attestation and gossip protocol."
-completion-percentage = 100
+completion-percentage = 57
 
 [position]
-phase = "rc"
-maturity = "release-candidate"
+phase = "alpha"
+maturity = "alpha"
 
 [route-to-mvp]
 milestones = [
@@ -29,14 +29,14 @@ milestones = [
   { name = "Phase 5: Umoja federation & PanLL panel", completion = 100 },
   { name = "Phase 6: Remaining cartridges (fill the matrix)", completion = 100 },
   { name = "Phase 7: Polystack deprecation (endgame)", completion = 100 },
-  { name = "Phase 8: Grade C→B (QUIC, multi-node, coprocessor, docs)", completion = 100 },
-  { name = "Phase 9: Grade B→A (SLA, community, SDP, seed nodes)", completion = 100 },
+  { name = "Phase 8: Grade D→C (QUIC, multi-node, coprocessor, docs)", completion = 40 },
+  { name = "Phase 9: Grade C→B (SLA, community, SDP, seed nodes)", completion = 20 },
 ]
 
 # Honest assessment notes:
-# - Phase 8 at 100%: QUIC transport (X25519+ChaCha20-Poly1305), multi-node testing (11 tests),
-#   coprocessor dispatch (14 tests), Podman secure instance, API contract documentation
-# - All Grade C→B and B→A items complete
+# - Phase 8 partial: QUIC transport, multi-node testing, coprocessor dispatch code exists
+#   but lacks external validation, release workflow is stub, placeholders remain
+# - Grade D (Alpha): 18 cartridges built as state machines, tests passing internally
 # - Federation tests: 40 (was 30, +10 QUIC tests)
 # - Coprocessor tests: 14, SLA tests: 11, Community tests: 11, SDP tests: 10
 # - Multi-node tests: 11 (shell tests)
@@ -75,13 +75,13 @@ must = [
 should = [
   "gRPC-compat adapter (done — JSON-over-HTTP with service/method paths)",
   "GraphQL subscriptions for mount/unmount events (done — polling)",
-  "Readiness Grade A tests (done — 7 production tests)",
+  "Readiness Grade D (Alpha) tests (done — 7 production tests)",
   "PanLL module mapping (DONE — 887-line view, 5 tabs, clade definition)",
   "Cartridge hot-reload (done — unmount/verify/remount)",
   "QUIC-first transport (DONE — X25519+ChaCha20-Poly1305, 10 QUIC tests)",
   "Multi-node federation testing (DONE — 11 tests, REST API peering)",
   "Coprocessor dispatch (DONE — Axiom.jl-style, 14 tests)",
-  "Podman secure instance (DONE — quadlet, seccomp, read-only rootfs)",
+  "Podman secure instance (configured-not-deployed — quadlet, seccomp, read-only rootfs defined, image not published)",
   "Stable API contract (DONE — docs/API-CONTRACT.md)",
 ]
 could = [
@@ -91,8 +91,8 @@ could = [
 ]
 
 [blockers-and-issues]
-# No blockers. Grade A production code complete.
-# Remaining: deploy seed nodes, register domain.
+# No critical blockers. Grade D (Alpha) — 18 cartridges built, tests passing.
+# Remaining: external validation, release workflow, deploy seed nodes, register domain.
 
 [critical-next-actions]
 actions = [
@@ -129,7 +129,7 @@ panll-routing = "done — bojRouting toggle on 10 panels (VeriSimDB, Editor Brid
 quic-transport = "done — X25519 ECDH + ChaCha20-Poly1305 AEAD, backward compatible"
 multinode-testing = "done — 2-node federation test script, REST API peering, 11 tests"
 coprocessor-dispatch = "done — detect→select→dispatch→fallback, env-driven, 14 tests"
-podman-secure = "done — quadlet + seccomp profile + read-only rootfs + resource limits"
+podman-secure = "configured-not-deployed — quadlet + seccomp profile + read-only rootfs defined, container image not published, untested in production"
 api-contract = "done — docs/API-CONTRACT.md, all endpoints documented"
 configurable-ports = "done — BOJ_REST_PORT, BOJ_GRPC_PORT, BOJ_GRAPHQL_PORT env vars"
 
@@ -159,11 +159,12 @@ backend-axis = "stubbed — third dimension (domain x protocol x backend) for co
 extension-descriptor = "docs/examples/extension.a2ml"
 documentation = "docs/EXTENSIBILITY.md"
 
-[grade-a-status]
-sla-monitoring = "done — 3-tier (community/standard/premium), percentile tracking, 11 tests"
-community-submissions = "done — Ayo tier, review state machine, hash validation, 11 tests"
-auto-sdp = "done — zero-trust perimeter, allow-list, auto-ban, open mode for bootstrapping, 10 tests"
-seed-nodes = "done — 4-continent config (EU-West, EU-Central, US-East, AP-South)"
+[grade-a-aspirations]
+# These are NOT Grade A — they are initial implementations needing external validation
+sla-monitoring = "initial — 3-tier (community/standard/premium), percentile tracking, 11 tests, no real-world usage"
+community-submissions = "initial — Ayo tier, review state machine, hash validation, 11 tests, no external submitters"
+auto-sdp = "initial — zero-trust perimeter, allow-list, auto-ban, open mode for bootstrapping, 10 tests, untested in production"
+seed-nodes = "config only — 4-continent config (EU-West, EU-Central, US-East, AP-South), not deployed"
 
 [maintenance-status]
 last-run-utc = "2026-03-09"
