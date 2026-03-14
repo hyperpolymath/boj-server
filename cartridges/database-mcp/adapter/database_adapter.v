@@ -16,12 +16,14 @@ import json
 // ═══════════════════════════════════════════════════════════════════════
 
 fn C.db_connect(backend int) int
+fn C.db_connect_sqlite(path_ptr &u8, path_len usize) int
 fn C.db_disconnect(slot_idx int) int
 fn C.db_state(slot_idx int) int
 fn C.db_begin_query(slot_idx int) int
 fn C.db_end_query(slot_idx int) int
 fn C.db_query_error(slot_idx int) int
 fn C.db_can_transition(from int, to int) int
+fn C.db_execute_sql(slot u8, sql_ptr &u8, sql_len usize, out_ptr &u8, out_len usize) int
 fn C.db_reset()
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -152,6 +154,41 @@ pub fn can_transition(from int, to int) TransitionResponse {
 		to: state_label(to)
 		allowed: allowed
 	}
+}
+
+pub fn connect_sqlite(path string) !ConnectResponse {
+	slot := C.db_connect_sqlite(path.str, usize(path.len))
+	if slot < 0 {
+		return match slot {
+			-1 { error('no connection slots available') }
+			-3 { error('sqlite3_open failed for path: ${path}') }
+			else { error('unknown error (code ${slot})') }
+		}
+	}
+	return ConnectResponse{
+		slot: slot
+		backend: 'sqlite'
+		state: 'connected'
+	}
+}
+
+pub fn execute_sql(slot int, sql string) !string {
+	if slot < 0 || slot > 255 {
+		return error('invalid slot index: ${slot}')
+	}
+	mut out_buf := []u8{len: 65536}
+	result := C.db_execute_sql(u8(slot), sql.str, usize(sql.len), out_buf.data, usize(out_buf.len))
+	if result < 0 {
+		return match result {
+			-1 { error('invalid or inactive slot') }
+			-2 { error('connection not in queryable state') }
+			-3 { error('slot does not have a sqlite handle (wrong backend?)') }
+			-4 { error('sqlite3_exec failed') }
+			-5 { error('output buffer too small') }
+			else { error('unknown error (code ${result})') }
+		}
+	}
+	return out_buf[..result].bytestr()
 }
 
 pub fn reset() {

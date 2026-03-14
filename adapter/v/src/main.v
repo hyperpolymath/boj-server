@@ -1418,7 +1418,53 @@ fn invoke_database(tool string, args string) http.Response {
 			'backends': 'verisimdb,postgresql,sqlite,redis'
 		}))
 	}
-	return error_response(400, 'unknown database-mcp tool: "${tool}" — available: health, list_octads, create_octad, query, drift, list_backends')
+	if tool == 'sql' {
+		// Direct SQLite query execution via the Zig FFI state machine.
+		// Args: {"path": "/path/to/db.sqlite", "sql": "SELECT ..."}
+		params := json.decode(map[string]string, args) or {
+			return error_response(400, 'sql requires {"path": "/path/to/db.sqlite", "sql": "SELECT ..."}')
+		}
+		db_path := params['path'] or { '' }
+		sql_text := params['sql'] or { '' }
+		if db_path == '' || sql_text == '' {
+			return error_response(400, 'sql requires both "path" and "sql" fields')
+		}
+		// Validate path does not contain shell-unsafe characters (defense in depth)
+		_ := sanitize_shell_arg(db_path) or {
+			return error_response(400, 'invalid path: ${err.msg()}')
+		}
+
+		// Connect to SQLite via Zig FFI
+		conn := database_adapter.connect_sqlite(db_path) or {
+			return json_response(json.encode({
+				'tool':   'sql'
+				'status': 'error'
+				'error':  'connect failed: ${err.msg()}'
+			}))
+		}
+
+		// Execute the SQL query
+		result_json := database_adapter.execute_sql(conn.slot, sql_text) or {
+			// Disconnect on error (error state -> disconnected)
+			database_adapter.disconnect(conn.slot) or {}
+			return json_response(json.encode({
+				'tool':   'sql'
+				'status': 'error'
+				'error':  'query failed: ${err.msg()}'
+			}))
+		}
+
+		// Disconnect after query
+		database_adapter.disconnect(conn.slot) or {}
+
+		return json_response(json.encode({
+			'tool':   'sql'
+			'status': 'ok'
+			'path':   db_path
+			'data':   result_json
+		}))
+	}
+	return error_response(400, 'unknown database-mcp tool: "${tool}" — available: health, list_octads, create_octad, query, drift, list_backends, sql')
 }
 
 // --- ssg-mcp: Static site generation (Zola, Hugo, ddraig) ---

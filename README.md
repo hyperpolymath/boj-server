@@ -1,61 +1,28 @@
-# Bundle of Joy (BoJ) Server
+<!-- SPDX-License-Identifier: PMPL-1.0-or-later -->
 
-Unified server capability catalogue with formally verified cartridges, distributed community hosting, and the Teranga menu system.
+# BoJ -- Bundle of Joy
 
-> **AI-Assisted Install:** Just tell any AI assistant:
-> `Set up Bundle of Joy Server from https://github.com/hyperpolymath/boj-server`
-> The AI reads this repo, asks you a few questions, and handles everything.
+One MCP server that gives any AI assistant access to your databases, containers, git repos, secrets, and more -- instead of installing seven separate tools.
 
-<a href="https://glama.ai/mcp/servers/hyperpolymath/boj-server">
-  <img width="380" height="200" src="https://glama.ai/mcp/servers/hyperpolymath/boj-server/badge" alt="BoJ MCP Server on Glama" />
-</a>
-<a href="https://www.bestpractices.dev/projects/12164">
-  <img src="https://www.bestpractices.dev/projects/12164/badge" alt="OpenSSF Best Practices passing (115%)" />
-</a>
+## Quick Start
 
-## What is this?
+**1. Clone and build**
 
-BoJ solves the **combinatoric explosion of developer server protocols**. Instead of hunting across dozens of MCP, LSP, DAP, and other servers, AI goes to ONE place — the Teranga menu — and orders what it needs.
+```bash
+git clone https://github.com/hyperpolymath/boj-server
+cd boj-server
+cd ffi/zig && zig build
+```
 
-The server is **distributed**: community nodes volunteer compute time (like Tor/IPFS), with cryptographic hash attestation ensuring integrity. No central hosting required.
+**2. Start the server**
 
-## The 2D Capability Matrix
+```bash
+cd boj-server && deno run --allow-net --allow-env mcp-bridge/main.js
+```
 
-Capabilities are organised as a 2D matrix:
+**3. Connect your AI assistant**
 
-- **Columns** = protocol types (MCP, LSP, DAP, BSP, NeSy, Agentic, Fleet, gRPC, REST)
-- **Rows** = capability domains (Cloud, Container, Database, K8s, Git, Secrets, Queues, IaC, Observe, SSG, Proof, Fleet, NeSy)
-- **Cells** = cartridges (formally verified, swappable capability modules)
-
-Each cartridge follows the **three-layer stack**:
-
-| Layer | Language | Purpose |
-|-------|----------|---------|
-| **ABI** | Idris2 | Formal proofs, `%default total`, zero `believe_me` |
-| **FFI** | Zig | C-compatible native execution, zero runtime deps |
-| **Adapter** | V-lang | Triple API (REST + gRPC + GraphQL) |
-
-## The Teranga Menu
-
-The menu has three tiers:
-
-- **Teranga (Core)**: Cartridges maintained by the project
-- **Shield**: Privacy and security (SDP, DoQ/DoH, oDNS)
-- **Ayo (Community)**: Community-contributed cartridges
-
-AI agents act as the "Maître D'" — presenting the menu to users as honoured guests.
-
-See: `.machine_readable/servers/menu.a2ml`
-
-## MCP Installation
-
-The BoJ server exposes its cartridges via MCP (Model Context Protocol) over stdio.
-
-**Prerequisites:** The BoJ REST server must be running on port 7700 (see Quick Start below).
-
-### Claude Code
-
-Add to `~/.config/claude/mcp_servers.json`:
+Add to your Claude Code MCP config (`~/.config/claude/mcp_servers.json`):
 
 ```json
 {
@@ -67,83 +34,68 @@ Add to `~/.config/claude/mcp_servers.json`:
 }
 ```
 
-### Other MCP Clients
+> HTTP/SSE remote transport for ChatGPT, Gemini, and other clients is coming soon.
 
-```bash
-node mcp-bridge/main.js
-# or
-deno run --allow-net --allow-env mcp-bridge/main.js
-```
+## What Can It Do?
 
-### MCP Tools
+BoJ organises capabilities into **cartridges** (pluggable modules), each covering a domain. Here is what is available today:
 
-| Tool | Description |
-|------|-------------|
-| `boj_health` | Server health check |
-| `boj_menu` | List all cartridges (tiers, domains, protocols) |
-| `boj_cartridges` | Protocol x domain capability matrix |
-| `boj_cartridge_info` | Detailed info for a specific cartridge |
-| `boj_cartridge_invoke` | Execute a cartridge operation |
+| Domain | Cartridge | Example |
+|--------|-----------|---------|
+| Database | database-mcp | "Query my PostgreSQL database for all users created this week" |
+| Containers | container-mcp | "List running containers and restart the web server" |
+| Git | git-mcp | "Show me the diff between main and this branch across all three forges" |
+| Secrets | secrets-mcp | "Rotate the API key stored in Vault and update the deployment" |
+| Observability | observe-mcp | "Show me error rates from the last hour and correlate with recent deploys" |
+| Cloud | cloud-mcp | "Spin up a staging instance on my cloud provider" |
+| Kubernetes | k8s-mcp | "Scale the worker deployment to 5 replicas" |
+| Queues | queues-mcp | "Check the dead-letter queue depth and replay failed messages" |
+| Infrastructure | iac-mcp | "Plan the Terraform changes for the new VPC" |
+| Static Sites | ssg-mcp | "Build and preview the documentation site" |
+| Proof Assistants | proof-mcp | "Type-check the Idris2 module and show any holes" |
+| Language Servers | lsp-mcp | "Get completions and diagnostics for this file" |
+| Debugging | dap-mcp | "Set a breakpoint at line 42 and inspect the variable" |
+| Build Servers | bsp-mcp | "Run the build and report compile errors" |
+| Bot Fleet | fleet-mcp | "Run the security scan bots across all repositories" |
+| Neurosymbolic | nesy-mcp | "Classify this input using the symbolic reasoning pipeline" |
+| Agents | agent-mcp | "Dispatch an OODA-loop agent to investigate the incident" |
 
-## Quick Start
+## Why BoJ Instead of Separate MCP Servers?
 
-```bash
-# Clone and enter
-git clone https://github.com/hyperpolymath/boj-server
-cd boj-server
+**One connection, not seventeen.** Your AI assistant connects to one server and gets access to all domains through a single menu.
 
-# Type-check the Idris2 ABI
-cd src/abi && idris2 --build boj.ipkg
+**Lower memory footprint.** One native process instead of 7+ separate `npm exec` processes each consuming 200-300 MB of RAM.
 
-# Build the Zig FFI
-cd ../../ffi/zig && zig build
+**Verified state machines.** Each cartridge's lifecycle (connect, query, disconnect) is modelled as a state machine with formal proofs that prevent invalid transitions. This means your AI cannot, for example, issue a query on a closed database connection.
 
-# Run tests
-cd ffi/zig && zig build test
-```
+**Federation-ready.** BoJ nodes can form a peer-to-peer network (Umoja federation) for production-scale distributed hosting. Community nodes volunteer compute, with cryptographic hash attestation ensuring integrity.
 
-## Distributed Hosting (Umoja Network)
+## Current Status
 
-BoJ servers are community-hosted:
+**Grade D (Alpha)** -- usable for experimentation, not yet production-hardened.
 
-- Pull the container from the Stapeln supply chain
-- Run it locally (Podman, Chainguard base)
-- Your node appears in the Umoja network via gossip protocol
-- Hash attestation ensures integrity — tampered nodes are excluded from the community network but can still run locally
+| What | Status |
+|------|--------|
+| Cartridges built | 17 of 17, all with compiled .so files |
+| Tests passing | 307 |
+| MCP bridge | Working (stdio) |
+| REST / gRPC / GraphQL | Adapter compiles and routes |
+| Federation (Umoja) | Real UDP gossip with hash attestation |
+| Remote transport (HTTP/SSE) | Not yet |
+| External dogfooding | Not yet |
 
-See: `docs/FEDERATION.md`
+See [docs/READINESS.md](docs/READINESS.md) for the full component-by-component assessment.
 
-## Contributing Cartridges
+## Architecture (For Contributors)
 
-Build a cartridge that passes the `IsUnbreakable` proof and it goes in the Ayo menu with your name honoured.
+BoJ uses Idris2 for interface proofs (zero `believe_me`), Zig for the C-compatible FFI layer, V-lang for the REST/gRPC/GraphQL adapter, and JavaScript for the MCP bridge. If that sounds like a lot of languages, it is -- each was chosen for a specific guarantee. See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the rationale and contributor guide.
 
-See: `docs/DEVELOPERS.md`
-
-## Cultural Terminology
-
-We use terms from Wolof (*Teranga* — hospitality), Swahili (*Umoja* — unity), and Yoruba (*Ayo* — joy) to align our architecture with global values.
-
-See: `docs/CULTURAL-RESPECT.md`
+Cartridges are loaded as shared libraries (`.so` files) at runtime, verified by hash before mounting. Community-contributed cartridges go through the same verification pipeline.
 
 ## License
 
-PMPL-1.0-or-later (Palimpsest License). The license's provenance requirements (crypto signatures, emotional lineage) align directly with the hash attestation model.
+SPDX-License-Identifier: PMPL-1.0-or-later (Palimpsest License)
 
-## Project Status
+Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath)
 
-**Grade D (Alpha)** — 18 cartridges, 307 tests passing, thread-safe FFI (mutex-hardened), panic-attack validated. See `docs/READINESS.md` for the full CRG assessment and `.machine_readable/STATE.a2ml` for milestone progress.
-
-## A Community Project
-
-This is a community project. Nobody makes money from it. It exists because the problem (too many servers, too much fragmentation) needed solving, and the solution needed building.
-
-**What would help most right now:**
-
-- **Host a node** — Even for a few hours a week. Pull the container, let it gossip. Every node strengthens the network. See `docs/OPERATOR-QUICKSTART.md`.
-- **Try it out** — Use it via MCP, REST, or gRPC. Break things. Tell me what's confusing, what's missing, what doesn't work.
-- **Build on it** — Write a cartridge, create an extension, wire it to your own tools. The third axis is wide open.
-- **Give feedback** — Comments, issues, PRs, emails, carrier pigeons. All welcome.
-
-A huge thank you to anyone who takes the time to look at this. Even a quick glance and an honest opinion helps enormously. I built this to learn from it, and I learn most from other people using it.
-
-Contact: `j.d.a.jewell@open.ac.uk` | GitHub: [hyperpolymath](https://github.com/hyperpolymath) | Issues: [boj-server/issues](https://github.com/hyperpolymath/boj-server/issues)
+See [LICENSE](LICENSE) for the full text.

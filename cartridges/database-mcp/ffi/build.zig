@@ -2,6 +2,7 @@
 // Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
 //
 // Database-MCP Cartridge — Zig FFI build configuration (Zig 0.15+).
+// Links against system libsqlite3 for real database operations.
 
 const std = @import("std");
 
@@ -19,6 +20,8 @@ pub fn build(b: *std.Build) void {
     const db_tests = b.addTest(.{
         .root_module = db_mod,
     });
+    db_tests.linkSystemLibrary("sqlite3");
+    db_tests.linkLibC();
 
     const run_tests = b.addRunArtifact(db_tests);
 
@@ -35,6 +38,8 @@ pub fn build(b: *std.Build) void {
         }),
         .linkage = .dynamic,
     });
+    lib.linkSystemLibrary("sqlite3");
+    lib.linkLibC();
     b.installArtifact(lib);
 
     const lib_step = b.step("lib", "Build shared library");
