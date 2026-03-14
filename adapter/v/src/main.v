@@ -2215,7 +2215,39 @@ fn invoke_k8s(tool string, args string) http.Response {
 			'status': if result.exit_code == 0 { 'ok' } else { 'error' }
 		}))
 	}
-	return error_response(400, 'unknown k8s-mcp tool: "${tool}" — available: list_backends, pods, namespaces')
+	if tool == 'list_pods' {
+		result := os.execute('kubectl get pods -A --no-headers 2>/dev/null | head -30')
+		return json_response(json.encode({
+			'tool':   'list_pods'
+			'output': result.output.trim_space()
+			'status': if result.exit_code == 0 { 'ok' } else { 'error' }
+		}))
+	}
+	if tool == 'list_services' {
+		result := os.execute('kubectl get svc -A --no-headers 2>/dev/null | head -30')
+		return json_response(json.encode({
+			'tool':   'list_services'
+			'output': result.output.trim_space()
+			'status': if result.exit_code == 0 { 'ok' } else { 'error' }
+		}))
+	}
+	if tool == 'list_nodes' {
+		result := os.execute('kubectl get nodes -o wide --no-headers 2>/dev/null')
+		return json_response(json.encode({
+			'tool':   'list_nodes'
+			'output': result.output.trim_space()
+			'status': if result.exit_code == 0 { 'ok' } else { 'error' }
+		}))
+	}
+	if tool == 'cluster_info' {
+		result := os.execute('kubectl cluster-info 2>/dev/null')
+		return json_response(json.encode({
+			'tool':   'cluster_info'
+			'output': result.output.trim_space()
+			'status': if result.exit_code == 0 { 'ok' } else { 'error' }
+		}))
+	}
+	return error_response(400, 'unknown k8s-mcp tool: "${tool}" — available: list_backends, pods, namespaces, list_pods, list_services, list_nodes, cluster_info')
 }
 
 // --- secrets-mcp: secret management (age, sops, pass) ---
@@ -2266,7 +2298,32 @@ fn invoke_secrets(tool string, args string) http.Response {
 			'output':    result.output.trim_space()
 		}))
 	}
-	return error_response(400, 'unknown secrets-mcp tool: "${tool}" — available: list_backends, list_keys, encrypt')
+	if tool == 'list_env' {
+		result := os.execute('env | grep -iE "token|key|secret|pass" | sed \'s/=.*/=***/\' 2>/dev/null')
+		return json_response(json.encode({
+			'tool':   'list_env'
+			'output': result.output.trim_space()
+			'status': if result.exit_code == 0 { 'ok' } else { 'error' }
+			'note':   'values redacted for security'
+		}))
+	}
+	if tool == 'vault_status' {
+		result := os.execute('vault status -format=json 2>/dev/null')
+		return json_response(json.encode({
+			'tool':   'vault_status'
+			'output': result.output.trim_space()
+			'status': if result.exit_code == 0 { 'ok' } else { 'error' }
+		}))
+	}
+	if tool == 'sops_check' {
+		result := os.execute('command -v sops 2>/dev/null && sops --version')
+		return json_response(json.encode({
+			'tool':      'sops_check'
+			'installed': if result.exit_code == 0 { 'true' } else { 'false' }
+			'output':    result.output.trim_space()
+		}))
+	}
+	return error_response(400, 'unknown secrets-mcp tool: "${tool}" — available: list_backends, list_keys, encrypt, list_env, vault_status, sops_check')
 }
 
 // --- queues-mcp: message queue operations (Redis pub/sub, etc.) ---
@@ -2312,7 +2369,34 @@ fn invoke_queues(tool string, args string) http.Response {
 			'output':  result.output.trim_space()
 		}))
 	}
-	return error_response(400, 'unknown queues-mcp tool: "${tool}" — available: list_backends, health, publish')
+	if tool == 'list_brokers' {
+		mut brokers := []string{}
+		if os.execute('command -v nats').exit_code == 0 { brokers << 'nats' }
+		if os.execute('command -v rabbitmqctl').exit_code == 0 { brokers << 'rabbitmq' }
+		if os.execute('command -v redis-cli').exit_code == 0 { brokers << 'redis' }
+		return json_response(json.encode({
+			'tool':      'list_brokers'
+			'available': brokers.join(',')
+		}))
+	}
+	if tool == 'nats_status' {
+		result := os.execute('nats server info 2>/dev/null')
+		return json_response(json.encode({
+			'tool':   'nats_status'
+			'output': result.output.trim_space()
+			'status': if result.exit_code == 0 { 'ok' } else { 'error' }
+		}))
+	}
+	if tool == 'redis_ping' {
+		result := os.execute('redis-cli ping 2>/dev/null')
+		status_str := if result.output.trim_space() == 'PONG' { 'healthy' } else { 'unreachable' }
+		return json_response(json.encode({
+			'tool':   'redis_ping'
+			'status': status_str
+			'output': result.output.trim_space()
+		}))
+	}
+	return error_response(400, 'unknown queues-mcp tool: "${tool}" — available: list_backends, health, publish, list_brokers, nats_status, redis_ping')
 }
 
 // --- iac-mcp: infrastructure as code (Nickel, Terraform, etc.) ---
@@ -2375,7 +2459,55 @@ fn invoke_iac(tool string, args string) http.Response {
 			'output':    result.output.trim_space()
 		}))
 	}
-	return error_response(400, 'unknown iac-mcp tool: "${tool}" — available: list_backends, validate, eval')
+	if tool == 'list_tools' {
+		mut tools := []string{}
+		if os.execute('command -v terraform').exit_code == 0 { tools << 'terraform' }
+		if os.execute('command -v pulumi').exit_code == 0 { tools << 'pulumi' }
+		if os.execute('command -v cdktf').exit_code == 0 { tools << 'cdktf' }
+		if os.execute('command -v tofu').exit_code == 0 { tools << 'opentofu' }
+		if os.execute('command -v nickel').exit_code == 0 { tools << 'nickel' }
+		return json_response(json.encode({
+			'tool':      'list_tools'
+			'available': tools.join(',')
+		}))
+	}
+	if tool == 'terraform_state' {
+		params := json.decode(map[string]string, args) or {
+			return error_response(400, 'terraform_state requires {"path": "/path/to/tf/dir"}')
+		}
+		dir_path := sanitize_shell_arg(params['path'] or { '' }) or {
+			return error_response(400, 'invalid path: ${err.msg()}')
+		}
+		if dir_path == '' {
+			return error_response(400, 'terraform_state requires "path"')
+		}
+		result := os.execute('cd ${dir_path} && terraform state list 2>/dev/null')
+		return json_response(json.encode({
+			'tool':   'terraform_state'
+			'path':   dir_path
+			'output': result.output.trim_space()
+			'status': if result.exit_code == 0 { 'ok' } else { 'error' }
+		}))
+	}
+	if tool == 'terraform_plan_summary' {
+		params := json.decode(map[string]string, args) or {
+			return error_response(400, 'terraform_plan_summary requires {"path": "/path/to/tf/dir"}')
+		}
+		dir_path := sanitize_shell_arg(params['path'] or { '' }) or {
+			return error_response(400, 'invalid path: ${err.msg()}')
+		}
+		if dir_path == '' {
+			return error_response(400, 'terraform_plan_summary requires "path"')
+		}
+		result := os.execute('cd ${dir_path} && terraform plan -no-color 2>&1 | tail -5')
+		return json_response(json.encode({
+			'tool':   'terraform_plan_summary'
+			'path':   dir_path
+			'output': result.output.trim_space()
+			'status': if result.exit_code == 0 { 'ok' } else { 'error' }
+		}))
+	}
+	return error_response(400, 'unknown iac-mcp tool: "${tool}" — available: list_backends, validate, eval, list_tools, terraform_state, terraform_plan_summary')
 }
 
 // --- agent-mcp: agentic dispatch and orchestration ---
@@ -2506,7 +2638,37 @@ fn invoke_fleet(tool string, args string) http.Response {
 			'status': if result.exit_code == 0 { 'ok' } else { 'error' }
 		}))
 	}
-	return error_response(400, 'unknown fleet-mcp tool: "${tool}" — available: list_bots, scan, findings')
+	if tool == 'bot_versions' {
+		mut bots := map[string]string{}
+		bot_names := ['rhodibot', 'echidnabot', 'sustainabot', 'panicbot', 'glambot', 'seambot']
+		for bot in bot_names {
+			result := os.execute('command -v ${bot} 2>/dev/null')
+			bots[bot] = if result.exit_code == 0 { result.output.trim_space() } else { 'not found' }
+		}
+		return json_response(json.encode({
+			'tool':   'bot_versions'
+			'bots':   bots.str()
+		}))
+	}
+	if tool == 'scan_repo' {
+		params := json.decode(map[string]string, args) or {
+			return error_response(400, 'scan_repo requires {"path": "/path/to/repo"}')
+		}
+		repo_path := sanitize_shell_arg(params['path'] or { '' }) or {
+			return error_response(400, 'invalid path: ${err.msg()}')
+		}
+		if repo_path == '' {
+			return error_response(400, 'scan_repo requires "path"')
+		}
+		result := os.execute('cd ${repo_path} && panic-attack assail --json 2>/dev/null')
+		return json_response(json.encode({
+			'tool':   'scan_repo'
+			'path':   repo_path
+			'output': result.output.trim_space()
+			'status': if result.exit_code == 0 { 'ok' } else { 'error' }
+		}))
+	}
+	return error_response(400, 'unknown fleet-mcp tool: "${tool}" — available: list_bots, scan, findings, bot_versions, scan_repo')
 }
 
 // --- lsp-mcp: Language Server Protocol bridge ---
