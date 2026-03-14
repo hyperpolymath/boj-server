@@ -2777,7 +2777,31 @@ fn invoke_lsp(tool string, args string) http.Response {
 			'output':    result.output.trim_space()
 		}))
 	}
-	return error_response(400, 'unknown lsp-mcp tool: "${tool}" — available: list_servers, diagnostics')
+	if tool == 'detect_servers' {
+		// Detect installed language servers via command -v
+		mut found := []string{}
+		if os.execute('command -v rescript-language-server').exit_code == 0 { found << 'rescript-language-server' }
+		if os.execute('command -v rust-analyzer').exit_code == 0 { found << 'rust-analyzer' }
+		if os.execute('command -v elixir-ls').exit_code == 0 { found << 'elixir-ls' }
+		if os.execute('command -v gleam').exit_code == 0 { found << 'gleam' }
+		if os.execute('command -v idris2-lsp').exit_code == 0 { found << 'idris2-lsp' }
+		if os.execute('command -v zls').exit_code == 0 { found << 'zls' }
+		if os.execute('command -v v-analyzer').exit_code == 0 { found << 'v-analyzer' }
+		return json_response(json.encode({
+			'tool':      'detect_servers'
+			'installed': found.join(',')
+			'count':     '${found.len}'
+		}))
+	}
+	if tool == 'check_running' {
+		result := os.execute('pgrep -la "language.server\\|rust-analyzer\\|elixir-ls\\|gleam\\|zls" 2>/dev/null')
+		return json_response(json.encode({
+			'tool':      'check_running'
+			'processes': result.output.trim_space()
+			'found':     if result.exit_code == 0 { 'true' } else { 'false' }
+		}))
+	}
+	return error_response(400, 'unknown lsp-mcp tool: "${tool}" — available: list_servers, diagnostics, detect_servers, check_running')
 }
 
 // --- dap-mcp: Debug Adapter Protocol bridge ---
@@ -2812,7 +2836,37 @@ fn invoke_dap(tool string, args string) http.Response {
 			'note':   'Full DAP session management not yet implemented. Process existence verified.'
 		}))
 	}
-	return error_response(400, 'unknown dap-mcp tool: "${tool}" — available: list_adapters, attach')
+	if tool == 'detect_debuggers' {
+		// Detect installed debuggers via command -v
+		mut found := []string{}
+		if os.execute('command -v lldb').exit_code == 0 { found << 'lldb' }
+		if os.execute('command -v gdb').exit_code == 0 { found << 'gdb' }
+		if os.execute('command -v delve').exit_code == 0 || os.execute('command -v dlv').exit_code == 0 { found << 'delve' }
+		if os.execute('command -v node-inspect').exit_code == 0 { found << 'node-inspect' }
+		return json_response(json.encode({
+			'tool':      'detect_debuggers'
+			'installed': found.join(',')
+			'count':     '${found.len}'
+		}))
+	}
+	if tool == 'list_debug_targets' {
+		params := json.decode(map[string]string, args) or {
+			return error_response(400, 'list_debug_targets requires {"path": "/path/to/project"}')
+		}
+		search_path := sanitize_shell_arg(params['path'] or { '' }) or {
+			return error_response(400, 'invalid path: ${err.msg()}')
+		}
+		if search_path == '' {
+			return error_response(400, 'list_debug_targets requires "path"')
+		}
+		result := os.execute('find ${search_path} -name "*.exe" -o -name "*.debug" -o -name "launch.json" 2>/dev/null | head -10')
+		return json_response(json.encode({
+			'tool':    'list_debug_targets'
+			'path':    search_path
+			'targets': result.output.trim_space()
+		}))
+	}
+	return error_response(400, 'unknown dap-mcp tool: "${tool}" — available: list_adapters, attach, detect_debuggers, list_debug_targets')
 }
 
 // --- bsp-mcp: Build Server Protocol bridge ---
@@ -2877,7 +2931,40 @@ fn invoke_bsp(tool string, args string) http.Response {
 			'output': result.output.trim_space()
 		}))
 	}
-	return error_response(400, 'unknown bsp-mcp tool: "${tool}" — available: list_backends, build, targets')
+	if tool == 'detect_build_tools' {
+		// Detect installed build tools via command -v
+		mut found := []string{}
+		if os.execute('command -v cargo').exit_code == 0 { found << 'cargo' }
+		if os.execute('command -v zig').exit_code == 0 { found << 'zig' }
+		if os.execute('command -v deno').exit_code == 0 { found << 'deno' }
+		if os.execute('command -v mix').exit_code == 0 { found << 'mix' }
+		if os.execute('command -v gleam').exit_code == 0 { found << 'gleam' }
+		if os.execute('command -v just').exit_code == 0 { found << 'just' }
+		if os.execute('command -v make').exit_code == 0 { found << 'make' }
+		return json_response(json.encode({
+			'tool':      'detect_build_tools'
+			'installed': found.join(',')
+			'count':     '${found.len}'
+		}))
+	}
+	if tool == 'list_build_files' {
+		params := json.decode(map[string]string, args) or {
+			return error_response(400, 'list_build_files requires {"path": "/path/to/project"}')
+		}
+		search_path := sanitize_shell_arg(params['path'] or { '' }) or {
+			return error_response(400, 'invalid path: ${err.msg()}')
+		}
+		if search_path == '' {
+			return error_response(400, 'list_build_files requires "path"')
+		}
+		result := os.execute('find ${search_path} -maxdepth 2 \\( -name "Cargo.toml" -o -name "build.zig" -o -name "deno.json" -o -name "mix.exs" -o -name "justfile" -o -name "Makefile" \\) 2>/dev/null')
+		return json_response(json.encode({
+			'tool':  'list_build_files'
+			'path':  search_path
+			'files': result.output.trim_space()
+		}))
+	}
+	return error_response(400, 'unknown bsp-mcp tool: "${tool}" — available: list_backends, build, targets, detect_build_tools, list_build_files')
 }
 
 // --- feedback-mcp: feedback-o-tron feedback collection and sentiment tracking ---
@@ -3081,7 +3168,25 @@ fn invoke_comms(tool string, args string) http.Response {
 			'message': 'comms-mcp is running. Providers: gmail, calendar.'
 		}))
 	}
-	return error_response(400, 'unknown comms-mcp tool: "${tool}" — available: list_providers, authenticate, status')
+	if tool == 'check_oauth' {
+		// Check if Google OAuth credentials are configured
+		result := os.execute('test -f ~/.config/gcloud/application_default_credentials.json && echo "Google OAuth configured" || echo "No Google OAuth"')
+		return json_response(json.encode({
+			'tool':   'check_oauth'
+			'output': result.output.trim_space()
+			'status': if result.exit_code == 0 && result.output.contains('configured') { 'configured' } else { 'not_configured' }
+		}))
+	}
+	if tool == 'mail_check' {
+		// Detect available mail transfer agents
+		result := os.execute('command -v msmtp 2>/dev/null || command -v sendmail 2>/dev/null')
+		return json_response(json.encode({
+			'tool':   'mail_check'
+			'mta':    result.output.trim_space()
+			'found':  if result.exit_code == 0 { 'true' } else { 'false' }
+		}))
+	}
+	return error_response(400, 'unknown comms-mcp tool: "${tool}" — available: list_providers, authenticate, status, check_oauth, mail_check')
 }
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -3470,7 +3575,25 @@ fn invoke_ums(tool string, args string) http.Response {
 			'result':     read_ums_result(slot)
 		}))
 	}
-	return error_response(400, 'unknown ums-mcp tool: "${tool}" — available: load_level, save_level, validate_level_abi, list_levels, export_level_config, create_project, open_project, delete_project, load_templates, instantiate_template')
+	if tool == 'list_abi_modules' {
+		// List Idris2 ABI modules in the IDApTIK UMS directory
+		result := os.execute('find /var/mnt/eclipse/repos/idaptik/idaptik-ums/src/abi -name "*.idr" 2>/dev/null')
+		return json_response(json.encode({
+			'tool':    'list_abi_modules'
+			'modules': result.output.trim_space()
+			'found':   if result.exit_code == 0 && result.output.trim_space() != '' { 'true' } else { 'false' }
+		}))
+	}
+	if tool == 'check_zig_ffi' {
+		// Check if the Zig FFI shared library is compiled
+		result := os.execute('test -f /var/mnt/eclipse/repos/idaptik/idaptik-ums/ffi/zig/zig-out/lib/libidaptik_ums.so && echo "FFI built" || echo "FFI not built"')
+		return json_response(json.encode({
+			'tool':   'check_zig_ffi'
+			'output': result.output.trim_space()
+			'status': if result.output.contains('FFI built') { 'built' } else { 'not_built' }
+		}))
+	}
+	return error_response(400, 'unknown ums-mcp tool: "${tool}" — available: load_level, save_level, validate_level_abi, list_levels, export_level_config, create_project, open_project, delete_project, load_templates, instantiate_template, list_abi_modules, check_zig_ffi')
 }
 
 struct CartridgeDetail {
