@@ -1968,7 +1968,37 @@ fn invoke_observe(tool string, args string) http.Response {
 			'error':  'feedback-o-tron not running at localhost:4000'
 		}))
 	}
-	return error_response(400, 'unknown observe-mcp tool: "${tool}" — available: status, feedback')
+	if tool == 'system_metrics' {
+		cpu := os.execute('top -bn1 | grep "Cpu(s)" | awk \'{print $2}\' 2>/dev/null')
+		mem := os.execute('free -m | awk \'NR==2{printf "%s/%sMB (%.1f%%)", $3,$2,$3*100/$2}\' 2>/dev/null')
+		disk := os.execute('df -h / | awk \'NR==2{printf "%s/%s (%s)", $3,$2,$5}\' 2>/dev/null')
+		uptime := os.execute('uptime -p 2>/dev/null')
+		return json_response(json.encode({
+			'tool':   'system_metrics'
+			'cpu':    if cpu.exit_code == 0 { cpu.output } else { 'unavailable' }
+			'memory': if mem.exit_code == 0 { mem.output } else { 'unavailable' }
+			'disk':   if disk.exit_code == 0 { disk.output } else { 'unavailable' }
+			'uptime': if uptime.exit_code == 0 { uptime.output } else { 'unavailable' }
+			'status': 'ok'
+		}))
+	}
+	if tool == 'processes' {
+		result := os.execute('ps aux --sort=-%mem | head -15 2>/dev/null')
+		return json_response(json.encode({
+			'tool':   'processes'
+			'status': if result.exit_code == 0 { 'ok' } else { 'error' }
+			'data':   result.output
+		}))
+	}
+	if tool == 'network' {
+		result := os.execute('ss -tunlp 2>/dev/null | head -30')
+		return json_response(json.encode({
+			'tool':   'network'
+			'status': if result.exit_code == 0 { 'ok' } else { 'error' }
+			'data':   result.output
+		}))
+	}
+	return error_response(400, 'unknown observe-mcp tool: "${tool}" — available: status, feedback, system_metrics, processes, network')
 }
 
 // --- git-mcp: Git forge operations ---
@@ -2000,7 +2030,68 @@ fn invoke_git(tool string, args string) http.Response {
 			'data':   result.output
 		}))
 	}
-	return error_response(400, 'unknown git-mcp tool: "${tool}" — available: repos, status')
+	if tool == 'log' {
+		params := json.decode(map[string]string, args) or {
+			return error_response(400, 'git log requires {"path": "/path/to/repo"}')
+		}
+		repo_path := sanitize_shell_arg(params['path'] or { '.' }) or {
+			return error_response(400, 'invalid path: ${err.msg()}')
+		}
+		limit := params['limit'] or { '10' }
+		result := os.execute('cd ${repo_path} && git log --oneline -${limit} 2>/dev/null')
+		return json_response(json.encode({
+			'tool':   'log'
+			'path':   repo_path
+			'status': if result.exit_code == 0 { 'ok' } else { 'error' }
+			'data':   result.output
+		}))
+	}
+	if tool == 'diff' {
+		params := json.decode(map[string]string, args) or {
+			return error_response(400, 'git diff requires {"path": "/path/to/repo"}')
+		}
+		repo_path := sanitize_shell_arg(params['path'] or { '.' }) or {
+			return error_response(400, 'invalid path: ${err.msg()}')
+		}
+		result := os.execute('cd ${repo_path} && git diff --stat 2>/dev/null')
+		return json_response(json.encode({
+			'tool':   'diff'
+			'path':   repo_path
+			'status': if result.exit_code == 0 { 'ok' } else { 'error' }
+			'data':   result.output
+		}))
+	}
+	if tool == 'branches' {
+		params := json.decode(map[string]string, args) or {
+			return error_response(400, 'git branches requires {"path": "/path/to/repo"}')
+		}
+		repo_path := sanitize_shell_arg(params['path'] or { '.' }) or {
+			return error_response(400, 'invalid path: ${err.msg()}')
+		}
+		result := os.execute('cd ${repo_path} && git branch -a 2>/dev/null')
+		return json_response(json.encode({
+			'tool':   'branches'
+			'path':   repo_path
+			'status': if result.exit_code == 0 { 'ok' } else { 'error' }
+			'data':   result.output
+		}))
+	}
+	if tool == 'remotes' {
+		params := json.decode(map[string]string, args) or {
+			return error_response(400, 'git remotes requires {"path": "/path/to/repo"}')
+		}
+		repo_path := sanitize_shell_arg(params['path'] or { '.' }) or {
+			return error_response(400, 'invalid path: ${err.msg()}')
+		}
+		result := os.execute('cd ${repo_path} && git remote -v 2>/dev/null')
+		return json_response(json.encode({
+			'tool':   'remotes'
+			'path':   repo_path
+			'status': if result.exit_code == 0 { 'ok' } else { 'error' }
+			'data':   result.output
+		}))
+	}
+	return error_response(400, 'unknown git-mcp tool: "${tool}" — available: repos, status, log, diff, branches, remotes')
 }
 
 // --- proof-mcp: Proof verification ---
