@@ -1,8 +1,9 @@
 <!-- SPDX-License-Identifier: PMPL-1.0-or-later -->
 
-# BoJ -- Bundle of Joy
+# BoJ Server -- the "Bundle of Joy" Server
 
 One MCP server that gives any AI assistant access to your databases, containers, git repos, secrets, and more -- instead of installing seven separate tools.
+A genuine 'bundle of joy'.
 
 ## Quick Start
 
