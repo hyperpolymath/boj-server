@@ -29,6 +29,8 @@ pub const DatabaseBackend = enum(c_int) {
     postgresql = 2,
     sqlite = 3,
     redis = 4,
+    quandledb = 5,
+    lithoglyph = 6,
     custom = 99,
 };
 
@@ -573,6 +575,194 @@ fn runCurlPost(endpoint: [:0]const u8, body: [:0]const u8) ![]u8 {
 }
 
 // ═══════════════════════════════════════════════════════════════════════
+// KQL Execution (QuandleDB — via child curl process)
+// ═══════════════════════════════════════════════════════════════════════
+
+/// Open a new QuandleDB connection by URL (e.g. "http://localhost:8081").
+/// Stores the URL in the slot's url_buf for later use by db_execute_kql.
+/// Returns slot index or negative error code:
+///   -1 = no slots available
+///   -6 = URL too long (exceeds URL_BUF_SIZE)
+pub export fn db_connect_quandledb(url_ptr: [*]const u8, url_len: usize) c_int {
+    mutex.lock();
+    defer mutex.unlock();
+
+    if (url_len == 0 or url_len >= URL_BUF_SIZE) return -6;
+
+    var free_idx: ?usize = null;
+    for (&connections, 0..) |*slot, i| {
+        _ = slot;
+        if (!connections[i].active) {
+            free_idx = i;
+            break;
+        }
+    }
+    const idx = free_idx orelse return -1;
+
+    @memcpy(connections[idx].url_buf[0..url_len], url_ptr[0..url_len]);
+    connections[idx].url_len = url_len;
+    connections[idx].active = true;
+    connections[idx].state = .connected;
+    connections[idx].backend = .quandledb;
+    connections[idx].db_handle = null;
+    return @intCast(idx);
+}
+
+/// Execute a KQL query against a QuandleDB connection via child curl.
+/// POSTs to {url}/kql/execute with the KQL query as JSON body.
+pub export fn db_execute_kql(slot: u8, kql_ptr: [*]const u8, kql_len: usize, out_ptr: [*]u8, out_len: usize) callconv(.c) i32 {
+    var endpoint_buf: [600]u8 = undefined;
+    var endpoint_total: usize = 0;
+    var kql_buf: [8192]u8 = undefined;
+    var safe_kql_len: usize = 0;
+
+    {
+        mutex.lock();
+        defer mutex.unlock();
+
+        if (slot >= MAX_CONNECTIONS) return -1;
+        const idx: usize = @intCast(slot);
+        if (!connections[idx].active) return -1;
+        if (!isValidTransition(connections[idx].state, .querying)) return -2;
+        if (connections[idx].url_len == 0) return -6;
+
+        const url_slice = connections[idx].url_buf[0..connections[idx].url_len];
+        const suffix = "/kql/execute";
+        if (url_slice.len + suffix.len >= endpoint_buf.len) return -6;
+        @memcpy(endpoint_buf[0..url_slice.len], url_slice);
+        @memcpy(endpoint_buf[url_slice.len..][0..suffix.len], suffix);
+        endpoint_total = url_slice.len + suffix.len;
+        endpoint_buf[endpoint_total] = 0;
+
+        safe_kql_len = @min(kql_len, kql_buf.len - 1);
+        @memcpy(kql_buf[0..safe_kql_len], kql_ptr[0..safe_kql_len]);
+        kql_buf[safe_kql_len] = 0;
+
+        connections[idx].state = .querying;
+    }
+
+    const child_result = runCurlPost(
+        endpoint_buf[0..endpoint_total :0],
+        kql_buf[0..safe_kql_len :0],
+    );
+
+    mutex.lock();
+    defer mutex.unlock();
+
+    const idx: usize = @intCast(slot);
+    if (!connections[idx].active or connections[idx].state != .querying) return -1;
+
+    if (child_result) |result| {
+        defer std.heap.page_allocator.free(result);
+        const written = result.len;
+        if (written > out_len) {
+            connections[idx].state = .err;
+            return -5;
+        }
+        @memcpy(out_ptr[0..written], result[0..written]);
+        connections[idx].state = .connected;
+        return @intCast(written);
+    } else |_| {
+        connections[idx].state = .err;
+        return -7;
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// GQL Execution (LithoGlyph — via child curl process)
+// ═══════════════════════════════════════════════════════════════════════
+
+/// Open a new LithoGlyph connection by URL (e.g. "http://localhost:8082").
+/// Stores the URL in the slot's url_buf for later use by db_execute_gql.
+/// Returns slot index or negative error code:
+///   -1 = no slots available
+///   -6 = URL too long (exceeds URL_BUF_SIZE)
+pub export fn db_connect_lithoglyph(url_ptr: [*]const u8, url_len: usize) c_int {
+    mutex.lock();
+    defer mutex.unlock();
+
+    if (url_len == 0 or url_len >= URL_BUF_SIZE) return -6;
+
+    var free_idx: ?usize = null;
+    for (&connections, 0..) |*slot, i| {
+        _ = slot;
+        if (!connections[i].active) {
+            free_idx = i;
+            break;
+        }
+    }
+    const idx = free_idx orelse return -1;
+
+    @memcpy(connections[idx].url_buf[0..url_len], url_ptr[0..url_len]);
+    connections[idx].url_len = url_len;
+    connections[idx].active = true;
+    connections[idx].state = .connected;
+    connections[idx].backend = .lithoglyph;
+    connections[idx].db_handle = null;
+    return @intCast(idx);
+}
+
+/// Execute a GQL query against a LithoGlyph connection via child curl.
+/// POSTs to {url}/gql/execute with the GQL query as JSON body.
+pub export fn db_execute_gql(slot: u8, gql_ptr: [*]const u8, gql_len: usize, out_ptr: [*]u8, out_len: usize) callconv(.c) i32 {
+    var endpoint_buf: [600]u8 = undefined;
+    var endpoint_total: usize = 0;
+    var gql_buf: [8192]u8 = undefined;
+    var safe_gql_len: usize = 0;
+
+    {
+        mutex.lock();
+        defer mutex.unlock();
+
+        if (slot >= MAX_CONNECTIONS) return -1;
+        const idx: usize = @intCast(slot);
+        if (!connections[idx].active) return -1;
+        if (!isValidTransition(connections[idx].state, .querying)) return -2;
+        if (connections[idx].url_len == 0) return -6;
+
+        const url_slice = connections[idx].url_buf[0..connections[idx].url_len];
+        const suffix = "/gql/execute";
+        if (url_slice.len + suffix.len >= endpoint_buf.len) return -6;
+        @memcpy(endpoint_buf[0..url_slice.len], url_slice);
+        @memcpy(endpoint_buf[url_slice.len..][0..suffix.len], suffix);
+        endpoint_total = url_slice.len + suffix.len;
+        endpoint_buf[endpoint_total] = 0;
+
+        safe_gql_len = @min(gql_len, gql_buf.len - 1);
+        @memcpy(gql_buf[0..safe_gql_len], gql_ptr[0..safe_gql_len]);
+        gql_buf[safe_gql_len] = 0;
+
+        connections[idx].state = .querying;
+    }
+
+    const child_result = runCurlPost(
+        endpoint_buf[0..endpoint_total :0],
+        gql_buf[0..safe_gql_len :0],
+    );
+
+    mutex.lock();
+    defer mutex.unlock();
+
+    const idx: usize = @intCast(slot);
+    if (!connections[idx].active or connections[idx].state != .querying) return -1;
+
+    if (child_result) |result| {
+        defer std.heap.page_allocator.free(result);
+        const written = result.len;
+        if (written > out_len) {
+            connections[idx].state = .err;
+            return -5;
+        }
+        @memcpy(out_ptr[0..written], result[0..written]);
+        connections[idx].state = .connected;
+        return @intCast(written);
+    } else |_| {
+        connections[idx].state = .err;
+        return -7;
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════════
 // Standard Cartridge Interface (loader expects these 4 C-ABI symbols)
 // ═══════════════════════════════════════════════════════════════════════
 
@@ -817,6 +1007,80 @@ test "verisimdb query lifecycle through state machine" {
     try std.testing.expect(slot >= 0);
 
     // Manual state transitions (not calling db_execute_vql since no server)
+    try std.testing.expectEqual(@as(c_int, 0), db_begin_query(slot));
+    try std.testing.expectEqual(@as(c_int, @intFromEnum(ConnState.querying)), db_state(slot));
+    try std.testing.expectEqual(@as(c_int, 0), db_end_query(slot));
+    try std.testing.expectEqual(@as(c_int, @intFromEnum(ConnState.connected)), db_state(slot));
+    try std.testing.expectEqual(@as(c_int, 0), db_disconnect(slot));
+}
+
+// ─── QuandleDB connection lifecycle tests ─────────────────────────────
+
+test "quandledb connect stores URL and disconnects" {
+    db_reset();
+    const url = "http://localhost:8081";
+    const slot = db_connect_quandledb(url, url.len);
+    try std.testing.expect(slot >= 0);
+    try std.testing.expectEqual(@as(c_int, @intFromEnum(ConnState.connected)), db_state(slot));
+
+    const idx: usize = @intCast(slot);
+    try std.testing.expectEqual(DatabaseBackend.quandledb, connections[idx].backend);
+    try std.testing.expectEqual(url.len, connections[idx].url_len);
+    try std.testing.expect(connections[idx].db_handle == null);
+
+    try std.testing.expectEqual(@as(c_int, 0), db_disconnect(slot));
+    try std.testing.expectEqual(@as(usize, 0), connections[idx].url_len);
+}
+
+test "quandledb connect rejects empty URL" {
+    db_reset();
+    const slot = db_connect_quandledb("", 0);
+    try std.testing.expectEqual(@as(c_int, -6), slot);
+}
+
+test "quandledb query lifecycle through state machine" {
+    db_reset();
+    const url = "http://localhost:8081";
+    const slot = db_connect_quandledb(url, url.len);
+    try std.testing.expect(slot >= 0);
+
+    try std.testing.expectEqual(@as(c_int, 0), db_begin_query(slot));
+    try std.testing.expectEqual(@as(c_int, @intFromEnum(ConnState.querying)), db_state(slot));
+    try std.testing.expectEqual(@as(c_int, 0), db_end_query(slot));
+    try std.testing.expectEqual(@as(c_int, @intFromEnum(ConnState.connected)), db_state(slot));
+    try std.testing.expectEqual(@as(c_int, 0), db_disconnect(slot));
+}
+
+// ─── LithoGlyph connection lifecycle tests ────────────────────────────
+
+test "lithoglyph connect stores URL and disconnects" {
+    db_reset();
+    const url = "http://localhost:8082";
+    const slot = db_connect_lithoglyph(url, url.len);
+    try std.testing.expect(slot >= 0);
+    try std.testing.expectEqual(@as(c_int, @intFromEnum(ConnState.connected)), db_state(slot));
+
+    const idx: usize = @intCast(slot);
+    try std.testing.expectEqual(DatabaseBackend.lithoglyph, connections[idx].backend);
+    try std.testing.expectEqual(url.len, connections[idx].url_len);
+    try std.testing.expect(connections[idx].db_handle == null);
+
+    try std.testing.expectEqual(@as(c_int, 0), db_disconnect(slot));
+    try std.testing.expectEqual(@as(usize, 0), connections[idx].url_len);
+}
+
+test "lithoglyph connect rejects empty URL" {
+    db_reset();
+    const slot = db_connect_lithoglyph("", 0);
+    try std.testing.expectEqual(@as(c_int, -6), slot);
+}
+
+test "lithoglyph query lifecycle through state machine" {
+    db_reset();
+    const url = "http://localhost:8082";
+    const slot = db_connect_lithoglyph(url, url.len);
+    try std.testing.expect(slot >= 0);
+
     try std.testing.expectEqual(@as(c_int, 0), db_begin_query(slot));
     try std.testing.expectEqual(@as(c_int, @intFromEnum(ConnState.querying)), db_state(slot));
     try std.testing.expectEqual(@as(c_int, 0), db_end_query(slot));

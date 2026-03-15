@@ -54,7 +54,7 @@ function sendError(id, code, message) {
 // Static cartridge manifest for offline/inspection mode
 const OFFLINE_MENU = {
   tier_teranga: [
-    { name: "database-mcp", version: "0.1.0", domain: "Database", protocols: ["MCP","REST","gRPC"], status: "Available", available: true },
+    { name: "database-mcp", version: "0.2.0", domain: "Database", protocols: ["MCP","REST","gRPC"], status: "Available", available: true, backends: ["VeriSimDB (VQL)", "QuandleDB (KQL)", "LithoGlyph (GQL)", "SQLite", "PostgreSQL", "Redis"] },
     { name: "nesy-mcp", version: "0.1.0", domain: "NeSy", protocols: ["NeSy","MCP","REST"], status: "Available", available: true },
     { name: "fleet-mcp", version: "0.1.0", domain: "Fleet", protocols: ["Fleet","MCP","REST"], status: "Available", available: true },
     { name: "agent-mcp", version: "0.1.0", domain: "Cloud", protocols: ["Agentic","MCP","REST","gRPC"], status: "Available", available: true },
