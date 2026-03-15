@@ -16,6 +16,8 @@ import json
 // ═══════════════════════════════════════════════════════════════════════
 
 fn C.lang_session_start(lang_id int, name_ptr &u8, name_len usize) int
+fn C.lang_session_start_dialect(lang_id int, dialect_mode int, name_ptr &u8, name_len usize) int
+fn C.lang_session_dialect(sess_idx int) int
 fn C.lang_session_set_url(sess_idx int, url_ptr &u8, url_len usize) int
 fn C.lang_session_end(sess_idx int) int
 fn C.lang_session_state(sess_idx int) int
@@ -95,9 +97,24 @@ struct SessionResponse {
 // Adapter Functions (called by main adapter router)
 // ═══════════════════════════════════════════════════════════════════════
 
+// Start a language session. dialect: "pure" (default) or "jtv" (JtV-injected).
+// JtV (Julia-the-Viper) is injectable into any other language, augmenting its
+// grammar with JtV syntax extensions. Request "eclexia+jtv" or pass dialect="jtv".
 pub fn start_session(language_name string, session_name string) !SessionResponse {
-	lang_id := language_label(language_name)!
-	sess := C.lang_session_start(lang_id, session_name.str, usize(session_name.len))
+	return start_session_dialect(language_name, 'pure', session_name)
+}
+
+pub fn start_session_dialect(language_name string, dialect string, session_name string) !SessionResponse {
+	// Parse "eclexia+jtv" shorthand
+	mut lang := language_name
+	mut dial := dialect
+	if language_name.contains('+jtv') {
+		lang = language_name.replace('+jtv', '')
+		dial = 'jtv'
+	}
+	lang_id := language_label(lang)!
+	dialect_mode := if dial == 'jtv' { 1 } else { 0 }
+	sess := C.lang_session_start_dialect(lang_id, dialect_mode, session_name.str, usize(session_name.len))
 	if sess < 0 {
 		return match sess {
 			-1 { error('no session slots available (max 8)') }
@@ -107,7 +124,7 @@ pub fn start_session(language_name string, session_name string) !SessionResponse
 	}
 	return SessionResponse{
 		session: sess
-		language: language_name
+		language: if dial == 'jtv' { '${lang}+jtv' } else { lang }
 		state: 'idle'
 	}
 }
@@ -175,7 +192,7 @@ pub fn evaluate(session int, source string) !string {
 }
 
 pub fn list_languages() string {
-	return '["eclexia","affinescript","betlang","ephapax","mylang","wokelang","anvomidav","phronesis","error-lang","julia-the-viper","me-dialect","oblibeny"]'
+	return '{"languages":["eclexia","affinescript","betlang","ephapax","mylang","wokelang","anvomidav","phronesis","error-lang","julia-the-viper","me-dialect","oblibeny"],"dialects":["pure","jtv"],"note":"JtV (Julia-the-Viper) is injectable into any language. Request \'eclexia+jtv\' or pass dialect=jtv to get JtV-augmented grammar alongside the base language."}'
 }
 
 pub fn reset() {

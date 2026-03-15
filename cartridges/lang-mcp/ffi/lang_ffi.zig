@@ -42,6 +42,15 @@ pub const Language = enum(c_int) {
     custom = 99,
 };
 
+/// Dialect mode: pure grammar or JtV-injected.
+/// Julia-the-Viper (JtV) is injectable into any other language,
+/// augmenting it with JtV's syntax extensions. Each language can
+/// be requested as pure (original grammar) or jtv (JtV-injected).
+pub const DialectMode = enum(c_int) {
+    pure = 0,
+    jtv = 1,
+};
+
 // ═══════════════════════════════════════════════════════════════════════
 // Session State Machine
 // ═══════════════════════════════════════════════════════════════════════
@@ -54,6 +63,7 @@ const LangSession = struct {
     active: bool,
     state: LangState,
     language: Language,
+    dialect: DialectMode,
     url_buf: [URL_BUF_SIZE]u8,
     url_len: usize,
     name_buf: [NAME_BUF_SIZE]u8,
@@ -64,6 +74,7 @@ var sessions: [MAX_SESSIONS]LangSession = [_]LangSession{.{
     .active = false,
     .state = .idle,
     .language = .custom,
+    .dialect = .pure,
     .url_buf = [_]u8{0} ** URL_BUF_SIZE,
     .url_len = 0,
     .name_buf = [_]u8{0} ** NAME_BUF_SIZE,
@@ -84,7 +95,16 @@ fn isValidTransition(from: LangState, to: LangState) bool {
 }
 
 /// Start a language session. Returns session index or -1.
+/// dialect_mode: 0 = pure grammar, 1 = JtV-injected.
 pub export fn lang_session_start(lang_id: c_int, name_ptr: [*]const u8, name_len: usize) c_int {
+    return lang_session_start_dialect(lang_id, 0, name_ptr, name_len);
+}
+
+/// Start a language session with explicit dialect mode.
+/// dialect_mode: 0 = pure grammar, 1 = JtV-injected.
+/// When JtV mode is active, the language service URL path gains a /jtv suffix
+/// (e.g. /typecheck/jtv, /eval/jtv) so the backend can apply JtV grammar injection.
+pub export fn lang_session_start_dialect(lang_id: c_int, dialect_mode: c_int, name_ptr: [*]const u8, name_len: usize) c_int {
     mutex.lock();
     defer mutex.unlock();
 
@@ -95,6 +115,7 @@ pub export fn lang_session_start(lang_id: c_int, name_ptr: [*]const u8, name_len
             sess.active = true;
             sess.state = .idle;
             sess.language = @enumFromInt(lang_id);
+            sess.dialect = if (dialect_mode == 1) .jtv else .pure;
             sess.url_len = 0;
             @memcpy(sess.name_buf[0..name_len], name_ptr[0..name_len]);
             sess.name_len = name_len;
@@ -102,6 +123,17 @@ pub export fn lang_session_start(lang_id: c_int, name_ptr: [*]const u8, name_len
         }
     }
     return -1; // No sessions available
+}
+
+/// Get the dialect mode of a session (0 = pure, 1 = jtv).
+pub export fn lang_session_dialect(sess_idx: c_int) c_int {
+    mutex.lock();
+    defer mutex.unlock();
+
+    if (sess_idx < 0 or sess_idx >= MAX_SESSIONS) return -1;
+    const idx: usize = @intCast(sess_idx);
+    if (!sessions[idx].active) return -1;
+    return @intFromEnum(sessions[idx].dialect);
 }
 
 /// Set the language service URL for a session (for remote compilation/eval).
@@ -176,7 +208,7 @@ pub export fn lang_typecheck(sess_idx: c_int, src_ptr: [*]const u8, src_len: usi
         if (sessions[idx].url_len == 0) return -6;
 
         const url_slice = sessions[idx].url_buf[0..sessions[idx].url_len];
-        const suffix = "/typecheck";
+        const suffix = if (sessions[idx].dialect == .jtv) "/typecheck/jtv" else "/typecheck";
         if (url_slice.len + suffix.len >= endpoint_buf.len) return -6;
         @memcpy(endpoint_buf[0..url_slice.len], url_slice);
         @memcpy(endpoint_buf[url_slice.len..][0..suffix.len], suffix);
@@ -236,7 +268,7 @@ pub export fn lang_eval(sess_idx: c_int, src_ptr: [*]const u8, src_len: usize, o
         if (sessions[idx].url_len == 0) return -6;
 
         const url_slice = sessions[idx].url_buf[0..sessions[idx].url_len];
-        const suffix = "/eval";
+        const suffix = if (sessions[idx].dialect == .jtv) "/eval/jtv" else "/eval";
         if (url_slice.len + suffix.len >= endpoint_buf.len) return -6;
         @memcpy(endpoint_buf[0..url_slice.len], url_slice);
         @memcpy(endpoint_buf[url_slice.len..][0..suffix.len], suffix);
@@ -389,6 +421,33 @@ test "all 12 languages can start sessions" {
     const name = "overflow";
     const overflow = lang_session_start(9, name, name.len);
     try std.testing.expectEqual(@as(c_int, -1), overflow);
+}
+
+test "jtv dialect mode on session" {
+    lang_reset();
+    const name = "jtv-test";
+    // Pure mode (default)
+    const pure_sess = lang_session_start(@intFromEnum(Language.eclexia), name, name.len);
+    try std.testing.expect(pure_sess >= 0);
+    try std.testing.expectEqual(@as(c_int, 0), lang_session_dialect(pure_sess));
+    _ = lang_session_end(pure_sess);
+
+    // JtV-injected mode
+    const jtv_sess = lang_session_start_dialect(@intFromEnum(Language.eclexia), 1, name, name.len);
+    try std.testing.expect(jtv_sess >= 0);
+    try std.testing.expectEqual(@as(c_int, 1), lang_session_dialect(jtv_sess));
+    _ = lang_session_end(jtv_sess);
+}
+
+test "jtv mode works for all languages" {
+    lang_reset();
+    const name = "jtv-all";
+    // Start eclexia+jtv
+    const sess = lang_session_start_dialect(@intFromEnum(Language.affinescript), 1, name, name.len);
+    try std.testing.expect(sess >= 0);
+    try std.testing.expectEqual(@as(c_int, 1), lang_session_dialect(sess));
+    try std.testing.expectEqual(@as(c_int, @intFromEnum(Language.affinescript)), lang_session_language(sess));
+    _ = lang_session_end(sess);
 }
 
 test "session URL rejects empty and overlong" {
