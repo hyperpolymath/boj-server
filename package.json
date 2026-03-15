@@ -6,7 +6,7 @@
   "author": "Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>",
   "repository": {
     "type": "git",
-    "url": "https://github.com/hyperpolymath/boj-server.git"
+    "url": "git+https://github.com/hyperpolymath/boj-server.git"
   },
   "homepage": "https://github.com/hyperpolymath/boj-server#readme",
   "bugs": {
@@ -28,7 +28,7 @@
   ],
   "type": "module",
   "bin": {
-    "boj-server": "./mcp-bridge/main.js"
+    "boj-server": "mcp-bridge/main.js"
   },
   "main": "./mcp-bridge/main.js",
   "files": [
