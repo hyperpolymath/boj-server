@@ -1,0 +1,26 @@
+# SPDX-License-Identifier: PMPL-1.0-or-later
+# Clade declaration — part of the gv-clade-index registry
+# See: https://github.com/hyperpolymath/gv-clade-index
+
+[identity]
+uuid = "5f5df93b-789d-5ff6-8a44-9dc6ed90a7b1"
+primary-forge = "github"
+primary-owner = "hyperpolymath"
+canonical-name = "boj-server"
+prefixed-name = "ap-boj-server"
+
+[clade]
+primary = "ap"
+secondary = ["ax"]
+assigned = "2026-03-16"
+rationale = ""
+
+[forges]
+github = "hyperpolymath/boj-server"
+gitlab = "hyperpolymath/boj-server"
+bitbucket = "hyperpolymath/boj-server"
+
+[lineage]
+type = "standalone"
+parent = "BoJ MCP server — cartridge system, multi-cloud"
+born = "2026-03-16"
