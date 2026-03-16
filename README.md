@@ -5,6 +5,13 @@
 One MCP server that gives any AI assistant access to your databases, containers, git repos, secrets, and more -- instead of installing seven separate tools.
 A genuine 'bundle of joy'.
 
+<a href="https://glama.ai/mcp/servers/hyperpolymath/boj-server">
+  <img width="380" height="200" src="https://glama.ai/mcp/servers/hyperpolymath/boj-server/badge" alt="BoJ MCP Server on Glama" />
+</a>
+<a href="https://www.bestpractices.dev/projects/12164">
+  <img src="https://www.bestpractices.dev/projects/12164/badge" alt="OpenSSF Best Practices passing (115%)" />
+</a>
+
 ## Quick Start
 
 **1. Clone and build**
