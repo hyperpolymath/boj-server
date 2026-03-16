@@ -296,6 +296,88 @@ function cartridgeToTools(cartridges) {
     },
   });
 
+  // Browser automation (Firefox via Marionette)
+  tools.push({
+    name: "boj_browser_navigate",
+    description: "Navigate Firefox to a URL",
+    inputSchema: {
+      type: "object",
+      properties: {
+        url: { type: "string", description: "URL to navigate to" },
+      },
+      required: ["url"],
+    },
+  });
+
+  tools.push({
+    name: "boj_browser_click",
+    description: "Click an element on the page by CSS selector",
+    inputSchema: {
+      type: "object",
+      properties: {
+        selector: { type: "string", description: "CSS selector of the element to click" },
+      },
+      required: ["selector"],
+    },
+  });
+
+  tools.push({
+    name: "boj_browser_type",
+    description: "Type text into an element on the page",
+    inputSchema: {
+      type: "object",
+      properties: {
+        selector: { type: "string", description: "CSS selector of the input element" },
+        text: { type: "string", description: "Text to type" },
+      },
+      required: ["selector", "text"],
+    },
+  });
+
+  tools.push({
+    name: "boj_browser_read_page",
+    description: "Read the text content of the current page",
+    inputSchema: {
+      type: "object",
+      properties: {},
+    },
+  });
+
+  tools.push({
+    name: "boj_browser_screenshot",
+    description: "Take a screenshot of the current page",
+    inputSchema: {
+      type: "object",
+      properties: {},
+    },
+  });
+
+  tools.push({
+    name: "boj_browser_tabs",
+    description: "List, create, or close browser tabs",
+    inputSchema: {
+      type: "object",
+      properties: {
+        operation: { type: "string", enum: ["list", "create", "close"], description: "Tab operation" },
+        url: { type: "string", description: "URL for new tab (create only)" },
+        tab_id: { type: "number", description: "Tab ID (close only)" },
+      },
+      required: ["operation"],
+    },
+  });
+
+  tools.push({
+    name: "boj_browser_execute_js",
+    description: "Execute JavaScript in the current page context",
+    inputSchema: {
+      type: "object",
+      properties: {
+        script: { type: "string", description: "JavaScript code to execute" },
+      },
+      required: ["script"],
+    },
+  });
+
   // Research
   tools.push({
     name: "boj_research",
@@ -418,6 +500,18 @@ async function handleMessage(line) {
         }
         case "boj_ml_huggingface": {
           const result = await invokeCartridge("ml-mcp", { provider: "huggingface", ...args });
+          sendResult(id, { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] });
+          break;
+        }
+        case "boj_browser_navigate":
+        case "boj_browser_click":
+        case "boj_browser_type":
+        case "boj_browser_read_page":
+        case "boj_browser_screenshot":
+        case "boj_browser_tabs":
+        case "boj_browser_execute_js": {
+          const action = toolName.replace("boj_browser_", "");
+          const result = await invokeCartridge("browser-mcp", { action, ...args });
           sendResult(id, { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] });
           break;
         }
