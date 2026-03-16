@@ -1,150 +1,32 @@
-# This Dockerfile is a symlink target for tools that require "Dockerfile"
-# at the repository root. The canonical container definition is at
-# container/Containerfile.
-#
-# Usage: docker build -t boj-server:latest .
-# Or:    podman build -t boj-server:latest -f container/Containerfile .
-
-# Include the real Containerfile contents:
 # SPDX-License-Identifier: PMPL-1.0-or-later
-# Bundle of Joy Server Container Image
+# Lightweight MCP stdio bridge for inspection and deployment.
+# Runs only the Node.js MCP bridge (zero dependencies).
+# The bridge responds to MCP initialize + tools/list with the full
+# cartridge tool manifest.
 #
-# Multi-stage build: Zig FFI compilation + pre-built V adapter binary.
+# For the full production image with Zig FFI + V adapter, use:
+#   podman build -f container/Containerfile .
 #
-# Prerequisites:
-#   just build-adapter   # Build the V binary locally first
-#
-# Build with Podman:
-#   podman build -t boj-server:latest -f container/Containerfile .
-#
-# Run:
-#   podman run -p 7700:7700 -p 7701:7701 -p 7702:7702 boj-server:latest
-#
-# Run with persistent volume:
-#   podman run -p 7700:7700 -p 7701:7701 -p 7702:7702 \
-#     -v boj-server-data:/data boj-server:latest
+# Usage:
+#   podman build -t boj-server:latest .
+#   echo '{"jsonrpc":"2.0","id":1,"method":"initialize",...}' | podman run -i boj-server
 
-# ============================================================================
-# Stage 1: FFI Builder
-# ============================================================================
-#
-# Compiles all Zig FFI layers (core + 18 cartridges) in ReleaseFast mode.
-# The V adapter binary is built locally and copied in — V compiler is not
-# available in Wolfi packages.
+FROM node:22-slim
 
-FROM cgr.dev/chainguard/wolfi-base:latest AS builder
-
-# Install Zig toolchain for FFI compilation
-RUN apk add --no-cache build-base zig
-
-WORKDIR /build
-
-# Copy source tree
-COPY . .
-
-# Build core FFI (catalogue, loader, guardian, federation, readiness, verisimdb, e2e)
-RUN cd ffi/zig && zig build -Doptimize=ReleaseFast
-
-# Build all 18 cartridge FFI shared libraries
-RUN for cart in database fleet nesy agent cloud container k8s git \
-                secrets queues iac observe ssg proof lsp dap bsp feedback; do \
-      echo "Building ${cart}-mcp FFI..." && \
-      cd /build/cartridges/${cart}-mcp/ffi && \
-      zig build -Doptimize=ReleaseFast || exit 1; \
-    done
-
-# ============================================================================
-# Stage 2: Runtime
-# ============================================================================
-#
-# Minimal production image. Only the compiled binary, shared libraries,
-# and runtime dependencies are included.
-
-FROM cgr.dev/chainguard/wolfi-base:latest
-
-# OCI image labels (compatible with cerro-torre .ctp bundle metadata)
-LABEL org.opencontainers.image.title="Bundle of Joy Server" \
-      org.opencontainers.image.description="Unified server capability catalogue with formally verified cartridges, distributed community hosting, and the Teranga menu system" \
+LABEL org.opencontainers.image.title="Bundle of Joy Server (MCP Bridge)" \
+      org.opencontainers.image.description="MCP stdio transport for BoJ cartridge toolkit" \
       org.opencontainers.image.url="https://github.com/hyperpolymath/boj-server" \
       org.opencontainers.image.source="https://github.com/hyperpolymath/boj-server" \
       org.opencontainers.image.vendor="hyperpolymath" \
-      org.opencontainers.image.licenses="PMPL-1.0-or-later" \
-      org.opencontainers.image.authors="Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>" \
-      dev.cerrotorre.manifest="container/manifest.toml" \
-      dev.cerrotorre.gatekeeper="container/.gatekeeper.yaml" \
-      dev.stapeln.compose="container/compose.toml"
-
-# Minimal runtime dependencies
-RUN apk add --no-cache ca-certificates curl
-
-# Create non-root user
-RUN addgroup -S appuser && adduser -S appuser -G appuser
+      org.opencontainers.image.licenses="MPL-2.0" \
+      org.opencontainers.image.authors="Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>"
 
 WORKDIR /app
 
-# Copy pre-built V adapter binary (built locally via just build-adapter)
-COPY adapter/v/boj-server /app/boj-server
-RUN chmod +x /app/boj-server
+COPY package.json /app/
+COPY mcp-bridge/ /app/mcp-bridge/
 
-# Copy core FFI libraries from builder stage
-COPY --from=builder /build/ffi/zig/zig-out/ /app/lib/core/
+# No npm install needed — zero dependencies
+USER node
 
-# Copy all 18 cartridge .so files from builder stage
-COPY --from=builder /build/cartridges/database-mcp/ffi/zig-out/ /app/lib/cartridges/database-mcp/
-COPY --from=builder /build/cartridges/fleet-mcp/ffi/zig-out/ /app/lib/cartridges/fleet-mcp/
-COPY --from=builder /build/cartridges/nesy-mcp/ffi/zig-out/ /app/lib/cartridges/nesy-mcp/
-COPY --from=builder /build/cartridges/agent-mcp/ffi/zig-out/ /app/lib/cartridges/agent-mcp/
-COPY --from=builder /build/cartridges/cloud-mcp/ffi/zig-out/ /app/lib/cartridges/cloud-mcp/
-COPY --from=builder /build/cartridges/container-mcp/ffi/zig-out/ /app/lib/cartridges/container-mcp/
-COPY --from=builder /build/cartridges/k8s-mcp/ffi/zig-out/ /app/lib/cartridges/k8s-mcp/
-COPY --from=builder /build/cartridges/git-mcp/ffi/zig-out/ /app/lib/cartridges/git-mcp/
-COPY --from=builder /build/cartridges/secrets-mcp/ffi/zig-out/ /app/lib/cartridges/secrets-mcp/
-COPY --from=builder /build/cartridges/queues-mcp/ffi/zig-out/ /app/lib/cartridges/queues-mcp/
-COPY --from=builder /build/cartridges/iac-mcp/ffi/zig-out/ /app/lib/cartridges/iac-mcp/
-COPY --from=builder /build/cartridges/observe-mcp/ffi/zig-out/ /app/lib/cartridges/observe-mcp/
-COPY --from=builder /build/cartridges/ssg-mcp/ffi/zig-out/ /app/lib/cartridges/ssg-mcp/
-COPY --from=builder /build/cartridges/proof-mcp/ffi/zig-out/ /app/lib/cartridges/proof-mcp/
-COPY --from=builder /build/cartridges/lsp-mcp/ffi/zig-out/ /app/lib/cartridges/lsp-mcp/
-COPY --from=builder /build/cartridges/dap-mcp/ffi/zig-out/ /app/lib/cartridges/dap-mcp/
-COPY --from=builder /build/cartridges/bsp-mcp/ffi/zig-out/ /app/lib/cartridges/bsp-mcp/
-COPY --from=builder /build/cartridges/feedback-mcp/ffi/zig-out/ /app/lib/cartridges/feedback-mcp/
-
-# Copy entrypoint script
-COPY container/entrypoint.sh /app/entrypoint.sh
-RUN chmod +x /app/entrypoint.sh
-
-# Copy stapeln integration files
-COPY container/.gatekeeper.yaml /etc/svalinn/gatekeeper.yaml
-COPY container/manifest.toml /app/manifest.toml
-
-# Copy machine-readable config (menu, order-ticket)
-COPY .machine_readable/servers/ /app/config/servers/
-
-# Create data directory for persistent storage
-RUN mkdir -p /data && chown appuser:appuser /data
-
-# Set ownership
-RUN chown -R appuser:appuser /app
-
-# Environment variables
-ENV APP_HOST=[::]
-ENV APP_PORT=7700
-ENV APP_LOG_FORMAT=json
-ENV APP_DATA_DIR=/data
-ENV LD_LIBRARY_PATH=/app/lib/core/lib:/app/lib/cartridges/database-mcp/lib:/app/lib/cartridges/fleet-mcp/lib:/app/lib/cartridges/nesy-mcp/lib:/app/lib/cartridges/agent-mcp/lib:/app/lib/cartridges/cloud-mcp/lib:/app/lib/cartridges/container-mcp/lib:/app/lib/cartridges/k8s-mcp/lib:/app/lib/cartridges/git-mcp/lib:/app/lib/cartridges/secrets-mcp/lib:/app/lib/cartridges/queues-mcp/lib:/app/lib/cartridges/iac-mcp/lib:/app/lib/cartridges/observe-mcp/lib:/app/lib/cartridges/ssg-mcp/lib:/app/lib/cartridges/proof-mcp/lib:/app/lib/cartridges/lsp-mcp/lib:/app/lib/cartridges/dap-mcp/lib:/app/lib/cartridges/bsp-mcp/lib:/app/lib/cartridges/feedback-mcp/lib
-
-# Persistent storage volume
-VOLUME ["/data"]
-
-# Run as non-root
-USER appuser
-
-# Expose all three adapter ports
-EXPOSE 7700 7701 7702
-
-# Health check via REST endpoint
-HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-    CMD curl -sf http://localhost:${APP_PORT}/health || exit 1
-
-ENTRYPOINT ["/app/entrypoint.sh"]
-CMD ["/app/boj-server"]
+ENTRYPOINT ["node", "mcp-bridge/main.js"]
