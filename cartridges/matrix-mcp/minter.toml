@@ -1,0 +1,46 @@
+# SPDX-License-Identifier: PMPL-1.0-or-later
+# Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+
+name = "matrix-mcp"
+description = "Matrix Client-Server API v3 cartridge — messages, events, rooms, membership, state, sync, search, media, profiles, room creation"
+version = "0.1.0"
+domain = "Comms"
+protocols = [
+    "MCP",
+    "REST",
+]
+tier = "Ayo"
+backend = "universal"
+generate_panel = true
+
+[auth]
+type = "bearer_token"
+header = "Authorization"
+prefix = "Bearer"
+default_homeserver = "https://matrix.org"
+api_prefix = "/_matrix/client/v3/"
+
+[idempotency]
+strategy = "transaction_id"
+description = "Monotonic txnId in PUT request paths for event deduplication"
+
+[actions]
+count = 16
+list = [
+    "SendMessage",
+    "SendEvent",
+    "GetRoom",
+    "ListRooms",
+    "JoinRoom",
+    "LeaveRoom",
+    "InviteUser",
+    "KickUser",
+    "SetRoomState",
+    "GetRoomState",
+    "Sync",
+    "SearchMessages",
+    "UploadMedia",
+    "GetProfile",
+    "SetDisplayName",
+    "CreateRoom",
+]

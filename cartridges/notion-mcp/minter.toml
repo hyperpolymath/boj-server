@@ -1,0 +1,13 @@
+# SPDX-License-Identifier: PMPL-1.0-or-later
+# Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+name = "notion-mcp"
+description = "Notion REST API cartridge — pages, databases, blocks, users, and comments via https://api.notion.com/v1/"
+version = "0.1.0"
+domain = "Comms"
+protocols = [
+    "MCP",
+    "REST",
+]
+tier = "Ayo"
+backend = "universal"
+generate_panel = true

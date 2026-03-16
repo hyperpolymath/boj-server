@@ -1,0 +1,120 @@
+= gitlab-api-mcp
+Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+:spdx: PMPL-1.0-or-later
+:tier: Ayo
+:domain: Git
+:protocols: MCP, REST, GraphQL
+
+== Overview
+
+GitLab REST API v4 and GraphQL wrapper cartridge for the BoJ server. Supports
+both **gitlab.com** and **self-hosted** GitLab instances. Used for repository
+mirroring, project management, CI/CD pipeline control, and code search.
+
+Authentication uses `Private-Token` headers with tokens sourced from the
+`vault-mcp` cartridge.
+
+== Supported Actions (20)
+
+[cols="1,1,2"]
+|===
+| Action | Method | GitLab Endpoint
+
+| ListProjects    | GET    | `/projects`
+| GetProject      | GET    | `/projects/:id`
+| CreateIssue     | POST   | `/projects/:id/issues`
+| ListIssues      | GET    | `/projects/:id/issues`
+| GetIssue        | GET    | `/projects/:id/issues/:iid`
+| CommentIssue    | POST   | `/projects/:id/issues/:iid/notes`
+| CreateMR        | POST   | `/projects/:id/merge_requests`
+| ListMRs         | GET    | `/projects/:id/merge_requests`
+| GetMR           | GET    | `/projects/:id/merge_requests/:iid`
+| MergeMR         | PUT    | `/projects/:id/merge_requests/:iid/merge`
+| ListBranches    | GET    | `/projects/:id/repository/branches`
+| CreateBranch    | POST   | `/projects/:id/repository/branches`
+| SearchCode      | GET    | `/projects/:id/search?scope=blobs`
+| ListPipelines   | GET    | `/projects/:id/pipelines`
+| GetPipeline     | GET    | `/projects/:id/pipelines/:id`
+| TriggerPipeline | POST   | `/projects/:id/pipeline`
+| ListReleases    | GET    | `/projects/:id/releases`
+| CreateRelease   | POST   | `/projects/:id/releases`
+| PushMirror      | POST   | `/projects/:id/remote_mirrors`
+| GetFileContents | GET    | `/projects/:id/repository/files/:path/raw`
+|===
+
+Additionally, arbitrary **GraphQL** queries are supported via the `/api/graphql`
+endpoint.
+
+== Self-Hosted Instances
+
+Pass a custom base URL when authenticating:
+
+[source]
+----
+authenticate(slot, token, "https://git.example.org")
+----
+
+The cartridge stores the base URL per session. All subsequent API calls for that
+session are routed to the configured instance. Default: `https://gitlab.com`.
+
+== Push Mirror Setup
+
+The `PushMirror` action configures GitLab's built-in push mirroring to replicate
+a GitLab project to a remote repository (e.g. GitHub, Bitbucket):
+
+[source]
+----
+push_mirror(slot, project_id, "https://github.com/org/repo.git")
+----
+
+This calls `POST /projects/:id/remote_mirrors` under the hood.
+
+== Architecture
+
+[cols="1,1,2"]
+|===
+| Layer | Language | Purpose
+
+| ABI
+| Idris2
+| Formally verified state machine (`SafeGit`) with dependent-type proofs.
+  States: Unauthenticated, Authenticated, RateLimited, Error.
+
+| FFI
+| Zig
+| C-compatible implementation with thread-safe session pool (16 slots),
+  Private-Token auth, rate-limit tracking, configurable instance URL.
+
+| Adapter
+| V-lang
+| REST/GraphQL bridge mapping all 20 actions to BoJ adapter protocol.
+|===
+
+== State Machine
+
+....
+Unauthenticated ──authenticate──► Authenticated
+Authenticated   ──rate-limit───► RateLimited
+RateLimited     ──resume───────► Authenticated
+Authenticated   ──error────────► Error
+Error           ──reset────────► Unauthenticated
+Authenticated   ──logout───────► Unauthenticated
+....
+
+== Building
+
+[source,bash]
+----
+# Build FFI shared library
+cd ffi && zig build
+
+# Run FFI tests
+cd ffi && zig build test
+
+# Type-check ABI
+cd abi && idris2 --check gitlab_api_mcp.ipkg
+----
+
+== Status
+
+Development — customised for GitLab API wrapping, not yet wired to live HTTP.

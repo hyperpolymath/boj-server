@@ -1,0 +1,94 @@
+{
+  "$schema": "https://panll.dev/schemas/panel-manifest/v1.json",
+  "spdx": "PMPL-1.0-or-later",
+  "cartridge": "vault-mcp",
+  "domain": "Secrets",
+  "version": "0.1.0",
+  "panels": [
+    {
+      "id": "vault-state",
+      "title": "Vault State",
+      "description": "Current vault lifecycle state (Locked / MfaPending / Unlocked / Sealed)",
+      "type": "status-indicator",
+      "data_source": {
+        "endpoint": "/vault/state",
+        "method": "GET",
+        "refresh_interval_ms": 5000
+      },
+      "widgets": [
+        {
+          "type": "state-badge",
+          "field": "state",
+          "states": {
+            "locked": { "color": "#e74c3c", "icon": "lock" },
+            "mfa_pending": { "color": "#f39c12", "icon": "shield-check" },
+            "unlocked": { "color": "#2ecc71", "icon": "lock-open" },
+            "sealed": { "color": "#95a5a6", "icon": "archive" }
+          }
+        }
+      ]
+    },
+    {
+      "id": "credential-count",
+      "title": "Credential Count",
+      "description": "Number of credential hints registered in the vault",
+      "type": "metric",
+      "data_source": {
+        "endpoint": "/vault/status",
+        "method": "GET",
+        "refresh_interval_ms": 30000
+      },
+      "widgets": [
+        {
+          "type": "counter",
+          "field": "credential_count",
+          "label": "Credentials",
+          "icon": "key"
+        }
+      ]
+    },
+    {
+      "id": "last-access",
+      "title": "Last Access",
+      "description": "Timestamp of the most recent credential-proxied operation",
+      "type": "metric",
+      "data_source": {
+        "endpoint": "/vault/status",
+        "method": "GET",
+        "refresh_interval_ms": 10000
+      },
+      "widgets": [
+        {
+          "type": "timestamp",
+          "field": "last_access_epoch",
+          "label": "Last Access",
+          "format": "relative",
+          "icon": "clock"
+        }
+      ]
+    },
+    {
+      "id": "audit-log",
+      "title": "Audit Log",
+      "description": "Recent vault operations (execute, rotate, verify) with timestamps",
+      "type": "log-stream",
+      "data_source": {
+        "endpoint": "/vault/audit",
+        "method": "GET",
+        "refresh_interval_ms": 15000,
+        "max_entries": 50
+      },
+      "widgets": [
+        {
+          "type": "log-table",
+          "columns": [
+            { "field": "timestamp", "label": "Time", "format": "datetime" },
+            { "field": "action", "label": "Action" },
+            { "field": "credential_hint", "label": "Hint" },
+            { "field": "result", "label": "Result" }
+          ]
+        }
+      ]
+    }
+  ]
+}

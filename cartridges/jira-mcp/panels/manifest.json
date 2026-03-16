@@ -1,0 +1,76 @@
+{
+  "$schema": "https://panll.dev/schemas/panel-manifest/v1.json",
+  "spdx": "PMPL-1.0-or-later",
+  "cartridge": "jira-mcp",
+  "domain": "Comms",
+  "version": "0.1.0",
+  "panels": [
+    {
+      "id": "jira-auth-status",
+      "title": "Auth Status",
+      "description": "Current Jira connection state (Unauthenticated / Authenticated / RateLimited / Error)",
+      "type": "status-indicator",
+      "data_source": {
+        "endpoint": "/jira/state",
+        "method": "GET",
+        "refresh_interval_ms": 5000
+      },
+      "widgets": [
+        {
+          "type": "state-badge",
+          "field": "state",
+          "states": {
+            "unauthenticated": { "color": "#95a5a6", "icon": "plug-disconnected" },
+            "authenticated": { "color": "#2ecc71", "icon": "plug-connected" },
+            "rate_limited": { "color": "#e67e22", "icon": "clock" },
+            "error": { "color": "#e74c3c", "icon": "alert-triangle" }
+          }
+        }
+      ]
+    },
+    {
+      "id": "jira-instance",
+      "title": "Instance URL",
+      "description": "The Jira Cloud instance this session is connected to",
+      "type": "metric",
+      "data_source": {
+        "endpoint": "/jira/metrics",
+        "method": "GET",
+        "refresh_interval_ms": 30000
+      },
+      "widgets": [
+        {
+          "type": "text",
+          "field": "instance",
+          "label": "Instance",
+          "icon": "server"
+        }
+      ]
+    },
+    {
+      "id": "jira-sprint-progress",
+      "title": "Sprint Progress",
+      "description": "Current active sprint completion percentage and actions performed",
+      "type": "multi-metric",
+      "data_source": {
+        "endpoint": "/jira/metrics",
+        "method": "GET",
+        "refresh_interval_ms": 10000
+      },
+      "widgets": [
+        {
+          "type": "progress-bar",
+          "items": [
+            { "field": "sprint_progress", "max_value": 100, "label": "Sprint Progress", "color": "#3498db" }
+          ]
+        },
+        {
+          "type": "counter",
+          "field": "actions_performed",
+          "label": "Actions Performed",
+          "icon": "activity"
+        }
+      ]
+    }
+  ]
+}

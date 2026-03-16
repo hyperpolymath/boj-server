@@ -1,0 +1,10 @@
+-- SPDX-License-Identifier: PMPL-1.0-or-later
+package github_api_mcp
+
+version = "0.2.0"
+authors = "Jonathan D.A. Jewell"
+brief   = "GitHub REST & GraphQL API cartridge — type-safe ABI layer"
+
+depends = base
+
+modules = GithubApiMcp.SafeGit

@@ -1,0 +1,70 @@
+{
+  "$schema": "https://panll.dev/schemas/panel-manifest/v1.json",
+  "spdx": "PMPL-1.0-or-later",
+  "cartridge": "notion-mcp",
+  "domain": "Comms",
+  "version": "0.1.0",
+  "panels": [
+    {
+      "id": "notion-auth-status",
+      "title": "Auth Status",
+      "description": "Current Notion connection state (Unauthenticated / Authenticated / RateLimited / Error)",
+      "type": "status-indicator",
+      "data_source": {
+        "endpoint": "/notion/state",
+        "method": "GET",
+        "refresh_interval_ms": 5000
+      },
+      "widgets": [
+        {
+          "type": "state-badge",
+          "field": "state",
+          "states": {
+            "unauthenticated": { "color": "#95a5a6", "icon": "plug-disconnected" },
+            "authenticated": { "color": "#2ecc71", "icon": "plug-connected" },
+            "rate_limited": { "color": "#e67e22", "icon": "clock" },
+            "error": { "color": "#e74c3c", "icon": "alert-triangle" }
+          }
+        }
+      ]
+    },
+    {
+      "id": "notion-workspace",
+      "title": "Workspace",
+      "description": "Name of the Notion workspace the integration is connected to",
+      "type": "metric",
+      "data_source": {
+        "endpoint": "/notion/metrics",
+        "method": "GET",
+        "refresh_interval_ms": 30000
+      },
+      "widgets": [
+        {
+          "type": "text",
+          "field": "workspace",
+          "label": "Workspace",
+          "icon": "building"
+        }
+      ]
+    },
+    {
+      "id": "notion-page-count",
+      "title": "Page Operations",
+      "description": "Number of page search/get/create operations in the current session",
+      "type": "metric",
+      "data_source": {
+        "endpoint": "/notion/metrics",
+        "method": "GET",
+        "refresh_interval_ms": 10000
+      },
+      "widgets": [
+        {
+          "type": "counter",
+          "field": "page_count",
+          "label": "Page Operations",
+          "icon": "file-text"
+        }
+      ]
+    }
+  ]
+}

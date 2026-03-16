@@ -1,0 +1,126 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+= vault-mcp
+Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+:spdx: PMPL-1.0-or-later
+:tier: Ayo
+:domain: Secrets
+:protocols: MCP, REST
+
+== Overview
+
+Zero-knowledge credential proxy for the *reasonably-good-token-vault*.
+
+BoJ cartridges never see credentials directly. The vault resolves credential
+hints (e.g. `github.com`, `cloudflare-api`) internally and injects secrets
+into command execution environments via the Ada CLI (`svalinn_cli`).
+
+The primary MCP tool is `vault/execute`:
+
+[source,json]
+----
+{
+  "name": "vault/execute",
+  "description": "Execute command with vault-managed credentials. You never see the credential.",
+  "inputSchema": {
+    "properties": {
+      "command": { "type": "string" },
+      "credential_hint": { "type": "string", "description": "Which service needs auth (e.g. 'github.com')" }
+    }
+  }
+}
+----
+
+== Vault State Machine
+
+[source]
+----
+Locked ──> MfaPending ──> Unlocked ──> Locked
+  │            │              │
+  │            └──> Locked    └──> Sealed
+  │
+  └──> Sealed (terminal)
+----
+
+States::
+  * **Locked** — vault sealed, no operations until unlock + MFA
+  * **MfaPending** — unlock requested, awaiting second factor
+  * **Unlocked** — vault open, credential-proxied operations permitted
+  * **Sealed** — permanently sealed, requires full re-init
+
+== MCP Tools
+
+[cols="1,2,1"]
+|===
+| Tool | Description | Requires Unlock?
+
+| `vault/execute`
+| Execute command with vault-managed credentials
+| Yes
+
+| `vault/list`
+| List available credential hints (no secrets exposed)
+| Yes
+
+| `vault/status`
+| Query vault lock/seal state
+| No
+
+| `vault/rotate`
+| Rotate a credential by hint
+| Yes
+
+| `vault/verify`
+| Verify credential integrity without revealing it
+| Yes
+|===
+
+== Supported Identity Types
+
+The vault supports 12 identity types via the Ada CLI:
+
+`ssh`, `pgp`, `pat`, `rest-api`, `graphql-api`, `grpc-api`,
+`xpc`, `x509`, `did`, `oauth2`, `jwt`, `wireguard`
+
+== Architecture
+
+[cols="1,1,2"]
+|===
+| Layer | Language | Purpose
+
+| ABI
+| Idris2
+| Formally verified vault state machine with dependent-type proofs (`VaultMcp.SafeSecrets`)
+
+| FFI
+| Zig
+| C-compatible implementation with thread-safe vault proxy; calls `svalinn_cli` via subprocess
+
+| Adapter
+| V-lang
+| REST bridge to BoJ unified adapter protocol
+|===
+
+== Ada CLI Integration
+
+The Zig FFI calls the `svalinn_cli` Ada binary for all credential operations:
+
+* Socket path: `/run/svalinn/api.sock`
+* CLI verbs: `init`, `unlock`, `lock`, `add`, `list`, `get`, `remove`, `export`, `import`, `tui`, `status`, `rotate`, `verify`
+
+== Building
+
+[source,bash]
+----
+# Build FFI shared library
+cd ffi && zig build
+
+# Run FFI tests
+cd ffi && zig build test
+
+# Type-check ABI
+cd abi && idris2 --check VaultMcp.SafeSecrets
+----
+
+== Status
+
+Development — not yet ready for mounting.

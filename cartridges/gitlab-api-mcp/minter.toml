@@ -1,0 +1,12 @@
+name = "gitlab-api-mcp"
+description = "GitLab REST API v4 and GraphQL wrapper — supports gitlab.com and self-hosted instances"
+version = "0.1.0"
+domain = "Git"
+protocols = [
+    "MCP",
+    "REST",
+    "GraphQL",
+]
+tier = "Ayo"
+backend = "universal"
+generate_panel = true

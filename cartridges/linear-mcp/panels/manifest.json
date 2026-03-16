@@ -1,0 +1,76 @@
+{
+  "$schema": "https://panll.dev/schemas/panel-manifest/v1.json",
+  "spdx": "PMPL-1.0-or-later",
+  "cartridge": "linear-mcp",
+  "domain": "Comms",
+  "version": "0.1.0",
+  "panels": [
+    {
+      "id": "linear-auth-status",
+      "title": "Auth Status",
+      "description": "Current Linear connection state (Unauthenticated / Authenticated / RateLimited / Error)",
+      "type": "status-indicator",
+      "data_source": {
+        "endpoint": "/linear/state",
+        "method": "GET",
+        "refresh_interval_ms": 5000
+      },
+      "widgets": [
+        {
+          "type": "state-badge",
+          "field": "state",
+          "states": {
+            "unauthenticated": { "color": "#95a5a6", "icon": "plug-disconnected" },
+            "authenticated": { "color": "#2ecc71", "icon": "plug-connected" },
+            "rate_limited": { "color": "#e67e22", "icon": "clock" },
+            "error": { "color": "#e74c3c", "icon": "alert-triangle" }
+          }
+        }
+      ]
+    },
+    {
+      "id": "linear-issue-count",
+      "title": "Issue Queries",
+      "description": "Number of issue list/search queries performed in the current session",
+      "type": "metric",
+      "data_source": {
+        "endpoint": "/linear/metrics",
+        "method": "GET",
+        "refresh_interval_ms": 10000
+      },
+      "widgets": [
+        {
+          "type": "counter",
+          "field": "issue_count",
+          "label": "Issue Queries",
+          "icon": "list"
+        }
+      ]
+    },
+    {
+      "id": "linear-recent-activity",
+      "title": "Recent Activity",
+      "description": "Total actions performed and rate-limit usage in the current session",
+      "type": "multi-metric",
+      "data_source": {
+        "endpoint": "/linear/metrics",
+        "method": "GET",
+        "refresh_interval_ms": 10000
+      },
+      "widgets": [
+        {
+          "type": "counter",
+          "field": "actions_performed",
+          "label": "Actions Performed",
+          "icon": "activity"
+        },
+        {
+          "type": "progress-bar",
+          "items": [
+            { "field": "rate_count", "max_field": "rate_budget", "label": "Rate Limit (50/min)", "color": "#3498db" }
+          ]
+        }
+      ]
+    }
+  ]
+}

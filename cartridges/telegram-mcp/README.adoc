@@ -1,0 +1,90 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+// Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+
+= telegram-mcp
+Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+:spdx: PMPL-1.0-or-later
+:tier: Ayo
+:domain: Comms
+:protocols: MCP, REST
+
+== Overview
+
+Telegram Bot API cartridge for BoJ server. Provides type-safe access to
+16 Telegram actions: messages, updates, chats, media, webhooks, callbacks,
+stickers, forwarding, pinning, and bot info. Token-in-URL authentication
+pattern (https://api.telegram.org/bot\{token}/\{method}). Global rate limit
+of 30 messages per second.
+
+== Actions
+
+[cols="1,2"]
+|===
+| Action | Description
+
+| SendMessage | Send a text message to a chat
+| EditMessage | Edit an existing message
+| DeleteMessage | Delete a message
+| GetUpdates | Long-poll for new updates
+| GetChat | Get information about a chat
+| ListChats | List chats the bot participates in
+| SendPhoto | Send a photo to a chat
+| SendDocument | Send a document/file to a chat
+| SetWebhook | Set a webhook URL for receiving updates
+| DeleteWebhook | Remove the webhook
+| GetWebhookInfo | Get current webhook configuration
+| AnswerCallback | Respond to a callback query from an inline button
+| SendSticker | Send a sticker to a chat
+| ForwardMessage | Forward a message between chats
+| PinMessage | Pin a message in a chat
+| GetMe | Get bot information (username, id, capabilities)
+|===
+
+== Architecture
+
+[cols="1,1,2"]
+|===
+| Layer | Language | Purpose
+
+| ABI
+| Idris2
+| Formally verified state machine (TelegramMcp.SafeComms) with dependent-type proofs
+
+| FFI
+| Zig
+| C-compatible implementation with thread-safe session pool, token validation, rate limit constants
+
+| Adapter
+| V-lang
+| REST bridge to BoJ unified adapter protocol with all 16 actions
+|===
+
+== State Machine
+
+....
+Disconnected -> Authenticating -> Connected <-> RateLimited
+                       |              |              |
+                       v              v              v
+                     Error <----------+--------------+
+                       |
+                       v
+                  Disconnected
+....
+
+== Building
+
+[source,bash]
+----
+# Build FFI shared library
+cd ffi && zig build
+
+# Run FFI tests
+cd ffi && zig build test
+
+# Type-check ABI
+cd abi && idris2 --check TelegramMcp.SafeComms
+----
+
+== Status
+
+Development -- not yet ready for mounting.

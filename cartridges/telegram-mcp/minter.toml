@@ -1,0 +1,46 @@
+# SPDX-License-Identifier: PMPL-1.0-or-later
+# Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+
+name = "telegram-mcp"
+description = "Telegram Bot API cartridge — messages, updates, chats, media, webhooks, callbacks, stickers, forwarding, pinning"
+version = "0.1.0"
+domain = "Comms"
+protocols = [
+    "MCP",
+    "REST",
+]
+tier = "Ayo"
+backend = "universal"
+generate_panel = true
+
+[auth]
+type = "token_in_url"
+pattern = "https://api.telegram.org/bot{token}/{method}"
+base_url = "https://api.telegram.org/"
+
+[rate_limiting]
+strategy = "global"
+messages_per_second = 30
+per_chat_per_second = 1
+group_per_minute = 20
+
+[actions]
+count = 16
+list = [
+    "SendMessage",
+    "EditMessage",
+    "DeleteMessage",
+    "GetUpdates",
+    "GetChat",
+    "ListChats",
+    "SendPhoto",
+    "SendDocument",
+    "SetWebhook",
+    "DeleteWebhook",
+    "GetWebhookInfo",
+    "AnswerCallback",
+    "SendSticker",
+    "ForwardMessage",
+    "PinMessage",
+    "GetMe",
+]

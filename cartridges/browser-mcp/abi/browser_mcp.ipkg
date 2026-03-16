@@ -1,0 +1,10 @@
+-- SPDX-License-Identifier: PMPL-1.0-or-later
+package browser_mcp
+
+version = "0.1.0"
+authors = "Jonathan D.A. Jewell"
+brief   = "browser-mcp cartridge — Firefox browser automation via Marionette protocol"
+
+depends = base
+
+modules = BrowserMcp.SafeBrowser

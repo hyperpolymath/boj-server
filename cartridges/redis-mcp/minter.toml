@@ -1,0 +1,51 @@
+# SPDX-License-Identifier: PMPL-1.0-or-later
+# Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+#
+# minter.toml -- Cartridge metadata for redis-mcp.
+
+name = "redis-mcp"
+description = "Redis database cartridge with RESP protocol, pipeline support, and pub/sub"
+version = "0.1.0"
+domain = "Database"
+protocols = [
+    "MCP",
+    "REST",
+]
+tier = "Ayo"
+backend = "universal"
+generate_panel = true
+
+[auth]
+method = "auth_command"
+vault_mcp = true
+format = "AUTH <password>"
+default_port = 6379
+
+[actions]
+count = 20
+list = [
+    "Get",
+    "Set",
+    "Del",
+    "Keys",
+    "Exists",
+    "Expire",
+    "TTL",
+    "LPush",
+    "RPush",
+    "LRange",
+    "SAdd",
+    "SMembers",
+    "HSet",
+    "HGet",
+    "HGetAll",
+    "Publish",
+    "Subscribe",
+    "Unsubscribe",
+    "Info",
+    "Ping",
+]
+
+[state_machine]
+states = ["Disconnected", "Connected", "Subscribing", "Error"]
+initial = "Disconnected"

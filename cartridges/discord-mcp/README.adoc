@@ -1,0 +1,89 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+// Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+
+= discord-mcp
+Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+:spdx: PMPL-1.0-or-later
+:tier: Ayo
+:domain: Comms
+:protocols: MCP, REST
+
+== Overview
+
+Discord REST API v10 cartridge for BoJ server. Provides type-safe access to
+16 Discord actions: messages, channels, guilds, members, reactions, threads,
+search, status, and file uploads. Bot token authentication with "Bot" prefix
+in the Authorization header. Bucket-based per-route rate limiting.
+
+== Actions
+
+[cols="1,2"]
+|===
+| Action | Description
+
+| SendMessage | Send a message to a channel
+| EditMessage | Edit an existing message
+| DeleteMessage | Delete a message
+| ListChannels | List channels in a guild
+| GetChannel | Get a single channel by ID
+| ListGuilds | List guilds the bot is in
+| GetGuild | Get a single guild by ID
+| ListMembers | List members of a guild
+| GetMember | Get a single guild member
+| AddReaction | Add a reaction to a message
+| RemoveReaction | Remove a reaction from a message
+| CreateThread | Create a new thread
+| ListThreads | List threads in a channel
+| SearchMessages | Search messages in a guild
+| SetStatus | Set the bot's status/presence
+| UploadFile | Upload a file attachment
+|===
+
+== Architecture
+
+[cols="1,1,2"]
+|===
+| Layer | Language | Purpose
+
+| ABI
+| Idris2
+| Formally verified state machine (DiscordMcp.SafeComms) with dependent-type proofs
+
+| FFI
+| Zig
+| C-compatible implementation with thread-safe session pool, token validation, bucket tracking
+
+| Adapter
+| V-lang
+| REST bridge to BoJ unified adapter protocol with all 16 actions
+|===
+
+== State Machine
+
+....
+Disconnected -> Authenticating -> Connected <-> RateLimited
+                       |              |              |
+                       v              v              v
+                     Error <----------+--------------+
+                       |
+                       v
+                  Disconnected
+....
+
+== Building
+
+[source,bash]
+----
+# Build FFI shared library
+cd ffi && zig build
+
+# Run FFI tests
+cd ffi && zig build test
+
+# Type-check ABI
+cd abi && idris2 --check DiscordMcp.SafeComms
+----
+
+== Status
+
+Development -- not yet ready for mounting.

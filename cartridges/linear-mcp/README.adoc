@@ -1,0 +1,116 @@
+= linear-mcp
+Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+:spdx: PMPL-1.0-or-later
+:tier: Ayo
+:domain: Comms
+:protocols: MCP, GraphQL
+
+== Overview
+
+Linear project management GraphQL API cartridge for the BoJ server.
+Wraps the full Linear platform — issues, projects, teams, cycles,
+labels, comments, workflow states, and search — behind a type-safe,
+rate-limit-aware interface using the GraphQL endpoint at
+https://api.linear.app/graphql.
+
+== Architecture
+
+[cols="1,1,2"]
+|===
+| Layer | Language | Purpose
+
+| ABI
+| Idris2
+| Formally verified connection state machine (`SafeComms.idr`) with
+  dependent-type proofs for all valid transitions
+
+| FFI
+| Zig
+| C-compatible implementation with thread-safe session pool, GraphQL
+  request stubs, and rate-limit tracking
+
+| Adapter
+| V-lang
+| REST bridge exposing all 16 Linear actions to the BoJ unified adapter
+|===
+
+== API Key Setup
+
+This cartridge authenticates using Linear API keys (Bearer tokens).
+
+1. Go to **Linear Settings** -> **API** -> **Personal API keys**
+   (or create a workspace-level OAuth application)
+2. Create a new API key with the scopes you need
+3. Store the key in **vault-mcp** so the cartridge can retrieve it at authentication time
+
+== Linear Actions (16 total)
+
+[cols="1,2,1"]
+|===
+| Action | GraphQL Operation | Kind
+
+| ListIssues         | `issues`           | Query
+| GetIssue           | `issue(id)`        | Query
+| CreateIssue        | `issueCreate`      | Mutation
+| UpdateIssue        | `issueUpdate`      | Mutation
+| DeleteIssue        | `issueDelete`      | Mutation
+| ListProjects       | `projects`         | Query
+| GetProject         | `project(id)`      | Query
+| ListTeams          | `teams`            | Query
+| ListCycles         | `cycles`           | Query
+| CreateComment      | `commentCreate`    | Mutation
+| SearchIssues       | `issueSearch`      | Query
+| ListLabels         | `issueLabels`      | Query
+| AssignIssue        | `issueUpdate`      | Mutation
+| SetPriority        | `issueUpdate`      | Mutation
+| MoveToProject      | `issueUpdate`      | Mutation
+| ListWorkflowStates | `workflowStates`   | Query
+|===
+
+== Connection State Machine
+
+....
+Unauthenticated ──→ Authenticated ──→ Unauthenticated
+                         │   ↑
+                         ↓   │
+                    RateLimited
+                         │
+                         ↓
+                       Error ──→ Unauthenticated
+....
+
+Valid transitions:
+
+- `Unauthenticated` -> `Authenticated` (authenticate with API key)
+- `Authenticated` -> `RateLimited` (rate budget exhausted)
+- `RateLimited` -> `Authenticated` (budget window reset)
+- `Authenticated` -> `Error` (network/API fault)
+- `RateLimited` -> `Error` (unrecoverable error during rate limit)
+- `Authenticated` -> `Unauthenticated` (graceful close)
+- `Error` -> `Unauthenticated` (reset for re-auth)
+
+== Building
+
+[source,bash]
+----
+# Build FFI shared library
+cd ffi && zig build
+
+# Run FFI tests
+cd ffi && zig build test
+
+# Type-check ABI
+cd abi && idris2 --check linear_mcp.ipkg
+----
+
+== PanLL Panels
+
+The `panels/manifest.json` provides three data sources for the PanLL dashboard:
+
+- **Auth Status** — live state badge (5 s refresh)
+- **Issue Queries** — session issue query counter (10 s refresh)
+- **Recent Activity** — actions performed + rate limit usage (10 s refresh)
+
+== Status
+
+Development — not yet ready for mounting.

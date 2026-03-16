@@ -1,0 +1,90 @@
+{
+  "$schema": "https://panll.dev/schemas/panel-manifest/v1.json",
+  "spdx": "PMPL-1.0-or-later",
+  "cartridge": "matrix-mcp",
+  "domain": "Comms",
+  "version": "0.1.0",
+  "panels": [
+    {
+      "id": "matrix-connection-status",
+      "title": "Connection Status",
+      "description": "Current Matrix connection state (Disconnected / Authenticating / Connected / Syncing / Error)",
+      "type": "status-indicator",
+      "data_source": {
+        "endpoint": "/matrix/state",
+        "method": "GET",
+        "refresh_interval_ms": 5000
+      },
+      "widgets": [
+        {
+          "type": "state-badge",
+          "field": "state",
+          "states": {
+            "disconnected": { "color": "#95a5a6", "icon": "plug-disconnected" },
+            "authenticating": { "color": "#f39c12", "icon": "key" },
+            "connected": { "color": "#2ecc71", "icon": "plug-connected" },
+            "syncing": { "color": "#3498db", "icon": "refresh-cw" },
+            "error": { "color": "#e74c3c", "icon": "alert-triangle" }
+          }
+        }
+      ]
+    },
+    {
+      "id": "matrix-homeserver",
+      "title": "Homeserver",
+      "description": "URL of the Matrix homeserver the client is connected to",
+      "type": "metric",
+      "data_source": {
+        "endpoint": "/matrix/metrics",
+        "method": "GET",
+        "refresh_interval_ms": 30000
+      },
+      "widgets": [
+        {
+          "type": "text",
+          "field": "homeserver",
+          "label": "Homeserver",
+          "icon": "home"
+        }
+      ]
+    },
+    {
+      "id": "matrix-room-count",
+      "title": "Room Count",
+      "description": "Number of rooms the client has joined",
+      "type": "metric",
+      "data_source": {
+        "endpoint": "/matrix/metrics",
+        "method": "GET",
+        "refresh_interval_ms": 30000
+      },
+      "widgets": [
+        {
+          "type": "counter",
+          "field": "room_count",
+          "label": "Rooms",
+          "icon": "hash"
+        }
+      ]
+    },
+    {
+      "id": "matrix-sync-state",
+      "title": "Sync State",
+      "description": "Current sync status and last sync token",
+      "type": "metric",
+      "data_source": {
+        "endpoint": "/matrix/sync-status",
+        "method": "GET",
+        "refresh_interval_ms": 10000
+      },
+      "widgets": [
+        {
+          "type": "text",
+          "field": "sync_state",
+          "label": "Sync",
+          "icon": "refresh-cw"
+        }
+      ]
+    }
+  ]
+}

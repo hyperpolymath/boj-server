@@ -1,0 +1,46 @@
+# SPDX-License-Identifier: PMPL-1.0-or-later
+# Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+#
+# minter.toml -- Cartridge metadata for mongodb-mcp.
+
+name = "mongodb-mcp"
+description = "MongoDB database cartridge with BSON document handling, aggregation pipelines, and wire protocol integration"
+version = "0.1.0"
+domain = "Database"
+protocols = [
+    "MCP",
+    "REST",
+]
+tier = "Ayo"
+backend = "universal"
+generate_panel = true
+
+[auth]
+method = "connection_string"
+vault_mcp = true
+format = "mongodb://user:pass@host:27017/db"
+
+[actions]
+count = 16
+list = [
+    "Find",
+    "FindOne",
+    "InsertOne",
+    "InsertMany",
+    "UpdateOne",
+    "UpdateMany",
+    "DeleteOne",
+    "DeleteMany",
+    "Aggregate",
+    "CountDocuments",
+    "CreateIndex",
+    "DropIndex",
+    "ListCollections",
+    "CreateCollection",
+    "DropCollection",
+    "ListDatabases",
+]
+
+[state_machine]
+states = ["Disconnected", "Connected", "InSession", "Error"]
+initial = "Disconnected"

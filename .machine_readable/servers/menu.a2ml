@@ -350,3 +350,171 @@
   timestamp = "2026-03-08T00:00:00Z"
   canonical = "boj-server/.machine_readable/servers/menu.a2ml"
 @end
+
+
+@cartridge(id="vault-mcp"):
+  name       = "vault-mcp"
+  version    = "0.1.0"
+  status     = Development
+  tier       = Ayo
+  domain     = Secrets
+  protocols  = [MCP, REST]
+  hash       = ""
+  notes      = "Zero-knowledge credential proxy for the reasonably-good-token-vault"
+@end
+
+
+@cartridge(id="browser-mcp"):
+  name       = "browser-mcp"
+  version    = "0.1.0"
+  status     = Development
+  tier       = Ayo
+  domain     = Browser
+  protocols  = [MCP, REST]
+  hash       = ""
+  notes      = "Firefox browser automation via the Marionette protocol (TCP localhost:2828)"
+@end
+
+
+@cartridge(id="github-api-mcp"):
+  name       = "github-api-mcp"
+  version    = "0.1.0"
+  status     = Development
+  tier       = Ayo
+  domain     = Cloud
+  protocols  = [MCP, REST]
+  hash       = ""
+  notes      = "github-api-mcp cartridge"
+@end
+
+
+@cartridge(id="gitlab-api-mcp"):
+  name       = "gitlab-api-mcp"
+  version    = "0.1.0"
+  status     = Development
+  tier       = Ayo
+  domain     = Cloud
+  protocols  = [MCP, REST]
+  hash       = ""
+  notes      = "gitlab-api-mcp cartridge"
+@end
+
+
+@cartridge(id="slack-mcp"):
+  name       = "slack-mcp"
+  version    = "0.1.0"
+  status     = Development
+  tier       = Ayo
+  domain     = Comms
+  protocols  = [MCP, REST]
+  hash       = ""
+  notes      = "Slack Web API and Events API cartridge — send messages, manage channels, search, react, and more"
+@end
+
+
+@cartridge(id="linear-mcp"):
+  name       = "linear-mcp"
+  version    = "0.1.0"
+  status     = Development
+  tier       = Ayo
+  domain     = Cloud
+  protocols  = [MCP, REST]
+  hash       = ""
+  notes      = "linear-mcp cartridge"
+@end
+
+
+@cartridge(id="notion-mcp"):
+  name       = "notion-mcp"
+  version    = "0.1.0"
+  status     = Development
+  tier       = Ayo
+  domain     = Comms
+  protocols  = [MCP, REST]
+  hash       = ""
+  notes      = "Notion REST API cartridge — pages, databases, blocks, users, and comments via https://api.notion.com/v1/"
+@end
+
+
+@cartridge(id="jira-mcp"):
+  name       = "jira-mcp"
+  version    = "0.1.0"
+  status     = Development
+  tier       = Ayo
+  domain     = Cloud
+  protocols  = [MCP, REST]
+  hash       = ""
+  notes      = "jira-mcp cartridge"
+@end
+
+
+@cartridge(id="discord-mcp"):
+  name       = "discord-mcp"
+  version    = "0.1.0"
+  status     = Development
+  tier       = Ayo
+  domain     = Comms
+  protocols  = [MCP, REST]
+  hash       = ""
+  notes      = "Discord REST API v10 cartridge — messages, channels, guilds, members, reactions, threads, search, status, file uploads"
+@end
+
+
+@cartridge(id="telegram-mcp"):
+  name       = "telegram-mcp"
+  version    = "0.1.0"
+  status     = Development
+  tier       = Ayo
+  domain     = Comms
+  protocols  = [MCP, REST]
+  hash       = ""
+  notes      = "Telegram Bot API cartridge — messages, updates, chats, media, webhooks, callbacks, stickers, forwarding, pinning"
+@end
+
+
+@cartridge(id="matrix-mcp"):
+  name       = "matrix-mcp"
+  version    = "0.1.0"
+  status     = Development
+  tier       = Ayo
+  domain     = Comms
+  protocols  = [MCP, REST]
+  hash       = ""
+  notes      = "Matrix Client-Server API v3 cartridge — messages, events, rooms, membership, state, sync, search, media, profiles, room creation"
+@end
+
+
+@cartridge(id="postgresql-mcp"):
+  name       = "postgresql-mcp"
+  version    = "0.1.0"
+  status     = Development
+  tier       = Ayo
+  domain     = Database
+  protocols  = [MCP, REST]
+  hash       = ""
+  notes      = "PostgreSQL database cartridge with parameterised queries, transaction support, and libpq C-ABI integration"
+@end
+
+
+@cartridge(id="redis-mcp"):
+  name       = "redis-mcp"
+  version    = "0.1.0"
+  status     = Development
+  tier       = Ayo
+  domain     = Database
+  protocols  = [MCP, REST]
+  hash       = ""
+  notes      = "Redis database cartridge with RESP protocol, pipeline support, and pub/sub"
+@end
+
+
+@cartridge(id="mongodb-mcp"):
+  name       = "mongodb-mcp"
+  version    = "0.1.0"
+  status     = Development
+  tier       = Ayo
+  domain     = Database
+  protocols  = [MCP, REST]
+  hash       = ""
+  notes      = "MongoDB database cartridge with BSON document handling, aggregation pipelines, and wire protocol integration"
+@end

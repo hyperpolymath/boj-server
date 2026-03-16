@@ -1,0 +1,10 @@
+-- SPDX-License-Identifier: PMPL-1.0-or-later
+package vault_mcp
+
+version = "0.1.0"
+authors = "Jonathan D.A. Jewell"
+brief   = "vault-mcp cartridge — zero-knowledge credential proxy ABI"
+
+depends = base
+
+modules = VaultMcp.SafeSecrets

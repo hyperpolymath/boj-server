@@ -1,0 +1,12 @@
+name = "github-api-mcp"
+description = "GitHub REST & GraphQL API cartridge — replaces standalone npx @modelcontextprotocol/server-github"
+version = "0.2.0"
+domain = "Git"
+protocols = [
+    "MCP",
+    "REST",
+    "GraphQL",
+]
+tier = "Ayo"
+backend = "universal"
+generate_panel = true

@@ -1,0 +1,112 @@
+{
+  "$schema": "https://panll.dev/schemas/panel-manifest/v1.json",
+  "spdx": "PMPL-1.0-or-later",
+  "cartridge": "gitlab-api-mcp",
+  "domain": "Git",
+  "version": "0.1.0",
+  "panels": [
+    {
+      "id": "gitlab-auth-status",
+      "title": "Auth Status",
+      "description": "Current authentication state (Unauthenticated / Authenticated / RateLimited / Error)",
+      "type": "status-indicator",
+      "data_source": {
+        "endpoint": "/gitlab/state",
+        "method": "GET",
+        "refresh_interval_ms": 5000
+      },
+      "widgets": [
+        {
+          "type": "state-badge",
+          "field": "state",
+          "states": {
+            "unauthenticated": { "color": "#95a5a6", "icon": "user-x" },
+            "authenticated": { "color": "#2ecc71", "icon": "user-check" },
+            "rate_limited": { "color": "#f39c12", "icon": "clock" },
+            "error": { "color": "#e74c3c", "icon": "alert-triangle" }
+          }
+        }
+      ]
+    },
+    {
+      "id": "gitlab-instance-url",
+      "title": "Instance URL",
+      "description": "The GitLab instance base URL for the active session (gitlab.com or self-hosted)",
+      "type": "metric",
+      "data_source": {
+        "endpoint": "/gitlab/instance",
+        "method": "GET",
+        "refresh_interval_ms": 30000
+      },
+      "widgets": [
+        {
+          "type": "text",
+          "field": "base_url",
+          "label": "Instance",
+          "icon": "globe"
+        }
+      ]
+    },
+    {
+      "id": "gitlab-pipeline-status",
+      "title": "Pipeline Status",
+      "description": "Latest pipeline status for monitored projects",
+      "type": "status-indicator",
+      "data_source": {
+        "endpoint": "/gitlab/pipelines/latest",
+        "method": "GET",
+        "refresh_interval_ms": 15000
+      },
+      "widgets": [
+        {
+          "type": "state-badge",
+          "field": "status",
+          "states": {
+            "success": { "color": "#2ecc71", "icon": "check-circle" },
+            "failed": { "color": "#e74c3c", "icon": "x-circle" },
+            "running": { "color": "#3498db", "icon": "loader" },
+            "pending": { "color": "#f39c12", "icon": "clock" },
+            "canceled": { "color": "#95a5a6", "icon": "slash" },
+            "unknown": { "color": "#bdc3c7", "icon": "help-circle" }
+          }
+        },
+        {
+          "type": "text",
+          "field": "project_name",
+          "label": "Project"
+        },
+        {
+          "type": "text",
+          "field": "ref",
+          "label": "Branch"
+        }
+      ]
+    },
+    {
+      "id": "gitlab-rate-limits",
+      "title": "Rate Limits",
+      "description": "Remaining API requests in the current rate-limit window",
+      "type": "metric",
+      "data_source": {
+        "endpoint": "/gitlab/rate-limit",
+        "method": "GET",
+        "refresh_interval_ms": 10000
+      },
+      "widgets": [
+        {
+          "type": "counter",
+          "field": "remaining",
+          "label": "Remaining Requests",
+          "icon": "activity"
+        },
+        {
+          "type": "timestamp",
+          "field": "reset_epoch",
+          "label": "Window Resets",
+          "format": "relative",
+          "icon": "clock"
+        }
+      ]
+    }
+  ]
+}

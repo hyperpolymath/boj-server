@@ -1,0 +1,93 @@
+{
+  "$schema": "https://panll.dev/schemas/panel-manifest/v1.json",
+  "spdx": "PMPL-1.0-or-later",
+  "cartridge": "slack-mcp",
+  "domain": "Comms",
+  "version": "0.1.0",
+  "panels": [
+    {
+      "id": "slack-connection-status",
+      "title": "Connection Status",
+      "description": "Current Slack connection state (Disconnected / Authenticating / Connected / RateLimited / Error)",
+      "type": "status-indicator",
+      "data_source": {
+        "endpoint": "/slack/state",
+        "method": "GET",
+        "refresh_interval_ms": 5000
+      },
+      "widgets": [
+        {
+          "type": "state-badge",
+          "field": "state",
+          "states": {
+            "disconnected": { "color": "#95a5a6", "icon": "plug-disconnected" },
+            "authenticating": { "color": "#f39c12", "icon": "key" },
+            "connected": { "color": "#2ecc71", "icon": "plug-connected" },
+            "rate_limited": { "color": "#e67e22", "icon": "clock" },
+            "error": { "color": "#e74c3c", "icon": "alert-triangle" }
+          }
+        }
+      ]
+    },
+    {
+      "id": "slack-workspace",
+      "title": "Workspace",
+      "description": "Name of the Slack workspace the bot is connected to",
+      "type": "metric",
+      "data_source": {
+        "endpoint": "/slack/metrics",
+        "method": "GET",
+        "refresh_interval_ms": 30000
+      },
+      "widgets": [
+        {
+          "type": "text",
+          "field": "workspace",
+          "label": "Workspace",
+          "icon": "building"
+        }
+      ]
+    },
+    {
+      "id": "slack-rate-limits",
+      "title": "Rate Limits",
+      "description": "Per-tier rate limit usage (Tier 1: 1/min, Tier 2: 20/min, Tier 3: 50/min, Tier 4: 100/min)",
+      "type": "multi-metric",
+      "data_source": {
+        "endpoint": "/slack/rates",
+        "method": "GET",
+        "refresh_interval_ms": 10000
+      },
+      "widgets": [
+        {
+          "type": "progress-bar",
+          "items": [
+            { "field": "tier1_count", "max_field": "tier1_budget", "label": "Tier 1 (1/min)", "color": "#3498db" },
+            { "field": "tier2_count", "max_field": "tier2_budget", "label": "Tier 2 (20/min)", "color": "#2ecc71" },
+            { "field": "tier3_count", "max_field": "tier3_budget", "label": "Tier 3 (50/min)", "color": "#f39c12" },
+            { "field": "tier4_count", "max_field": "tier4_budget", "label": "Tier 4 (100/min)", "color": "#9b59b6" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "slack-messages-sent",
+      "title": "Recent Messages Sent",
+      "description": "Count of messages sent in the current session",
+      "type": "metric",
+      "data_source": {
+        "endpoint": "/slack/metrics",
+        "method": "GET",
+        "refresh_interval_ms": 10000
+      },
+      "widgets": [
+        {
+          "type": "counter",
+          "field": "messages_sent",
+          "label": "Messages Sent",
+          "icon": "message-circle"
+        }
+      ]
+    }
+  ]
+}

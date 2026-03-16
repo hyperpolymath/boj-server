@@ -1,0 +1,11 @@
+name = "slack-mcp"
+description = "Slack Web API and Events API cartridge — send messages, manage channels, search, react, and more"
+version = "0.1.0"
+domain = "Comms"
+protocols = [
+    "MCP",
+    "REST",
+]
+tier = "Ayo"
+backend = "universal"
+generate_panel = true

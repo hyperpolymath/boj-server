@@ -1,0 +1,12 @@
+# SPDX-License-Identifier: PMPL-1.0-or-later
+name = "vault-mcp"
+description = "Zero-knowledge credential proxy for the reasonably-good-token-vault"
+version = "0.1.0"
+domain = "Secrets"
+protocols = [
+    "MCP",
+    "REST",
+]
+tier = "Ayo"
+backend = "universal"
+generate_panel = true

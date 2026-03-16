@@ -1,0 +1,141 @@
+= slack-mcp
+Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+:spdx: PMPL-1.0-or-later
+:tier: Ayo
+:domain: Comms
+:protocols: MCP, REST
+
+== Overview
+
+Slack Web API and Events API cartridge for the BoJ server.
+Wraps the full Slack platform — messaging, channels, users, reactions,
+file uploads, search, threads, and workspace management — behind a
+type-safe, rate-limit-aware interface.
+
+== Architecture
+
+[cols="1,1,2"]
+|===
+| Layer | Language | Purpose
+
+| ABI
+| Idris2
+| Formally verified connection state machine (`SafeComms.idr`) with
+  dependent-type proofs for all valid transitions
+
+| FFI
+| Zig
+| C-compatible implementation with thread-safe session pool, Slack
+  HTTP client stubs, and per-method rate-tier tracking
+
+| Adapter
+| V-lang
+| REST bridge exposing all 16 Slack actions to the BoJ unified adapter
+|===
+
+== Bot Token Setup
+
+This cartridge authenticates using Slack bot tokens (`xoxb-*`).
+
+1. Create a Slack App at https://api.slack.com/apps
+2. Under **OAuth & Permissions**, add the bot scopes you need:
+   - `chat:write` — send and update messages
+   - `channels:read`, `groups:read` — list and inspect channels
+   - `users:read` — list and inspect users
+   - `reactions:write` — add/remove emoji reactions
+   - `files:write` — upload files
+   - `search:read` — search messages
+   - `channels:manage` — create channels, invite users
+   - `users.profile:write` — set bot status
+3. Install the app to your workspace and copy the **Bot User OAuth Token** (`xoxb-...`)
+4. Store the token in **vault-mcp** so the cartridge can retrieve it at authentication time
+
+== Slack Actions (16 total)
+
+[cols="1,2,1"]
+|===
+| Action | Slack API Method | Rate Tier
+
+| SendMessage       | `chat.postMessage`       | Tier 3
+| ListChannels      | `conversations.list`     | Tier 2
+| GetChannel        | `conversations.info`     | Tier 3
+| ListUsers         | `users.list`             | Tier 2
+| GetUser           | `users.info`             | Tier 4
+| PostReaction      | `reactions.add`          | Tier 3
+| RemoveReaction    | `reactions.remove`       | Tier 3
+| UploadFile        | `files.upload`           | Tier 2
+| SearchMessages    | `search.messages`        | Tier 2
+| ListConversations | `conversations.list`     | Tier 2
+| GetThread         | `conversations.replies`  | Tier 3
+| UpdateMessage     | `chat.update`            | Tier 3
+| DeleteMessage     | `chat.delete`            | Tier 3
+| SetStatus         | `users.profile.set`      | Tier 3
+| CreateChannel     | `conversations.create`   | Tier 2
+| InviteToChannel   | `conversations.invite`   | Tier 3
+|===
+
+== Rate Tiers
+
+Slack enforces per-method rate limits grouped into four tiers.
+The cartridge tracks usage per tier and transitions to `RateLimited`
+state when a tier's budget is exhausted. The budget resets every 60 seconds.
+
+[cols="1,1,2"]
+|===
+| Tier | Budget (req/min) | Description
+
+| Tier 1 | 1    | Extremely restricted (special admin methods)
+| Tier 2 | 20   | List/search operations
+| Tier 3 | 50   | Standard read/write operations
+| Tier 4 | 100+ | High-throughput lookups
+|===
+
+== Connection State Machine
+
+....
+Disconnected ──→ Authenticating ──→ Connected ──→ Disconnected
+                      │                │   ↑
+                      ↓                ↓   │
+                    Error ←── Connected   RateLimited
+                      │                     │
+                      ↓                     │
+                  Disconnected  ←───────────┘ (via Error→Disconn)
+....
+
+Valid transitions:
+
+- `Disconnected` -> `Authenticating` (begin auth)
+- `Authenticating` -> `Connected` (auth success)
+- `Authenticating` -> `Error` (auth failure)
+- `Connected` -> `RateLimited` (tier budget exhausted)
+- `RateLimited` -> `Connected` (budget window reset)
+- `Connected` -> `Error` (network/API fault)
+- `Connected` -> `Disconnected` (graceful close)
+- `Error` -> `Disconnected` (reset for re-auth)
+
+== Building
+
+[source,bash]
+----
+# Build FFI shared library
+cd ffi && zig build
+
+# Run FFI tests
+cd ffi && zig build test
+
+# Type-check ABI
+cd abi && idris2 --check slack_mcp.ipkg
+----
+
+== PanLL Panels
+
+The `panels/manifest.json` provides four data sources for the PanLL dashboard:
+
+- **Connection Status** — live state badge (5 s refresh)
+- **Workspace** — connected workspace name (30 s refresh)
+- **Rate Limits** — per-tier usage bars (10 s refresh)
+- **Messages Sent** — session message counter (10 s refresh)
+
+== Status
+
+Development — not yet ready for mounting.

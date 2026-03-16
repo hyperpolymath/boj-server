@@ -1,0 +1,13 @@
+# SPDX-License-Identifier: PMPL-1.0-or-later
+# Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+name = "linear-mcp"
+description = "Linear project management GraphQL API cartridge — issues, projects, teams, cycles, labels, and workflow states"
+version = "0.1.0"
+domain = "Comms"
+protocols = [
+    "MCP",
+    "GraphQL",
+]
+tier = "Ayo"
+backend = "universal"
+generate_panel = true

@@ -1,0 +1,11 @@
+name = "browser-mcp"
+description = "Firefox browser automation via the Marionette protocol (TCP localhost:2828)"
+version = "0.1.0"
+domain = "Browser"
+protocols = [
+    "MCP",
+    "REST",
+]
+tier = "Ayo"
+backend = "universal"
+generate_panel = true

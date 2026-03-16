@@ -1,0 +1,94 @@
+{
+  "$schema": "https://panll.dev/schemas/panel-manifest/v1.json",
+  "name": "browser-mcp",
+  "version": "0.1.0",
+  "title": "Browser Automation",
+  "description": "Firefox browser automation via Marionette protocol — monitor connection state, tabs, and page info.",
+  "license": "PMPL-1.0-or-later",
+  "author": "Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>",
+  "data_sources": [
+    {
+      "id": "connection_status",
+      "label": "Connection Status",
+      "type": "enum",
+      "values": ["closed", "connecting", "connected", "navigating", "error"],
+      "endpoint": "/session/{slot}/state",
+      "poll_interval_ms": 2000
+    },
+    {
+      "id": "current_url",
+      "label": "Current URL",
+      "type": "string",
+      "endpoint": "/session/{slot}/read_page",
+      "poll_interval_ms": 5000
+    },
+    {
+      "id": "tab_count",
+      "label": "Tab Count",
+      "type": "integer",
+      "endpoint": "/session/{slot}/tabs",
+      "poll_interval_ms": 5000
+    },
+    {
+      "id": "page_title",
+      "label": "Page Title",
+      "type": "string",
+      "endpoint": "/session/{slot}/state",
+      "poll_interval_ms": 5000
+    },
+    {
+      "id": "screenshot_thumbnail",
+      "label": "Screenshot Thumbnail",
+      "type": "image/png",
+      "endpoint": "/session/{slot}/screenshot",
+      "poll_interval_ms": 30000
+    }
+  ],
+  "widgets": [
+    {
+      "id": "status_indicator",
+      "type": "status-badge",
+      "title": "Marionette Connection",
+      "data_source": "connection_status",
+      "style": {
+        "connected": "success",
+        "connecting": "warning",
+        "navigating": "info",
+        "closed": "neutral",
+        "error": "danger"
+      },
+      "position": { "row": 0, "col": 0, "width": 2, "height": 1 }
+    },
+    {
+      "id": "url_display",
+      "type": "text-display",
+      "title": "Current URL",
+      "data_source": "current_url",
+      "truncate": 80,
+      "position": { "row": 0, "col": 2, "width": 4, "height": 1 }
+    },
+    {
+      "id": "tab_counter",
+      "type": "numeric-display",
+      "title": "Open Tabs",
+      "data_source": "tab_count",
+      "icon": "tabs",
+      "position": { "row": 1, "col": 0, "width": 1, "height": 1 }
+    },
+    {
+      "id": "page_title_display",
+      "type": "text-display",
+      "title": "Page Title",
+      "data_source": "page_title",
+      "truncate": 60,
+      "position": { "row": 1, "col": 1, "width": 3, "height": 1 }
+    },
+    {
+      "id": "screenshot_preview",
+      "type": "image-thumbnail",
+      "title": "Screenshot Preview",
+      "data_source": "screenshot_thumbnail",
+      "position": { "row": 2, "col": 0, "width": 6, "height": 3 }
+    }
+  ]
+}
