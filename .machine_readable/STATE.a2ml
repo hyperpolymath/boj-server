@@ -6,7 +6,7 @@
 [metadata]
 project = "boj-server"
 version = "0.2.0"
-last-updated = "2026-03-10"
+last-updated = "2026-03-16"
 status = "active"
 grade = "D-alpha"
 
@@ -102,6 +102,11 @@ actions = [
   "Post Show HN + blog post (drafts ready in docs/outreach/)",
   "Submit arXiv paper (draft ready in docs/papers/)",
   "Gather external validation from real users",
+]
+
+[session-history]
+entries = [
+  { date = "2026-03-16", description = "npm scripts verified and validated for Glama MCP directory submission compatibility." },
 ]
 
 [launch-status]
