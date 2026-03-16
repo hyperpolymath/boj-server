@@ -26,7 +26,8 @@ pub fn build(b: *std.Build) void {
         .linkage = .dynamic,
     });
     lib.linkLibC();
-    lib.linkSystemLibrary("pq");
+    // NOTE: linkSystemLibrary("pq") removed — stub implementation does not
+    // actually call libpq yet. Will be re-enabled when real bindings are wired.
     b.installArtifact(lib);
 
     // Tests

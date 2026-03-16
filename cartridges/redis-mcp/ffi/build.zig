@@ -26,7 +26,8 @@ pub fn build(b: *std.Build) void {
         .linkage = .dynamic,
     });
     lib.linkLibC();
-    lib.linkSystemLibrary("hiredis");
+    // NOTE: linkSystemLibrary("hiredis") removed — stub implementation does not
+    // actually call hiredis yet. Will be re-enabled when real bindings are wired.
     b.installArtifact(lib);
 
     // Tests

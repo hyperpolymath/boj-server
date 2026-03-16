@@ -95,14 +95,17 @@ var mutex: std.Thread.Mutex = .{};
 /// Run svalinn_cli with the given arguments and capture stdout.
 /// Returns the number of bytes written to proxy.result_buf, or error.
 fn runSvalinnCli(args: []const []const u8) !usize {
-    var argv = std.ArrayList([]const u8).init(std.heap.page_allocator);
-    defer argv.deinit();
-    try argv.append(SVALINN_CLI);
-    for (args) |arg| {
-        try argv.append(arg);
+    // Build argv as a fixed-size buffer: svalinn_cli + up to 15 arguments.
+    const MAX_ARGS = 16;
+    var argv_buf: [MAX_ARGS][]const u8 = undefined;
+    argv_buf[0] = SVALINN_CLI;
+    if (args.len >= MAX_ARGS) return error.TooManyArguments;
+    for (args, 0..) |arg, i| {
+        argv_buf[1 + i] = arg;
     }
+    const argv_slice = argv_buf[0 .. 1 + args.len];
 
-    var child = std.process.Child.init(argv.items, std.heap.page_allocator);
+    var child = std.process.Child.init(argv_slice, std.heap.page_allocator);
     child.stdout_behavior = .Pipe;
     child.stderr_behavior = .Pipe;
 

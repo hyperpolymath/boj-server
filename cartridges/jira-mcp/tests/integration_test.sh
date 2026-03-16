@@ -20,7 +20,7 @@ cd "$FFI_DIR" && zig build test 2>&1
 # Validate Idris2 ABI (if idris2 available)
 echo "[3/3] Checking ABI..."
 if command -v idris2 &>/dev/null; then
-    cd "$CART_DIR/abi" && idris2 --check JiraMcp.SafeCloud 2>&1
+    cd "$CART_DIR/abi" && idris2 --check jira_mcp.ipkg 2>&1
     echo "  ABI: OK"
 else
     echo "  ABI: SKIPPED (idris2 not in PATH)"

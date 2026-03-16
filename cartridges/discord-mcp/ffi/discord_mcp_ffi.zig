@@ -358,7 +358,7 @@ test "slot exhaustion" {
     discord_mcp_reset();
 
     var slots: [MAX_SESSIONS]c_int = undefined;
-    for (&slots, 0..) |*s, _| {
+    for (&slots) |*s| {
         s.* = discord_mcp_session_open();
         try std.testing.expect(s.* >= 0);
     }

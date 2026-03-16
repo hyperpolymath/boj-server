@@ -26,8 +26,9 @@ pub fn build(b: *std.Build) void {
         .linkage = .dynamic,
     });
     lib.linkLibC();
-    lib.linkSystemLibrary("mongoc-1.0");
-    lib.linkSystemLibrary("bson-1.0");
+    // NOTE: linkSystemLibrary("mongoc-1.0") and linkSystemLibrary("bson-1.0")
+    // removed — stub implementation does not actually call libmongoc/libbson yet.
+    // Will be re-enabled when real bindings are wired.
     b.installArtifact(lib);
 
     // Tests

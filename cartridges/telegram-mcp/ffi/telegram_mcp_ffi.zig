@@ -359,7 +359,7 @@ test "slot exhaustion" {
     telegram_mcp_reset();
 
     var slots: [MAX_SESSIONS]c_int = undefined;
-    for (&slots, 0..) |*s, _| {
+    for (&slots) |*s| {
         s.* = telegram_mcp_session_open();
         try std.testing.expect(s.* >= 0);
     }

@@ -143,7 +143,7 @@ pub export fn gitlab_api_mcp_session_open() c_int {
     mutex.lock();
     defer mutex.unlock();
 
-    for (&mut sessions, 0..) |*slot, idx| {
+    for (&sessions, 0..) |*slot, idx| {
         if (!slot.active) {
             slot.* = .{};
             slot.active = true;
@@ -562,7 +562,7 @@ pub export fn gitlab_api_mcp_logout(slot_idx: c_int) c_int {
 pub export fn gitlab_api_mcp_reset() void {
     mutex.lock();
     defer mutex.unlock();
-    for (&mut sessions) |*slot| {
+    for (&sessions) |*slot| {
         @memset(&slot.token_buf, 0);
     }
     sessions = [_]SessionSlot{.{}} ** MAX_SESSIONS;
@@ -751,7 +751,7 @@ test "slot exhaustion" {
     gitlab_api_mcp_reset();
 
     var slots: [MAX_SESSIONS]c_int = undefined;
-    for (&mut slots) |*s| {
+    for (&slots) |*s| {
         s.* = gitlab_api_mcp_session_open();
         try std.testing.expect(s.* >= 0);
     }
