@@ -4,9 +4,10 @@
 // BoJ Server — V-lang Triple Adapter
 //
 // The unified console that exposes mounted cartridges as:
-//   - REST  (port 7700)
-//   - gRPC  (port 7701)
+//   - REST    (port 7700)
+//   - gRPC    (port 7701)
 //   - GraphQL (port 7702)
+//   - MCP/SSE (port 7703) — remote MCP transport for Glama, Claude Desktop, Cursor
 //
 // Phase 3 of the BoJ pipeline:
 //   Idris2 ABI (proofs) → Zig FFI (execution) → V-lang Adapter (network)
@@ -4279,11 +4280,17 @@ fn main() {
 	}
 	spawn grpc_srv.listen_and_serve()
 
+	// MCP SSE transport — enables remote MCP clients (Glama, Claude Desktop, Cursor)
+	// to connect without stdio. Runs on port 7703 (configurable via BOJ_SSE_PORT).
+	start_sse_transport(app_ref)
+
+	sse_port := os.getenv_opt('BOJ_SSE_PORT') or { '7703' }
 	println('')
 	println('BoJ Server ready. Endpoints:')
 	println('  REST:    http://localhost:${rest_port}/status')
 	println('  gRPC:    grpc://localhost:${grpc_port} (JSON-compat)')
 	println('  GraphQL: http://localhost:${graphql_port}/graphql')
+	println('  MCP/SSE: http://localhost:${sse_port}/sse (remote MCP clients)')
 	println('')
 	println('Press Ctrl+C to stop.')
 
