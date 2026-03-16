@@ -1,0 +1,89 @@
+{
+  "$schema": "https://panll.dev/schemas/panel-manifest/v1.json",
+  "spdx": "PMPL-1.0-or-later",
+  "cartridge": "neo4j-mcp",
+  "domain": "Database",
+  "version": "0.1.0",
+  "panels": [
+    {
+      "id": "neo4j-connection-status",
+      "title": "Connection Status",
+      "description": "Current Neo4j connection state — disconnected, connected, query running, or error",
+      "type": "status-indicator",
+      "data_source": {
+        "endpoint": "/neo4j/connection/status",
+        "method": "GET",
+        "refresh_interval_ms": 10000
+      },
+      "widgets": [
+        {
+          "type": "state-badge",
+          "field": "connection_state",
+          "states": {
+            "connected": { "color": "#2ecc71", "icon": "zap" },
+            "disconnected": { "color": "#95a5a6", "icon": "unplug" },
+            "query_running": { "color": "#3498db", "icon": "loader" },
+            "error": { "color": "#e74c3c", "icon": "alert-triangle" }
+          }
+        }
+      ]
+    },
+    {
+      "id": "neo4j-query-count",
+      "title": "Query Count",
+      "description": "Total number of Cypher queries executed across all sessions",
+      "type": "metric",
+      "data_source": {
+        "endpoint": "/neo4j/metrics",
+        "method": "GET",
+        "refresh_interval_ms": 15000
+      },
+      "widgets": [
+        {
+          "type": "counter",
+          "field": "total_query_count",
+          "label": "Cypher Queries",
+          "icon": "file-search"
+        }
+      ]
+    },
+    {
+      "id": "neo4j-node-count",
+      "title": "Node Count",
+      "description": "Total number of nodes in the active Neo4j database",
+      "type": "metric",
+      "data_source": {
+        "endpoint": "/neo4j/nodes/count",
+        "method": "GET",
+        "refresh_interval_ms": 30000
+      },
+      "widgets": [
+        {
+          "type": "counter",
+          "field": "node_count",
+          "label": "Nodes",
+          "icon": "circle-dot"
+        }
+      ]
+    },
+    {
+      "id": "neo4j-relationship-count",
+      "title": "Relationship Count",
+      "description": "Total number of relationships in the active Neo4j database",
+      "type": "metric",
+      "data_source": {
+        "endpoint": "/neo4j/relationships/count",
+        "method": "GET",
+        "refresh_interval_ms": 30000
+      },
+      "widgets": [
+        {
+          "type": "counter",
+          "field": "relationship_count",
+          "label": "Relationships",
+          "icon": "git-branch"
+        }
+      ]
+    }
+  ]
+}

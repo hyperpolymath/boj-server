@@ -1,0 +1,16 @@
+# SPDX-License-Identifier: PMPL-1.0-or-later
+# Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+
+name = "neo4j-mcp"
+description = "Neo4j graph database MCP cartridge — Cypher queries, nodes, relationships, schema"
+version = "0.1.0"
+domain = "Database"
+protocols = [
+    "MCP",
+    "REST",
+]
+tier = "Ayo"
+backend = "universal"
+generate_panel = true
+auth = "basic"
+api_base = "https://{host}:7474/"

@@ -1,0 +1,11 @@
+-- SPDX-License-Identifier: PMPL-1.0-or-later
+-- Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+package neo4j_mcp
+
+version = "0.1.0"
+authors = "Jonathan D.A. Jewell"
+brief   = "Neo4j graph database MCP cartridge — type-safe ABI layer"
+
+depends = base
+
+modules = Neo4jMcp.SafeDatabase

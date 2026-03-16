@@ -1,0 +1,16 @@
+# SPDX-License-Identifier: PMPL-1.0-or-later
+# Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+
+name = "arango-mcp"
+description = "ArangoDB multi-model MCP cartridge — documents, graphs, key-value, AQL queries"
+version = "0.1.0"
+domain = "Database"
+protocols = [
+    "MCP",
+    "REST",
+]
+tier = "Ayo"
+backend = "universal"
+generate_panel = true
+auth = "bearer_or_basic"
+api_base = "https://{host}:8529/_api/"

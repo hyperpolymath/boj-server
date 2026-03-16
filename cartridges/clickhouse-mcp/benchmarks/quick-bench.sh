@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: PMPL-1.0-or-later
+# Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+# Benchmarks for clickhouse-mcp cartridge.
+set -euo pipefail
+
+echo "=== clickhouse-mcp benchmarks ==="
+
+cd "$(dirname "${BASH_SOURCE[0]}")/../ffi"
+
+# Build with ReleaseFast for benchmarking
+zig build -Doptimize=ReleaseFast 2>&1
+
+echo "Session open/close cycle (1000 iterations):"
+time for i in $(seq 1 1000); do
+    # This would call the FFI benchmark binary
+    true
+done
+
+echo ""
+echo "Benchmark placeholder — implement real benchmarks in Zig test blocks"
+echo "or via the V-lang adapter HTTP benchmark tool."

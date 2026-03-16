@@ -1,0 +1,69 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+// Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+
+= arango-mcp
+Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+:spdx: PMPL-1.0-or-later
+:tier: Ayo
+:domain: Database
+:protocols: MCP, REST
+
+== Overview
+
+ArangoDB multi-model database MCP cartridge. Provides type-safe access to the
+ArangoDB REST API covering databases, collections, documents, AQL queries, and
+graphs. Auth via Bearer token (JWT) or Basic auth (username/password).
+Self-hosted with configurable base URL (default `https://{host}:8529/_api/`).
+Supports document, graph, key-value, and search models.
+
+=== Actions
+
+ListDatabases, CreateDatabase, DropDatabase, ListCollections,
+CreateCollection, DropCollection, GetDocument, InsertDocument,
+UpdateDocument, RemoveDocument, AqlQuery, ExplainQuery,
+TraverseGraph, ListGraphs, CreateGraph, DropGraph.
+
+== Architecture
+
+[cols="1,1,2"]
+|===
+| Layer | Language | Purpose
+
+| ABI
+| Idris2
+| Formally verified state machine (Disconnected / Connected / QueryRunning / Error)
+
+| FFI
+| Zig
+| C-compatible implementation with thread-safe session pool
+
+| Adapter
+| V-lang
+| REST bridge to BoJ unified adapter protocol
+|===
+
+== Building
+
+[source,bash]
+----
+# Build FFI shared library
+cd ffi && zig build
+
+# Run FFI tests
+cd ffi && zig build test
+
+# Type-check ABI
+cd abi && idris2 --check ArangoMcp.SafeDatabase
+----
+
+== Panels
+
+* Connection status (disconnected / connected / query running / error)
+* Database count
+* Collection count
+* Query metrics (AQL queries + document operations)
+* Graph count
+
+== Status
+
+Development -- not yet ready for mounting.
