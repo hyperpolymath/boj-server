@@ -1,0 +1,99 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+// Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+
+= digitalocean-mcp
+Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+:spdx: PMPL-1.0-or-later
+:tier: Ayo
+:domain: Cloud
+:protocols: MCP, REST
+
+== Overview
+
+DigitalOcean cloud infrastructure MCP cartridge. Manages droplets, block storage
+volumes, domains, SSH keys, snapshots, and databases via the DigitalOcean REST API
+(`https://api.digitalocean.com/v2/`).
+
+Authentication uses bearer tokens (personal access tokens). Rate limited to 5000
+requests per hour.
+
+== State Machine
+
+[source]
+----
+Unauthenticated --> Authenticated   (bearer token provided)
+Authenticated   --> RateLimited     (5000 req/hour exceeded)
+RateLimited     --> Authenticated   (rate limit window reset)
+Authenticated   --> Error           (API/network failure)
+RateLimited     --> Error           (failure during rate limit)
+Error           --> Authenticated   (recovery)
+Authenticated   --> Unauthenticated (logout)
+Error           --> Unauthenticated (logout from error)
+----
+
+== Actions (16)
+
+|===
+| Action | Destructive | Endpoint
+
+| ListDroplets   | No  | GET /v2/droplets
+| GetDroplet     | No  | GET /v2/droplets/{id}
+| CreateDroplet  | Yes | POST /v2/droplets
+| DeleteDroplet  | Yes | DELETE /v2/droplets/{id}
+| PowerOn        | Yes | POST /v2/droplets/{id}/actions
+| PowerOff       | Yes | POST /v2/droplets/{id}/actions
+| Reboot         | Yes | POST /v2/droplets/{id}/actions
+| ListVolumes    | No  | GET /v2/volumes
+| CreateVolume   | Yes | POST /v2/volumes
+| ListDomains    | No  | GET /v2/domains
+| CreateDomain   | Yes | POST /v2/domains
+| ListSSHKeys    | No  | GET /v2/account/keys
+| ListSnapshots  | No  | GET /v2/snapshots
+| CreateSnapshot | Yes | POST /v2/droplets/{id}/actions
+| ListDatabases  | No  | GET /v2/databases
+| GetAccount     | No  | GET /v2/account
+|===
+
+== Architecture
+
+[cols="1,1,2"]
+|===
+| Layer | Language | Purpose
+
+| ABI
+| Idris2
+| Formally verified auth state machine with dependent-type proofs
+
+| FFI
+| Zig
+| C-ABI implementation with thread-safe session pool and rate limit tracking
+
+| Adapter
+| V-lang
+| REST bridge to BoJ unified adapter protocol
+|===
+
+== Building
+
+[source,bash]
+----
+# Build FFI shared library
+cd ffi && zig build
+
+# Run FFI tests
+cd ffi && zig build test
+
+# Type-check ABI
+cd abi && idris2 --check DigitaloceanMcp.SafeCloud
+----
+
+== Panels
+
+* Auth status (unauthenticated/authenticated/rate_limited/error)
+* Droplet count
+* Volume count
+* Account balance
+
+== Status
+
+Development -- not yet ready for mounting.

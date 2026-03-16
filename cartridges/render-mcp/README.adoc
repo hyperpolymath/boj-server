@@ -1,0 +1,72 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+// Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+= render-mcp
+Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+:spdx: PMPL-1.0-or-later
+:tier: Ayo
+:domain: Cloud
+:protocols: MCP, REST
+
+== Overview
+
+Render REST API v1 cartridge for BoJ. Provides type-safe access to services,
+deploys, environment groups, custom domains, jobs, and bandwidth metrics via
+the REST API at `https://api.render.com/v1/`. Authentication uses a Bearer token
+(Render API key). Rate limited to 100 requests per minute.
+
+== State Machine
+
+`Unauthenticated` -> `Authenticated` -> `RateLimited` -> `Error`
+
+Valid transitions are enforced by the Idris2 ABI layer with dependent-type proofs.
+
+== Actions
+
+ListServices, GetService, CreateService, DeleteService, ListDeploys,
+TriggerDeploy, GetDeploy, ListEnvGroups, GetEnvGroup, ListCustomDomains,
+AddCustomDomain, ListJobs, CreateJob, SuspendService, ResumeService,
+GetBandwidth.
+
+== Architecture
+
+[cols="1,1,2"]
+|===
+| Layer | Language | Purpose
+
+| ABI
+| Idris2
+| Formally verified state machine with dependent-type proofs
+
+| FFI
+| Zig
+| C-compatible implementation with thread-safe session pool
+
+| Adapter
+| V-lang
+| REST bridge to BoJ unified adapter protocol
+|===
+
+== Panels
+
+* Auth status (Unauthenticated / Authenticated / RateLimited / Error)
+* Service count
+* Deploy status (success / failure counts)
+* Bandwidth usage (MB)
+
+== Building
+
+[source,bash]
+----
+# Build FFI shared library
+cd ffi && zig build
+
+# Run FFI tests
+cd ffi && zig build test
+
+# Type-check ABI
+cd abi && idris2 --check RenderMcp.SafeCloud
+----
+
+== Status
+
+Development -- not yet ready for mounting.

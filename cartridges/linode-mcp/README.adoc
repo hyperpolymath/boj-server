@@ -1,0 +1,99 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+// Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+
+= linode-mcp
+Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+:spdx: PMPL-1.0-or-later
+:tier: Ayo
+:domain: Cloud
+:protocols: MCP, REST
+
+== Overview
+
+Linode/Akamai cloud infrastructure MCP cartridge. Manages compute instances,
+block storage volumes, domains, NodeBalancers, StackScripts, and images via the
+Linode REST API (`https://api.linode.com/v4/`).
+
+Authentication uses bearer tokens (personal access tokens). Rate limited to 800
+requests per 2 minutes.
+
+== State Machine
+
+[source]
+----
+Unauthenticated --> Authenticated   (bearer token provided)
+Authenticated   --> RateLimited     (800 req/2min exceeded)
+RateLimited     --> Authenticated   (rate limit window reset)
+Authenticated   --> Error           (API/network failure)
+RateLimited     --> Error           (failure during rate limit)
+Error           --> Authenticated   (recovery)
+Authenticated   --> Unauthenticated (logout)
+Error           --> Unauthenticated (logout from error)
+----
+
+== Actions (16)
+
+|===
+| Action | Destructive | Endpoint
+
+| ListInstances     | No  | GET /v4/linode/instances
+| GetInstance        | No  | GET /v4/linode/instances/{id}
+| CreateInstance     | Yes | POST /v4/linode/instances
+| DeleteInstance     | Yes | DELETE /v4/linode/instances/{id}
+| Boot               | Yes | POST /v4/linode/instances/{id}/boot
+| Shutdown           | Yes | POST /v4/linode/instances/{id}/shutdown
+| Reboot             | Yes | POST /v4/linode/instances/{id}/reboot
+| ListVolumes        | No  | GET /v4/volumes
+| CreateVolume       | Yes | POST /v4/volumes
+| ListDomains        | No  | GET /v4/domains
+| CreateDomain       | Yes | POST /v4/domains
+| ListNodeBalancers  | No  | GET /v4/nodebalancers
+| ListStackScripts   | No  | GET /v4/linode/stackscripts
+| ListImages         | No  | GET /v4/images
+| ListRegions        | No  | GET /v4/regions
+| GetAccount         | No  | GET /v4/account
+|===
+
+== Architecture
+
+[cols="1,1,2"]
+|===
+| Layer | Language | Purpose
+
+| ABI
+| Idris2
+| Formally verified auth state machine with dependent-type proofs
+
+| FFI
+| Zig
+| C-ABI implementation with thread-safe session pool and rate limit tracking
+
+| Adapter
+| V-lang
+| REST bridge to BoJ unified adapter protocol
+|===
+
+== Building
+
+[source,bash]
+----
+# Build FFI shared library
+cd ffi && zig build
+
+# Run FFI tests
+cd ffi && zig build test
+
+# Type-check ABI
+cd abi && idris2 --check LinodeMcp.SafeCloud
+----
+
+== Panels
+
+* Auth status (unauthenticated/authenticated/rate_limited/error)
+* Instance count
+* Volume count
+* NodeBalancer count
+
+== Status
+
+Development -- not yet ready for mounting.

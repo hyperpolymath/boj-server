@@ -1,0 +1,27 @@
+# SPDX-License-Identifier: PMPL-1.0-or-later
+# Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+
+name = "gcp-mcp"
+description = "GCP cloud cartridge — service account/OAuth2 auth, multi-service routing (Compute/Storage/Functions/PubSub/BigQuery/IAM) with quota tracking"
+version = "0.2.0"
+domain = "Cloud"
+protocols = [
+    "MCP",
+    "REST",
+]
+tier = "Ayo"
+backend = "universal"
+generate_panel = true
+
+[auth]
+method = "service_account_or_oauth2"
+credential_source = "vault-mcp"
+fields = ["project_id", "service_account_json_or_oauth2_token"]
+
+[services]
+compute = "https://compute.googleapis.com"
+storage = "https://storage.googleapis.com"
+functions = "https://cloudfunctions.googleapis.com"
+pubsub = "https://pubsub.googleapis.com"
+bigquery = "https://bigquery.googleapis.com"
+iam = "https://iam.googleapis.com"

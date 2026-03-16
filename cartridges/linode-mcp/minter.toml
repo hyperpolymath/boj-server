@@ -1,0 +1,44 @@
+# SPDX-License-Identifier: PMPL-1.0-or-later
+# Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+
+name = "linode-mcp"
+description = "Linode/Akamai cloud infrastructure MCP cartridge — instances, volumes, domains, NodeBalancers, StackScripts, images"
+version = "0.2.0"
+domain = "Cloud"
+protocols = [
+    "MCP",
+    "REST",
+]
+tier = "Ayo"
+backend = "universal"
+generate_panel = true
+
+[auth]
+method = "bearer"
+token_type = "personal_access_token"
+base_url = "https://api.linode.com/v4/"
+
+[rate_limit]
+requests = 800
+window = "2min"
+
+[actions]
+count = 16
+list = [
+    "ListInstances",
+    "GetInstance",
+    "CreateInstance",
+    "DeleteInstance",
+    "Boot",
+    "Shutdown",
+    "Reboot",
+    "ListVolumes",
+    "CreateVolume",
+    "ListDomains",
+    "CreateDomain",
+    "ListNodeBalancers",
+    "ListStackScripts",
+    "ListImages",
+    "ListRegions",
+    "GetAccount",
+]

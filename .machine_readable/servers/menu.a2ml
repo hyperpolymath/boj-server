@@ -518,3 +518,147 @@
   hash       = ""
   notes      = "MongoDB database cartridge with BSON document handling, aggregation pipelines, and wire protocol integration"
 @end
+
+
+@cartridge(id="neon-mcp"):
+  name       = "neon-mcp"
+  version    = "0.1.0"
+  status     = Development
+  tier       = Ayo
+  domain     = Database
+  protocols  = [MCP, REST]
+  hash       = ""
+  notes      = "Neon serverless Postgres MCP cartridge — projects, branches, endpoints, queries"
+@end
+
+
+@cartridge(id="turso-mcp"):
+  name       = "turso-mcp"
+  version    = "0.1.0"
+  status     = Development
+  tier       = Ayo
+  domain     = Database
+  protocols  = [MCP, REST]
+  hash       = ""
+  notes      = "Turso libSQL MCP cartridge — databases, groups, replicas, queries"
+@end
+
+
+@cartridge(id="supabase-mcp"):
+  name       = "supabase-mcp"
+  version    = "0.1.0"
+  status     = Development
+  tier       = Ayo
+  domain     = Database
+  protocols  = [MCP, REST]
+  hash       = ""
+  notes      = "Supabase MCP cartridge — PostgREST, Auth, Storage, Functions"
+@end
+
+
+@cartridge(id="fly-mcp"):
+  name       = "fly-mcp"
+  version    = "0.1.0"
+  status     = Development
+  tier       = Ayo
+  domain     = Cloud
+  protocols  = [MCP, REST]
+  hash       = ""
+  notes      = "Fly.io Machines API v1 cartridge -- apps, machines, volumes, secrets, regions, IPs"
+@end
+
+
+@cartridge(id="railway-mcp"):
+  name       = "railway-mcp"
+  version    = "0.1.0"
+  status     = Development
+  tier       = Ayo
+  domain     = Cloud
+  protocols  = [MCP, REST]
+  hash       = ""
+  notes      = "railway-mcp cartridge"
+@end
+
+
+@cartridge(id="render-mcp"):
+  name       = "render-mcp"
+  version    = "0.1.0"
+  status     = Development
+  tier       = Ayo
+  domain     = Cloud
+  protocols  = [MCP, REST]
+  hash       = ""
+  notes      = "Render REST API v1 cartridge -- services, deploys, env groups, custom domains, jobs, bandwidth"
+@end
+
+
+@cartridge(id="aws-mcp"):
+  name       = "aws-mcp"
+  version    = "0.2.0"
+  status     = Development
+  tier       = Ayo
+  domain     = Cloud
+  protocols  = [MCP, REST]
+  hash       = ""
+  notes      = "AWS cloud cartridge — Signature V4 auth, multi-service routing (S3/EC2/Lambda/SQS/DynamoDB) with rate-limit back-pressure"
+@end
+
+
+@cartridge(id="gcp-mcp"):
+  name       = "gcp-mcp"
+  version    = "0.2.0"
+  status     = Development
+  tier       = Ayo
+  domain     = Cloud
+  protocols  = [MCP, REST]
+  hash       = ""
+  notes      = "GCP cloud cartridge — service account/OAuth2 auth, multi-service routing (Compute/Storage/Functions/PubSub/BigQuery/IAM) with quota tracking"
+@end
+
+
+@cartridge(id="hetzner-mcp"):
+  name       = "hetzner-mcp"
+  version    = "0.2.0"
+  status     = Development
+  tier       = Ayo
+  domain     = Cloud
+  protocols  = [MCP, REST]
+  hash       = ""
+  notes      = "Hetzner Cloud cartridge — Bearer token auth, server/volume/firewall/network management with per-second rate limiting"
+@end
+
+
+@cartridge(id="digitalocean-mcp"):
+  name       = "digitalocean-mcp"
+  version    = "0.2.0"
+  status     = Development
+  tier       = Ayo
+  domain     = Cloud
+  protocols  = [MCP, REST]
+  hash       = ""
+  notes      = "DigitalOcean cloud infrastructure MCP cartridge — droplets, volumes, domains, SSH keys, snapshots, databases"
+@end
+
+
+@cartridge(id="linode-mcp"):
+  name       = "linode-mcp"
+  version    = "0.2.0"
+  status     = Development
+  tier       = Ayo
+  domain     = Cloud
+  protocols  = [MCP, REST]
+  hash       = ""
+  notes      = "Linode/Akamai cloud infrastructure MCP cartridge — instances, volumes, domains, NodeBalancers, StackScripts, images"
+@end
+
+
+@cartridge(id="docker-hub-mcp"):
+  name       = "docker-hub-mcp"
+  version    = "0.2.0"
+  status     = Development
+  tier       = Ayo
+  domain     = Container
+  protocols  = [MCP, REST]
+  hash       = ""
+  notes      = "Docker Hub container registry MCP cartridge — images, tags, namespaces, manifests, repositories, stars"
+@end

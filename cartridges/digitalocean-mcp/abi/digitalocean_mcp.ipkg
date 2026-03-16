@@ -1,0 +1,13 @@
+-- SPDX-License-Identifier: PMPL-1.0-or-later
+-- Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+package digitalocean_mcp
+
+version = "0.2.0"
+authors = "Jonathan D.A. Jewell"
+brief   = "Type-safe ABI for DigitalOcean MCP cartridge (bearer token, REST API)"
+
+depends = base
+
+sourcedir = "."
+
+modules = DigitaloceanMcp.SafeCloud

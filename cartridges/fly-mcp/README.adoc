@@ -1,0 +1,71 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+// Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+= fly-mcp
+Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+:spdx: PMPL-1.0-or-later
+:tier: Ayo
+:domain: Cloud
+:protocols: MCP, REST
+
+== Overview
+
+Fly.io Machines API v1 cartridge for BoJ. Provides type-safe access to apps,
+machines, volumes, secrets, regions, and IP allocation via the Machines REST API
+at `https://api.machines.dev/v1/`. Authentication uses a Bearer token obtained
+from `fly auth token`.
+
+== State Machine
+
+`Unauthenticated` -> `Authenticated` -> `RateLimited` -> `Error`
+
+Valid transitions are enforced by the Idris2 ABI layer with dependent-type proofs.
+
+== Actions
+
+ListApps, GetApp, CreateApp, DestroyApp, ListMachines, GetMachine,
+StartMachine, StopMachine, ListVolumes, CreateVolume, ListSecrets,
+SetSecret, DeleteSecret, ListRegions, AllocateIP, ReleaseIP.
+
+== Architecture
+
+[cols="1,1,2"]
+|===
+| Layer | Language | Purpose
+
+| ABI
+| Idris2
+| Formally verified state machine with dependent-type proofs
+
+| FFI
+| Zig
+| C-compatible implementation with thread-safe session pool
+
+| Adapter
+| V-lang
+| REST bridge to BoJ unified adapter protocol
+|===
+
+== Panels
+
+* Auth status (Unauthenticated / Authenticated / RateLimited / Error)
+* App count
+* Machine count
+* Region distribution
+
+== Building
+
+[source,bash]
+----
+# Build FFI shared library
+cd ffi && zig build
+
+# Run FFI tests
+cd ffi && zig build test
+
+# Type-check ABI
+cd abi && idris2 --check FlyMcp.SafeCloud
+----
+
+== Status
+
+Development -- not yet ready for mounting.

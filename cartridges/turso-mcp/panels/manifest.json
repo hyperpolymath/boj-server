@@ -1,0 +1,85 @@
+{
+  "$schema": "https://panll.dev/schemas/panel-manifest/v1.json",
+  "spdx": "PMPL-1.0-or-later",
+  "cartridge": "turso-mcp",
+  "domain": "Database",
+  "version": "0.1.0",
+  "panels": [
+    {
+      "id": "turso-database-count",
+      "title": "Database Count",
+      "description": "Total number of Turso databases accessible via the configured API token",
+      "type": "metric",
+      "data_source": {
+        "endpoint": "/turso/databases",
+        "method": "GET",
+        "refresh_interval_ms": 30000
+      },
+      "widgets": [
+        {
+          "type": "counter",
+          "field": "database_count",
+          "label": "Databases",
+          "icon": "database"
+        }
+      ]
+    },
+    {
+      "id": "turso-group-count",
+      "title": "Group Count",
+      "description": "Total number of placement groups for database replication",
+      "type": "metric",
+      "data_source": {
+        "endpoint": "/turso/groups",
+        "method": "GET",
+        "refresh_interval_ms": 30000
+      },
+      "widgets": [
+        {
+          "type": "counter",
+          "field": "group_count",
+          "label": "Groups",
+          "icon": "layers"
+        }
+      ]
+    },
+    {
+      "id": "turso-replica-locations",
+      "title": "Replica Locations",
+      "description": "Number of edge replica locations for the current database group",
+      "type": "metric",
+      "data_source": {
+        "endpoint": "/turso/locations",
+        "method": "GET",
+        "refresh_interval_ms": 60000
+      },
+      "widgets": [
+        {
+          "type": "counter",
+          "field": "location_count",
+          "label": "Locations",
+          "icon": "globe"
+        }
+      ]
+    },
+    {
+      "id": "turso-query-count",
+      "title": "Query Count",
+      "description": "Total number of queries executed across all sessions",
+      "type": "metric",
+      "data_source": {
+        "endpoint": "/turso/metrics",
+        "method": "GET",
+        "refresh_interval_ms": 15000
+      },
+      "widgets": [
+        {
+          "type": "counter",
+          "field": "total_query_count",
+          "label": "Queries",
+          "icon": "file-search"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+-- SPDX-License-Identifier: PMPL-1.0-or-later
+-- Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+package gcp_mcp
+
+version = "0.2.0"
+authors = "Jonathan D.A. Jewell"
+brief   = "Type-safe ABI for GCP MCP cartridge — service account/OAuth2 auth, multi-service routing (Compute/Storage/Functions/PubSub/BigQuery/IAM)"
+
+sourcedir = "."
+
+depends = base
+
+modules = GcpMcp.SafeCloud

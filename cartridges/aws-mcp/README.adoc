@@ -1,0 +1,80 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+// Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+= aws-mcp
+Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+:spdx: PMPL-1.0-or-later
+:tier: Ayo
+:domain: Cloud
+:protocols: MCP, REST
+
+== Overview
+
+AWS cloud cartridge for the BoJ server. Provides type-safe access to AWS
+services via Signature V4 authentication, with credentials proxied through
+vault-mcp. Supports S3, EC2, Lambda, SQS, and DynamoDB with configurable
+region and automatic service endpoint routing.
+
+=== State Machine
+
+`Unauthenticated -> Authenticated -> RateLimited -> Authenticated` (normal flow)
+
+`Authenticated -> Error -> Unauthenticated` (error recovery)
+
+=== Actions (16)
+
+[cols="1,1"]
+|===
+| Service | Actions
+
+| S3
+| ListBuckets, GetObject, PutObject, DeleteObject
+
+| EC2
+| ListInstances, StartInstance, StopInstance
+
+| Lambda
+| ListFunctions, InvokeFunction
+
+| SQS
+| ListQueues, SendMessage, ReceiveMessage
+
+| DynamoDB
+| ListTables, PutItem, GetItem, QueryTable
+|===
+
+== Architecture
+
+[cols="1,1,2"]
+|===
+| Layer | Language | Purpose
+
+| ABI
+| Idris2
+| Formally verified state machine with dependent-type proofs (AwsMcp.SafeCloud)
+
+| FFI
+| Zig
+| C-compatible implementation with thread-safe session pool, service routing
+
+| Adapter
+| V-lang
+| REST bridge to BoJ unified adapter protocol
+|===
+
+== Building
+
+[source,bash]
+----
+# Build FFI shared library
+cd ffi && zig build
+
+# Run FFI tests
+cd ffi && zig build test
+
+# Type-check ABI
+cd abi && idris2 --check aws_mcp.ipkg
+----
+
+== Status
+
+Development — customised with AWS-specific state machine, auth, and service routing.

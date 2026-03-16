@@ -1,0 +1,83 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+// Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+= gcp-mcp
+Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+:spdx: PMPL-1.0-or-later
+:tier: Ayo
+:domain: Cloud
+:protocols: MCP, REST
+
+== Overview
+
+Google Cloud Platform cartridge for the BoJ server. Provides type-safe access
+to GCP services via service account JSON key or OAuth2 token authentication.
+Supports Compute Engine, Cloud Storage, Cloud Functions, Pub/Sub, BigQuery,
+and IAM with configurable project_id and automatic service endpoint routing.
+
+=== State Machine
+
+`Unauthenticated -> Authenticated -> RateLimited -> Authenticated` (normal flow)
+
+`Authenticated -> Error -> Unauthenticated` (error recovery)
+
+=== Actions (16)
+
+[cols="1,1"]
+|===
+| Service | Actions
+
+| Compute
+| ListProjects, ListInstances, StartInstance, StopInstance
+
+| Storage
+| ListBuckets, GetObject, PutObject
+
+| Functions
+| ListFunctions, InvokeFunction
+
+| Pub/Sub
+| ListPubSubTopics, PublishMessage, ListSubscriptions
+
+| BigQuery
+| RunQuery, ListDatasets, CreateDataset
+
+| IAM
+| GetIamPolicy
+|===
+
+== Architecture
+
+[cols="1,1,2"]
+|===
+| Layer | Language | Purpose
+
+| ABI
+| Idris2
+| Formally verified state machine with dependent-type proofs (GcpMcp.SafeCloud)
+
+| FFI
+| Zig
+| C-compatible implementation with thread-safe session pool, service routing, quota tracking
+
+| Adapter
+| V-lang
+| REST bridge to BoJ unified adapter protocol
+|===
+
+== Building
+
+[source,bash]
+----
+# Build FFI shared library
+cd ffi && zig build
+
+# Run FFI tests
+cd ffi && zig build test
+
+# Type-check ABI
+cd abi && idris2 --check gcp_mcp.ipkg
+----
+
+== Status
+
+Development — customised with GCP-specific state machine, auth, and service routing.

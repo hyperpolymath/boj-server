@@ -1,0 +1,67 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+// Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+
+= supabase-mcp
+Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+:spdx: PMPL-1.0-or-later
+:tier: Ayo
+:domain: Database
+:protocols: MCP, REST
+
+== Overview
+
+Supabase MCP cartridge. Provides type-safe access to Supabase project
+endpoints covering PostgREST (queries, tables), Auth (users, sign-in),
+Storage (buckets, files), and Functions (invoke, list). Auth via Bearer token
+(service_role key or anon key). Configurable project URL:
+`https://{project}.supabase.co/`.
+
+=== Actions
+
+ListProjects, GetProject, Query, ListTables, GetTable, ListFunctions,
+InvokeFunction, ListBuckets, UploadFile, ListFiles, GetUser, ListUsers,
+CreateUser, SignIn, ListSecrets, SetSecret.
+
+== Architecture
+
+[cols="1,1,2"]
+|===
+| Layer | Language | Purpose
+
+| ABI
+| Idris2
+| Formally verified state machine (Disconnected / Connected / QueryRunning / Error)
+
+| FFI
+| Zig
+| C-compatible implementation with thread-safe session pool
+
+| Adapter
+| V-lang
+| REST bridge to BoJ unified adapter protocol
+|===
+
+== Building
+
+[source,bash]
+----
+# Build FFI shared library
+cd ffi && zig build
+
+# Run FFI tests
+cd ffi && zig build test
+
+# Type-check ABI
+cd abi && idris2 --check SupabaseMcp.SafeDatabase
+----
+
+== Panels
+
+* Project status (connection state)
+* Table count
+* Function count
+* Storage usage
+
+== Status
+
+Development -- not yet ready for mounting.

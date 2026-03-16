@@ -1,0 +1,67 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+// Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+
+= neon-mcp
+Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+:spdx: PMPL-1.0-or-later
+:tier: Ayo
+:domain: Database
+:protocols: MCP, REST
+
+== Overview
+
+Neon serverless Postgres MCP cartridge. Provides type-safe access to the
+https://console.neon.tech/api/v2/[Neon REST API] covering projects, branches,
+endpoints, databases, roles, and operations. Auth via Bearer token (Neon API
+key). Endpoints auto-suspend when idle (serverless Postgres semantics).
+
+=== Actions
+
+ListProjects, GetProject, CreateProject, DeleteProject, ListBranches,
+CreateBranch, DeleteBranch, GetConnectionString, Query, ListDatabases,
+ListRoles, GetEndpoint, StartEndpoint, SuspendEndpoint, ListOperations,
+GetOperation.
+
+== Architecture
+
+[cols="1,1,2"]
+|===
+| Layer | Language | Purpose
+
+| ABI
+| Idris2
+| Formally verified state machine (Disconnected / Connected / QueryRunning / Error)
+
+| FFI
+| Zig
+| C-compatible implementation with thread-safe session pool
+
+| Adapter
+| V-lang
+| REST bridge to BoJ unified adapter protocol
+|===
+
+== Building
+
+[source,bash]
+----
+# Build FFI shared library
+cd ffi && zig build
+
+# Run FFI tests
+cd ffi && zig build test
+
+# Type-check ABI
+cd abi && idris2 --check NeonMcp.SafeDatabase
+----
+
+== Panels
+
+* Project count
+* Branch count
+* Endpoint status (active / idle / suspended)
+* Query count
+
+== Status
+
+Development -- not yet ready for mounting.

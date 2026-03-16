@@ -1,0 +1,44 @@
+# SPDX-License-Identifier: PMPL-1.0-or-later
+# Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+
+name = "digitalocean-mcp"
+description = "DigitalOcean cloud infrastructure MCP cartridge — droplets, volumes, domains, SSH keys, snapshots, databases"
+version = "0.2.0"
+domain = "Cloud"
+protocols = [
+    "MCP",
+    "REST",
+]
+tier = "Ayo"
+backend = "universal"
+generate_panel = true
+
+[auth]
+method = "bearer"
+token_type = "personal_access_token"
+base_url = "https://api.digitalocean.com/v2/"
+
+[rate_limit]
+requests = 5000
+window = "1h"
+
+[actions]
+count = 16
+list = [
+    "ListDroplets",
+    "GetDroplet",
+    "CreateDroplet",
+    "DeleteDroplet",
+    "PowerOn",
+    "PowerOff",
+    "Reboot",
+    "ListVolumes",
+    "CreateVolume",
+    "ListDomains",
+    "CreateDomain",
+    "ListSSHKeys",
+    "ListSnapshots",
+    "CreateSnapshot",
+    "ListDatabases",
+    "GetAccount",
+]
