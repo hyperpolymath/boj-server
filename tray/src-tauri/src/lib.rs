@@ -5,6 +5,7 @@
 //! their boj-server instance, control resource allocation, subscribe
 //! to cartridge catalogues, and monitor federation status.
 
+#![forbid(unsafe_code)]
 mod server;
 mod tray;
 
