@@ -37,7 +37,7 @@ allow = [
 
 deny = [
     "AGPL-3.0-only",
-    "AGPL-3.0-or-later",
+    "PMPL-1.0-or-later",
 ]
 
 copyleft = "warn"
