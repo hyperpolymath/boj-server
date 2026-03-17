@@ -364,6 +364,8 @@ mut:
 	rest_port   string
 	grpc_port   string
 	graphql_port string
+	ws_port     string
+	mqtt_port   string
 	event_queue EventQueue
 }
 
@@ -377,6 +379,8 @@ fn BojApp.new() BojApp {
 		rest_port: os.getenv_opt('BOJ_REST_PORT') or { '7700' }
 		grpc_port: os.getenv_opt('BOJ_GRPC_PORT') or { '7701' }
 		graphql_port: os.getenv_opt('BOJ_GRAPHQL_PORT') or { '7702' }
+		ws_port: os.getenv_opt('BOJ_WS_PORT') or { '7704' }
+		mqtt_port: os.getenv_opt('BOJ_MQTT_PORT') or { '1883' }
 		event_queue: EventQueue.new()
 	}
 }
