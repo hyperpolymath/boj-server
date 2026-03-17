@@ -1,0 +1,105 @@
+{
+  "$schema": "panll-harness/v1",
+  "service_id": "hybrid-automation-router",
+  "service_name": "Hybrid Automation Router",
+  "version": "0.2.0",
+  "protocol": "http",
+  "default_endpoint": "http://localhost:7900/api/v1",
+  "health_check": {
+    "path": "/health",
+    "interval_ms": 15000,
+    "timeout_ms": 5000,
+    "healthy_threshold": 1,
+    "unhealthy_threshold": 3
+  },
+  "data_sources": {
+    "har://system/health": {
+      "path": "/system/health",
+      "method": "GET",
+      "returns": "SystemHealth",
+      "description": "Overall router system health"
+    },
+    "har://targets/count": {
+      "path": "/targets/count",
+      "method": "GET",
+      "returns": "u64",
+      "description": "Total registered automation targets"
+    },
+    "har://targets/all": {
+      "path": "/targets",
+      "method": "GET",
+      "returns": "[AutomationTarget]",
+      "description": "All registered targets with status"
+    },
+    "har://targets/rpa-elysium/status": {
+      "path": "/targets/rpa-elysium/status",
+      "method": "GET",
+      "returns": "TargetStatus",
+      "description": "rpa-elysium target health status"
+    },
+    "har://targets/rpa-elysium/metrics/events_routed": {
+      "path": "/targets/rpa-elysium/metrics",
+      "method": "GET",
+      "returns": "u64",
+      "jq_extract": ".events_routed",
+      "description": "Events routed to rpa-elysium"
+    },
+    "har://targets/rpa-elysium/metrics/avg_confidence": {
+      "path": "/targets/rpa-elysium/metrics",
+      "method": "GET",
+      "returns": "f64",
+      "jq_extract": ".avg_confidence",
+      "description": "Average routing confidence for rpa-elysium"
+    },
+    "har://targets/rpa-elysium/events/recent": {
+      "path": "/targets/rpa-elysium/events?limit=20",
+      "method": "GET",
+      "returns": "[RoutedEvent]",
+      "description": "Recent events routed to rpa-elysium"
+    },
+    "har://metrics/events_per_minute": {
+      "path": "/metrics/events_per_minute",
+      "method": "GET",
+      "returns": "[SparklinePoint]",
+      "description": "Events per minute over last hour"
+    },
+    "har://metrics/routing_success_rate": {
+      "path": "/metrics/success_rate",
+      "method": "GET",
+      "returns": "f64",
+      "description": "Routing success rate (0.0–1.0)"
+    },
+    "har://metrics/strategy_breakdown": {
+      "path": "/metrics/strategy_breakdown",
+      "method": "GET",
+      "returns": "HashMap<String, u64>",
+      "description": "Routing strategy usage counts"
+    },
+    "har://metrics/category_distribution": {
+      "path": "/metrics/category_distribution",
+      "method": "GET",
+      "returns": "HashMap<String, u64>",
+      "description": "Event category distribution"
+    },
+    "har://routes/recent": {
+      "path": "/routes/recent?limit=30",
+      "method": "GET",
+      "returns": "[RouteDecision]",
+      "description": "Recent routing decisions with confidence and strategy"
+    }
+  },
+  "panels": [
+    "panels/har-dashboard/panel.json",
+    "panels/rpa-elysium/panel.json"
+  ],
+  "capabilities": ["routing", "health_checking", "metrics", "dispatch"],
+  "clade": "automation/routing",
+  "integrations": {
+    "rpa-elysium": {
+      "role": "dispatch_target",
+      "protocol": "queue",
+      "delivery_guarantee": "at_least_once",
+      "health_check_endpoint": "http://localhost:7800/health"
+    }
+  }
+}

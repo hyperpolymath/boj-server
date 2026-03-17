@@ -1,0 +1,147 @@
+{
+  "$schema": "https://panll.dev/schemas/panel-manifest/v1.json",
+  "id": "org.hyperpolymath.session-sentinel",
+  "name": "Session Sentinel",
+  "version": "0.1.0",
+  "description": "Multi-AI session health monitor — storage trends, zone status, healing controls, diagnostics",
+  "author": "Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>",
+  "license": "PMPL-1.0-or-later",
+
+  "panel": {
+    "uri": "sentinel://health",
+    "title": "Session Sentinel",
+    "icon": "shield-check",
+    "category": "system",
+    "defaultSize": { "width": 480, "height": 640 },
+    "minSize": { "width": 320, "height": 400 },
+    "resizable": true
+  },
+
+  "capabilities": [
+    "realtime-data",
+    "interactive-controls",
+    "trend-graphs",
+    "threshold-tuning",
+    "diagnostic-viewer"
+  ],
+
+  "dbus": {
+    "busName": "org.hyperpolymath.SessionSentinel",
+    "objectPath": "/org/hyperpolymath/SessionSentinel",
+    "interface": "org.hyperpolymath.SessionSentinel1"
+  },
+
+  "views": [
+    {
+      "id": "overview",
+      "title": "Health Overview",
+      "default": true,
+      "sections": [
+        {
+          "type": "status-badge",
+          "binding": "currentZone",
+          "colors": {
+            "Green": "#22c55e",
+            "Yellow": "#eab308",
+            "Red": "#ef4444",
+            "Purple": "#a855f7"
+          }
+        },
+        {
+          "type": "metric-row",
+          "metrics": [
+            { "label": "Total Storage", "binding": "totalBytes", "format": "bytes" },
+            { "label": "Conversations", "binding": "conversationCount", "format": "number" },
+            { "label": "Orphan Files", "binding": "orphanCount", "format": "number" },
+            { "label": "AI Providers", "binding": "providerCount", "format": "number" }
+          ]
+        },
+        {
+          "type": "provider-breakdown",
+          "binding": "providerSnapshots",
+          "columns": ["provider", "size", "files", "staleDays"]
+        }
+      ]
+    },
+    {
+      "id": "trends",
+      "title": "Storage Trends",
+      "sections": [
+        {
+          "type": "line-chart",
+          "binding": "historyReadings",
+          "xAxis": "timestamp",
+          "yAxis": "totalBytes",
+          "colorBy": "zone",
+          "timeRange": "7d"
+        },
+        {
+          "type": "prediction",
+          "binding": "trendPrediction",
+          "label": "Predicted zone in 24h"
+        }
+      ]
+    },
+    {
+      "id": "controls",
+      "title": "Controls",
+      "sections": [
+        {
+          "type": "button-group",
+          "buttons": [
+            { "label": "Force Scan", "action": "forceScan", "style": "primary" },
+            { "label": "Run Healing", "action": "triggerHeal", "style": "warning" },
+            { "label": "Run Diagnostics", "action": "triggerDiagnostic", "style": "secondary" }
+          ]
+        },
+        {
+          "type": "threshold-sliders",
+          "thresholds": [
+            { "zone": "Green", "binding": "greenMax", "min": 50000000, "max": 500000000, "step": 10000000, "format": "bytes" },
+            { "zone": "Yellow", "binding": "yellowMax", "min": 100000000, "max": 1000000000, "step": 10000000, "format": "bytes" },
+            { "zone": "Red", "binding": "redMax", "min": 200000000, "max": 2000000000, "step": 50000000, "format": "bytes" }
+          ]
+        },
+        {
+          "type": "toggle-group",
+          "toggles": [
+            { "label": "Auto-healing", "binding": "enableSelfHealing" },
+            { "label": "Diagnostics", "binding": "enableDiagnostics" },
+            { "label": "Purple flash", "binding": "enablePurpleFlash" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "diagnostics",
+      "title": "Diagnostics",
+      "sections": [
+        {
+          "type": "log-viewer",
+          "binding": "diagnosticLog",
+          "filters": ["Storage", "Process", "Health", "Healing", "Error"],
+          "severityColors": {
+            "Info": "#6b7280",
+            "Warning": "#eab308",
+            "Critical": "#ef4444"
+          },
+          "maxEntries": 500,
+          "autoScroll": true
+        },
+        {
+          "type": "watchdog-status",
+          "binding": "watchdogState",
+          "showUptime": true,
+          "showLastScan": true,
+          "showConsecutiveFailures": true
+        }
+      ]
+    }
+  ],
+
+  "health": {
+    "checkEndpoint": "GetHealth",
+    "interval": 30,
+    "timeout": 10
+  }
+}

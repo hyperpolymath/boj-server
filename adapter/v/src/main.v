@@ -866,6 +866,17 @@ fn (h RestHandler) handle(req http.Request) http.Response {
 		}
 		return handle_order_ticket(h.app, req.data)
 	}
+	if path == '/cartridges/ssg-mcp/webhook' {
+		if req.method != .post {
+			return error_response(405, 'POST required for webhooks')
+		}
+		// High-Rigor HMAC Security Check
+		signature := req.header.get(.x_hub_signature_256) or { '' }
+		if !verify_github_signature(req.data, signature) {
+			return error_response(401, 'unauthorized: invalid signature')
+		}
+		return handle_cartridge_invoke(h.app, 'ssg-mcp', req.data)
+	}
 	// GET /cartridges — list all cartridges
 	if path == '/cartridges' {
 		return json_response(json.encode(h.app.build_matrix()))

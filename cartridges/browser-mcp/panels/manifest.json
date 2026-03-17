@@ -8,6 +8,20 @@
   "author": "Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>",
   "data_sources": [
     {
+      "id": "node_health",
+      "label": "BoJ Node Health",
+      "type": "boolean",
+      "endpoint": "/health",
+      "poll_interval_ms": 60000
+    },
+    {
+      "id": "node_uptime",
+      "label": "Node Uptime",
+      "type": "integer",
+      "endpoint": "/health",
+      "poll_interval_ms": 60000
+    },
+    {
       "id": "connection_status",
       "label": "Connection Status",
       "type": "enum",
@@ -45,6 +59,25 @@
     }
   ],
   "widgets": [
+    {
+      "id": "node_health_status",
+      "type": "status-badge",
+      "title": "BoJ Node",
+      "data_source": "node_health",
+      "style": {
+        "true": "success",
+        "false": "danger"
+      },
+      "position": { "row": 0, "col": 0, "width": 1, "height": 1 }
+    },
+    {
+      "id": "node_uptime_display",
+      "type": "numeric-display",
+      "title": "Node Uptime",
+      "data_source": "node_uptime",
+      "icon": "timer",
+      "position": { "row": 0, "col": 1, "width": 1, "height": 1 }
+    },
     {
       "id": "status_indicator",
       "type": "status-badge",
