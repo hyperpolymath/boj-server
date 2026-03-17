@@ -12,21 +12,27 @@ A genuine 'bundle of joy'.
   <img src="https://www.bestpractices.dev/projects/12164/badge" alt="OpenSSF Best Practices passing (115%)" />
 </a>
 
-## 🏰 Dual-Track Architecture
+## 🏰 Three-Class Architecture
 
-BoJ Server provides two distinct ways to interact with cartridges, catering to different needs for simplicity and scale.
+BoJ Server provides three distinct deployment tiers, catering to different needs for simplicity, security, and global scale.
 
 ### **Class 1: Simple Track (Canonical)**
 - **Focus:** Simplicity, local-first, zero-infrastructure.
-- **Workflow:** Repositories use standard GitHub Actions (`curl` triggers) to talk to the server.
-- **Implementation:** Each cartridge is self-contained with its own adapters.
-- **Best for:** Most users, quick setups, and easy debugging.
+- **Workflow:** Repositories use standard GitHub Actions (`curl` triggers) to talk to the server REST API.
+- **Implementation:** Self-contained V-lang adapters wrapping Idris2/Zig logic.
+- **Best for:** Personal infrastructure, solo developers, and easy debugging.
 
 ### **Class 2: Orchestrator Track (Advanced)**
-- **Focus:** Unified transport, high-performance, massive scale.
+- **Focus:** Secure gateways and technical orchestration.
 - **Workflow:** Uses secure Webhooks (HMAC-SHA256) and unified real-time gateways (MQTT/WebSockets).
-- **Implementation:** Core-level generic handlers located in `adapter/v/src/class_2_orchestrator/`.
-- **Best for:** Production environments, IoT integration, and multi-agent orchestration.
+- **Implementation:** Core generic handlers located in `adapter/v/src/class_2_orchestrator/`.
+- **Best for:** Corporate settings, VPN-backed services, and technical power users.
+
+### **Class 3: Multiplier Track (Global)**
+- **Focus:** Extreme fault tolerance, concurrency, and mass distribution.
+- **Workflow:** High-performance proxying for extension stores (Google, Claude, ChatGPT, Mistral).
+- **Implementation:** **Elixir / BEAM** "piggyback" unit providing massive-scale process supervision.
+- **Best for:** Mass audiences, distributed Umoja networks, and commercial extension hosting.
 
 ---
 

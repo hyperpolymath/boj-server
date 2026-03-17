@@ -9,9 +9,9 @@ This is the AI manifest for **Bundle of Joy Server**. It declares:
 - Critical invariants (rules that must NEVER be violated)
 - Repository structure and organization
 
-## 🏰 DUAL-TRACK ARCHITECTURE (CLASS 1 vs CLASS 2)
+## 🏰 THREE-CLASS ARCHITECTURE (ROADMAP)
 
-This repository implements a Dual-Track design to balance simplicity and scale.
+This repository implements a tiered design to balance simplicity, technical rigor, and global scale.
 
 ### **Class 1: Simple Track (Canonical)**
 - **Focus:** Zero-infrastructure simplicity.
@@ -25,7 +25,13 @@ This repository implements a Dual-Track design to balance simplicity and scale.
 - **Cartridge Pattern:** Uses core generic handlers to wrap cartridge FFI.
 - **Path:** `adapter/v/src/class_2_orchestrator/`.
 
-**INVARIANT:** Class 2 features must NEVER damage or replace the Class 1 foundation.
+### **Class 3: Multiplier Track (Global)**
+- **Focus:** Extreme fault tolerance and mass concurrency.
+- **Workflow:** Extension Store proxying (Claude, ChatGPT, Mistral).
+- **Multiplier Pattern:** **Elixir / BEAM** piggyback unit for massive scale.
+- **Project:** `elixir-mcp-server` / `boj-server-gemini`.
+
+**INVARIANT:** Advanced features must NEVER damage or replace the Class 1 foundation.
 
 ## CANONICAL LOCATIONS (UNIVERSAL RULE)
 
