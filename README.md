@@ -12,6 +12,24 @@ A genuine 'bundle of joy'.
   <img src="https://www.bestpractices.dev/projects/12164/badge" alt="OpenSSF Best Practices passing (115%)" />
 </a>
 
+## 🏰 Dual-Track Architecture
+
+BoJ Server provides two distinct ways to interact with cartridges, catering to different needs for simplicity and scale.
+
+### **Class 1: Simple Track (Canonical)**
+- **Focus:** Simplicity, local-first, zero-infrastructure.
+- **Workflow:** Repositories use standard GitHub Actions (`curl` triggers) to talk to the server.
+- **Implementation:** Each cartridge is self-contained with its own adapters.
+- **Best for:** Most users, quick setups, and easy debugging.
+
+### **Class 2: Orchestrator Track (Advanced)**
+- **Focus:** Unified transport, high-performance, massive scale.
+- **Workflow:** Uses secure Webhooks (HMAC-SHA256) and unified real-time gateways (MQTT/WebSockets).
+- **Implementation:** Core-level generic handlers located in `adapter/v/src/class_2_orchestrator/`.
+- **Best for:** Production environments, IoT integration, and multi-agent orchestration.
+
+---
+
 ## Quick Start
 
 **1. Clone and build**
@@ -97,13 +115,3 @@ See [docs/READINESS.md](docs/READINESS.md) for the full component-by-component a
 ## Architecture (For Contributors)
 
 BoJ uses Idris2 for interface proofs (zero `believe_me`), Zig for the C-compatible FFI layer, V-lang for the REST/gRPC/GraphQL adapter, and JavaScript for the MCP bridge. If that sounds like a lot of languages, it is -- each was chosen for a specific guarantee. See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the rationale and contributor guide.
-
-Cartridges are loaded as shared libraries (`.so` files) at runtime, verified by hash before mounting. Community-contributed cartridges go through the same verification pipeline.
-
-## License
-
-SPDX-License-Identifier: PMPL-1.0-or-later (Palimpsest License)
-
-Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath)
-
-See [LICENSE](LICENSE) for the full text.

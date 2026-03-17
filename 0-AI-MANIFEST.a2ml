@@ -9,6 +9,24 @@ This is the AI manifest for **Bundle of Joy Server**. It declares:
 - Critical invariants (rules that must NEVER be violated)
 - Repository structure and organization
 
+## 🏰 DUAL-TRACK ARCHITECTURE (CLASS 1 vs CLASS 2)
+
+This repository implements a Dual-Track design to balance simplicity and scale.
+
+### **Class 1: Simple Track (Canonical)**
+- **Focus:** Zero-infrastructure simplicity.
+- **Workflow:** Repositories trigger builds via GitHub Actions (CLI/curl).
+- **Cartridge Pattern:** Each cartridge has its own self-contained V-lang adapters.
+- **Path:** Standard `cartridges/<name>/adapter/`.
+
+### **Class 2: Orchestrator Track (Advanced)**
+- **Focus:** High-performance unified gateways.
+- **Workflow:** Secure Webhooks (HMAC-SHA256) and Real-time (MQTT/WS).
+- **Cartridge Pattern:** Uses core generic handlers to wrap cartridge FFI.
+- **Path:** `adapter/v/src/class_2_orchestrator/`.
+
+**INVARIANT:** Class 2 features must NEVER damage or replace the Class 1 foundation.
+
 ## CANONICAL LOCATIONS (UNIVERSAL RULE)
 
 ### Machine-Readable Metadata: `.machine_readable/` ONLY
@@ -98,7 +116,8 @@ boj-server/
 │   └── src/loader.zig         # Dynamic cartridge loader
 ├── generated/abi/             # Auto-generated C headers from Idris2
 ├── adapter/v/                 # V-lang triple adapter (REST+gRPC+GraphQL)
-│   └── src/main.v             # Unified console on port 9000
+│   ├── src/main.v             # Unified console on port 9000
+│   └── src/class_2_orchestrator/ # Advanced gateway logic (WS/MQTT/Webhook)
 ├── cartridges/                # One dir per matrix cell (Idris2+Zig+V)
 │   ├── database-mcp/          # MCP × Database cartridge
 │   ├── nesy-mcp/              # MCP × NeSy cartridge
