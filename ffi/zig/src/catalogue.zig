@@ -52,7 +52,10 @@ pub const CapabilityDomain = enum(c_int) {
     proof = 11,
     fleet_dom = 12,
     nesy_dom = 13,
-    feedback = 14,
+    agent = 14,
+    lsp = 15,
+    dap = 16,
+    bsp = 17,
 };
 
 /// Menu tier (Teranga/Shield/Ayo).

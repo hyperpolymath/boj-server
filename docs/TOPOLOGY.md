@@ -58,16 +58,16 @@
            │                  │                      │
            ▼                  ▼                      ▼
  ┌───────────────────────────────────────────────────────────────┐
- │                  18 CARTRIDGES (2D Matrix)                    │
+ │                  17 CARTRIDGES (2D Matrix)                    │
  │                                                               │
  │  database-mcp   fleet-mcp     nesy-mcp      agent-mcp        │
  │  cloud-mcp      container-mcp k8s-mcp       git-mcp          │
  │  secrets-mcp    queues-mcp    iac-mcp       observe-mcp      │
  │  ssg-mcp        proof-mcp     lsp-mcp       dap-mcp          │
- │  bsp-mcp        feedback-mcp                                 │
+ │  bsp-mcp                                                     │
  │                                                               │
  │  Each: abi/ (Idris2) + ffi/ (Zig) + adapter/ (V-lang)       │
- │  18/18 mounted + serving  |  307 tests total                  │
+ │  17/17 mounted + serving  |  307 tests total                  │
  └───────────────────────────────────────────────────────────────┘
            │
            ▼
@@ -79,6 +79,7 @@
  │  vordr.toml (runtime monitoring)                              │
  │  deploy.k9.ncl (operational constraints)                      │
  │  VeriSimDB backing store (7 tests)                            │
+ │  feedback-o-tron (18th cartridge — separate)                  │
  └───────────────────────────────────────────────────────────────┘
 ```
 
@@ -104,11 +105,10 @@ Proof      │  ██  │      │      │      │      │       │      �
 LSP        │  ██  │  ██  │      │      │      │       │      │      │  ██  │
 DAP        │  ██  │      │  ██  │      │      │       │      │      │  ██  │
 BSP        │  ██  │      │      │  ██  │      │       │      │      │  ██  │
-Feedback   │  ██  │      │      │      │      │       │      │      │  ██  │
            └──────┴──────┴──────┴──────┴──────┴───────┴──────┴──────┴──────┘
 
   ██ = ABI + FFI + Adapter built and .so compiled (Grade D Alpha)
-  gRPC on: database, agent, cloud, k8s, queues, observe (6/18)
+  gRPC on: database, agent, cloud, k8s, queues, observe (6/17)
   All cells have backend="universal". Third axis (backend/provider)
   stubbed for community extensions — see docs/EXTENSIBILITY.md
 ```
@@ -124,7 +124,7 @@ Feedback   │  ██  │      │      │      │      │       │      �
 | Guardian module (Zig)            | `███████░░░`  70%         | D (Alpha) — 12 tests, no real failure scenarios |
 | V-lang Adapter (REST+gRPC+GQL)   | `██████░░░░`  60%         | D (Alpha) — compiles and routes, no external traffic |
 | C Headers (generated)            | `███████░░░`  70%         | D (Alpha) — generated, not tested via C consumer |
-| **Cartridges (18/18 built)**     |                           |                |
+| **Cartridges (17/17 built)**     |                           |                |
 | database-mcp                     | `███████░░░`  70%         | D (Alpha) .so — e2e test exists, no real DB workload |
 | fleet-mcp                        | `██████░░░░`  60%         | D (Alpha) .so  |
 | nesy-mcp                         | `██████░░░░`  60%         | D (Alpha) .so  |
@@ -139,10 +139,11 @@ Feedback   │  ██  │      │      │      │      │       │      �
 | observe-mcp                      | `██████░░░░`  60%         | D (Alpha) .so  |
 | ssg-mcp                          | `██████░░░░`  60%         | D (Alpha) .so — Zola e2e test exists, not production |
 | proof-mcp                        | `██████░░░░`  60%         | D (Alpha) .so  |
-| lsp-mcp                          | `██████░░░░`  60%         | D (Alpha) .so  |
-| dap-mcp                          | `██████░░░░`  60%         | D (Alpha) .so  |
-| bsp-mcp                          | `██████░░░░`  60%         | D (Alpha) .so  |
-| feedback-mcp                     | `██████░░░░`  60%         | D (Alpha) .so  |
+| lsp-mcp                          | `██████░░░░`  60%         | D (Alpha) .so — CI integration active |
+| dap-mcp                          | `██████░░░░`  60%         | D (Alpha) .so — CI integration active |
+| bsp-mcp                          | `██████░░░░`  60%         | D (Alpha) .so — CI integration active |
+| **Specialist Cartridges**        |                           |                |
+| feedback-o-tron (18th cartridge) | `██████░░░░`  60%         | D (Alpha) — full ABI+FFI, not collecting real feedback |
 | **Federation & Distribution**    |                           |                |
 | Umoja federation (QUIC+UDP)      | `██████░░░░`  60%         | D (Alpha) — tests pass, no real multi-node deployment |
 | VeriSimDB backing store          | `██████░░░░`  60%         | D (Alpha) — 7 tests, no production persistence |

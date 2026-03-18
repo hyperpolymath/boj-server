@@ -47,29 +47,28 @@ test "e2e order-ticket: register, protocol, hash, mount, query, unmount" {
     // --- Step 1: Init ---
     try std.testing.expectEqual(@as(c_int, 0), catalogue.boj_catalogue_init());
 
-    // --- Step 2: Register 4 cartridges with status=ready ---
+    // --- Step 2: Register core cartridges with status=ready ---
     //   database-mcp  domain=database(3)
     //   fleet-mcp     domain=fleet_dom(12)
     //   nesy-mcp      domain=nesy_dom(13)
-    //   agent-mcp     domain=cloud(1)
-    const idx_database = registerReady("database-mcp", 3);
-    const idx_fleet = registerReady("fleet-mcp", 12);
-    const idx_nesy = registerReady("nesy-mcp", 13);
-    const idx_agent = registerReady("agent-mcp", 1);
+    //   agent-mcp     domain=agent(14)
+    //   lsp-mcp       domain=lsp(15)
+    //   dap-mcp       domain=dap(16)
+    //   bsp-mcp       domain=bsp(17)
+    _ = registerReady("database-mcp", 3);
+    _ = registerReady("fleet-mcp", 12);
+    _ = registerReady("nesy-mcp", 13);
+    _ = registerReady("agent-mcp", 14);
+    _ = registerReady("lsp-mcp", 15);
+    _ = registerReady("dap-mcp", 16);
+    _ = registerReady("bsp-mcp", 17);
 
-    try std.testing.expectEqual(@as(usize, 4), catalogue.boj_catalogue_count());
-    try std.testing.expectEqual(@as(usize, 4), catalogue.boj_catalogue_count_ready());
+    try std.testing.expectEqual(@as(usize, 7), catalogue.boj_catalogue_count());
+    try std.testing.expectEqual(@as(usize, 7), catalogue.boj_catalogue_count_ready());
 
     // --- Step 3: Add protocols matching V adapter builtins ---
-    //   database-mcp: mcp(1)
-    //   fleet-mcp:    mcp(1), fleet(7)
-    //   nesy-mcp:     mcp(1), nesy(5)
-    //   agent-mcp:    mcp(1), agentic(6)
-    //
     // boj_catalogue_add_protocol applies to the *last* registered cartridge,
     // so we re-register in order and add protocols right after each.
-    // Since we already registered above, we re-init and redo to keep the
-    // add_protocol calls adjacent to registration.
     catalogue.boj_catalogue_deinit();
     try std.testing.expectEqual(@as(c_int, 0), catalogue.boj_catalogue_init());
 
@@ -110,26 +109,31 @@ test "e2e order-ticket: register, protocol, hash, mount, query, unmount" {
         const name = "agent-mcp";
         const ver = "1.0.0";
         try std.testing.expectEqual(@as(c_int, 0), catalogue.boj_catalogue_register(
-            name.ptr, name.len, ver.ptr, ver.len, 1, 0, 1,
+            name.ptr, name.len, ver.ptr, ver.len, 1, 0, 14,
         ));
         try std.testing.expectEqual(@as(c_int, 0), catalogue.boj_catalogue_add_protocol(1)); // mcp
         try std.testing.expectEqual(@as(c_int, 0), catalogue.boj_catalogue_add_protocol(6)); // agentic
     }
 
-    try std.testing.expectEqual(@as(usize, 4), catalogue.boj_catalogue_count());
-    try std.testing.expectEqual(@as(usize, 4), catalogue.boj_catalogue_count_ready());
+    // lsp-mcp
+    {
+        const name = "lsp-mcp";
+        const ver = "1.0.0";
+        try std.testing.expectEqual(@as(c_int, 0), catalogue.boj_catalogue_register(
+            name.ptr, name.len, ver.ptr, ver.len, 1, 0, 15,
+        ));
+        try std.testing.expectEqual(@as(c_int, 0), catalogue.boj_catalogue_add_protocol(2)); // lsp
+    }
+
+    try std.testing.expectEqual(@as(usize, 5), catalogue.boj_catalogue_count());
+    try std.testing.expectEqual(@as(usize, 5), catalogue.boj_catalogue_count_ready());
 
     // Indices after fresh registration sequence:
     const db_idx: usize = 0; // database-mcp
     const fl_idx: usize = 1; // fleet-mcp
     const ne_idx: usize = 2; // nesy-mcp
     const ag_idx: usize = 3; // agent-mcp
-
-    // Suppress unused variable warnings from the first registration pass.
-    _ = idx_database;
-    _ = idx_fleet;
-    _ = idx_nesy;
-    _ = idx_agent;
+    const ls_idx: usize = 4; // lsp-mcp
 
     // --- Step 4: Set hash attestation on database-mcp ---
     const fake_hash = "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2";
@@ -144,40 +148,44 @@ test "e2e order-ticket: register, protocol, hash, mount, query, unmount" {
     try std.testing.expectEqual(fake_hash.len, hash_len);
     try std.testing.expectEqualSlices(u8, fake_hash, hash_buf[0..hash_len]);
 
-    // --- Step 5: Mount 3 cartridges (simulate an order) ---
-    //   Mount database-mcp, fleet-mcp, nesy-mcp (leave agent-mcp unmounted).
+    // --- Step 5: Mount 4 cartridges (simulate an order) ---
+    //   Mount database-mcp, fleet-mcp, nesy-mcp, lsp-mcp (leave agent-mcp unmounted).
     try std.testing.expectEqual(@as(c_int, 0), catalogue.boj_catalogue_mount(db_idx));
     try std.testing.expectEqual(@as(c_int, 0), catalogue.boj_catalogue_mount(fl_idx));
     try std.testing.expectEqual(@as(c_int, 0), catalogue.boj_catalogue_mount(ne_idx));
+    try std.testing.expectEqual(@as(c_int, 0), catalogue.boj_catalogue_mount(ls_idx));
 
-    // --- Step 6: Verify mounted count is 3 ---
-    try std.testing.expectEqual(@as(usize, 3), catalogue.boj_catalogue_count_mounted());
+    // --- Step 6: Verify mounted count is 4 ---
+    try std.testing.expectEqual(@as(usize, 4), catalogue.boj_catalogue_count_mounted());
 
     // --- Step 7: Verify each mounted cartridge via is_mounted ---
     try std.testing.expectEqual(@as(c_int, 1), catalogue.boj_catalogue_is_mounted(db_idx));
     try std.testing.expectEqual(@as(c_int, 1), catalogue.boj_catalogue_is_mounted(fl_idx));
     try std.testing.expectEqual(@as(c_int, 1), catalogue.boj_catalogue_is_mounted(ne_idx));
+    try std.testing.expectEqual(@as(c_int, 1), catalogue.boj_catalogue_is_mounted(ls_idx));
     try std.testing.expectEqual(@as(c_int, 0), catalogue.boj_catalogue_is_mounted(ag_idx)); // not mounted
 
     // --- Step 8: Query catalogue to verify counts ---
-    try std.testing.expectEqual(@as(usize, 4), catalogue.boj_catalogue_count());
-    try std.testing.expectEqual(@as(usize, 4), catalogue.boj_catalogue_count_ready());
-    try std.testing.expectEqual(@as(usize, 3), catalogue.boj_catalogue_count_mounted());
+    try std.testing.expectEqual(@as(usize, 5), catalogue.boj_catalogue_count());
+    try std.testing.expectEqual(@as(usize, 5), catalogue.boj_catalogue_count_ready());
+    try std.testing.expectEqual(@as(usize, 4), catalogue.boj_catalogue_count_mounted());
 
     // Verify statuses by index.
     try std.testing.expectEqual(@as(c_int, 1), catalogue.boj_catalogue_status(db_idx)); // ready
     try std.testing.expectEqual(@as(c_int, 1), catalogue.boj_catalogue_status(fl_idx)); // ready
     try std.testing.expectEqual(@as(c_int, 1), catalogue.boj_catalogue_status(ne_idx)); // ready
     try std.testing.expectEqual(@as(c_int, 1), catalogue.boj_catalogue_status(ag_idx)); // ready
+    try std.testing.expectEqual(@as(c_int, 1), catalogue.boj_catalogue_status(ls_idx)); // ready
 
     // --- Step 9: Unmount one cartridge ---
     try std.testing.expectEqual(@as(c_int, 0), catalogue.boj_catalogue_unmount(fl_idx));
 
-    // --- Step 10: Verify mounted count drops to 2 ---
-    try std.testing.expectEqual(@as(usize, 2), catalogue.boj_catalogue_count_mounted());
+    // --- Step 10: Verify mounted count drops to 3 ---
+    try std.testing.expectEqual(@as(usize, 3), catalogue.boj_catalogue_count_mounted());
     try std.testing.expectEqual(@as(c_int, 0), catalogue.boj_catalogue_is_mounted(fl_idx));
     try std.testing.expectEqual(@as(c_int, 1), catalogue.boj_catalogue_is_mounted(db_idx)); // still up
     try std.testing.expectEqual(@as(c_int, 1), catalogue.boj_catalogue_is_mounted(ne_idx)); // still up
+    try std.testing.expectEqual(@as(c_int, 1), catalogue.boj_catalogue_is_mounted(ls_idx)); // still up
 
     // --- Step 11: Deinit ---
     catalogue.boj_catalogue_deinit();

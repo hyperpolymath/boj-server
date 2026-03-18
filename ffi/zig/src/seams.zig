@@ -55,7 +55,7 @@ test "seam: ProtocolType encoding matches Idris2 protocolToInt" {
 }
 
 test "seam: CapabilityDomain encoding matches Idris2 domainToInt" {
-    // Idris2: Cloud=1..Feedback=14
+    // Idris2: Cloud=1..Bsp=17
     try std.testing.expectEqual(@as(c_int, 1), @intFromEnum(catalogue.CapabilityDomain.cloud));
     try std.testing.expectEqual(@as(c_int, 2), @intFromEnum(catalogue.CapabilityDomain.container));
     try std.testing.expectEqual(@as(c_int, 3), @intFromEnum(catalogue.CapabilityDomain.database));
@@ -69,7 +69,10 @@ test "seam: CapabilityDomain encoding matches Idris2 domainToInt" {
     try std.testing.expectEqual(@as(c_int, 11), @intFromEnum(catalogue.CapabilityDomain.proof));
     try std.testing.expectEqual(@as(c_int, 12), @intFromEnum(catalogue.CapabilityDomain.fleet_dom));
     try std.testing.expectEqual(@as(c_int, 13), @intFromEnum(catalogue.CapabilityDomain.nesy_dom));
-    try std.testing.expectEqual(@as(c_int, 14), @intFromEnum(catalogue.CapabilityDomain.feedback));
+    try std.testing.expectEqual(@as(c_int, 14), @intFromEnum(catalogue.CapabilityDomain.agent));
+    try std.testing.expectEqual(@as(c_int, 15), @intFromEnum(catalogue.CapabilityDomain.lsp));
+    try std.testing.expectEqual(@as(c_int, 16), @intFromEnum(catalogue.CapabilityDomain.dap));
+    try std.testing.expectEqual(@as(c_int, 17), @intFromEnum(catalogue.CapabilityDomain.bsp));
 }
 
 test "seam: MenuTier encoding matches Idris2" {
@@ -378,7 +381,7 @@ test "seam: all cartridges support MCP protocol" {
 
     // Verify MCP protocol is present on all
     for (0..21) |i| {
-        try std.testing.expectEqual(@as(c_int, 1), catalogue.boj_catalogue_has_protocol(i, 1));
+        try std.testing.expectEqual(@as(c_int, 1), catalogue.boj_menu_has_protocol(i, 1));
     }
 }
 
