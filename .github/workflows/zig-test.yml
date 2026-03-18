@@ -17,7 +17,8 @@ on:
       - 'ffi/**'
       - 'cartridges/**/ffi/**'
 
-permissions: read-all
+permissions:
+  contents: read
 
 jobs:
   test:

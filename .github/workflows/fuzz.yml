@@ -14,7 +14,8 @@ on:
     - cron: '0 3 * * 3'  # Weekly on Wednesday
   workflow_dispatch:
 
-permissions: read-all
+permissions:
+  contents: read
 
 jobs:
   fuzz-zig:
