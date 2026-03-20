@@ -1,0 +1,246 @@
+{
+  "$schema": "https://boj.dev/schemas/cartridge/v1.json",
+  "spdx": "PMPL-1.0-or-later",
+  "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath)",
+  "name": "linode-mcp",
+  "version": "0.2.0",
+  "description": "Linode/Akamai cloud infrastructure cartridge -- instances, volumes, domains, NodeBalancers, StackScripts, images, regions, firewalls, and account management",
+  "domain": "Cloud",
+  "tier": "Ayo",
+  "protocols": ["MCP", "REST"],
+  "auth": {
+    "method": "bearer_token",
+    "env_var": "LINODE_TOKEN",
+    "credential_source": "vault-mcp"
+  },
+  "api": {
+    "base_url": "https://api.linode.com/v4",
+    "rate_limit_per_2min": 800,
+    "content_type": "application/json"
+  },
+  "tools": [
+    {
+      "name": "linode_list_instances",
+      "description": "List all Linode compute instances in the account",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "page": { "type": "number", "description": "Page number (default 1)" },
+          "page_size": { "type": "number", "description": "Results per page (default 100, max 500)" }
+        }
+      }
+    },
+    {
+      "name": "linode_get_instance",
+      "description": "Get details of a specific Linode instance by ID",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "linode_id": { "type": "number", "description": "Numeric Linode instance ID" }
+        },
+        "required": ["linode_id"]
+      }
+    },
+    {
+      "name": "linode_create_instance",
+      "description": "Create a new Linode compute instance",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "label": { "type": "string", "description": "Linode label (3-64 characters, alphanumeric, dashes, underscores)" },
+          "region": { "type": "string", "description": "Region ID (e.g. us-east, us-central, eu-west, ap-south, ap-southeast, ca-central)" },
+          "type": { "type": "string", "description": "Instance type (e.g. g6-nanode-1, g6-standard-2, g6-dedicated-4, g7-highmem-2)" },
+          "image": { "type": "string", "description": "Image ID (e.g. linode/ubuntu24.04, linode/debian12, linode/fedora41, linode/alpine3.20)" },
+          "root_pass": { "type": "string", "description": "Root password for the Linode (if no authorized keys)" },
+          "authorized_keys": { "type": "array", "items": { "type": "string" }, "description": "SSH public keys to install" },
+          "authorized_users": { "type": "array", "items": { "type": "string" }, "description": "Linode usernames whose keys to install" },
+          "booted": { "type": "boolean", "description": "Boot on creation (default true)" },
+          "backups_enabled": { "type": "boolean", "description": "Enable backup service" },
+          "swap_size": { "type": "number", "description": "Swap size in MB (default 512)" },
+          "private_ip": { "type": "boolean", "description": "Add private IP" },
+          "tags": { "type": "array", "items": { "type": "string" }, "description": "Tags to apply" },
+          "group": { "type": "string", "description": "Display group (deprecated but supported)" },
+          "stackscript_id": { "type": "number", "description": "StackScript ID to run on first boot" },
+          "stackscript_data": { "type": "object", "description": "UDF data for the StackScript" }
+        },
+        "required": ["label", "region", "type"]
+      }
+    },
+    {
+      "name": "linode_delete_instance",
+      "description": "Delete a Linode compute instance (irreversible)",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "linode_id": { "type": "number", "description": "Numeric Linode instance ID to delete" }
+        },
+        "required": ["linode_id"]
+      }
+    },
+    {
+      "name": "linode_boot_instance",
+      "description": "Boot a Linode instance that is powered off",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "linode_id": { "type": "number", "description": "Linode instance ID" },
+          "config_id": { "type": "number", "description": "Configuration profile ID to boot with (optional)" }
+        },
+        "required": ["linode_id"]
+      }
+    },
+    {
+      "name": "linode_shutdown_instance",
+      "description": "Gracefully shut down a running Linode instance",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "linode_id": { "type": "number", "description": "Linode instance ID" }
+        },
+        "required": ["linode_id"]
+      }
+    },
+    {
+      "name": "linode_reboot_instance",
+      "description": "Reboot a Linode instance",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "linode_id": { "type": "number", "description": "Linode instance ID" },
+          "config_id": { "type": "number", "description": "Configuration profile ID to boot with (optional)" }
+        },
+        "required": ["linode_id"]
+      }
+    },
+    {
+      "name": "linode_list_volumes",
+      "description": "List all block storage volumes in the Linode account",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "page": { "type": "number", "description": "Page number" },
+          "page_size": { "type": "number", "description": "Results per page" }
+        }
+      }
+    },
+    {
+      "name": "linode_create_volume",
+      "description": "Create a new block storage volume in Linode",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "label": { "type": "string", "description": "Volume label" },
+          "size": { "type": "number", "description": "Size in GB (min 10, max 10240)" },
+          "region": { "type": "string", "description": "Region ID (required if not attaching to a Linode)" },
+          "linode_id": { "type": "number", "description": "Linode ID to attach to (optional)" },
+          "config_id": { "type": "number", "description": "Config profile ID to attach to (optional)" },
+          "tags": { "type": "array", "items": { "type": "string" }, "description": "Tags to apply" }
+        },
+        "required": ["label", "size"]
+      }
+    },
+    {
+      "name": "linode_list_domains",
+      "description": "List all DNS domains managed in Linode",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "page": { "type": "number", "description": "Page number" },
+          "page_size": { "type": "number", "description": "Results per page" }
+        }
+      }
+    },
+    {
+      "name": "linode_create_domain",
+      "description": "Create a new DNS domain in Linode",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "domain": { "type": "string", "description": "Domain name (e.g. example.com)" },
+          "type": { "type": "string", "description": "Domain type: master or slave" },
+          "soa_email": { "type": "string", "description": "SOA email address (required for master)" },
+          "master_ips": { "type": "array", "items": { "type": "string" }, "description": "Master IPs (required for slave)" },
+          "group": { "type": "string", "description": "Display group" },
+          "description": { "type": "string", "description": "Domain description" },
+          "tags": { "type": "array", "items": { "type": "string" }, "description": "Tags to apply" }
+        },
+        "required": ["domain", "type"]
+      }
+    },
+    {
+      "name": "linode_list_nodebalancers",
+      "description": "List all NodeBalancers in the Linode account",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "page": { "type": "number", "description": "Page number" },
+          "page_size": { "type": "number", "description": "Results per page" }
+        }
+      }
+    },
+    {
+      "name": "linode_list_stackscripts",
+      "description": "List StackScripts (private and public) available to the Linode account",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "page": { "type": "number", "description": "Page number" },
+          "page_size": { "type": "number", "description": "Results per page" },
+          "mine": { "type": "boolean", "description": "Show only your StackScripts (default false)" }
+        }
+      }
+    },
+    {
+      "name": "linode_list_images",
+      "description": "List available images (official distributions and custom images) in Linode",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "page": { "type": "number", "description": "Page number" },
+          "page_size": { "type": "number", "description": "Results per page" }
+        }
+      }
+    },
+    {
+      "name": "linode_list_regions",
+      "description": "List all available Linode/Akamai regions with capability information",
+      "inputSchema": {
+        "type": "object",
+        "properties": {}
+      }
+    },
+    {
+      "name": "linode_list_firewalls",
+      "description": "List all Cloud Firewalls in the Linode account",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "page": { "type": "number", "description": "Page number" },
+          "page_size": { "type": "number", "description": "Results per page" }
+        }
+      }
+    },
+    {
+      "name": "linode_create_firewall",
+      "description": "Create a new Cloud Firewall with inbound and outbound rules",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "label": { "type": "string", "description": "Firewall label" },
+          "rules": { "type": "object", "description": "Rules object with inbound and outbound arrays" },
+          "devices": { "type": "object", "description": "Devices to apply to (linodes: [id], nodebalancers: [id])" },
+          "tags": { "type": "array", "items": { "type": "string" }, "description": "Tags to apply" }
+        },
+        "required": ["label", "rules"]
+      }
+    },
+    {
+      "name": "linode_get_account",
+      "description": "Get Linode account information (email, company, address, balance, credit)",
+      "inputSchema": {
+        "type": "object",
+        "properties": {}
+      }
+    }
+  ]
+}
