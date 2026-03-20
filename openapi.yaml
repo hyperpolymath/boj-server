@@ -1,0 +1,954 @@
+# SPDX-License-Identifier: PMPL-1.0-or-later
+# Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+#
+# OpenAPI 3.1.0 specification for the Bundle of Joy (BoJ) Server REST API.
+# This spec covers the core server endpoints and high-value cartridge
+# operations exposed at port 7700.
+
+openapi: "3.1.0"
+info:
+  title: Bundle of Joy Server API
+  description: |
+    Cartridge-based DevOps toolkit with 55 formally verified domain cartridges.
+    Each cartridge has an Idris2 ABI (dependent type proofs), Zig FFI bridge,
+    and V-lang HTTP adapter. The REST API at port 7700 provides discovery,
+    inspection, and invocation of all cartridges.
+  version: "0.3.1"
+  contact:
+    name: Jonathan D.A. Jewell
+    email: j.d.a.jewell@open.ac.uk
+    url: https://github.com/hyperpolymath/boj-server
+  license:
+    name: PMPL-1.0-or-later
+    url: https://github.com/hyperpolymath/boj-server/blob/main/LICENSE
+
+servers:
+  - url: http://localhost:7700
+    description: Local development server
+  - url: "{protocol}://{host}:{port}"
+    description: Custom deployment
+    variables:
+      protocol:
+        default: http
+        enum: [http, https]
+      host:
+        default: localhost
+      port:
+        default: "7700"
+
+tags:
+  - name: Core
+    description: Server health, discovery, and cartridge management
+  - name: Cartridge
+    description: Individual cartridge inspection and invocation
+  - name: GitHub
+    description: GitHub API passthrough operations
+  - name: GitLab
+    description: GitLab API passthrough operations
+  - name: Cloud
+    description: Cloud provider operations (Cloudflare, Vercel, Verpex)
+  - name: Browser
+    description: Firefox browser automation via Marionette
+  - name: Communications
+    description: Gmail and Google Calendar operations
+  - name: ML
+    description: Machine learning and AI model operations
+  - name: Research
+    description: Academic paper search and citation operations
+
+paths:
+  /health:
+    get:
+      operationId: getHealth
+      summary: Server health check
+      description: Returns the current health status of the BoJ server, including uptime, cartridge counts, and component status.
+      tags: [Core]
+      responses:
+        "200":
+          description: Health status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+
+  /menu:
+    get:
+      operationId: getMenu
+      summary: List all cartridges
+      description: Returns the full cartridge menu grouped by tier (teranga, shield, ayo) with domains, protocols, versions, and availability.
+      tags: [Core]
+      responses:
+        "200":
+          description: Cartridge menu
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MenuResponse"
+
+  /cartridges:
+    get:
+      operationId: getCartridges
+      summary: Cartridge matrix
+      description: Returns the protocol-by-domain grid showing which cartridges serve which combinations.
+      tags: [Core]
+      responses:
+        "200":
+          description: Cartridge matrix
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+
+  /cartridge/{name}:
+    get:
+      operationId: getCartridgeInfo
+      summary: Get cartridge details
+      description: Returns detailed information about a specific cartridge including its ABI version, FFI status, supported operations, and health.
+      tags: [Cartridge]
+      parameters:
+        - name: name
+          in: path
+          required: true
+          description: "Cartridge name (e.g. database-mcp, container-mcp, git-mcp)"
+          schema:
+            type: string
+            pattern: "^[a-z0-9][a-z0-9-]*$"
+            maxLength: 64
+      responses:
+        "200":
+          description: Cartridge information
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CartridgeInfo"
+        "404":
+          description: Cartridge not found
+
+  /cartridge/{name}/invoke:
+    post:
+      operationId: invokeCartridge
+      summary: Invoke a cartridge operation
+      description: |
+        Send a command to a specific cartridge for execution. The params
+        object structure depends on the cartridge — use getCartridgeInfo
+        to discover available operations.
+      tags: [Cartridge]
+      parameters:
+        - name: name
+          in: path
+          required: true
+          description: Cartridge name
+          schema:
+            type: string
+            pattern: "^[a-z0-9][a-z0-9-]*$"
+            maxLength: 64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/InvokeRequest"
+      responses:
+        "200":
+          description: Invocation result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InvokeResponse"
+        "400":
+          description: Invalid parameters
+        "404":
+          description: Cartridge not found
+        "429":
+          description: Rate limit exceeded
+
+  # ─── GitHub API Passthrough ─────────────────────────────────────────
+
+  /github/repos:
+    get:
+      operationId: githubListRepos
+      summary: List GitHub repositories
+      tags: [GitHub]
+      parameters:
+        - name: per_page
+          in: query
+          schema:
+            type: integer
+            default: 30
+        - name: sort
+          in: query
+          schema:
+            type: string
+            enum: [updated, created, pushed, full_name]
+            default: updated
+      responses:
+        "200":
+          description: List of repositories
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: integer
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/GitHubRepo"
+                  rateLimit:
+                    $ref: "#/components/schemas/RateLimit"
+
+  /github/repos/{owner}/{repo}:
+    get:
+      operationId: githubGetRepo
+      summary: Get a GitHub repository
+      tags: [GitHub]
+      parameters:
+        - name: owner
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: repo
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Repository details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: integer
+                  data:
+                    $ref: "#/components/schemas/GitHubRepo"
+
+  /github/repos/{owner}/{repo}/issues:
+    get:
+      operationId: githubListIssues
+      summary: List repository issues
+      tags: [GitHub]
+      parameters:
+        - name: owner
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: repo
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: state
+          in: query
+          schema:
+            type: string
+            enum: [open, closed, all]
+            default: open
+        - name: per_page
+          in: query
+          schema:
+            type: integer
+            default: 30
+      responses:
+        "200":
+          description: List of issues
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+    post:
+      operationId: githubCreateIssue
+      summary: Create an issue
+      tags: [GitHub]
+      parameters:
+        - name: owner
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: repo
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [title]
+              properties:
+                title:
+                  type: string
+                body:
+                  type: string
+                labels:
+                  type: array
+                  items:
+                    type: string
+      responses:
+        "201":
+          description: Issue created
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+
+  /github/repos/{owner}/{repo}/pulls:
+    get:
+      operationId: githubListPRs
+      summary: List pull requests
+      tags: [GitHub]
+      parameters:
+        - name: owner
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: repo
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: state
+          in: query
+          schema:
+            type: string
+            enum: [open, closed, all]
+            default: open
+      responses:
+        "200":
+          description: List of pull requests
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+    post:
+      operationId: githubCreatePR
+      summary: Create a pull request
+      tags: [GitHub]
+      parameters:
+        - name: owner
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: repo
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [title, head]
+              properties:
+                title:
+                  type: string
+                body:
+                  type: string
+                head:
+                  type: string
+                base:
+                  type: string
+                  default: main
+      responses:
+        "201":
+          description: Pull request created
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+
+  /github/search/code:
+    get:
+      operationId: githubSearchCode
+      summary: Search code on GitHub
+      tags: [GitHub]
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Search results
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+
+  /github/graphql:
+    post:
+      operationId: githubGraphQL
+      summary: Execute a GitHub GraphQL query
+      tags: [GitHub]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [query]
+              properties:
+                query:
+                  type: string
+                variables:
+                  type: object
+      responses:
+        "200":
+          description: GraphQL response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+
+  # ─── GitLab API Passthrough ─────────────────────────────────────────
+
+  /gitlab/projects:
+    get:
+      operationId: gitlabListProjects
+      summary: List GitLab projects
+      tags: [GitLab]
+      parameters:
+        - name: per_page
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        "200":
+          description: List of projects
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+
+  /gitlab/projects/{project_id}/issues:
+    get:
+      operationId: gitlabListIssues
+      summary: List GitLab project issues
+      tags: [GitLab]
+      parameters:
+        - name: project_id
+          in: path
+          required: true
+          description: Project ID or URL-encoded path
+          schema:
+            type: string
+        - name: state
+          in: query
+          schema:
+            type: string
+            enum: [opened, closed, all]
+            default: opened
+      responses:
+        "200":
+          description: List of issues
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+    post:
+      operationId: gitlabCreateIssue
+      summary: Create a GitLab issue
+      tags: [GitLab]
+      parameters:
+        - name: project_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [title]
+              properties:
+                title:
+                  type: string
+                description:
+                  type: string
+      responses:
+        "201":
+          description: Issue created
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+
+  /gitlab/projects/{project_id}/merge_requests:
+    get:
+      operationId: gitlabListMRs
+      summary: List merge requests
+      tags: [GitLab]
+      parameters:
+        - name: project_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: state
+          in: query
+          schema:
+            type: string
+            enum: [opened, closed, merged, all]
+            default: opened
+      responses:
+        "200":
+          description: List of merge requests
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+    post:
+      operationId: gitlabCreateMR
+      summary: Create a merge request
+      tags: [GitLab]
+      parameters:
+        - name: project_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [title, source_branch]
+              properties:
+                title:
+                  type: string
+                source_branch:
+                  type: string
+                target_branch:
+                  type: string
+                  default: main
+      responses:
+        "201":
+          description: Merge request created
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+
+  /gitlab/projects/{project_id}/pipelines:
+    get:
+      operationId: gitlabListPipelines
+      summary: List CI/CD pipelines
+      tags: [GitLab]
+      parameters:
+        - name: project_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of pipelines
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+
+  # ─── Cloud Provider Operations ──────────────────────────────────────
+
+  /cloud/{provider}/invoke:
+    post:
+      operationId: cloudInvoke
+      summary: Invoke a cloud provider operation
+      description: |
+        Dispatch operations to cloud provider cartridges (cloudflare, vercel, verpex).
+        Each provider supports different operations — use getCartridgeInfo for details.
+      tags: [Cloud]
+      parameters:
+        - name: provider
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [cloudflare, vercel, verpex]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [operation]
+              properties:
+                operation:
+                  type: string
+                  description: |
+                    Cloudflare: authenticate, list-workers, get-worker, list-d1, query-d1, list-kv, kv-get, kv-put, list-r2, list-dns-zones, list-dns-records, add-dns-record
+                    Vercel: authenticate, list-projects, get-project, list-deployments, get-deployment, list-domains, list-env-vars, deployment-logs, list-functions
+                    Verpex: authenticate, list-domains, dns-list, dns-add, dns-remove, email-list, email-create, databases-list, database-create, ssl-status, cron-list, metrics
+                params:
+                  type: object
+                  description: Operation-specific parameters
+      responses:
+        "200":
+          description: Operation result
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+
+  # ─── Browser Automation ─────────────────────────────────────────────
+
+  /browser/{action}:
+    post:
+      operationId: browserAction
+      summary: Perform a browser action
+      description: Control Firefox via Marionette — navigate, click, type, screenshot, read page content, execute JS, manage tabs.
+      tags: [Browser]
+      parameters:
+        - name: action
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [navigate, click, type, read_page, screenshot, tabs, execute_js]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                url:
+                  type: string
+                  description: URL to navigate to (navigate action)
+                selector:
+                  type: string
+                  description: CSS selector (click, type actions)
+                text:
+                  type: string
+                  description: Text to type (type action)
+                script:
+                  type: string
+                  description: JavaScript code (execute_js action)
+                operation:
+                  type: string
+                  enum: [list, create, close]
+                  description: Tab operation (tabs action)
+                tab_id:
+                  type: integer
+                  description: Tab ID (tabs close action)
+      responses:
+        "200":
+          description: Action result
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+
+  # ─── Communications ─────────────────────────────────────────────────
+
+  /comms/{provider}/invoke:
+    post:
+      operationId: commsInvoke
+      summary: Invoke a communications operation
+      description: Gmail and Google Calendar operations via OAuth2.
+      tags: [Communications]
+      parameters:
+        - name: provider
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [gmail, calendar]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [operation]
+              properties:
+                operation:
+                  type: string
+                  description: |
+                    Gmail: authenticate, send, read, search, labels
+                    Calendar: authenticate, list-events, create-event, free-busy
+                params:
+                  type: object
+                  description: Operation-specific parameters
+      responses:
+        "200":
+          description: Operation result
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+
+  # ─── ML/AI ──────────────────────────────────────────────────────────
+
+  /ml/{provider}/invoke:
+    post:
+      operationId: mlInvoke
+      summary: Invoke an ML/AI operation
+      description: HuggingFace model search, info, inference, spaces, and datasets.
+      tags: [ML]
+      parameters:
+        - name: provider
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [huggingface]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [operation]
+              properties:
+                operation:
+                  type: string
+                  enum: [authenticate, search-models, model-info, inference, list-spaces, list-datasets]
+                params:
+                  type: object
+                  description: "Operation parameters (query for search, model_id for info/inference)"
+      responses:
+        "200":
+          description: Operation result
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+
+  # ─── Research ───────────────────────────────────────────────────────
+
+  /research/invoke:
+    post:
+      operationId: researchInvoke
+      summary: Academic research operations
+      description: Search papers, get citations, references, author info via Semantic Scholar.
+      tags: [Research]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [operation]
+              properties:
+                operation:
+                  type: string
+                  enum: [authenticate, search-papers, paper-details, citations, references, author-search, author-papers]
+                params:
+                  type: object
+                  description: "Operation parameters (query for search, paper_id for details/citations, author_id for author-papers)"
+      responses:
+        "200":
+          description: Research result
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+
+# ─── Schemas ────────────────────────────────────────────────────────
+
+components:
+  schemas:
+    HealthResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [healthy, degraded, offline]
+        version:
+          type: string
+        uptime_seconds:
+          type: integer
+        cartridges:
+          type: object
+          properties:
+            total:
+              type: integer
+            ready:
+              type: integer
+            mounted:
+              type: integer
+        components:
+          type: object
+          additionalProperties:
+            type: string
+
+    MenuResponse:
+      type: object
+      properties:
+        tier_teranga:
+          type: array
+          items:
+            $ref: "#/components/schemas/CartridgeSummary"
+        tier_shield:
+          type: array
+          items:
+            $ref: "#/components/schemas/CartridgeSummary"
+        tier_ayo:
+          type: array
+          items:
+            $ref: "#/components/schemas/CartridgeSummary"
+        summary:
+          type: object
+          properties:
+            total:
+              type: integer
+            ready:
+              type: integer
+            mounted:
+              type: integer
+
+    CartridgeSummary:
+      type: object
+      properties:
+        name:
+          type: string
+        version:
+          type: string
+        domain:
+          type: string
+        protocols:
+          type: array
+          items:
+            type: string
+        status:
+          type: string
+        available:
+          type: boolean
+
+    CartridgeInfo:
+      type: object
+      properties:
+        name:
+          type: string
+        version:
+          type: string
+        domain:
+          type: string
+        protocols:
+          type: array
+          items:
+            type: string
+        status:
+          type: string
+        available:
+          type: boolean
+        abi_version:
+          type: string
+        ffi_status:
+          type: string
+        operations:
+          type: array
+          items:
+            type: string
+        backends:
+          type: array
+          items:
+            type: string
+
+    InvokeRequest:
+      type: object
+      properties:
+        operation:
+          type: string
+          description: Operation to perform on the cartridge
+        params:
+          type: object
+          description: Operation-specific parameters
+          additionalProperties: true
+
+    InvokeResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          additionalProperties: true
+        error:
+          type: string
+        cartridge:
+          type: string
+        operation:
+          type: string
+        duration_ms:
+          type: number
+
+    GitHubRepo:
+      type: object
+      properties:
+        id:
+          type: integer
+        full_name:
+          type: string
+        description:
+          type: string
+        html_url:
+          type: string
+        language:
+          type: string
+        stargazers_count:
+          type: integer
+        updated_at:
+          type: string
+
+    RateLimit:
+      type: object
+      properties:
+        remaining:
+          type: string
+        reset:
+          type: string
+        limit:
+          type: string
+
+  securitySchemes:
+    githubToken:
+      type: http
+      scheme: bearer
+      description: GitHub personal access token (set via GITHUB_TOKEN env var)
+    gitlabToken:
+      type: apiKey
+      in: header
+      name: PRIVATE-TOKEN
+      description: GitLab private token (set via GITLAB_TOKEN env var)
+    bojApiKey:
+      type: apiKey
+      in: header
+      name: X-BoJ-Token
+      description: BoJ server API token (optional, for authenticated deployments)
