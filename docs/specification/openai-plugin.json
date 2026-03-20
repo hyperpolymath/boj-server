@@ -1,0 +1,19 @@
+{
+  "spdx_license_identifier": "PMPL-1.0-or-later",
+  "schema_version": "v1",
+  "name_for_human": "BoJ Server",
+  "name_for_model": "boj_server",
+  "description_for_human": "Manage cloud infrastructure, databases, git repos, containers, and more through 53 formally verified cartridges.",
+  "description_for_model": "Use this plugin to manage cloud infrastructure (Cloudflare, Vercel, Verpex), databases (PostgreSQL, MongoDB, Redis, VeriSimDB), git repositories (GitHub, GitLab), containers (Podman/OCI), Kubernetes, observability, secrets, IaC, and more. All operations are formally verified through Idris2 ABIs and Zig FFI layers.",
+  "auth": {
+    "type": "none"
+  },
+  "api": {
+    "type": "openapi",
+    "url": "http://localhost:7700/.well-known/openapi.yaml",
+    "is_user_authenticated": false
+  },
+  "logo_url": "https://github.com/hyperpolymath/boj-server/raw/main/docs/logo.png",
+  "contact_email": "j.d.a.jewell@open.ac.uk",
+  "legal_info_url": "https://github.com/hyperpolymath/boj-server/blob/main/LICENSE"
+}

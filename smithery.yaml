@@ -1,0 +1,70 @@
+# SPDX-License-Identifier: PMPL-1.0-or-later
+# Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+#
+# Smithery MCP Server Registry Configuration
+# https://smithery.ai
+
+name: boj-server
+description: "Bundle of Joy — cartridge-based MCP server with 53 formally verified domain cartridges (database, cloud, git, k8s, containers, observability, secrets, IaC, and more)"
+version: "0.3.0"
+author: "Jonathan D.A. Jewell"
+license: "PMPL-1.0-or-later"
+homepage: "https://github.com/hyperpolymath/boj-server"
+repository: "https://github.com/hyperpolymath/boj-server"
+keywords:
+  - mcp
+  - devops
+  - database
+  - kubernetes
+  - containers
+  - git
+  - observability
+  - formal-verification
+  - idris2
+  - zig
+
+server:
+  command: "node"
+  args: ["mcp-bridge/main.js"]
+  env:
+    BOJ_URL: "http://localhost:7700"
+
+tools:
+  - name: boj_health
+    description: "Check BoJ server health status"
+  - name: boj_menu
+    description: "List all 53 cartridges with domains, protocols, and tiers"
+  - name: boj_cartridges
+    description: "Show the cartridge matrix — protocol x domain grid"
+  - name: boj_cartridge_info
+    description: "Get detailed info about a specific cartridge"
+  - name: boj_cartridge_invoke
+    description: "Invoke a cartridge operation"
+  - name: boj_cloud_cloudflare
+    description: "Manage Cloudflare Workers, D1, KV, R2, DNS"
+  - name: boj_cloud_vercel
+    description: "Manage Vercel deployments, domains, env vars"
+  - name: boj_cloud_verpex
+    description: "Manage Verpex cPanel hosting"
+  - name: boj_github_list_repos
+    description: "List GitHub repositories"
+  - name: boj_github_create_issue
+    description: "Create GitHub issues"
+  - name: boj_github_create_pr
+    description: "Create GitHub pull requests"
+  - name: boj_gitlab_list_projects
+    description: "List GitLab projects"
+  - name: boj_browser_navigate
+    description: "Navigate Firefox browser"
+  - name: boj_browser_screenshot
+    description: "Take browser screenshots"
+  - name: boj_comms_gmail
+    description: "Gmail operations"
+  - name: boj_ml_huggingface
+    description: "HuggingFace model search and inference"
+  - name: boj_research
+    description: "Academic paper search and citations"
+
+install:
+  npm: "@hyperpolymath/boj-server"
+  manual: "git clone https://github.com/hyperpolymath/boj-server && cd boj-server && node mcp-bridge/main.js"

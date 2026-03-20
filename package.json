@@ -32,8 +32,14 @@
   },
   "main": "./mcp-bridge/main.js",
   "files": [
-    "mcp-bridge/"
+    "mcp-bridge/",
+    "LICENSE",
+    "README.md"
   ],
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
   "scripts": {
     "start": "node mcp-bridge/main.js",
     "test": "echo 'Tests run via: just test' && exit 0",

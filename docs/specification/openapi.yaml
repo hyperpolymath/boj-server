@@ -1,0 +1,1082 @@
+# SPDX-License-Identifier: PMPL-1.0-or-later
+# Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+#
+# BoJ Server — OpenAPI 3.1 Specification
+#
+# Describes the REST API surface of the BoJ cartridge server (port 7700).
+# The V-lang adapter (adapter/v/src/main.v) implements these routes, backed
+# by Idris2 ABI proofs and Zig FFI execution layers.
+
+openapi: 3.1.0
+
+info:
+  title: BoJ Server REST API
+  version: 0.3.0
+  summary: Formally verified cartridge server for cloud infrastructure, databases, git, containers, and more.
+  description: |
+    BoJ (Bureau of Justice) Server is a cartridge-based infrastructure management
+    platform. Each cartridge is a formally verified module (Idris2 ABI proofs,
+    Zig FFI execution, V-lang network adapter) that exposes tools for managing
+    cloud providers, databases, git repositories, containers, Kubernetes clusters,
+    observability, secrets, IaC, and more.
+
+    The server exposes four protocol surfaces:
+    - **REST** (port 7700) — described by this specification
+    - **gRPC** (port 7701)
+    - **GraphQL** (port 7702)
+    - **MCP/SSE** (port 7703) — remote MCP transport
+
+    Cartridges are organised into three tiers:
+    - **Teranga** — general-purpose cartridges (database, cloud, git, etc.)
+    - **Shield** — security-sensitive cartridges (secrets, proof verification)
+    - **Ayo** — community-contributed cartridges (require review before mounting)
+  license:
+    name: PMPL-1.0-or-later
+    identifier: PMPL-1.0-or-later
+  contact:
+    name: Jonathan D.A. Jewell
+    email: j.d.a.jewell@open.ac.uk
+    url: https://github.com/hyperpolymath/boj-server
+
+servers:
+  - url: http://localhost:7700
+    description: Local development server (REST port)
+
+tags:
+  - name: Core
+    description: Server health, status, and menu endpoints.
+  - name: Cartridges
+    description: Cartridge discovery, lifecycle (load/unload/reload), and tool invocation.
+  - name: Federation
+    description: Umoja federation, coprocessor dispatch, SLA monitoring, community submissions, and auto-SDP.
+
+security: []
+
+paths:
+  # ─────────────────────────────────────────────────────────────────────
+  # Core endpoints
+  # ─────────────────────────────────────────────────────────────────────
+
+  /health:
+    get:
+      operationId: getHealth
+      summary: Server health check
+      description: Returns a simple health status. Always responds with 200 when the server is running.
+      tags: [Core]
+      responses:
+        "200":
+          description: Server is healthy.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+
+  /status:
+    get:
+      operationId: getStatus
+      summary: Detailed server status
+      description: |
+        Returns comprehensive server status including catalogue version, cartridge
+        counts (total, ready, mounted), uptime, and protocol surface information.
+      tags: [Core]
+      responses:
+        "200":
+          description: Full server status.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ServerStatus"
+
+  /menu:
+    get:
+      operationId: getMenu
+      summary: List all cartridges (Teranga menu)
+      description: |
+        Returns the full cartridge menu organised by tier (Teranga, Shield, Ayo).
+        Each entry includes cartridge name, version, domain, supported protocols,
+        status, and availability. This is the primary discovery endpoint.
+      tags: [Core]
+      responses:
+        "200":
+          description: Cartridge menu grouped by tier.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Menu"
+
+  /matrix:
+    get:
+      operationId: getMatrix
+      summary: Protocol-domain cartridge matrix
+      description: |
+        Returns a grid showing which cartridges serve which protocol/domain
+        combinations. Mounted cartridges are marked with [M] prefix.
+      tags: [Core]
+      responses:
+        "200":
+          description: Cartridge matrix grid.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MatrixResponse"
+
+  # ─────────────────────────────────────────────────────────────────────
+  # Cartridge endpoints
+  # ─────────────────────────────────────────────────────────────────────
+
+  /cartridges:
+    get:
+      operationId: getCartridges
+      summary: Cartridge matrix (alias)
+      description: |
+        Alias for `/matrix`. Returns the protocol-domain cartridge grid.
+      tags: [Cartridges]
+      responses:
+        "200":
+          description: Cartridge matrix grid.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MatrixResponse"
+
+  /cartridge/{name}:
+    get:
+      operationId: getCartridgeInfo
+      summary: Get cartridge details
+      description: |
+        Returns detailed information about a specific cartridge including its
+        version, domain, supported protocols, mount status, and endpoint URIs
+        for REST, gRPC, and GraphQL access.
+      tags: [Cartridges]
+      parameters:
+        - $ref: "#/components/parameters/CartridgeName"
+      responses:
+        "200":
+          description: Cartridge details.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CartridgeDetail"
+        "404":
+          description: Cartridge not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "503":
+          description: Cartridge exists but is not mounted.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /cartridge/{name}/invoke:
+    post:
+      operationId: invokeCartridge
+      summary: Invoke a cartridge tool
+      description: |
+        Sends a tool invocation request to a mounted cartridge. The request body
+        must include a `tool` field identifying the operation and an `args` object
+        with tool-specific parameters.
+
+        Each cartridge exposes domain-specific tools. For example:
+        - **database-mcp**: health, list_octads, create_octad, vql, sql, drift, etc.
+        - **container-mcp**: list, build, run, stop, logs, inspect, etc.
+        - **git-mcp**: status, log, diff, branches, remotes, list_repos, etc.
+        - **ssg-mcp**: build, preview, deploy, new, etc.
+        - **secrets-mcp**: list, get, set, delete, encrypt, decrypt, etc.
+        - **proof-mcp**: check, verify, typecheck, etc.
+        - **iac-mcp**: validate, eval, plan_summary, etc.
+        - **k8s-mcp**: list_stacks, validate_stack, security_scan, gap_analysis, generate, etc.
+        - **observe-mcp**: status, metrics, logs, alerts, etc.
+        - **agent-mcp**: dispatch, status, list_agents, etc.
+        - **fleet-mcp**: scan_repo, diagnostics, list_repos, etc.
+        - **lsp-mcp**: diagnostics, completions, hover, references, etc.
+        - **dap-mcp**: list_debug_targets, launch, breakpoints, etc.
+        - **bsp-mcp**: build, targets, list_build_files, etc.
+      tags: [Cartridges]
+      parameters:
+        - $ref: "#/components/parameters/CartridgeName"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/InvokeRequest"
+            examples:
+              database_health:
+                summary: Check database-mcp health
+                value:
+                  tool: health
+                  args: {}
+              database_vql:
+                summary: Execute a VQL query
+                value:
+                  tool: vql
+                  args:
+                    vql: '{"query": "SELECT * FROM octads LIMIT 10"}'
+              database_sql:
+                summary: Execute a SQL query
+                value:
+                  tool: sql
+                  args:
+                    path: /path/to/db.sqlite
+                    sql: "SELECT * FROM users LIMIT 5"
+              container_list:
+                summary: List running containers
+                value:
+                  tool: list
+                  args: {}
+              git_status:
+                summary: Git repository status
+                value:
+                  tool: status
+                  args:
+                    path: /path/to/repo
+              ssg_build:
+                summary: Build a static site
+                value:
+                  tool: build
+                  args:
+                    engine: zola
+                    path: /path/to/site
+      responses:
+        "200":
+          description: Tool invocation succeeded.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InvokeResponse"
+        "400":
+          description: Invalid request (missing tool, bad arguments).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Cartridge not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "405":
+          description: Method not allowed (must be POST).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "503":
+          description: Cartridge not mounted.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /cartridge/{name}/load:
+    post:
+      operationId: loadCartridge
+      summary: Mount a cartridge
+      description: |
+        Mounts (activates) a cartridge so it can receive tool invocations.
+        A cartridge must be in the Ready state to be mounted. Emits a
+        "mount" event to GraphQL subscribers.
+      tags: [Cartridges]
+      parameters:
+        - $ref: "#/components/parameters/CartridgeName"
+      responses:
+        "200":
+          description: Cartridge mounted successfully.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: mounted
+                  cartridge:
+                    type: string
+                    example: database-mcp
+                required: [status, cartridge]
+        "404":
+          description: Cartridge not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Mount failed (not ready, or catalogue error).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /cartridge/{name}/unload:
+    post:
+      operationId: unloadCartridge
+      summary: Unmount a cartridge
+      description: |
+        Unmounts (deactivates) a cartridge. Emits an "unmount" event to
+        GraphQL subscribers.
+      tags: [Cartridges]
+      parameters:
+        - $ref: "#/components/parameters/CartridgeName"
+      responses:
+        "200":
+          description: Cartridge unmounted successfully.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: unmounted
+                  cartridge:
+                    type: string
+                    example: database-mcp
+                required: [status, cartridge]
+        "404":
+          description: Cartridge not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Unmount error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /cartridge/{name}/reload:
+    post:
+      operationId: reloadCartridge
+      summary: Reload a cartridge (unmount, verify, remount)
+      description: |
+        Hot-reloads a cartridge by unmounting it, re-verifying its binary
+        hash (if one is stored in the catalogue), and remounting it. Useful
+        after rebuilding a cartridge's Zig FFI library.
+      tags: [Cartridges]
+      parameters:
+        - $ref: "#/components/parameters/CartridgeName"
+      responses:
+        "200":
+          description: Cartridge reloaded successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReloadResponse"
+        "404":
+          description: Cartridge not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: Hash mismatch during reload verification.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Reload failed (binary not found, or mount error).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  # ─────────────────────────────────────────────────────────────────────
+  # Order endpoints (Teranga ordering model)
+  # ─────────────────────────────────────────────────────────────────────
+
+  /order:
+    post:
+      operationId: submitOrder
+      summary: Submit a cartridge order
+      description: |
+        Submits an order to a cartridge using the Teranga ordering model.
+        Orders are validated, dispatched to the target cartridge, and tracked.
+      tags: [Cartridges]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OrderRequest"
+      responses:
+        "200":
+          description: Order accepted and processed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrderResponse"
+        "400":
+          description: Invalid order JSON.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "405":
+          description: Method not allowed (must be POST).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /order-ticket:
+    post:
+      operationId: submitOrderTicket
+      summary: Submit an order ticket
+      description: |
+        Submits a raw order ticket for asynchronous processing.
+      tags: [Cartridges]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              description: Raw order ticket body.
+      responses:
+        "200":
+          description: Ticket accepted.
+          content:
+            application/json:
+              schema:
+                type: object
+        "405":
+          description: Method not allowed (must be POST).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  # ─────────────────────────────────────────────────────────────────────
+  # Federation endpoints (Umoja)
+  # ─────────────────────────────────────────────────────────────────────
+
+  /umoja/status:
+    get:
+      operationId: getUmojaStatus
+      summary: Umoja federation status
+      description: Returns the current state of this node's Umoja federation membership.
+      tags: [Federation]
+      responses:
+        "200":
+          description: Federation status.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UmojaStatus"
+
+  /umoja/peers:
+    get:
+      operationId: getUmojaPeers
+      summary: List federation peers
+      description: Returns the list of known Umoja federation peers.
+      tags: [Federation]
+      responses:
+        "200":
+          description: Peer list.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/UmojaPeer"
+    post:
+      operationId: addUmojaPeer
+      summary: Add a federation peer
+      description: Registers a new peer in the Umoja federation mesh.
+      tags: [Federation]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UmojaPeer"
+      responses:
+        "200":
+          description: Peer added.
+          content:
+            application/json:
+              schema:
+                type: object
+
+  /umoja/transport:
+    get:
+      operationId: getUmojaTransport
+      summary: Federation transport mode
+      description: Returns the current transport mode (QUIC or UDP) for federation traffic.
+      tags: [Federation]
+      responses:
+        "200":
+          description: Transport mode.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  mode:
+                    type: string
+                    enum: [quic, udp]
+                required: [mode]
+
+  /coprocessor/status:
+    get:
+      operationId: getCoprocessorStatus
+      summary: Coprocessor dispatch status
+      description: Returns the status of the coprocessor dispatch subsystem.
+      tags: [Federation]
+      responses:
+        "200":
+          description: Coprocessor status.
+          content:
+            application/json:
+              schema:
+                type: object
+
+  /coprocessor/select:
+    post:
+      operationId: selectCoprocessor
+      summary: Select a coprocessor
+      description: Selects a coprocessor for dispatching workloads.
+      tags: [Federation]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          description: Coprocessor selected.
+          content:
+            application/json:
+              schema:
+                type: object
+
+  /sla/status:
+    get:
+      operationId: getSlaStatus
+      summary: SLA monitoring status
+      description: Returns SLA metrics including total requests processed.
+      tags: [Federation]
+      responses:
+        "200":
+          description: SLA metrics.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SlaStatus"
+
+  /community/submissions:
+    get:
+      operationId: getCommunitySubmissions
+      summary: List community cartridge submissions
+      description: Returns all pending community-contributed cartridge submissions.
+      tags: [Federation]
+      responses:
+        "200":
+          description: Submission list.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CommunitySubmission"
+
+  /community/submit:
+    post:
+      operationId: submitCommunityCartridge
+      summary: Submit a community cartridge
+      description: Submit a cartridge for community review and potential inclusion in the Ayo tier.
+      tags: [Federation]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CommunitySubmission"
+      responses:
+        "200":
+          description: Submission accepted.
+          content:
+            application/json:
+              schema:
+                type: object
+
+  /sdp/status:
+    get:
+      operationId: getSdpStatus
+      summary: Auto-SDP status
+      description: Returns the status of the automatic Service Delivery Platform subsystem.
+      tags: [Federation]
+      responses:
+        "200":
+          description: SDP status.
+          content:
+            application/json:
+              schema:
+                type: object
+
+  # ─────────────────────────────────────────────────────────────────────
+  # Webhook endpoint
+  # ─────────────────────────────────────────────────────────────────────
+
+  /cartridges/ssg-mcp/webhook:
+    post:
+      operationId: ssgWebhook
+      summary: SSG webhook receiver (GitHub push events)
+      description: |
+        Receives GitHub webhook payloads for static site generation cartridge.
+        Validates HMAC-SHA256 signature via X-Hub-Signature-256 header before
+        dispatching to the ssg-mcp cartridge invoke handler.
+      tags: [Cartridges]
+      parameters:
+        - name: X-Hub-Signature-256
+          in: header
+          required: true
+          schema:
+            type: string
+          description: HMAC-SHA256 signature from GitHub.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              description: GitHub webhook event payload.
+      responses:
+        "200":
+          description: Webhook processed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InvokeResponse"
+        "401":
+          description: Invalid webhook signature.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "405":
+          description: Method not allowed (must be POST).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+# ═══════════════════════════════════════════════════════════════════════
+# Components
+# ═══════════════════════════════════════════════════════════════════════
+
+components:
+  parameters:
+    CartridgeName:
+      name: name
+      in: path
+      required: true
+      description: |
+        Cartridge identifier. Lowercase alphanumeric with hyphens, max 64 characters.
+        Examples: database-mcp, container-mcp, git-mcp, secrets-mcp.
+      schema:
+        type: string
+        pattern: "^[a-z0-9][a-z0-9-]{0,63}$"
+        examples:
+          - database-mcp
+          - container-mcp
+          - git-mcp
+          - secrets-mcp
+          - proof-mcp
+
+  schemas:
+    # ── Core schemas ──────────────────────────────────────────────────
+
+    HealthStatus:
+      type: object
+      description: Simple health check response.
+      properties:
+        status:
+          type: string
+          enum: [ok]
+          description: Always "ok" when the server is running.
+      required: [status]
+      examples:
+        - status: ok
+
+    ServerStatus:
+      type: object
+      description: Detailed server status with catalogue metrics.
+      properties:
+        server:
+          type: string
+          description: Server name.
+          example: boj-server
+        version:
+          type: string
+          description: Server version.
+          example: 0.3.0
+        catalogue_version:
+          type: string
+          description: ABI catalogue version from the Zig FFI layer.
+        total_cartridges:
+          type: integer
+          description: Total number of registered cartridges.
+        ready_cartridges:
+          type: integer
+          description: Number of cartridges in Ready state.
+        mounted_cartridges:
+          type: integer
+          description: Number of currently mounted cartridges.
+        protocols:
+          type: object
+          description: Protocol surface URIs.
+          properties:
+            rest:
+              type: string
+              example: "http://localhost:7700"
+            grpc:
+              type: string
+              example: "grpc://localhost:7701"
+            graphql:
+              type: string
+              example: "http://localhost:7702"
+            mcp_sse:
+              type: string
+              example: "http://localhost:7703"
+
+    Menu:
+      type: object
+      description: Cartridge menu grouped by security tier.
+      properties:
+        tier_teranga:
+          type: array
+          description: General-purpose cartridges.
+          items:
+            $ref: "#/components/schemas/CartridgeInfo"
+        tier_shield:
+          type: array
+          description: Security-sensitive cartridges (secrets, proofs).
+          items:
+            $ref: "#/components/schemas/CartridgeInfo"
+        tier_ayo:
+          type: array
+          description: Community-contributed cartridges (pending review).
+          items:
+            $ref: "#/components/schemas/CartridgeInfo"
+        summary:
+          type: object
+          description: Aggregate counts.
+          properties:
+            total:
+              type: integer
+            ready:
+              type: integer
+            mounted:
+              type: integer
+          required: [total, ready, mounted]
+      required: [tier_teranga, tier_shield, tier_ayo, summary]
+
+    CartridgeInfo:
+      type: object
+      description: Summary information about a single cartridge.
+      properties:
+        name:
+          type: string
+          description: Cartridge identifier.
+          example: database-mcp
+        version:
+          type: string
+          description: Semantic version.
+          example: 0.2.0
+        domain:
+          type: string
+          description: Functional domain.
+          enum: [Database, NeSy, Fleet, Cloud, Container, Kubernetes, "Git/VCS", Queues, IaC, Observability, SSG, Feedback, Communications, "ML/AI", Research, Languages, Secrets, Proof]
+        protocols:
+          type: array
+          description: Supported protocol surfaces.
+          items:
+            type: string
+            enum: [MCP, REST, gRPC, NeSy, Fleet, Agentic, LSP, DAP, BSP]
+        status:
+          type: string
+          description: Current cartridge status.
+          enum: [Available, Mounted, Error, Pending]
+        available:
+          type: boolean
+          description: Whether the cartridge can be mounted.
+        backends:
+          type: array
+          description: Backend implementations (cartridge-specific, optional).
+          items:
+            type: string
+        languages:
+          type: array
+          description: Supported languages (lang-mcp only, optional).
+          items:
+            type: string
+      required: [name, version, domain, protocols, status, available]
+
+    CartridgeDetail:
+      type: object
+      description: Detailed cartridge information including endpoint URIs.
+      properties:
+        name:
+          type: string
+          example: database-mcp
+        version:
+          type: string
+          example: 0.2.0
+        domain:
+          type: string
+          example: Database
+        protocols:
+          type: array
+          items:
+            type: string
+        status:
+          type: string
+          example: Available
+        mounted:
+          type: boolean
+          description: Whether the cartridge is currently mounted.
+        endpoints:
+          $ref: "#/components/schemas/EndpointInfo"
+      required: [name, version, domain, protocols, status, mounted, endpoints]
+
+    EndpointInfo:
+      type: object
+      description: Protocol endpoint URIs for a specific cartridge.
+      properties:
+        cartridge:
+          type: string
+          example: database-mcp
+        rest:
+          type: string
+          example: "http://localhost:7700/cartridge/database-mcp"
+        grpc:
+          type: string
+          example: "grpc://localhost:7701/database-mcp"
+        graphql:
+          type: string
+          example: "http://localhost:7702/graphql?module=database-mcp"
+      required: [cartridge, rest, grpc, graphql]
+
+    MatrixResponse:
+      type: object
+      description: Protocol-domain cartridge matrix.
+      properties:
+        rows:
+          type: array
+          items:
+            $ref: "#/components/schemas/MatrixRow"
+      required: [rows]
+
+    MatrixRow:
+      type: object
+      description: One row of the protocol-domain matrix.
+      properties:
+        protocol:
+          type: string
+          description: Protocol name (MCP, REST, gRPC, etc.).
+        cells:
+          type: object
+          description: Map of domain name to cartridge name (or empty string). Mounted cartridges are prefixed with "[M] ".
+          additionalProperties:
+            type: string
+
+    # ── Invocation schemas ────────────────────────────────────────────
+
+    InvokeRequest:
+      type: object
+      description: |
+        Request body for cartridge tool invocation. The `tool` field selects
+        which operation to run. The `args` field carries tool-specific parameters
+        as a JSON string (parsed by the cartridge handler).
+      properties:
+        tool:
+          type: string
+          description: |
+            Tool name to invoke on the cartridge. Each cartridge defines its
+            own set of tools (e.g., "health", "list", "build", "status").
+          examples:
+            - health
+            - list
+            - build
+            - status
+            - vql
+            - sql
+        args:
+          type: string
+          description: |
+            JSON-encoded string of tool-specific arguments. The structure
+            depends on the tool being invoked. Pass "{}" for tools that
+            take no arguments.
+          examples:
+            - '{}'
+            - '{"path": "/home/user/project"}'
+            - '{"path": "/data/app.db", "sql": "SELECT * FROM users"}'
+      required: [tool]
+
+    InvokeResponse:
+      type: object
+      description: Response from a cartridge tool invocation.
+      properties:
+        cartridge:
+          type: string
+          description: Name of the cartridge that handled the request.
+          example: database-mcp
+        tool:
+          type: string
+          description: Tool that was invoked.
+          example: health
+        result:
+          description: Tool-specific result payload. Structure varies by cartridge and tool.
+        status:
+          type: string
+          description: Invocation status.
+          example: ok
+        message:
+          type: string
+          description: Human-readable status message (present on some responses).
+        error:
+          type: string
+          description: Error message (present only on failure).
+
+    # ── Order schemas ─────────────────────────────────────────────────
+
+    OrderRequest:
+      type: object
+      description: Teranga ordering model request.
+      properties:
+        cartridge:
+          type: string
+          description: Target cartridge name.
+        operation:
+          type: string
+          description: Operation to perform.
+        params:
+          type: object
+          description: Operation-specific parameters.
+          additionalProperties: true
+      required: [cartridge, operation]
+
+    OrderResponse:
+      type: object
+      description: Response from order submission.
+      properties:
+        order_id:
+          type: string
+          description: Unique order identifier.
+        status:
+          type: string
+          description: Order processing status.
+        cartridge:
+          type: string
+          description: Target cartridge.
+        result:
+          description: Order result payload.
+
+    # ── Reload schema ─────────────────────────────────────────────────
+
+    ReloadResponse:
+      type: object
+      description: Response from cartridge hot-reload.
+      properties:
+        cartridge:
+          type: string
+          example: database-mcp
+        status:
+          type: string
+          example: reloaded
+        reloaded:
+          type: boolean
+          example: true
+        elapsed_ms:
+          type: integer
+          description: Reload duration in milliseconds.
+          example: 42
+      required: [cartridge, status, reloaded, elapsed_ms]
+
+    # ── Federation schemas ────────────────────────────────────────────
+
+    UmojaStatus:
+      type: object
+      description: Umoja federation node status.
+      properties:
+        federation:
+          type: string
+          description: Federation state (e.g., "active", "standalone").
+        node_id:
+          type: string
+          description: This node's identifier in the mesh.
+        peer_count:
+          type: integer
+          description: Number of known peers.
+
+    UmojaPeer:
+      type: object
+      description: A peer node in the Umoja federation.
+      properties:
+        node_id:
+          type: string
+          description: Peer node identifier.
+        address:
+          type: string
+          description: Network address (host:port).
+        status:
+          type: string
+          description: Connection status.
+
+    SlaStatus:
+      type: object
+      description: SLA monitoring metrics.
+      properties:
+        total_requests:
+          type: integer
+          description: Total requests processed since server start.
+          format: int64
+
+    CommunitySubmission:
+      type: object
+      description: A community-contributed cartridge submission.
+      properties:
+        name:
+          type: string
+          description: Proposed cartridge name.
+        author:
+          type: string
+          description: Submitter identifier.
+        repository:
+          type: string
+          description: Source repository URL.
+        status:
+          type: string
+          description: Review status (pending, approved, rejected).
+          enum: [pending, approved, rejected]
+
+    # ── Error schema ──────────────────────────────────────────────────
+
+    Error:
+      type: object
+      description: Standard error response.
+      properties:
+        error:
+          type: string
+          description: Human-readable error message.
+          example: "cartridge \"missing-mcp\" not found"
+      required: [error]
+
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        Bearer token authentication (planned for future releases).
+        Currently all endpoints are unauthenticated. When auth is enabled,
+        tokens will be issued by the secrets-mcp cartridge via the
+        vault-mcp zero-knowledge proxy.

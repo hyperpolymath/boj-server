@@ -1,0 +1,72 @@
+# SPDX-License-Identifier: PMPL-1.0-or-later
+# Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+#
+# Publish workflow — publishes to npm and JSR on version tag push (v*).
+# Requires NPM_TOKEN and JSR_TOKEN repository secrets.
+name: Publish
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: read
+
+jobs:
+  publish-npm:
+    name: Publish to npm
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+
+      - name: Setup Node.js
+        uses: actions/setup-node@49933ea5288caeca8642195f882660b323136e2a # v4.4.0
+        with:
+          node-version: '22'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Verify package version matches tag
+        run: |
+          TAG_VERSION="${GITHUB_REF_NAME#v}"
+          PKG_VERSION=$(node -p "require('./package.json').version")
+          if [ "$TAG_VERSION" != "$PKG_VERSION" ]; then
+            echo "::error::Tag version ($TAG_VERSION) does not match package.json version ($PKG_VERSION)"
+            exit 1
+          fi
+
+      - name: Publish to npm
+        run: npm publish --provenance --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+  publish-jsr:
+    name: Publish to JSR
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+
+      - name: Setup Deno
+        uses: denoland/setup-deno@909cc5acb0fdd60627fb858598190e9d10232b3a # v2.1.1
+        with:
+          deno-version: v2.x
+
+      - name: Verify JSR config version matches tag
+        run: |
+          TAG_VERSION="${GITHUB_REF_NAME#v}"
+          JSR_VERSION=$(deno eval "const c = JSON.parse(Deno.readTextFileSync('jsr.json')); console.log(c.version)")
+          if [ "$TAG_VERSION" != "$JSR_VERSION" ]; then
+            echo "::error::Tag version ($TAG_VERSION) does not match jsr.json version ($JSR_VERSION)"
+            exit 1
+          fi
+
+      - name: Publish to JSR
+        run: deno publish --config jsr.json
+        env:
+          JSR_TOKEN: ${{ secrets.JSR_TOKEN }}
