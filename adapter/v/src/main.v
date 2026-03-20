@@ -80,6 +80,9 @@ import time
 #flag -lssg_mcp
 #flag -L../../cartridges/ums-mcp/ffi/zig-out/lib
 #flag -lums_mcp
+// echidna-llm-mcp: 15-protocol frontier LLM tactic advisory + VeriSimDB bridge
+#flag -L../../cartridges/echidna-llm-mcp/ffi/zig-out/lib
+#flag -lechidna_llm_mcp
 
 fn C.boj_catalogue_init() int
 fn C.boj_catalogue_deinit()
@@ -665,6 +668,18 @@ fn (mut app BojApp) register_builtin_cartridges() ! {
 			tier: .shield
 			domain: .ums
 			protocols: [ProtocolType.mcp, .rest]
+			index: 0
+		},
+		// ── echidna-llm-mcp: Frontier LLM tactic advisory ──────────
+		// 15-protocol dodeca-API + VeriSimDB bridge + VQL-UT queries.
+		// Provides theorem proving intelligence across 30 backends.
+		CartridgeInfo{
+			name: 'echidna-llm-mcp'
+			version: '1.0.0'
+			status: .ready
+			tier: .ayo
+			domain: .proof
+			protocols: [ProtocolType.mcp, .rest, .grpc, .nesy]
 			index: 0
 		},
 	]
