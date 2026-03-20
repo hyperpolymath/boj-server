@@ -1,0 +1,145 @@
+{
+  "$schema": "https://boj.dev/schemas/cartridge/v1.json",
+  "spdx": "PMPL-1.0-or-later",
+  "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath)",
+  "name": "obsidian-mcp",
+  "version": "0.2.0",
+  "description": "Obsidian vault cartridge -- note search, content retrieval, backlink navigation, tag browsing, graph analysis, dataview queries, frontmatter extraction, daily notes, template listing, and vault statistics via the Obsidian Local REST API",
+  "domain": "Knowledge",
+  "tier": "Ayo",
+  "protocols": ["MCP", "REST"],
+  "auth": {
+    "method": "bearer_token",
+    "env_var": "OBSIDIAN_REST_API_KEY",
+    "credential_source": "vault-mcp"
+  },
+  "api": {
+    "base_url": "https://127.0.0.1:27124",
+    "content_type": "application/json"
+  },
+  "tools": [
+    {
+      "name": "obsidian_search_notes",
+      "description": "Search Obsidian vault for notes by text query across titles and content",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "query": { "type": "string", "description": "Search query (note title, content, tags)" },
+          "context_length": { "type": "number", "description": "Characters of context around matches (default 100)" }
+        },
+        "required": ["query"]
+      }
+    },
+    {
+      "name": "obsidian_get_note",
+      "description": "Get the full content of an Obsidian note by path (relative to vault root)",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "path": { "type": "string", "description": "Note path relative to vault root (e.g. 'Projects/my-note.md')" }
+        },
+        "required": ["path"]
+      }
+    },
+    {
+      "name": "obsidian_list_notes",
+      "description": "List all notes in the vault or a specific folder, with optional filtering",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "folder": { "type": "string", "description": "Folder path to list (omit for vault root)" },
+          "recursive": { "type": "boolean", "description": "Include subfolders (default true)" }
+        }
+      }
+    },
+    {
+      "name": "obsidian_get_backlinks",
+      "description": "Get all notes that link to a given note (backlink/incoming link analysis)",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "path": { "type": "string", "description": "Note path to find backlinks for" }
+        },
+        "required": ["path"]
+      }
+    },
+    {
+      "name": "obsidian_get_outgoing_links",
+      "description": "Get all notes that a given note links to (outgoing link analysis)",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "path": { "type": "string", "description": "Note path to find outgoing links for" }
+        },
+        "required": ["path"]
+      }
+    },
+    {
+      "name": "obsidian_list_tags",
+      "description": "List all tags used in the vault with note counts",
+      "inputSchema": {
+        "type": "object",
+        "properties": {}
+      }
+    },
+    {
+      "name": "obsidian_get_notes_by_tag",
+      "description": "Get all notes tagged with a specific tag",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "tag": { "type": "string", "description": "Tag name (with or without '#' prefix)" }
+        },
+        "required": ["tag"]
+      }
+    },
+    {
+      "name": "obsidian_get_frontmatter",
+      "description": "Get YAML frontmatter metadata for a specific note",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "path": { "type": "string", "description": "Note path relative to vault root" }
+        },
+        "required": ["path"]
+      }
+    },
+    {
+      "name": "obsidian_get_daily_note",
+      "description": "Get the daily note for a specific date (or today if no date given)",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "date": { "type": "string", "description": "Date in YYYY-MM-DD format (omit for today)" }
+        }
+      }
+    },
+    {
+      "name": "obsidian_vault_stats",
+      "description": "Get vault statistics (total notes, folders, tags, links, word count)",
+      "inputSchema": {
+        "type": "object",
+        "properties": {}
+      }
+    },
+    {
+      "name": "obsidian_dataview_query",
+      "description": "Execute a Dataview query against the vault (requires Dataview plugin)",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "query": { "type": "string", "description": "Dataview query (DQL syntax)" }
+        },
+        "required": ["query"]
+      }
+    },
+    {
+      "name": "obsidian_list_templates",
+      "description": "List available note templates in the vault's template folder",
+      "inputSchema": {
+        "type": "object",
+        "properties": {}
+      }
+    }
+  ]
+}

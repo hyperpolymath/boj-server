@@ -1,0 +1,137 @@
+{
+  "$schema": "https://boj.dev/schemas/cartridge/v1.json",
+  "spdx": "PMPL-1.0-or-later",
+  "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath)",
+  "name": "hex-mcp",
+  "version": "0.2.0",
+  "description": "Hex.pm registry cartridge -- Elixir/Erlang package search, metadata retrieval, version listing, download stats, dependency analysis, owner listing, retirement status, and API key management via the Hex API",
+  "domain": "Registry",
+  "tier": "Ayo",
+  "protocols": ["MCP", "REST"],
+  "auth": {
+    "method": "bearer_token",
+    "env_var": "HEX_API_KEY",
+    "credential_source": "vault-mcp"
+  },
+  "api": {
+    "base_url": "https://hex.pm/api",
+    "content_type": "application/json"
+  },
+  "tools": [
+    {
+      "name": "hex_search_packages",
+      "description": "Search Hex.pm for Elixir/Erlang packages by text query with optional sort order",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "query": { "type": "string", "description": "Search query (package name, description)" },
+          "page": { "type": "number", "description": "Page number (default 1)" },
+          "sort": { "type": "string", "description": "Sort order: name, inserted_at, updated_at, total_downloads, recent_downloads" }
+        },
+        "required": ["query"]
+      }
+    },
+    {
+      "name": "hex_get_package",
+      "description": "Get full metadata for a Hex package (description, repository, links, licenses, latest version)",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string", "description": "Package name (e.g. 'phoenix', 'ecto', 'plug')" }
+        },
+        "required": ["name"]
+      }
+    },
+    {
+      "name": "hex_get_release",
+      "description": "Get metadata for a specific release of a Hex package (requirements, checksum, retirement)",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string", "description": "Package name" },
+          "version": { "type": "string", "description": "Version string (e.g. '1.7.14')" }
+        },
+        "required": ["name", "version"]
+      }
+    },
+    {
+      "name": "hex_list_releases",
+      "description": "List all published releases of a Hex package with timestamps, downloads, and retirement status",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string", "description": "Package name" }
+        },
+        "required": ["name"]
+      }
+    },
+    {
+      "name": "hex_get_downloads",
+      "description": "Get download statistics for a Hex package (total, recent, per-release)",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string", "description": "Package name" }
+        },
+        "required": ["name"]
+      }
+    },
+    {
+      "name": "hex_get_dependencies",
+      "description": "Get the dependency list (requirements) for a specific release of a Hex package",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string", "description": "Package name" },
+          "version": { "type": "string", "description": "Release version to inspect" }
+        },
+        "required": ["name", "version"]
+      }
+    },
+    {
+      "name": "hex_get_owners",
+      "description": "List all owners of a Hex package with usernames and email addresses",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string", "description": "Package name" }
+        },
+        "required": ["name"]
+      }
+    },
+    {
+      "name": "hex_get_retirement",
+      "description": "Get retirement status and reason for a specific release of a Hex package",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string", "description": "Package name" },
+          "version": { "type": "string", "description": "Release version to check" }
+        },
+        "required": ["name", "version"]
+      }
+    },
+    {
+      "name": "hex_get_user",
+      "description": "Get profile information for a Hex.pm user",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "username": { "type": "string", "description": "Hex.pm username" }
+        },
+        "required": ["username"]
+      }
+    },
+    {
+      "name": "hex_list_user_packages",
+      "description": "List all packages owned by a Hex.pm user",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "username": { "type": "string", "description": "Hex.pm username" }
+        },
+        "required": ["username"]
+      }
+    }
+  ]
+}

@@ -1,0 +1,89 @@
+{
+  "$schema": "https://panll.dev/schemas/panel-manifest/v1.json",
+  "spdx": "PMPL-1.0-or-later",
+  "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath)",
+  "cartridge": "opam-mcp",
+  "domain": "Registry",
+  "version": "0.2.0",
+  "panels": [
+    {
+      "id": "opam-session-status",
+      "title": "Session Status",
+      "description": "opam session state (Active / RateLimited / Error)",
+      "type": "status-indicator",
+      "data_source": {
+        "endpoint": "/opam/state",
+        "method": "GET",
+        "refresh_interval_ms": 5000
+      },
+      "widgets": [
+        {
+          "type": "state-badge",
+          "field": "state",
+          "states": {
+            "active": { "color": "#2ecc71", "icon": "check-circle" },
+            "rate_limited": { "color": "#f39c12", "icon": "clock" },
+            "error": { "color": "#e74c3c", "icon": "alert-triangle" }
+          }
+        }
+      ]
+    },
+    {
+      "id": "opam-search-count",
+      "title": "Search Queries",
+      "description": "Number of package search queries executed in the current session",
+      "type": "metric",
+      "data_source": {
+        "endpoint": "/opam/status",
+        "method": "GET",
+        "refresh_interval_ms": 10000
+      },
+      "widgets": [
+        {
+          "type": "counter",
+          "field": "search_count",
+          "label": "Searches",
+          "icon": "search"
+        }
+      ]
+    },
+    {
+      "id": "opam-package-lookups",
+      "title": "Package Lookups",
+      "description": "Number of package metadata queries executed in the current session",
+      "type": "metric",
+      "data_source": {
+        "endpoint": "/opam/status",
+        "method": "GET",
+        "refresh_interval_ms": 10000
+      },
+      "widgets": [
+        {
+          "type": "counter",
+          "field": "package_lookups",
+          "label": "Package Lookups",
+          "icon": "package"
+        }
+      ]
+    },
+    {
+      "id": "opam-revdep-queries",
+      "title": "Reverse Dep Queries",
+      "description": "Number of reverse dependency queries in the current session",
+      "type": "metric",
+      "data_source": {
+        "endpoint": "/opam/status",
+        "method": "GET",
+        "refresh_interval_ms": 10000
+      },
+      "widgets": [
+        {
+          "type": "counter",
+          "field": "revdep_queries",
+          "label": "Revdep Queries",
+          "icon": "git-branch"
+        }
+      ]
+    }
+  ]
+}

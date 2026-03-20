@@ -1,0 +1,137 @@
+{
+  "$schema": "https://boj.dev/schemas/cartridge/v1.json",
+  "spdx": "PMPL-1.0-or-later",
+  "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath)",
+  "name": "opam-mcp",
+  "version": "0.2.0",
+  "description": "opam registry cartridge -- OCaml package search, metadata retrieval, version listing, dependency analysis, reverse dependency lookup, maintainer listing, and repository browsing via the opam.ocaml.org API",
+  "domain": "Registry",
+  "tier": "Ayo",
+  "protocols": ["MCP", "REST"],
+  "auth": {
+    "method": "none",
+    "env_var": null,
+    "credential_source": null
+  },
+  "api": {
+    "base_url": "https://opam.ocaml.org",
+    "content_type": "application/json"
+  },
+  "tools": [
+    {
+      "name": "opam_search_packages",
+      "description": "Search opam for OCaml packages by text query",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "query": { "type": "string", "description": "Search query (package name, synopsis, tags)" },
+          "page": { "type": "number", "description": "Page number (default 1)" }
+        },
+        "required": ["query"]
+      }
+    },
+    {
+      "name": "opam_get_package",
+      "description": "Get full metadata for an OCaml package (synopsis, description, license, authors, homepage, latest version)",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string", "description": "Package name (e.g. 'dune', 'lwt', 'ppx_deriving')" }
+        },
+        "required": ["name"]
+      }
+    },
+    {
+      "name": "opam_get_version",
+      "description": "Get metadata for a specific version of an OCaml package (opam file contents, dependencies, conflicts)",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string", "description": "Package name" },
+          "version": { "type": "string", "description": "Version string (e.g. '3.16.0')" }
+        },
+        "required": ["name", "version"]
+      }
+    },
+    {
+      "name": "opam_list_versions",
+      "description": "List all published versions of an OCaml package",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string", "description": "Package name" }
+        },
+        "required": ["name"]
+      }
+    },
+    {
+      "name": "opam_get_dependencies",
+      "description": "Get the dependency list (depends, depopts, conflicts) for a specific version of an OCaml package",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string", "description": "Package name" },
+          "version": { "type": "string", "description": "Version to inspect" }
+        },
+        "required": ["name", "version"]
+      }
+    },
+    {
+      "name": "opam_get_reverse_dependencies",
+      "description": "List packages that depend on a given OCaml package (reverse dependency lookup)",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string", "description": "Package name" },
+          "page": { "type": "number", "description": "Page number (default 1)" }
+        },
+        "required": ["name"]
+      }
+    },
+    {
+      "name": "opam_get_maintainers",
+      "description": "Get maintainer and author information for an OCaml package",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string", "description": "Package name" }
+        },
+        "required": ["name"]
+      }
+    },
+    {
+      "name": "opam_get_tags",
+      "description": "Get tags associated with an OCaml package",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string", "description": "Package name" }
+        },
+        "required": ["name"]
+      }
+    },
+    {
+      "name": "opam_list_all_packages",
+      "description": "List all packages in the opam repository with basic metadata",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "page": { "type": "number", "description": "Page number (default 1)" },
+          "per_page": { "type": "number", "description": "Results per page (default 50)" }
+        }
+      }
+    },
+    {
+      "name": "opam_get_opam_file",
+      "description": "Get the raw opam file contents for a specific version of a package",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string", "description": "Package name" },
+          "version": { "type": "string", "description": "Version to inspect" }
+        },
+        "required": ["name", "version"]
+      }
+    }
+  ]
+}

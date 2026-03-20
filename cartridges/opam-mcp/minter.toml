@@ -1,0 +1,20 @@
+# SPDX-License-Identifier: PMPL-1.0-or-later
+# Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+
+name = "opam-mcp"
+description = "opam registry cartridge — OCaml package search, metadata, version listing, dependencies, reverse deps, maintainers, tags, opam file retrieval"
+version = "0.2.0"
+domain = "Registry"
+protocols = [
+    "MCP",
+    "REST",
+]
+tier = "Ayo"
+backend = "universal"
+generate_panel = true
+
+[auth]
+method = "none"
+
+[api]
+base_url = "https://opam.ocaml.org"

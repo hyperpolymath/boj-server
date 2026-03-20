@@ -1,0 +1,90 @@
+{
+  "$schema": "https://panll.dev/schemas/panel-manifest/v1.json",
+  "spdx": "PMPL-1.0-or-later",
+  "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath)",
+  "cartridge": "hex-mcp",
+  "domain": "Registry",
+  "version": "0.2.0",
+  "panels": [
+    {
+      "id": "hex-auth-status",
+      "title": "Auth Status",
+      "description": "Hex.pm session state (Unauthenticated / Authenticated / RateLimited / Error)",
+      "type": "status-indicator",
+      "data_source": {
+        "endpoint": "/hex/state",
+        "method": "GET",
+        "refresh_interval_ms": 5000
+      },
+      "widgets": [
+        {
+          "type": "state-badge",
+          "field": "state",
+          "states": {
+            "unauthenticated": { "color": "#95a5a6", "icon": "user-x" },
+            "authenticated": { "color": "#2ecc71", "icon": "user-check" },
+            "rate_limited": { "color": "#f39c12", "icon": "clock" },
+            "error": { "color": "#e74c3c", "icon": "alert-triangle" }
+          }
+        }
+      ]
+    },
+    {
+      "id": "hex-search-count",
+      "title": "Search Queries",
+      "description": "Number of package search queries executed in the current session",
+      "type": "metric",
+      "data_source": {
+        "endpoint": "/hex/status",
+        "method": "GET",
+        "refresh_interval_ms": 10000
+      },
+      "widgets": [
+        {
+          "type": "counter",
+          "field": "search_count",
+          "label": "Searches",
+          "icon": "search"
+        }
+      ]
+    },
+    {
+      "id": "hex-package-lookups",
+      "title": "Package Lookups",
+      "description": "Number of package metadata queries executed in the current session",
+      "type": "metric",
+      "data_source": {
+        "endpoint": "/hex/status",
+        "method": "GET",
+        "refresh_interval_ms": 10000
+      },
+      "widgets": [
+        {
+          "type": "counter",
+          "field": "package_lookups",
+          "label": "Package Lookups",
+          "icon": "package"
+        }
+      ]
+    },
+    {
+      "id": "hex-owner-queries",
+      "title": "Owner Queries",
+      "description": "Number of owner listing queries in the current session",
+      "type": "metric",
+      "data_source": {
+        "endpoint": "/hex/status",
+        "method": "GET",
+        "refresh_interval_ms": 10000
+      },
+      "widgets": [
+        {
+          "type": "counter",
+          "field": "owner_queries",
+          "label": "Owner Queries",
+          "icon": "users"
+        }
+      ]
+    }
+  ]
+}

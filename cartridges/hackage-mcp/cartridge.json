@@ -1,0 +1,157 @@
+{
+  "$schema": "https://boj.dev/schemas/cartridge/v1.json",
+  "spdx": "PMPL-1.0-or-later",
+  "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath)",
+  "name": "hackage-mcp",
+  "version": "0.2.0",
+  "description": "Hackage registry cartridge -- Haskell package search, metadata retrieval, version listing, download stats, dependency analysis, reverse dependency lookup, maintainer listing, deprecated status, and cabal file retrieval via the Hackage API",
+  "domain": "Registry",
+  "tier": "Ayo",
+  "protocols": ["MCP", "REST"],
+  "auth": {
+    "method": "basic",
+    "env_var": "HACKAGE_CREDENTIALS",
+    "credential_source": "vault-mcp"
+  },
+  "api": {
+    "base_url": "https://hackage.haskell.org",
+    "content_type": "application/json"
+  },
+  "tools": [
+    {
+      "name": "hackage_search_packages",
+      "description": "Search Hackage for Haskell packages by text query",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "query": { "type": "string", "description": "Search query (package name, synopsis)" },
+          "page": { "type": "number", "description": "Page number (default 0)" }
+        },
+        "required": ["query"]
+      }
+    },
+    {
+      "name": "hackage_get_package",
+      "description": "Get full metadata for a Haskell package (synopsis, description, license, category, homepage, latest version)",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string", "description": "Package name (e.g. 'aeson', 'lens', 'servant')" }
+        },
+        "required": ["name"]
+      }
+    },
+    {
+      "name": "hackage_get_version",
+      "description": "Get metadata for a specific version of a Haskell package (cabal file, dependencies, exposed modules)",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string", "description": "Package name" },
+          "version": { "type": "string", "description": "Version string (e.g. '2.2.3.0')" }
+        },
+        "required": ["name", "version"]
+      }
+    },
+    {
+      "name": "hackage_list_versions",
+      "description": "List all published versions of a Haskell package with upload timestamps",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string", "description": "Package name" }
+        },
+        "required": ["name"]
+      }
+    },
+    {
+      "name": "hackage_get_downloads",
+      "description": "Get download statistics for a Haskell package (total download count)",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string", "description": "Package name" }
+        },
+        "required": ["name"]
+      }
+    },
+    {
+      "name": "hackage_get_dependencies",
+      "description": "Get the dependency list (build-depends) for a specific version of a Haskell package",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string", "description": "Package name" },
+          "version": { "type": "string", "description": "Version to inspect" }
+        },
+        "required": ["name", "version"]
+      }
+    },
+    {
+      "name": "hackage_get_reverse_dependencies",
+      "description": "List packages that depend on a given Haskell package (reverse dependency lookup)",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string", "description": "Package name" }
+        },
+        "required": ["name"]
+      }
+    },
+    {
+      "name": "hackage_get_maintainers",
+      "description": "Get maintainer list for a Haskell package on Hackage",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string", "description": "Package name" }
+        },
+        "required": ["name"]
+      }
+    },
+    {
+      "name": "hackage_get_deprecated",
+      "description": "Check if a Haskell package is deprecated on Hackage, with suggested replacement",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string", "description": "Package name" }
+        },
+        "required": ["name"]
+      }
+    },
+    {
+      "name": "hackage_get_cabal_file",
+      "description": "Get the raw .cabal file contents for a specific version of a Haskell package",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string", "description": "Package name" },
+          "version": { "type": "string", "description": "Version to retrieve" }
+        },
+        "required": ["name", "version"]
+      }
+    },
+    {
+      "name": "hackage_list_all_packages",
+      "description": "List all packages on Hackage with basic metadata",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "page": { "type": "number", "description": "Page number (default 0)" }
+        }
+      }
+    },
+    {
+      "name": "hackage_get_user",
+      "description": "Get profile information for a Hackage user",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "username": { "type": "string", "description": "Hackage username" }
+        },
+        "required": ["username"]
+      }
+    }
+  ]
+}

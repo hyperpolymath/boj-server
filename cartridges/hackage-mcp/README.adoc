@@ -1,0 +1,95 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+// Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+= hackage-mcp
+Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+:spdx: PMPL-1.0-or-later
+:tier: Ayo
+:domain: Registry
+:protocols: MCP, REST
+
+== Overview
+
+Hackage registry cartridge for the BoJ server. Provides type-safe access to
+the Hackage API for Haskell package search, metadata retrieval, version listing,
+download statistics, dependency analysis, reverse dependency lookup, maintainer
+listing, deprecation status checks, raw .cabal file retrieval, and user profile
+lookup.
+
+=== State Machine
+
+`Unauthenticated -> Authenticated` (optional, all reads work without auth)
+
+`Authenticated -> RateLimited -> Authenticated` (normal flow, 429 handling)
+
+`Authenticated -> Error -> Unauthenticated` (error recovery)
+
+=== Actions (12)
+
+[cols="1,1"]
+|===
+| Category | Actions
+
+| Search
+| SearchPackages
+
+| Package Metadata
+| GetPackage, GetVersion, ListVersions
+
+| Downloads
+| GetDownloads
+
+| Dependencies
+| GetDependencies, GetReverseDependencies
+
+| Maintainers
+| GetMaintainers
+
+| Status
+| GetDeprecated
+
+| Raw Files
+| GetCabalFile
+
+| Listing
+| ListAllPackages
+
+| Users
+| GetUser
+|===
+
+== Architecture
+
+[cols="1,1,2"]
+|===
+| Layer | Language | Purpose
+
+| ABI
+| Idris2
+| Formally verified state machine with dependent-type proofs (HackageMcp.SafeRegistry)
+
+| FFI
+| Zig
+| C-compatible implementation with thread-safe session pool, action recording, category counting
+
+| Adapter
+| V-lang
+| REST bridge to BoJ unified adapter protocol
+|===
+
+== Building
+
+[source,bash]
+----
+# Build FFI shared library
+cd ffi && zig build
+
+# Run FFI tests
+cd ffi && zig build test
+
+# Type-check ABI
+cd abi && idris2 --check HackageMcp.SafeRegistry
+----
+
+== Status
+
+Development -- customised with Hackage-specific search, reverse deps, deprecation, cabal file, and user APIs.

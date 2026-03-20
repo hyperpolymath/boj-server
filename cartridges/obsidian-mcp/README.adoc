@@ -1,0 +1,98 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+// Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+= obsidian-mcp
+Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+:spdx: PMPL-1.0-or-later
+:tier: Ayo
+:domain: Knowledge
+:protocols: MCP, REST
+
+== Overview
+
+Obsidian vault cartridge for the BoJ server. Provides type-safe access to
+the Obsidian Local REST API for note search, content retrieval, backlink
+navigation, tag browsing, graph analysis, Dataview query execution, YAML
+frontmatter extraction, daily note management, template listing, and vault
+statistics.
+
+Connects to the Obsidian Local REST API at `127.0.0.1:27124`. Bearer token
+auth is always required.
+
+=== State Machine
+
+`Disconnected -> Connected` (authenticated connection to Obsidian)
+
+`Connected -> RateLimited -> Connected` (normal flow)
+
+`Connected -> Error -> Disconnected` (error recovery)
+
+=== Actions (12)
+
+[cols="1,1"]
+|===
+| Category | Actions
+
+| Search
+| SearchNotes
+
+| Note Content
+| GetNote, ListNotes, GetFrontmatter, GetDailyNote
+
+| Link Analysis
+| GetBacklinks, GetOutgoingLinks
+
+| Tags
+| ListTags, GetNotesByTag
+
+| Vault
+| VaultStats
+
+| Plugins
+| DataviewQuery
+
+| Templates
+| ListTemplates
+|===
+
+== Architecture
+
+[cols="1,1,2"]
+|===
+| Layer | Language | Purpose
+
+| ABI
+| Idris2
+| Formally verified state machine with dependent-type proofs (ObsidianMcp.SafeRegistry)
+
+| FFI
+| Zig
+| C-compatible implementation with thread-safe session pool, action recording, category counting
+
+| Adapter
+| V-lang
+| REST bridge to BoJ unified adapter protocol
+|===
+
+== Building
+
+[source,bash]
+----
+# Build FFI shared library
+cd ffi && zig build
+
+# Run FFI tests
+cd ffi && zig build test
+
+# Type-check ABI
+cd abi && idris2 --check ObsidianMcp.SafeRegistry
+----
+
+== Prerequisites
+
+1. Install the https://github.com/coddingtonbear/obsidian-local-rest-api[Obsidian Local REST API] plugin.
+2. Set `OBSIDIAN_REST_API_KEY` to the plugin's API key.
+3. Obsidian must be running for the cartridge to function.
+
+== Status
+
+Development -- customised with Obsidian-specific search, backlinks, Dataview, frontmatter, and daily note APIs.

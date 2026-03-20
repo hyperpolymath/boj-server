@@ -1,0 +1,22 @@
+# SPDX-License-Identifier: PMPL-1.0-or-later
+# Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+
+name = "hex-mcp"
+description = "Hex.pm registry cartridge — Elixir/Erlang package search, metadata, release listing, download stats, dependencies, owners, retirement status, user profiles"
+version = "0.2.0"
+domain = "Registry"
+protocols = [
+    "MCP",
+    "REST",
+]
+tier = "Ayo"
+backend = "universal"
+generate_panel = true
+
+[auth]
+method = "bearer_token"
+credential_source = "vault-mcp"
+fields = ["hex_api_key"]
+
+[api]
+base_url = "https://hex.pm/api"
