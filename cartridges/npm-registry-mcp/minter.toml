@@ -1,0 +1,24 @@
+# SPDX-License-Identifier: PMPL-1.0-or-later
+# Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+
+name = "npm-registry-mcp"
+description = "npm registry cartridge — package search, metadata, version listing, download stats, dependency analysis, audit advisories, provenance attestation"
+version = "0.2.0"
+domain = "Registry"
+protocols = [
+    "MCP",
+    "REST",
+]
+tier = "Ayo"
+backend = "universal"
+generate_panel = true
+
+[auth]
+method = "bearer_token"
+credential_source = "vault-mcp"
+fields = ["npm_token"]
+
+[api]
+base_url = "https://registry.npmjs.org"
+search_url = "https://registry.npmjs.org/-/v1/search"
+downloads_url = "https://api.npmjs.org/downloads"

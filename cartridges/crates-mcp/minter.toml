@@ -1,0 +1,23 @@
+# SPDX-License-Identifier: PMPL-1.0-or-later
+# Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+
+name = "crates-mcp"
+description = "crates.io registry cartridge — Rust crate search, metadata, version listing, download stats, dependencies, reverse deps, owners, categories, keywords"
+version = "0.2.0"
+domain = "Registry"
+protocols = [
+    "MCP",
+    "REST",
+]
+tier = "Ayo"
+backend = "universal"
+generate_panel = true
+
+[auth]
+method = "bearer_token"
+credential_source = "vault-mcp"
+fields = ["crates_io_token"]
+
+[api]
+base_url = "https://crates.io/api/v1"
+user_agent_required = true

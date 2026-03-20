@@ -1,0 +1,216 @@
+{
+  "$schema": "https://boj.dev/schemas/cartridge/v1.json",
+  "spdx": "PMPL-1.0-or-later",
+  "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath)",
+  "name": "docker-hub-mcp",
+  "version": "0.2.0",
+  "description": "Docker Hub container registry cartridge -- image search, repository management, tag listing, manifest inspection, namespace browsing, and pull rate limit tracking with JWT auth",
+  "domain": "Container",
+  "tier": "Ayo",
+  "protocols": ["MCP", "REST"],
+  "auth": {
+    "method": "bearer",
+    "token_type": "jwt",
+    "login_endpoint": "POST /v2/users/login",
+    "env_var": "DOCKER_HUB_TOKEN",
+    "credential_source": "vault-mcp"
+  },
+  "api": {
+    "base_url": "https://hub.docker.com/v2",
+    "rate_limit_pull_auth": 200,
+    "rate_limit_pull_anon": 100,
+    "rate_limit_window": "6h",
+    "content_type": "application/json"
+  },
+  "tools": [
+    {
+      "name": "dockerhub_search_images",
+      "description": "Search Docker Hub for container images by query string",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "query": { "type": "string", "description": "Search query (e.g. 'nginx', 'python')" },
+          "page": { "type": "number", "description": "Page number (default 1)" },
+          "page_size": { "type": "number", "description": "Results per page (default 25, max 100)" },
+          "is_official": { "type": "boolean", "description": "Filter for official images only" }
+        },
+        "required": ["query"]
+      }
+    },
+    {
+      "name": "dockerhub_get_repository",
+      "description": "Get detailed information about a Docker Hub repository (namespace/name)",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "namespace": { "type": "string", "description": "Repository namespace (e.g. 'library', 'myorg')" },
+          "name": { "type": "string", "description": "Repository name (e.g. 'nginx', 'alpine')" }
+        },
+        "required": ["namespace", "name"]
+      }
+    },
+    {
+      "name": "dockerhub_list_tags",
+      "description": "List all tags for a Docker Hub repository with pagination",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "namespace": { "type": "string", "description": "Repository namespace" },
+          "name": { "type": "string", "description": "Repository name" },
+          "page": { "type": "number", "description": "Page number (default 1)" },
+          "page_size": { "type": "number", "description": "Results per page (default 25, max 100)" },
+          "ordering": { "type": "string", "description": "Sort order: last_updated, -last_updated, name, -name" }
+        },
+        "required": ["namespace", "name"]
+      }
+    },
+    {
+      "name": "dockerhub_get_tag",
+      "description": "Get detailed information about a specific tag including digest, size, and architecture",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "namespace": { "type": "string", "description": "Repository namespace" },
+          "name": { "type": "string", "description": "Repository name" },
+          "tag": { "type": "string", "description": "Tag name (e.g. 'latest', '3.19')" }
+        },
+        "required": ["namespace", "name", "tag"]
+      }
+    },
+    {
+      "name": "dockerhub_list_namespaces",
+      "description": "List all namespaces accessible to the authenticated user",
+      "inputSchema": {
+        "type": "object",
+        "properties": {}
+      }
+    },
+    {
+      "name": "dockerhub_get_manifest",
+      "description": "Get the OCI manifest for a specific image tag (digest, layers, platform)",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "namespace": { "type": "string", "description": "Repository namespace" },
+          "name": { "type": "string", "description": "Repository name" },
+          "reference": { "type": "string", "description": "Tag name or digest (e.g. 'latest', 'sha256:abc...')" }
+        },
+        "required": ["namespace", "name", "reference"]
+      }
+    },
+    {
+      "name": "dockerhub_delete_tag",
+      "description": "Delete a specific tag from a Docker Hub repository (irreversible)",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "namespace": { "type": "string", "description": "Repository namespace" },
+          "name": { "type": "string", "description": "Repository name" },
+          "tag": { "type": "string", "description": "Tag to delete" }
+        },
+        "required": ["namespace", "name", "tag"]
+      }
+    },
+    {
+      "name": "dockerhub_get_rate_limit",
+      "description": "Check current pull rate limit status (remaining pulls and window reset time)",
+      "inputSchema": {
+        "type": "object",
+        "properties": {}
+      }
+    },
+    {
+      "name": "dockerhub_list_orgs",
+      "description": "List all organizations the authenticated user belongs to",
+      "inputSchema": {
+        "type": "object",
+        "properties": {}
+      }
+    },
+    {
+      "name": "dockerhub_create_repository",
+      "description": "Create a new Docker Hub repository in a namespace",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "namespace": { "type": "string", "description": "Namespace to create the repository in" },
+          "name": { "type": "string", "description": "Repository name" },
+          "description": { "type": "string", "description": "Short description" },
+          "full_description": { "type": "string", "description": "Full description (Markdown)" },
+          "is_private": { "type": "boolean", "description": "Whether the repository is private (default false)" }
+        },
+        "required": ["namespace", "name"]
+      }
+    },
+    {
+      "name": "dockerhub_delete_repository",
+      "description": "Delete an entire Docker Hub repository (irreversible, removes all tags)",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "namespace": { "type": "string", "description": "Repository namespace" },
+          "name": { "type": "string", "description": "Repository name" }
+        },
+        "required": ["namespace", "name"]
+      }
+    },
+    {
+      "name": "dockerhub_get_dockerfile",
+      "description": "Get the Dockerfile for a Docker Hub repository (if available via automated builds)",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "namespace": { "type": "string", "description": "Repository namespace" },
+          "name": { "type": "string", "description": "Repository name" }
+        },
+        "required": ["namespace", "name"]
+      }
+    },
+    {
+      "name": "dockerhub_list_starred",
+      "description": "List repositories starred by the authenticated user",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "page": { "type": "number", "description": "Page number" },
+          "page_size": { "type": "number", "description": "Results per page" }
+        }
+      }
+    },
+    {
+      "name": "dockerhub_star_repository",
+      "description": "Star a Docker Hub repository",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "namespace": { "type": "string", "description": "Repository namespace" },
+          "name": { "type": "string", "description": "Repository name" }
+        },
+        "required": ["namespace", "name"]
+      }
+    },
+    {
+      "name": "dockerhub_unstar_repository",
+      "description": "Remove star from a Docker Hub repository",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "namespace": { "type": "string", "description": "Repository namespace" },
+          "name": { "type": "string", "description": "Repository name" }
+        },
+        "required": ["namespace", "name"]
+      }
+    },
+    {
+      "name": "dockerhub_get_user",
+      "description": "Get profile information for a Docker Hub user",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "username": { "type": "string", "description": "Docker Hub username" }
+        },
+        "required": ["username"]
+      }
+    }
+  ]
+}

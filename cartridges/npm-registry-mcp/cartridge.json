@@ -1,0 +1,168 @@
+{
+  "$schema": "https://boj.dev/schemas/cartridge/v1.json",
+  "spdx": "PMPL-1.0-or-later",
+  "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath)",
+  "name": "npm-registry-mcp",
+  "version": "0.2.0",
+  "description": "npm registry cartridge -- package search, metadata retrieval, version listing, download stats, dependency analysis, maintainer lookup, and audit advisory queries via the npm registry API",
+  "domain": "Registry",
+  "tier": "Ayo",
+  "protocols": ["MCP", "REST"],
+  "auth": {
+    "method": "bearer_token",
+    "env_var": "NPM_TOKEN",
+    "credential_source": "vault-mcp"
+  },
+  "api": {
+    "base_url": "https://registry.npmjs.org",
+    "search_url": "https://registry.npmjs.org/-/v1/search",
+    "downloads_url": "https://api.npmjs.org/downloads",
+    "content_type": "application/json"
+  },
+  "tools": [
+    {
+      "name": "npm_search_packages",
+      "description": "Search the npm registry for packages by text query with optional filters",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "query": { "type": "string", "description": "Search query (package name, keywords, description)" },
+          "size": { "type": "number", "description": "Number of results (default 20, max 250)" },
+          "from": { "type": "number", "description": "Offset for pagination (default 0)" },
+          "quality": { "type": "number", "description": "Quality weight 0.0-1.0 (default 0.65)" },
+          "popularity": { "type": "number", "description": "Popularity weight 0.0-1.0 (default 0.98)" },
+          "maintenance": { "type": "number", "description": "Maintenance weight 0.0-1.0 (default 0.5)" }
+        },
+        "required": ["query"]
+      }
+    },
+    {
+      "name": "npm_get_package",
+      "description": "Get full metadata for an npm package (all versions, dist-tags, maintainers, repository)",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string", "description": "Package name (e.g. 'lodash', '@scope/pkg')" }
+        },
+        "required": ["name"]
+      }
+    },
+    {
+      "name": "npm_get_package_version",
+      "description": "Get metadata for a specific version of an npm package",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string", "description": "Package name" },
+          "version": { "type": "string", "description": "Semver version (e.g. '4.17.21') or dist-tag (e.g. 'latest')" }
+        },
+        "required": ["name", "version"]
+      }
+    },
+    {
+      "name": "npm_list_versions",
+      "description": "List all published versions of an npm package with timestamps",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string", "description": "Package name" }
+        },
+        "required": ["name"]
+      }
+    },
+    {
+      "name": "npm_get_downloads",
+      "description": "Get download statistics for an npm package over a time period",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string", "description": "Package name" },
+          "period": { "type": "string", "description": "Time period: last-day, last-week, last-month, last-year, or date range YYYY-MM-DD:YYYY-MM-DD" }
+        },
+        "required": ["name", "period"]
+      }
+    },
+    {
+      "name": "npm_get_downloads_range",
+      "description": "Get per-day download counts for an npm package over a date range",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string", "description": "Package name" },
+          "start": { "type": "string", "description": "Start date (YYYY-MM-DD)" },
+          "end": { "type": "string", "description": "End date (YYYY-MM-DD)" }
+        },
+        "required": ["name", "start", "end"]
+      }
+    },
+    {
+      "name": "npm_get_dependencies",
+      "description": "Get the dependency tree for a specific version of a package",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string", "description": "Package name" },
+          "version": { "type": "string", "description": "Version to inspect (default: latest)" }
+        },
+        "required": ["name"]
+      }
+    },
+    {
+      "name": "npm_get_maintainers",
+      "description": "List all maintainers of an npm package with email addresses",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string", "description": "Package name" }
+        },
+        "required": ["name"]
+      }
+    },
+    {
+      "name": "npm_get_dist_tags",
+      "description": "Get distribution tags (latest, next, beta, etc.) for an npm package",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string", "description": "Package name" }
+        },
+        "required": ["name"]
+      }
+    },
+    {
+      "name": "npm_get_audit_advisories",
+      "description": "Query npm security advisories for a package and version range",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string", "description": "Package name" },
+          "version_range": { "type": "string", "description": "Semver range to check (e.g. '>=4.0.0 <4.17.21')" }
+        },
+        "required": ["name"]
+      }
+    },
+    {
+      "name": "npm_get_provenance",
+      "description": "Get SLSA build provenance attestation for a package version (if published with --provenance)",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string", "description": "Package name" },
+          "version": { "type": "string", "description": "Version to check provenance for" }
+        },
+        "required": ["name", "version"]
+      }
+    },
+    {
+      "name": "npm_get_packument",
+      "description": "Get the abbreviated packument (lightweight metadata without full version details)",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string", "description": "Package name" }
+        },
+        "required": ["name"]
+      }
+    }
+  ]
+}
