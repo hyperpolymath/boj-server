@@ -67,7 +67,7 @@
         # MCP bridge package (Node.js, zero dependencies)
         packages.default = pkgs.stdenv.mkDerivation {
           pname = "boj-server";
-          version = "0.3.0";
+          version = "0.3.1";
           src = self;
 
           nativeBuildInputs = with pkgs; [ nodejs makeWrapper ];
@@ -105,7 +105,7 @@
         # Full build with Zig FFI (for contributors/developers)
         packages.full = pkgs.stdenv.mkDerivation {
           pname = "boj-server-full";
-          version = "0.3.0";
+          version = "0.3.1";
           src = self;
 
           nativeBuildInputs = with pkgs; [ zig nodejs makeWrapper ];

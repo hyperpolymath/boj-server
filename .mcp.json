@@ -1,6 +1,6 @@
 {
   "name": "boj-server",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Bundle of Joy (BoJ) MCP Server — cartridge-based DevOps toolkit with 18 domain cartridges",
   "command": "node",
   "args": ["mcp-bridge/main.js"],

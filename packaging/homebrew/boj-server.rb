@@ -13,7 +13,7 @@
 class BojServer < Formula
   desc "Cartridge-based MCP server with 53 formally verified domain cartridges"
   homepage "https://github.com/hyperpolymath/boj-server"
-  url "https://github.com/hyperpolymath/boj-server/archive/refs/tags/v0.3.0.tar.gz"
+  url "https://github.com/hyperpolymath/boj-server/archive/refs/tags/v0.3.1.tar.gz"
   # sha256 "UPDATE_ON_RELEASE"
   license "PMPL-1.0-or-later"
   head "https://github.com/hyperpolymath/boj-server.git", branch: "main"
