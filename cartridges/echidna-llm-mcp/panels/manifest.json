@@ -1,0 +1,69 @@
+{
+  "$schema": "https://panll.dev/schemas/panel-manifest/v1.json",
+  "spdx": "PMPL-1.0-or-later",
+  "cartridge": "echidna-llm",
+  "domain": "Theorem Proving",
+  "version": "0.1.0",
+  "panels": [
+    {
+      "id": "echidna-llm-status",
+      "title": "ECHIDNA LLM Advisor",
+      "description": "Frontier LLM tactic advisory status and session management",
+      "type": "status-indicator",
+      "data_source": {
+        "endpoint": "/cartridge/echidna-llm/invoke",
+        "method": "POST",
+        "body": {"operation": "status"}
+      },
+      "widgets": [
+        {
+          "id": "session-state",
+          "type": "badge",
+          "label": "Session",
+          "field": "state"
+        },
+        {
+          "id": "session-valid",
+          "type": "boolean-indicator",
+          "label": "Valid",
+          "field": "session_valid"
+        }
+      ]
+    },
+    {
+      "id": "echidna-llm-suggest",
+      "title": "Tactic Suggestions",
+      "description": "Request frontier LLM tactic suggestions for a proof goal",
+      "type": "form-action",
+      "data_source": {
+        "endpoint": "/cartridge/echidna-llm/invoke",
+        "method": "POST",
+        "body": {"operation": "suggest_tactics"}
+      },
+      "widgets": [
+        {
+          "id": "goal-input",
+          "type": "text-input",
+          "label": "Proof Goal",
+          "param": "goal"
+        },
+        {
+          "id": "model-select",
+          "type": "dropdown",
+          "label": "Model",
+          "param": "model",
+          "options": ["haiku", "sonnet", "opus"]
+        },
+        {
+          "id": "top-k",
+          "type": "number-input",
+          "label": "Max Suggestions",
+          "param": "top_k",
+          "default": 10,
+          "min": 1,
+          "max": 50
+        }
+      ]
+    }
+  ]
+}
