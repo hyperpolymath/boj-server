@@ -1,14 +1,13 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: PMPL-1.0-or-later
-# Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
-# Integration tests for aws-mcp cartridge.
+# Integration tests for duckdb-mcp cartridge.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CART_DIR="$(dirname "$SCRIPT_DIR")"
 FFI_DIR="$CART_DIR/ffi"
 
-echo "=== aws-mcp integration tests ==="
+echo "=== duckdb-mcp integration tests ==="
 
 # Build FFI
 echo "[1/3] Building FFI..."
@@ -21,14 +20,11 @@ cd "$FFI_DIR" && zig build test 2>&1
 # Validate Idris2 ABI (if idris2 available)
 echo "[3/3] Checking ABI..."
 if command -v idris2 &>/dev/null; then
-    cd "$CART_DIR/abi" && idris2 --check aws_mcp.ipkg 2>&1
+    cd "$CART_DIR/abi" && idris2 --check DuckdbMcp.SafeDatabase 2>&1
     echo "  ABI: OK"
 else
     echo "  ABI: SKIPPED (idris2 not in PATH)"
 fi
 
 echo ""
-echo "All tests passed for aws-mcp!"
-echo "  Services: 7 (S3, Lambda, DynamoDB, SQS, CloudWatch, IAM, STS)"
-echo "  Actions:  21"
-echo "  Tests:    8 suites"
+echo "All tests passed for duckdb-mcp!"

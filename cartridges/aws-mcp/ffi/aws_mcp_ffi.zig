@@ -5,8 +5,10 @@
 //
 // Implements the state machine defined in AwsMcp.SafeCloud (Idris2 ABI).
 // State machine: Unauthenticated | Authenticated | RateLimited | Error
-// Auth: AWS Signature V4 (access_key_id + secret_access_key + region) via vault-mcp.
-// Services: S3, EC2, Lambda, SQS, DynamoDB with configurable region and endpoint routing.
+// Auth: AWS Signature V4 (access_key_id + secret_access_key + region +
+//   optional session_token) via vault-mcp.
+// Services: S3, Lambda, DynamoDB, SQS, CloudWatch, IAM, STS with
+//   configurable region and endpoint routing.
 // Thread-safe via std.Thread.Mutex. Fixed-size session pool, no heap allocations.
 
 const std = @import("std");
@@ -25,32 +27,54 @@ pub const SessionState = enum(c_int) {
 };
 
 /// AWS service identifiers matching Idris2 AwsService encoding.
+/// 0=S3, 1=Lambda, 2=DynamoDB, 3=SQS, 4=CloudWatch, 5=IAM, 6=STS.
 pub const AwsService = enum(c_int) {
     s3 = 0,
-    ec2 = 1,
-    lambda = 2,
+    lambda = 1,
+    dynamodb = 2,
     sqs = 3,
-    dynamodb = 4,
+    cloudwatch = 4,
+    iam = 5,
+    sts = 6,
 };
 
 /// AWS action identifiers matching Idris2 AwsAction encoding.
+/// Actions 0-4: S3 (ListBuckets, GetObject, PutObject, DeleteObject, PresignedUrl)
+/// Actions 5-6: Lambda (ListFunctions, Invoke)
+/// Actions 7-10: DynamoDB (Query, Scan, PutItem, GetItem)
+/// Actions 11-14: SQS (ListQueues, SendMessage, ReceiveMessage, DeleteMessage)
+/// Actions 15-16: CloudWatch (GetMetrics, PutMetricData)
+/// Actions 17-18: IAM (ListUsers, ListRoles) — read-only
+/// Actions 19-20: STS (GetCallerIdentity, AssumeRole)
 pub const AwsAction = enum(c_int) {
-    list_buckets = 0,
-    get_object = 1,
-    put_object = 2,
-    delete_object = 3,
-    list_instances = 4,
-    start_instance = 5,
-    stop_instance = 6,
-    list_functions = 7,
-    invoke_function = 8,
-    list_queues = 9,
-    send_message = 10,
-    receive_message = 11,
-    list_tables = 12,
-    put_item = 13,
-    get_item = 14,
-    query_table = 15,
+    // S3
+    s3_list_buckets = 0,
+    s3_get_object = 1,
+    s3_put_object = 2,
+    s3_delete_object = 3,
+    s3_presigned_url = 4,
+    // Lambda
+    lambda_list_functions = 5,
+    lambda_invoke = 6,
+    // DynamoDB
+    dynamo_query = 7,
+    dynamo_scan = 8,
+    dynamo_put_item = 9,
+    dynamo_get_item = 10,
+    // SQS
+    sqs_list_queues = 11,
+    sqs_send_message = 12,
+    sqs_receive_message = 13,
+    sqs_delete_message = 14,
+    // CloudWatch
+    cw_get_metrics = 15,
+    cw_put_metric_data = 16,
+    // IAM (read-only)
+    iam_list_users = 17,
+    iam_list_roles = 18,
+    // STS
+    sts_get_caller_identity = 19,
+    sts_assume_role = 20,
 };
 
 /// Check valid state transitions per the Idris2 ValidTransition proof.
@@ -67,11 +91,22 @@ fn isValidTransition(from: SessionState, to: SessionState) bool {
 fn actionToService(action: c_int) c_int {
     const a = std.meta.intToEnum(AwsAction, action) catch return -1;
     return switch (a) {
-        .list_buckets, .get_object, .put_object, .delete_object => 0,
-        .list_instances, .start_instance, .stop_instance => 1,
-        .list_functions, .invoke_function => 2,
-        .list_queues, .send_message, .receive_message => 3,
-        .list_tables, .put_item, .get_item, .query_table => 4,
+        .s3_list_buckets, .s3_get_object, .s3_put_object, .s3_delete_object, .s3_presigned_url => 0,
+        .lambda_list_functions, .lambda_invoke => 1,
+        .dynamo_query, .dynamo_scan, .dynamo_put_item, .dynamo_get_item => 2,
+        .sqs_list_queues, .sqs_send_message, .sqs_receive_message, .sqs_delete_message => 3,
+        .cw_get_metrics, .cw_put_metric_data => 4,
+        .iam_list_users, .iam_list_roles => 5,
+        .sts_get_caller_identity, .sts_assume_role => 6,
+    };
+}
+
+/// Check if an action is mutating (write operation). Returns 1 for mutating, 0 for read-only.
+fn actionIsMutating(action: c_int) c_int {
+    const a = std.meta.intToEnum(AwsAction, action) catch return -1;
+    return switch (a) {
+        .s3_put_object, .s3_delete_object, .lambda_invoke, .dynamo_put_item, .sqs_send_message, .sqs_delete_message, .cw_put_metric_data, .sts_assume_role => 1,
+        else => 0,
     };
 }
 
@@ -209,9 +244,14 @@ pub export fn aws_mcp_signal_error(slot_idx: c_int) c_int {
 // C-ABI exports — service routing and actions
 // ---------------------------------------------------------------------------
 
-/// Get the service for an action. Returns service int (0-4) or -1 for invalid.
+/// Get the service for an action. Returns service int (0-6) or -1 for invalid.
 pub export fn aws_mcp_action_service(action: c_int) c_int {
     return actionToService(action);
+}
+
+/// Check if an action is mutating. Returns 1 (mutating), 0 (read-only), -1 (invalid).
+pub export fn aws_mcp_action_is_mutating(action: c_int) c_int {
+    return actionIsMutating(action);
 }
 
 /// Record an API call on a session. Returns 0 on success.
@@ -245,14 +285,14 @@ pub export fn aws_mcp_call_count(slot_idx: c_int) c_int {
     return @intCast(slot.api_call_count);
 }
 
-/// Get total service count. Always returns 5.
+/// Get total service count. Always returns 7.
 pub export fn aws_mcp_service_count() c_int {
-    return 5;
+    return 7;
 }
 
-/// Get total action count. Always returns 16.
+/// Get total action count. Always returns 21.
 pub export fn aws_mcp_action_count() c_int {
-    return 16;
+    return 21;
 }
 
 /// Reset all sessions (test/debug use only).
@@ -276,7 +316,7 @@ test "authentication lifecycle" {
     // Should be authenticated (1)
     try std.testing.expectEqual(@as(c_int, 1), aws_mcp_session_state(slot));
 
-    // Record an API call
+    // Record an S3 ListBuckets call
     try std.testing.expectEqual(@as(c_int, 0), aws_mcp_record_call(slot, 0));
     try std.testing.expectEqual(@as(c_int, 1), aws_mcp_call_count(slot));
 
@@ -349,13 +389,55 @@ test "transition validator" {
     try std.testing.expectEqual(@as(c_int, 0), aws_mcp_can_transition(3, 1)); // error -> auth
 }
 
-test "action service routing" {
-    try std.testing.expectEqual(@as(c_int, 0), aws_mcp_action_service(0)); // ListBuckets -> S3
-    try std.testing.expectEqual(@as(c_int, 1), aws_mcp_action_service(4)); // ListInstances -> EC2
-    try std.testing.expectEqual(@as(c_int, 2), aws_mcp_action_service(7)); // ListFunctions -> Lambda
-    try std.testing.expectEqual(@as(c_int, 3), aws_mcp_action_service(9)); // ListQueues -> SQS
-    try std.testing.expectEqual(@as(c_int, 4), aws_mcp_action_service(12)); // ListTables -> DynamoDB
-    try std.testing.expectEqual(@as(c_int, -1), aws_mcp_action_service(99)); // invalid
+test "action service routing — all 7 services" {
+    // S3
+    try std.testing.expectEqual(@as(c_int, 0), aws_mcp_action_service(0)); // S3ListBuckets
+    try std.testing.expectEqual(@as(c_int, 0), aws_mcp_action_service(4)); // S3PresignedUrl
+    // Lambda
+    try std.testing.expectEqual(@as(c_int, 1), aws_mcp_action_service(5)); // LambdaListFunctions
+    try std.testing.expectEqual(@as(c_int, 1), aws_mcp_action_service(6)); // LambdaInvoke
+    // DynamoDB
+    try std.testing.expectEqual(@as(c_int, 2), aws_mcp_action_service(7)); // DynamoQuery
+    try std.testing.expectEqual(@as(c_int, 2), aws_mcp_action_service(10)); // DynamoGetItem
+    // SQS
+    try std.testing.expectEqual(@as(c_int, 3), aws_mcp_action_service(11)); // SqsListQueues
+    try std.testing.expectEqual(@as(c_int, 3), aws_mcp_action_service(14)); // SqsDeleteMessage
+    // CloudWatch
+    try std.testing.expectEqual(@as(c_int, 4), aws_mcp_action_service(15)); // CwGetMetrics
+    try std.testing.expectEqual(@as(c_int, 4), aws_mcp_action_service(16)); // CwPutMetricData
+    // IAM
+    try std.testing.expectEqual(@as(c_int, 5), aws_mcp_action_service(17)); // IamListUsers
+    try std.testing.expectEqual(@as(c_int, 5), aws_mcp_action_service(18)); // IamListRoles
+    // STS
+    try std.testing.expectEqual(@as(c_int, 6), aws_mcp_action_service(19)); // StsGetCallerIdentity
+    try std.testing.expectEqual(@as(c_int, 6), aws_mcp_action_service(20)); // StsAssumeRole
+    // Invalid
+    try std.testing.expectEqual(@as(c_int, -1), aws_mcp_action_service(99));
+}
+
+test "action mutability checks" {
+    // Read-only actions
+    try std.testing.expectEqual(@as(c_int, 0), aws_mcp_action_is_mutating(0)); // S3ListBuckets
+    try std.testing.expectEqual(@as(c_int, 0), aws_mcp_action_is_mutating(1)); // S3GetObject
+    try std.testing.expectEqual(@as(c_int, 0), aws_mcp_action_is_mutating(4)); // S3PresignedUrl
+    try std.testing.expectEqual(@as(c_int, 0), aws_mcp_action_is_mutating(7)); // DynamoQuery
+    try std.testing.expectEqual(@as(c_int, 0), aws_mcp_action_is_mutating(8)); // DynamoScan
+    try std.testing.expectEqual(@as(c_int, 0), aws_mcp_action_is_mutating(15)); // CwGetMetrics
+    try std.testing.expectEqual(@as(c_int, 0), aws_mcp_action_is_mutating(17)); // IamListUsers
+    try std.testing.expectEqual(@as(c_int, 0), aws_mcp_action_is_mutating(18)); // IamListRoles
+    try std.testing.expectEqual(@as(c_int, 0), aws_mcp_action_is_mutating(19)); // StsGetCallerIdentity
+
+    // Mutating actions
+    try std.testing.expectEqual(@as(c_int, 1), aws_mcp_action_is_mutating(2)); // S3PutObject
+    try std.testing.expectEqual(@as(c_int, 1), aws_mcp_action_is_mutating(3)); // S3DeleteObject
+    try std.testing.expectEqual(@as(c_int, 1), aws_mcp_action_is_mutating(6)); // LambdaInvoke
+    try std.testing.expectEqual(@as(c_int, 1), aws_mcp_action_is_mutating(9)); // DynamoPutItem
+    try std.testing.expectEqual(@as(c_int, 1), aws_mcp_action_is_mutating(12)); // SqsSendMessage
+    try std.testing.expectEqual(@as(c_int, 1), aws_mcp_action_is_mutating(16)); // CwPutMetricData
+    try std.testing.expectEqual(@as(c_int, 1), aws_mcp_action_is_mutating(20)); // StsAssumeRole
+
+    // Invalid
+    try std.testing.expectEqual(@as(c_int, -1), aws_mcp_action_is_mutating(99));
 }
 
 test "slot exhaustion" {
@@ -375,4 +457,9 @@ test "slot exhaustion" {
     try std.testing.expectEqual(@as(c_int, 0), aws_mcp_deauthenticate(slots[0]));
     const new_slot = aws_mcp_authenticate(region.ptr, @intCast(region.len));
     try std.testing.expect(new_slot >= 0);
+}
+
+test "counts" {
+    try std.testing.expectEqual(@as(c_int, 7), aws_mcp_service_count());
+    try std.testing.expectEqual(@as(c_int, 21), aws_mcp_action_count());
 }

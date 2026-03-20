@@ -293,11 +293,12 @@ echo "or via the V-lang adapter HTTP benchmark tool."
             let entry = entry.map_err(|e| e.to_string())?;
             let path = entry.path();
             if path.is_dir() {
-                let name = path
-                    .file_name()
-                    .unwrap()
-                    .to_string_lossy()
-                    .to_string();
+                // SafePath-informed: file_name() can return None for root or
+                // ".." paths; skip entries where the name cannot be extracted.
+                let Some(os_name) = path.file_name() else {
+                    continue;
+                };
+                let name = os_name.to_string_lossy().to_string();
                 if !path.join("panels/manifest.json").exists() {
                     let cfg = CartridgeConfig::load_or_default(&self.boj_root, &name);
                     self.harness(&cfg)?;
@@ -391,7 +392,11 @@ echo "or via the V-lang adapter HTTP benchmark tool."
             let entry = entry.map_err(|e| e.to_string())?;
             let path = entry.path();
             if path.is_dir() {
-                let name = path.file_name().unwrap().to_string_lossy().to_string();
+                // SafePath-informed: skip entries without extractable names.
+                let Some(os_name) = path.file_name() else {
+                    continue;
+                };
+                let name = os_name.to_string_lossy().to_string();
                 let has_abi = has_files_with_extension(&path.join("abi"), "idr");
                 let has_ffi = has_files_with_extension(&path.join("ffi"), "zig");
                 let has_adapter = has_files_with_extension(&path.join("adapter"), "v");

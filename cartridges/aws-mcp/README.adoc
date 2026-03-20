@@ -9,10 +9,10 @@ Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
 
 == Overview
 
-AWS cloud cartridge for the BoJ server. Provides type-safe access to AWS
+AWS SDK cartridge for the BoJ server. Provides type-safe access to AWS
 services via Signature V4 authentication, with credentials proxied through
-vault-mcp. Supports S3, EC2, Lambda, SQS, and DynamoDB with configurable
-region and automatic service endpoint routing.
+vault-mcp. Supports 7 services and 21 actions with configurable region,
+automatic endpoint routing, rate-limit back-pressure, and mutability tracking.
 
 === State Machine
 
@@ -20,26 +20,68 @@ region and automatic service endpoint routing.
 
 `Authenticated -> Error -> Unauthenticated` (error recovery)
 
-=== Actions (16)
+=== Services (7)
 
-[cols="1,1"]
+[cols="1,1,2"]
 |===
-| Service | Actions
+| Service | Endpoint | Description
 
 | S3
-| ListBuckets, GetObject, PutObject, DeleteObject
-
-| EC2
-| ListInstances, StartInstance, StopInstance
+| `s3.{region}.amazonaws.com`
+| Object storage — list buckets, get/put/delete objects, presigned URLs
 
 | Lambda
-| ListFunctions, InvokeFunction
-
-| SQS
-| ListQueues, SendMessage, ReceiveMessage
+| `lambda.{region}.amazonaws.com`
+| Serverless compute — list functions, invoke
 
 | DynamoDB
-| ListTables, PutItem, GetItem, QueryTable
+| `dynamodb.{region}.amazonaws.com`
+| NoSQL database — query, scan, get/put items
+
+| SQS
+| `sqs.{region}.amazonaws.com`
+| Message queues — list queues, send/receive/delete messages
+
+| CloudWatch
+| `monitoring.{region}.amazonaws.com`
+| Metrics — get metrics, put metric data
+
+| IAM
+| `iam.amazonaws.com`
+| Identity management — list users, list roles (read-only)
+
+| STS
+| `sts.{region}.amazonaws.com`
+| Security tokens — get caller identity, assume role
+|===
+
+=== Actions (21)
+
+[cols="1,1,1"]
+|===
+| Service | Action | Mutating?
+
+| S3 | S3ListBuckets | No
+| S3 | S3GetObject | No
+| S3 | S3PutObject | Yes
+| S3 | S3DeleteObject | Yes
+| S3 | S3PresignedUrl | No
+| Lambda | LambdaListFunctions | No
+| Lambda | LambdaInvoke | Yes
+| DynamoDB | DynamoQuery | No
+| DynamoDB | DynamoScan | No
+| DynamoDB | DynamoPutItem | Yes
+| DynamoDB | DynamoGetItem | No
+| SQS | SqsListQueues | No
+| SQS | SqsSendMessage | Yes
+| SQS | SqsReceiveMessage | No
+| SQS | SqsDeleteMessage | Yes
+| CloudWatch | CwGetMetrics | No
+| CloudWatch | CwPutMetricData | Yes
+| IAM | IamListUsers | No
+| IAM | IamListRoles | No
+| STS | StsGetCallerIdentity | No
+| STS | StsAssumeRole | Yes
 |===
 
 == Architecture
@@ -54,7 +96,7 @@ region and automatic service endpoint routing.
 
 | FFI
 | Zig
-| C-compatible implementation with thread-safe session pool, service routing
+| C-compatible implementation with thread-safe session pool, service routing, mutability checks
 
 | Adapter
 | V-lang
@@ -77,4 +119,5 @@ cd abi && idris2 --check aws_mcp.ipkg
 
 == Status
 
-Development — customised with AWS-specific state machine, auth, and service routing.
+Development -- v0.3.0: expanded to 7 services (S3, Lambda, DynamoDB, SQS, CloudWatch, IAM, STS)
+with 21 actions, presigned URL support, and mutability tracking.

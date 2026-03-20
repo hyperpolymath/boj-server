@@ -11,8 +11,9 @@ Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
 
 Google Cloud Platform cartridge for the BoJ server. Provides type-safe access
 to GCP services via service account JSON key or OAuth2 token authentication.
-Supports Compute Engine, Cloud Storage, Cloud Functions, Pub/Sub, BigQuery,
-and IAM with configurable project_id and automatic service endpoint routing.
+Supports Compute Engine, Cloud Storage (with signed URLs), Cloud Functions,
+Firestore (document CRUD and queries), Pub/Sub, Cloud Run, BigQuery,
+and IAM (read-only) with configurable project_id and automatic service endpoint routing.
 
 === State Machine
 
@@ -20,7 +21,7 @@ and IAM with configurable project_id and automatic service endpoint routing.
 
 `Authenticated -> Error -> Unauthenticated` (error recovery)
 
-=== Actions (16)
+=== Actions (27)
 
 [cols="1,1"]
 |===
@@ -30,19 +31,25 @@ and IAM with configurable project_id and automatic service endpoint routing.
 | ListProjects, ListInstances, StartInstance, StopInstance
 
 | Storage
-| ListBuckets, GetObject, PutObject
+| ListBuckets, GetObject, PutObject, GenerateSignedUrl
 
 | Functions
 | ListFunctions, InvokeFunction
 
+| Firestore
+| CreateDocument, GetDocument, UpdateDocument, DeleteDocument, Query
+
 | Pub/Sub
-| ListPubSubTopics, PublishMessage, ListSubscriptions
+| ListPubSubTopics, PublishMessage, ListSubscriptions, CreateSubscription
+
+| Cloud Run
+| ListServices, DeployService
 
 | BigQuery
-| RunQuery, ListDatasets, CreateDataset
+| RunQuery, ListDatasets, ListTables, CreateDataset
 
 | IAM
-| GetIamPolicy
+| GetIamPolicy, TestIamPermissions (read-only)
 |===
 
 == Architecture
@@ -80,4 +87,4 @@ cd abi && idris2 --check gcp_mcp.ipkg
 
 == Status
 
-Development — customised with GCP-specific state machine, auth, and service routing.
+Development (v0.3.0) — 8 services, 27 actions, GCP-specific state machine with Firestore, Cloud Run, signed URLs, and IAM test permissions.

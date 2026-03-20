@@ -5,7 +5,8 @@
 //
 // Bridges the Zig FFI C-ABI exports to the unified BoJ adapter protocol.
 // Exposes AWS Signature V4 authentication, multi-service routing
-// (S3/EC2/Lambda/SQS/DynamoDB), rate-limit handling, and action invocation.
+// (S3/Lambda/DynamoDB/SQS/CloudWatch/IAM/STS), rate-limit handling,
+// action invocation, and mutability checks.
 
 module aws_mcp_adapter
 
@@ -24,6 +25,7 @@ fn C.aws_mcp_throttle(slot_idx int) int
 fn C.aws_mcp_unthrottle(slot_idx int) int
 fn C.aws_mcp_signal_error(slot_idx int) int
 fn C.aws_mcp_action_service(action int) int
+fn C.aws_mcp_action_is_mutating(action int) int
 fn C.aws_mcp_record_call(slot_idx int, action int) int
 fn C.aws_mcp_call_count(slot_idx int) int
 fn C.aws_mcp_service_count() int
@@ -42,11 +44,13 @@ enum SessionState {
 }
 
 enum AwsService {
-	s3       = 0
-	ec2      = 1
-	lambda   = 2
-	sqs      = 3
-	dynamodb = 4
+	s3         = 0
+	lambda     = 1
+	dynamodb   = 2
+	sqs        = 3
+	cloudwatch = 4
+	iam        = 5
+	sts        = 6
 }
 
 fn state_label(s int) string {
@@ -62,10 +66,12 @@ fn state_label(s int) string {
 fn service_label(s int) string {
 	return match s {
 		0 { 's3' }
-		1 { 'ec2' }
-		2 { 'lambda' }
+		1 { 'lambda' }
+		2 { 'dynamodb' }
 		3 { 'sqs' }
-		4 { 'dynamodb' }
+		4 { 'cloudwatch' }
+		5 { 'iam' }
+		6 { 'sts' }
 		else { 'unknown' }
 	}
 }
@@ -86,10 +92,11 @@ struct StateResponse {
 }
 
 struct ActionResponse {
-	slot    int
-	action  int
-	service string
-	calls   int
+	slot     int
+	action   int
+	service  string
+	mutating bool
+	calls    int
 }
 
 struct TransitionResponse {
@@ -103,6 +110,7 @@ struct StatusResponse {
 	state         string
 	region        string
 	service_count int
+	action_count  int
 	call_count    int
 }
 
@@ -152,11 +160,13 @@ pub fn invoke_action(slot int, action int) !ActionResponse {
 		return error('invalid action')
 	}
 	svc := C.aws_mcp_action_service(action)
+	mutating := C.aws_mcp_action_is_mutating(action) == 1
 	calls := C.aws_mcp_call_count(slot)
 	return ActionResponse{
 		slot: slot
 		action: action
 		service: service_label(svc)
+		mutating: mutating
 		calls: calls
 	}
 }
@@ -169,6 +179,7 @@ pub fn status(slot int) StatusResponse {
 		state: state_label(s)
 		region: ''
 		service_count: C.aws_mcp_service_count()
+		action_count: C.aws_mcp_action_count()
 		call_count: calls
 	}
 }

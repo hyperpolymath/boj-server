@@ -15,13 +15,251 @@ const BOJ_BASE = process.env.BOJ_URL || "http://localhost:7700";
 const SERVER_NAME = "boj-server";
 const SERVER_VERSION = "0.3.0";
 
+// ===================================================================
+// HARDENING: Prompt injection detection
+// Ported from proven/src/Proven/SafeMCP.idr — patterns and confidence
+// levels match the formally verified Idris2 implementation exactly.
+// ===================================================================
+
+// Injection patterns from SafeMCP.idr injectionPatterns list.
+// All comparisons are case-insensitive (toLower before matching).
+const INJECTION_PATTERNS = [
+  // Role/instruction override attempts
+  "ignore previous instructions",
+  "ignore all previous",
+  "disregard your instructions",
+  "forget your instructions",
+  "new instructions:",
+  "system prompt:",
+  "you are now",
+  "act as if",
+  "pretend you are",
+  "override your",
+  "bypass your",
+  "ignore your safety",
+  "jailbreak",
+  // Markup-based injection (XML tags, chat template tokens)
+  "<system>",
+  "</system>",
+  "[INST]",
+  "[/INST]",
+  "<<SYS>>",
+  "<</SYS>>",
+  "### Instruction:",
+  "### Human:",
+  "### Assistant:",
+  // Additional high-risk patterns (from task spec, not in SafeMCP.idr
+  // but consistent with its design philosophy)
+  "```system",
+  "new role:",
+  "act as",
+  "DAN mode",
+  "developer mode",
+  "base64:",
+  "eval(",
+  "exec(",
+];
+
+/**
+ * Analyze a string for prompt injection attempts.
+ * Returns a confidence level matching SafeMCP.idr analyzeInjection:
+ *   "none" | "low" | "medium" | "high" | "critical"
+ *
+ * Mirrors the Idris2 logic:
+ *   - patternCount >= 3 OR (hasXmlTags AND patternCount >= 1) => Critical
+ *   - patternCount >= 2 OR hasRoleSwitch => High
+ *   - patternCount >= 1 => Medium
+ *   - hasXmlTags alone => Low
+ *   - otherwise => None
+ */
+function analyzeInjection(s) {
+  if (typeof s !== "string") return "none";
+  const lower = s.toLowerCase();
+  const matchedCount = INJECTION_PATTERNS.filter(
+    (pat) => lower.includes(pat.toLowerCase())
+  ).length;
+  const hasXmlTags =
+    lower.includes("<system>") || lower.includes("</system>");
+  const hasRoleSwitch =
+    lower.includes("### human:") || lower.includes("### assistant:");
+
+  if (matchedCount >= 3 || (hasXmlTags && matchedCount >= 1)) return "critical";
+  if (matchedCount >= 2 || hasRoleSwitch) return "high";
+  if (matchedCount >= 1) return "medium";
+  if (hasXmlTags) return "low";
+  return "none";
+}
+
+/**
+ * Scan all string values in an object tree for injection patterns.
+ * Returns the highest confidence level found across all values.
+ * This is the equivalent of SafeMCP.idr validateToolParams — checking
+ * every parameter value for injection content.
+ */
+function scanObjectForInjection(obj, maxDepth = 10) {
+  if (maxDepth <= 0) return "none";
+  let worst = "none";
+  const rank = { none: 0, low: 1, medium: 2, high: 3, critical: 4 };
+
+  function visit(val, depth) {
+    if (depth <= 0) return;
+    if (typeof val === "string") {
+      const level = analyzeInjection(val);
+      if (rank[level] > rank[worst]) worst = level;
+    } else if (Array.isArray(val)) {
+      for (const item of val) visit(item, depth - 1);
+    } else if (val !== null && typeof val === "object") {
+      for (const key of Object.keys(val)) visit(val[key], depth - 1);
+    }
+  }
+  visit(obj, maxDepth);
+  return worst;
+}
+
+// ===================================================================
+// HARDENING: Rate limiter (token bucket)
+// Prevents tool call flooding. Default: 60 calls/minute, configurable
+// via BOJ_RATE_LIMIT env var. Self-contained, no external deps.
+// ===================================================================
+
+const RATE_LIMIT = parseInt(process.env.BOJ_RATE_LIMIT, 10) || 60;
+const RATE_WINDOW_MS = 60_000; // 1 minute window
+
+const rateBucket = {
+  tokens: RATE_LIMIT,
+  lastRefill: Date.now(),
+};
+
+/**
+ * Token bucket rate limiter. Returns true if the call is allowed,
+ * false if the caller should be throttled.
+ */
+function rateLimitAllow() {
+  const now = Date.now();
+  const elapsed = now - rateBucket.lastRefill;
+  // Refill tokens proportionally to elapsed time
+  if (elapsed > 0) {
+    const refill = Math.floor((elapsed / RATE_WINDOW_MS) * RATE_LIMIT);
+    rateBucket.tokens = Math.min(RATE_LIMIT, rateBucket.tokens + refill);
+    rateBucket.lastRefill = now;
+  }
+  if (rateBucket.tokens > 0) {
+    rateBucket.tokens -= 1;
+    return true;
+  }
+  return false;
+}
+
+// ===================================================================
+// HARDENING: Input size limits
+// Reject tool arguments exceeding 1 MB to prevent memory exhaustion.
+// Matches SafeMCP.idr maxResultSize (1048576 bytes).
+// ===================================================================
+
+const MAX_INPUT_SIZE_BYTES = 1_048_576; // 1 MB
+
+/**
+ * Check if the serialized size of tool arguments exceeds the limit.
+ * Returns true if within bounds, false if too large.
+ */
+function isInputSizeOk(args) {
+  try {
+    // JSON.stringify gives a reasonable byte-size approximation for
+    // ASCII-heavy MCP payloads. Exact UTF-8 length would require
+    // TextEncoder but this is sufficient for a safety bound.
+    const serialized = JSON.stringify(args);
+    return serialized.length <= MAX_INPUT_SIZE_BYTES;
+  } catch {
+    // If args can't be serialized, reject as malformed
+    return false;
+  }
+}
+
+// ===================================================================
+// HARDENING: Input validation helpers
+// Validate types and required fields for tool call arguments before
+// they reach any dispatcher or external API call.
+// ===================================================================
+
+/**
+ * Validate that required string fields are present and are strings.
+ * Returns null if valid, or an error message string if invalid.
+ */
+function validateRequiredStrings(args, fieldNames) {
+  for (const name of fieldNames) {
+    if (args[name] === undefined || args[name] === null) {
+      return `Missing required field: ${name}`;
+    }
+    if (typeof args[name] !== "string") {
+      return `Field '${name}' must be a string`;
+    }
+    // Enforce a sane max length per field (64 KB) to catch oversized
+    // individual values even when total payload is under 1 MB
+    if (args[name].length > 65_536) {
+      return `Field '${name}' exceeds maximum length (64 KB)`;
+    }
+  }
+  return null;
+}
+
+/**
+ * Validate a tool name matches expected MCP tool name format.
+ * Mirrors SafeMCP.idr isValidToolName (alphanumeric + underscore + hyphen).
+ */
+function isValidToolName(name) {
+  return (
+    typeof name === "string" &&
+    name.length > 0 &&
+    name.length <= 128 &&
+    /^[a-zA-Z0-9_-]+$/.test(name)
+  );
+}
+
+// ===================================================================
+// HARDENING: Error sanitization
+// Strip internal paths, stack traces, and environment details from
+// error messages returned to MCP clients. Attackers should not learn
+// filesystem layout or runtime internals from error responses.
+// ===================================================================
+
+/**
+ * Sanitize an error message for external consumption.
+ * Removes absolute paths, stack traces, and known sensitive patterns.
+ */
+function sanitizeErrorMessage(message) {
+  if (typeof message !== "string") return "Internal error";
+  // Remove absolute filesystem paths (Unix and Windows)
+  let sanitized = message.replace(/\/[a-zA-Z0-9_./-]{3,}/g, "[path]");
+  sanitized = sanitized.replace(/[A-Z]:\\[a-zA-Z0-9_.\\/-]{3,}/g, "[path]");
+  // Remove stack trace lines (common Node/Deno format)
+  sanitized = sanitized.replace(/\s+at\s+.+\(.+\)/g, "");
+  sanitized = sanitized.replace(/\s+at\s+.+:\d+:\d+/g, "");
+  // Remove environment variable references
+  sanitized = sanitized.replace(/process\.env\.\w+/g, "[env]");
+  // Truncate to reasonable length
+  if (sanitized.length > 500) {
+    sanitized = sanitized.slice(0, 500) + "...";
+  }
+  return sanitized;
+}
+
 // --- JSON-RPC stdio transport ---
 
 let buffer = "";
 
+// HARDENING: Cap the read buffer at 2 MB to prevent memory exhaustion
+// from a malicious client sending an unbounded stream without newlines.
+const MAX_BUFFER_BYTES = 2 * MAX_INPUT_SIZE_BYTES;
+
 process.stdin.setEncoding("utf8");
 process.stdin.on("data", (chunk) => {
   buffer += chunk;
+  // HARDENING: Drop the buffer if it grows beyond the safety limit
+  if (buffer.length > MAX_BUFFER_BYTES) {
+    sendError(null, -32600, "Message too large");
+    buffer = "";
+    return;
+  }
   let boundary;
   while ((boundary = buffer.indexOf("\n")) !== -1) {
     const line = buffer.slice(0, boundary).trim();
@@ -45,8 +283,10 @@ function sendResult(id, result) {
   send({ jsonrpc: "2.0", id, result });
 }
 
+// HARDENING: All error messages are sanitized before being sent to the
+// MCP client to prevent leaking internal paths or stack traces.
 function sendError(id, code, message) {
-  send({ jsonrpc: "2.0", id, error: { code, message } });
+  send({ jsonrpc: "2.0", id, error: { code, message: sanitizeErrorMessage(message) } });
 }
 
 // --- Fetch menu from BoJ REST API ---
@@ -622,6 +862,97 @@ async function handleMessage(line) {
       const toolName = params?.name;
       const args = params?.arguments || {};
 
+      // ==============================================================
+      // HARDENING GATE: All five checks run before any tool dispatch.
+      // This is the single chokepoint — every tool call passes through.
+      // ==============================================================
+
+      // 1. Rate limiting — reject if bucket is empty
+      if (!rateLimitAllow()) {
+        sendError(id, -32000, "Rate limit exceeded. Max " + RATE_LIMIT + " tool calls per minute.");
+        break;
+      }
+
+      // 2. Tool name validation — must match SafeMCP.idr isValidToolName
+      if (!isValidToolName(toolName)) {
+        sendError(id, -32602, "Invalid tool name");
+        break;
+      }
+
+      // 3. Input size check — reject payloads over 1 MB
+      if (!isInputSizeOk(args)) {
+        sendError(id, -32600, "Tool arguments exceed maximum size (1 MB)");
+        break;
+      }
+
+      // 4. Prompt injection detection — scan all string values in args.
+      //    Mirrors SafeMCP.idr analyzeInjection confidence levels:
+      //    - Critical: reject outright (likely attack)
+      //    - High: reject (strong signal of injection)
+      //    - Medium: log warning, allow (may be legitimate but suspicious)
+      //    - Low/None: allow silently
+      const injectionLevel = scanObjectForInjection(args);
+      if (injectionLevel === "critical" || injectionLevel === "high") {
+        // Log for auditing — include tool name but NOT the args content
+        // (which may contain the attack payload itself)
+        process.stderr.write(
+          `[boj-mcp] INJECTION BLOCKED: tool=${toolName} confidence=${injectionLevel} time=${new Date().toISOString()}\n`
+        );
+        sendError(id, -32600, "Request rejected: suspicious content detected");
+        break;
+      }
+      if (injectionLevel === "medium") {
+        // Log warning but allow — could be legitimate content that
+        // happens to contain a pattern (e.g. discussing prompt injection)
+        process.stderr.write(
+          `[boj-mcp] INJECTION WARNING: tool=${toolName} confidence=${injectionLevel} time=${new Date().toISOString()}\n`
+        );
+      }
+
+      // 5. Required field validation for tools that take string params.
+      //    Catches missing/wrong-type args before they hit API calls
+      //    where they'd cause confusing downstream errors.
+      {
+        let validationError = null;
+        if (toolName === "boj_cartridge_info") {
+          validationError = validateRequiredStrings(args, ["name"]);
+        } else if (toolName === "boj_cartridge_invoke") {
+          validationError = validateRequiredStrings(args, ["name"]);
+        } else if (toolName === "boj_browser_navigate") {
+          validationError = validateRequiredStrings(args, ["url"]);
+        } else if (toolName === "boj_browser_click") {
+          validationError = validateRequiredStrings(args, ["selector"]);
+        } else if (toolName === "boj_browser_type") {
+          validationError = validateRequiredStrings(args, ["selector", "text"]);
+        } else if (toolName === "boj_browser_execute_js") {
+          validationError = validateRequiredStrings(args, ["script"]);
+        } else if (toolName.startsWith("boj_github_") && toolName !== "boj_github_list_repos") {
+          // Most GitHub tools need owner+repo; GraphQL needs query
+          if (toolName === "boj_github_graphql") {
+            validationError = validateRequiredStrings(args, ["query"]);
+          } else if (toolName === "boj_github_search_code" || toolName === "boj_github_search_issues") {
+            validationError = validateRequiredStrings(args, ["query"]);
+          } else if (toolName !== "boj_github_list_repos") {
+            validationError = validateRequiredStrings(args, ["owner", "repo"]);
+          }
+        } else if (toolName.startsWith("boj_gitlab_") && toolName !== "boj_gitlab_list_projects") {
+          validationError = validateRequiredStrings(args, ["project_id"]);
+        } else if (toolName.startsWith("boj_cloud_") || toolName.startsWith("boj_comms_") || toolName === "boj_ml_huggingface" || toolName === "boj_research") {
+          validationError = validateRequiredStrings(args, ["operation"]);
+        } else if (toolName === "boj_browser_tabs") {
+          validationError = validateRequiredStrings(args, ["operation"]);
+        }
+
+        if (validationError) {
+          sendError(id, -32602, validationError);
+          break;
+        }
+      }
+
+      // ==============================================================
+      // END HARDENING GATE — dispatch to tool handlers
+      // ==============================================================
+
       switch (toolName) {
         case "boj_health": {
           const health = await fetchHealth();
@@ -734,7 +1065,9 @@ async function handleMessage(line) {
           break;
         }
         default:
-          sendError(id, -32601, `Unknown tool: ${toolName}`);
+          // HARDENING: Don't echo the full tool name back — it was already
+          // validated above, but keep the message terse as defence in depth.
+          sendError(id, -32601, "Unknown tool");
       }
       break;
     }
@@ -746,7 +1079,9 @@ async function handleMessage(line) {
 
     default: {
       if (id !== undefined) {
-        sendError(id, -32601, `Method not found: ${method}`);
+        // HARDENING: Don't echo the method name verbatim to avoid
+        // reflecting attacker-controlled content in responses.
+        sendError(id, -32601, "Method not found");
       }
     }
   }

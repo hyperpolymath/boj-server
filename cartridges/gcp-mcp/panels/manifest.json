@@ -4,7 +4,7 @@
   "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath)",
   "cartridge": "gcp-mcp",
   "domain": "Cloud",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "panels": [
     {
       "id": "gcp-auth-status",
@@ -51,7 +51,7 @@
     {
       "id": "gcp-service-count",
       "title": "Service Count",
-      "description": "Number of GCP services available (Compute, Storage, Functions, PubSub, BigQuery, IAM)",
+      "description": "Number of GCP services available (Compute, Storage, Functions, Firestore, PubSub, CloudRun, BigQuery, IAM)",
       "type": "metric",
       "data_source": {
         "endpoint": "/gcp/status",
@@ -84,6 +84,44 @@
           "label": "Quota Remaining",
           "max_field": "quota_total",
           "icon": "activity"
+        }
+      ]
+    },
+    {
+      "id": "gcp-firestore-status",
+      "title": "Firestore",
+      "description": "Firestore document operations (CRUD and queries)",
+      "type": "status-indicator",
+      "data_source": {
+        "endpoint": "/gcp/firestore/status",
+        "method": "GET",
+        "refresh_interval_ms": 15000
+      },
+      "widgets": [
+        {
+          "type": "counter",
+          "field": "document_ops",
+          "label": "Document Ops",
+          "icon": "database"
+        }
+      ]
+    },
+    {
+      "id": "gcp-cloud-run-status",
+      "title": "Cloud Run",
+      "description": "Cloud Run services and deployments",
+      "type": "status-indicator",
+      "data_source": {
+        "endpoint": "/gcp/cloud-run/status",
+        "method": "GET",
+        "refresh_interval_ms": 30000
+      },
+      "widgets": [
+        {
+          "type": "counter",
+          "field": "service_count",
+          "label": "Running Services",
+          "icon": "play-circle"
         }
       ]
     }

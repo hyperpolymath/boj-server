@@ -135,3 +135,6 @@ zig-out/
 
 # Cartridge minter build artifacts
 tools/cartridge-minter/target/
+
+# panic-attack scan reports
+panic-attack-report*.json

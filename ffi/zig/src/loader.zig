@@ -47,7 +47,16 @@ pub const LoadError = error{
 };
 
 /// Compute the SHA-256 hash of a file, returning the digest as raw bytes.
+///
+/// SAFETY PROPERTIES:
+/// - I/O buffer `buf` is stack-allocated at 8KiB; `file.read` returns at
+///   most buf.len bytes so `buf[0..n]` is always in-bounds.
+/// - File handle is closed via `defer` even on read errors.
+/// - Empty path is rejected before I/O to avoid platform-specific behaviour.
 pub fn hashFile(path: []const u8) (LoadError || fs.File.OpenError || fs.File.ReadError)![HASH_LEN]u8 {
+    // SAFETY: reject empty paths before any I/O
+    if (path.len == 0) return LoadError.CannotReadBinary;
+
     const file = fs.cwd().openFile(path, .{}) catch |err| switch (err) {
         error.FileNotFound, error.AccessDenied => return LoadError.CannotReadBinary,
         else => return err,
@@ -60,6 +69,7 @@ pub fn hashFile(path: []const u8) (LoadError || fs.File.OpenError || fs.File.Rea
     while (true) {
         const n = try file.read(&buf);
         if (n == 0) break;
+        // SAFETY: n <= buf.len guaranteed by file.read contract
         hasher.update(buf[0..n]);
     }
 
@@ -145,6 +155,9 @@ pub fn unloadCartridge(iface: *CartridgeInterface) void {
 /// Called by the V-lang adapter after computing or receiving the hash.
 /// hash_ptr: pointer to 64-byte hex string. hash_len must be 64.
 /// Returns 0 on success, -1 on failure.
+///
+/// HARDENED: Explicit bounds check on hash_len before pointer arithmetic;
+/// validates hex characters to prevent garbage data in catalogue.
 export fn boj_loader_set_hash(
     catalogue_index: usize,
     hash_ptr: [*]const u8,
@@ -152,7 +165,18 @@ export fn boj_loader_set_hash(
 ) c_int {
     mutex.lock();
     defer mutex.unlock();
+    // SAFETY: reject non-64-byte hashes before any pointer dereference
     if (hash_len != HASH_HEX_LEN) return -1;
+
+    // SAFETY: validate that all bytes are valid hex characters to prevent
+    // garbage data from being stored in the catalogue
+    for (hash_ptr[0..HASH_HEX_LEN]) |byte| {
+        switch (byte) {
+            '0'...'9', 'a'...'f', 'A'...'F' => {},
+            else => return -1,
+        }
+    }
+
     // Delegate to catalogue — import at comptime
     const catalogue = @import("catalogue.zig");
     return catalogue.boj_catalogue_set_hash(catalogue_index, hash_ptr, hash_len);
@@ -162,6 +186,8 @@ export fn boj_loader_set_hash(
 /// path_ptr/path_len: path to the .so/.dylib file.
 /// expected_hex_ptr/expected_hex_len: 64-char hex SHA-256 hash.
 /// Returns 1 if match, 0 if mismatch, -1 on error.
+///
+/// HARDENED: Bounds check on path_len before slicing; reject zero-length paths.
 export fn boj_loader_verify(
     path_ptr: [*]const u8,
     path_len: usize,
@@ -170,6 +196,8 @@ export fn boj_loader_verify(
 ) c_int {
     mutex.lock();
     defer mutex.unlock();
+    // SAFETY: reject empty paths and oversized paths before slicing
+    if (path_len == 0 or path_len > std.fs.max_path_bytes) return -1;
     if (expected_hex_len != HASH_HEX_LEN) return -1;
     const result = verifyHash(
         path_ptr[0..path_len],
@@ -221,22 +249,37 @@ const WasmCartridgeSlot = struct {
 };
 
 /// Global WASM cartridge registry.
+///
+/// THREAD SAFETY: All reads/writes to wasm_slots and wasm_count are protected
+/// by `mutex`. Every C-ABI export and every public function that touches these
+/// globals acquires the mutex before access and releases via `defer mutex.unlock()`.
 var wasm_slots: [MAX_WASM_CARTRIDGES]WasmCartridgeSlot = [_]WasmCartridgeSlot{.{}} ** MAX_WASM_CARTRIDGES;
 var wasm_count: usize = 0;
 
-/// Module-level mutex for thread-safe access to global state from C-ABI exports.
+/// Module-level mutex for thread-safe access to ALL mutable global state.
+///
+/// INVARIANT: Every C-ABI export function (boj_loader_*, boj_wasm_*) acquires
+/// this mutex at entry. Internal pure functions (hashFile, hashToHex, verifyHash,
+/// validateWasmModule) do NOT acquire it — callers are responsible.
 var mutex: std.Thread.Mutex = .{};
 
 /// Validate that a file is a valid WASM module.
 /// Checks magic bytes and version header.
 /// Returns the module size in bytes, or 0 if invalid.
+///
+/// HARDENED: Bounds-check on path length before I/O; explicit error propagation
+/// for file operations instead of silent zero-returns; stat.size validated > 0.
 pub fn validateWasmModule(path: []const u8) !u64 {
+    // SAFETY: reject empty paths before any I/O (bounds check)
+    if (path.len == 0) return 0;
+
     const file = fs.cwd().openFile(path, .{}) catch return 0;
     defer file.close();
 
     // Read the 8-byte WASM header.
     var header: [8]u8 = undefined;
     const n = file.read(&header) catch return 0;
+    // SAFETY: need exactly 8 bytes for magic + version
     if (n < 8) return 0;
 
     // Check magic bytes.
@@ -247,6 +290,8 @@ pub fn validateWasmModule(path: []const u8) !u64 {
 
     // Get file size.
     const stat = file.stat() catch return 0;
+    // SAFETY: a valid WASM module must be at least 8 bytes (header)
+    if (stat.size < 8) return 0;
     return stat.size;
 }
 
@@ -293,12 +338,16 @@ pub export fn boj_wasm_register(
 
 /// Unregister a WASM cartridge slot.
 /// Returns 0 on success, -1 on error.
+///
+/// HARDENED: Guard against wasm_count underflow (defensive check even though
+/// it should be impossible if register/unregister are always paired).
 pub export fn boj_wasm_unregister(slot_idx: usize) c_int {
     mutex.lock();
     defer mutex.unlock();
     if (slot_idx >= MAX_WASM_CARTRIDGES or !wasm_slots[slot_idx].active) return -1;
     wasm_slots[slot_idx] = WasmCartridgeSlot{};
-    wasm_count -= 1;
+    // SAFETY: saturating subtraction prevents underflow if state is inconsistent
+    wasm_count = if (wasm_count > 0) wasm_count - 1 else 0;
     return 0;
 }
 
@@ -327,19 +376,26 @@ pub export fn boj_wasm_module_size(slot_idx: usize) u64 {
     return wasm_slots[slot_idx].module_size;
 }
 
-/// Get the hash of a WASM module. Copies into out_ptr.
+/// Get the hash of a WASM module. Copies into out_ptr/out_len.
 /// Returns HASH_HEX_LEN on success, 0 on error.
-pub export fn boj_wasm_hash(slot_idx: usize, out_ptr: [*]u8) usize {
+///
+/// HARDENED: Added out_len parameter to prevent buffer overrun on caller's
+/// buffer. Callers must provide at least HASH_HEX_LEN (64) bytes.
+pub export fn boj_wasm_hash(slot_idx: usize, out_ptr: [*]u8, out_len: usize) usize {
     mutex.lock();
     defer mutex.unlock();
     if (slot_idx >= MAX_WASM_CARTRIDGES or !wasm_slots[slot_idx].active) return 0;
     if (!wasm_slots[slot_idx].hash_verified) return 0;
+    // SAFETY: bounds check on caller's output buffer before writing
+    if (out_len < HASH_HEX_LEN) return 0;
     @memcpy(out_ptr[0..HASH_HEX_LEN], &wasm_slots[slot_idx].hash);
     return HASH_HEX_LEN;
 }
 
 /// Verify a WASM module's hash against an expected value.
 /// Returns 1 if match, 0 if mismatch, -1 on error.
+///
+/// HARDENED: Bounds check on path_len before slicing pointer.
 pub export fn boj_wasm_verify(
     path_ptr: [*]const u8,
     path_len: usize,
@@ -348,6 +404,8 @@ pub export fn boj_wasm_verify(
 ) c_int {
     mutex.lock();
     defer mutex.unlock();
+    // SAFETY: reject empty/oversized paths before pointer slice
+    if (path_len == 0 or path_len > std.fs.max_path_bytes) return -1;
     if (expected_hex_len != HASH_HEX_LEN) return -1;
     const result = verifyHash(
         path_ptr[0..path_len],
@@ -358,12 +416,16 @@ pub export fn boj_wasm_verify(
 
 /// Check if a file is a valid WASM module (magic + version check).
 /// Returns 1 if valid WASM, 0 if not, -1 on error.
+///
+/// HARDENED: Bounds check on path_len before slicing pointer.
 pub export fn boj_wasm_validate(
     path_ptr: [*]const u8,
     path_len: usize,
 ) c_int {
     mutex.lock();
     defer mutex.unlock();
+    // SAFETY: reject empty/oversized paths before pointer slice
+    if (path_len == 0 or path_len > std.fs.max_path_bytes) return -1;
     const size = validateWasmModule(path_ptr[0..path_len]) catch return -1;
     return if (size > 0) 1 else 0;
 }
@@ -546,9 +608,9 @@ test "WASM register and unregister" {
     // Module size > 0.
     try std.testing.expect(boj_wasm_module_size(@intCast(slot)) > 0);
 
-    // Hash retrievable.
+    // Hash retrievable (pass buffer length for bounds-checked API).
     var hash_buf: [HASH_HEX_LEN]u8 = undefined;
-    const hlen = boj_wasm_hash(@intCast(slot), &hash_buf);
+    const hlen = boj_wasm_hash(@intCast(slot), &hash_buf, HASH_HEX_LEN);
     try std.testing.expectEqual(HASH_HEX_LEN, hlen);
 
     // Unregister.

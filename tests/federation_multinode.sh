@@ -28,12 +28,14 @@ bold()  { printf '\033[1m%s\033[0m\n' "$*"; }
 PASS=0
 FAIL=0
 PIDS=()
+TMPDIR_TEST="$(mktemp -d "${TMPDIR:-/tmp}/boj-fed-test.XXXXXXXXXX")"
 
 cleanup() {
     for pid in "${PIDS[@]}"; do
         kill "$pid" 2>/dev/null || true
     done
     wait 2>/dev/null || true
+    rm -rf "$TMPDIR_TEST" 2>/dev/null || true
 }
 trap cleanup EXIT
 
@@ -75,7 +77,7 @@ bold "Starting Node A (ports 7710/9910)..."
 BOJ_REST_PORT=7710 BOJ_GRPC_PORT=7711 BOJ_GRAPHQL_PORT=7712 \
     BOJ_FEDERATION_PORT=9910 BOJ_QUIC=1 \
     BOJ_NODE_ID="node-alpha" BOJ_REGION="eu-west-1" \
-    "$BOJ_BIN" > /tmp/boj-node-a.log 2>&1 &
+    "$BOJ_BIN" > "$TMPDIR_TEST/boj-node-a.log" 2>&1 &
 PIDS+=($!)
 
 # ─── Node B: REST 7720, gRPC 7721, GraphQL 7722, Federation 9920 ───
@@ -83,7 +85,7 @@ bold "Starting Node B (ports 7720/9920)..."
 BOJ_REST_PORT=7720 BOJ_GRPC_PORT=7721 BOJ_GRAPHQL_PORT=7722 \
     BOJ_FEDERATION_PORT=9920 BOJ_QUIC=1 \
     BOJ_NODE_ID="node-bravo" BOJ_REGION="us-east-1" \
-    "$BOJ_BIN" > /tmp/boj-node-b.log 2>&1 &
+    "$BOJ_BIN" > "$TMPDIR_TEST/boj-node-b.log" 2>&1 &
 PIDS+=($!)
 
 # Wait for both nodes to be ready

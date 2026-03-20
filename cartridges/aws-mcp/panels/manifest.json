@@ -4,7 +4,7 @@
   "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath)",
   "cartridge": "aws-mcp",
   "domain": "Cloud",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "panels": [
     {
       "id": "aws-auth-status",
@@ -51,7 +51,7 @@
     {
       "id": "aws-service-count",
       "title": "Service Count",
-      "description": "Number of AWS services available (S3, EC2, Lambda, SQS, DynamoDB)",
+      "description": "Number of AWS services available (S3, Lambda, DynamoDB, SQS, CloudWatch, IAM, STS)",
       "type": "metric",
       "data_source": {
         "endpoint": "/aws/status",
@@ -64,13 +64,19 @@
           "field": "service_count",
           "label": "Services",
           "icon": "layers"
+        },
+        {
+          "type": "counter",
+          "field": "action_count",
+          "label": "Actions",
+          "icon": "zap"
         }
       ]
     },
     {
       "id": "aws-recent-calls",
       "title": "Recent API Calls",
-      "description": "Recent AWS API invocations with service, action, and timestamp",
+      "description": "Recent AWS API invocations with service, action, mutability, and timestamp",
       "type": "log-stream",
       "data_source": {
         "endpoint": "/aws/calls",
@@ -85,8 +91,34 @@
             { "field": "timestamp", "label": "Time", "format": "datetime" },
             { "field": "service", "label": "Service" },
             { "field": "action", "label": "Action" },
+            { "field": "mutating", "label": "Mutating", "format": "boolean" },
             { "field": "result", "label": "Result" }
           ]
+        }
+      ]
+    },
+    {
+      "id": "aws-caller-identity",
+      "title": "Caller Identity",
+      "description": "STS caller identity — shows current AWS account, ARN, and user ID",
+      "type": "status-indicator",
+      "data_source": {
+        "endpoint": "/aws/sts/caller-identity",
+        "method": "GET",
+        "refresh_interval_ms": 60000
+      },
+      "widgets": [
+        {
+          "type": "text",
+          "field": "account",
+          "label": "Account",
+          "icon": "user"
+        },
+        {
+          "type": "text",
+          "field": "arn",
+          "label": "ARN",
+          "icon": "key"
         }
       ]
     }

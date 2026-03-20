@@ -2,9 +2,9 @@
 -- Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
 package aws_mcp
 
-version = "0.2.0"
+version = "0.3.0"
 authors = "Jonathan D.A. Jewell"
-brief   = "Type-safe ABI for AWS MCP cartridge — Signature V4 auth, multi-service routing (S3/EC2/Lambda/SQS/DynamoDB)"
+brief   = "Type-safe ABI for AWS MCP cartridge — Signature V4 auth, multi-service routing (S3/Lambda/DynamoDB/SQS/CloudWatch/IAM/STS)"
 
 sourcedir = "."
 

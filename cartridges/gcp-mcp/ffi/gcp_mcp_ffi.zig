@@ -30,29 +30,50 @@ pub const GcpService = enum(c_int) {
     compute = 0,
     storage = 1,
     functions = 2,
-    pubsub = 3,
-    bigquery = 4,
-    iam = 5,
+    firestore = 3,
+    pubsub = 4,
+    cloud_run = 5,
+    bigquery = 6,
+    iam = 7,
 };
 
 /// GCP action identifiers matching Idris2 GcpAction encoding.
 pub const GcpAction = enum(c_int) {
+    // Compute (0-3)
     list_projects = 0,
     list_instances = 1,
     start_instance = 2,
     stop_instance = 3,
+    // Storage (4-7)
     list_buckets = 4,
     get_object = 5,
     put_object = 6,
-    list_functions = 7,
-    invoke_function = 8,
-    list_pubsub_topics = 9,
-    publish_message = 10,
-    list_subscriptions = 11,
-    run_query = 12,
-    list_datasets = 13,
-    create_dataset = 14,
-    get_iam_policy = 15,
+    generate_signed_url = 7,
+    // Functions (8-9)
+    list_functions = 8,
+    invoke_function = 9,
+    // Firestore (10-14)
+    firestore_create_document = 10,
+    firestore_get_document = 11,
+    firestore_update_document = 12,
+    firestore_delete_document = 13,
+    firestore_query = 14,
+    // Pub/Sub (15-18)
+    list_pubsub_topics = 15,
+    publish_message = 16,
+    list_subscriptions = 17,
+    create_subscription = 18,
+    // Cloud Run (19-20)
+    cloud_run_list_services = 19,
+    cloud_run_deploy_service = 20,
+    // BigQuery (21-24)
+    run_query = 21,
+    list_datasets = 22,
+    list_tables = 23,
+    create_dataset = 24,
+    // IAM (25-26)
+    get_iam_policy = 25,
+    test_iam_permissions = 26,
 };
 
 /// Check valid state transitions per the Idris2 ValidTransition proof.
@@ -70,11 +91,13 @@ fn actionToService(action: c_int) c_int {
     const a = std.meta.intToEnum(GcpAction, action) catch return -1;
     return switch (a) {
         .list_projects, .list_instances, .start_instance, .stop_instance => 0,
-        .list_buckets, .get_object, .put_object => 1,
+        .list_buckets, .get_object, .put_object, .generate_signed_url => 1,
         .list_functions, .invoke_function => 2,
-        .list_pubsub_topics, .publish_message, .list_subscriptions => 3,
-        .run_query, .list_datasets, .create_dataset => 4,
-        .get_iam_policy => 5,
+        .firestore_create_document, .firestore_get_document, .firestore_update_document, .firestore_delete_document, .firestore_query => 3,
+        .list_pubsub_topics, .publish_message, .list_subscriptions, .create_subscription => 4,
+        .cloud_run_list_services, .cloud_run_deploy_service => 5,
+        .run_query, .list_datasets, .list_tables, .create_dataset => 6,
+        .get_iam_policy, .test_iam_permissions => 7,
     };
 }
 
@@ -261,14 +284,14 @@ pub export fn gcp_mcp_quota_remaining(slot_idx: c_int) c_int {
     return @intCast(slot.quota_remaining);
 }
 
-/// Get total service count. Always returns 6.
+/// Get total service count. Always returns 8.
 pub export fn gcp_mcp_service_count() c_int {
-    return 6;
+    return 8;
 }
 
-/// Get total action count. Always returns 16.
+/// Get total action count. Always returns 27.
 pub export fn gcp_mcp_action_count() c_int {
-    return 16;
+    return 27;
 }
 
 /// Reset all sessions (test/debug use only).
@@ -375,10 +398,18 @@ test "transition validator" {
 test "action service routing" {
     try std.testing.expectEqual(@as(c_int, 0), gcp_mcp_action_service(0)); // ListProjects -> Compute
     try std.testing.expectEqual(@as(c_int, 1), gcp_mcp_action_service(4)); // ListBuckets -> Storage
-    try std.testing.expectEqual(@as(c_int, 2), gcp_mcp_action_service(7)); // ListFunctions -> Functions
-    try std.testing.expectEqual(@as(c_int, 3), gcp_mcp_action_service(9)); // ListPubSubTopics -> PubSub
-    try std.testing.expectEqual(@as(c_int, 4), gcp_mcp_action_service(12)); // RunQuery -> BigQuery
-    try std.testing.expectEqual(@as(c_int, 5), gcp_mcp_action_service(15)); // GetIamPolicy -> IAM
+    try std.testing.expectEqual(@as(c_int, 1), gcp_mcp_action_service(7)); // GenerateSignedUrl -> Storage
+    try std.testing.expectEqual(@as(c_int, 2), gcp_mcp_action_service(8)); // ListFunctions -> Functions
+    try std.testing.expectEqual(@as(c_int, 3), gcp_mcp_action_service(10)); // FirestoreCreateDocument -> Firestore
+    try std.testing.expectEqual(@as(c_int, 3), gcp_mcp_action_service(14)); // FirestoreQuery -> Firestore
+    try std.testing.expectEqual(@as(c_int, 4), gcp_mcp_action_service(15)); // ListPubSubTopics -> PubSub
+    try std.testing.expectEqual(@as(c_int, 4), gcp_mcp_action_service(18)); // CreateSubscription -> PubSub
+    try std.testing.expectEqual(@as(c_int, 5), gcp_mcp_action_service(19)); // CloudRunListServices -> CloudRun
+    try std.testing.expectEqual(@as(c_int, 5), gcp_mcp_action_service(20)); // CloudRunDeployService -> CloudRun
+    try std.testing.expectEqual(@as(c_int, 6), gcp_mcp_action_service(21)); // RunQuery -> BigQuery
+    try std.testing.expectEqual(@as(c_int, 6), gcp_mcp_action_service(23)); // ListTables -> BigQuery
+    try std.testing.expectEqual(@as(c_int, 7), gcp_mcp_action_service(25)); // GetIamPolicy -> IAM
+    try std.testing.expectEqual(@as(c_int, 7), gcp_mcp_action_service(26)); // TestIamPermissions -> IAM
     try std.testing.expectEqual(@as(c_int, -1), gcp_mcp_action_service(99)); // invalid
 }
 

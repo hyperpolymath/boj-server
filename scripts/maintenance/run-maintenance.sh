@@ -27,8 +27,8 @@ Run a generic maintenance check flow and emit a JSON report.
 
 Options:
   --repo <path>        Repository path (default: current directory)
-  --output <path>      JSON report path (default: /tmp/maintenance-report-<timestamp>.json)
-  --logs-dir <path>    Log directory (default: /tmp/maintenance-logs-<timestamp>)
+  --output <path>      JSON report path (default: \$TMPDIR/maintenance-report-<timestamp>.json)
+  --logs-dir <path>    Log directory (default: \$TMPDIR/maintenance-logs-<timestamp>)
   --panic-bin <path>   panic-attack binary path
   --bench              Run benchmark step (Rust: cargo bench)
   --strict             Exit non-zero if any step fails
@@ -124,10 +124,10 @@ repo="$(cd "$repo" && pwd)"
 
 timestamp_utc="$(date -u +%Y%m%dT%H%M%SZ)"
 if [[ -z "$output_path" ]]; then
-    output_path="/tmp/maintenance-report-${timestamp_utc}.json"
+    output_path="$(mktemp "${TMPDIR:-/tmp}/maintenance-report-${timestamp_utc}.XXXXXXXXXX.json")"
 fi
 if [[ -z "$logs_dir" ]]; then
-    logs_dir="/tmp/maintenance-logs-${timestamp_utc}"
+    logs_dir="$(mktemp -d "${TMPDIR:-/tmp}/maintenance-logs-${timestamp_utc}.XXXXXXXXXX")"
 fi
 mkdir -p "$logs_dir"
 

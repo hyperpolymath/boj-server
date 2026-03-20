@@ -34,6 +34,8 @@ const MAX_KEY_LEN: usize = 128;
 const MAX_VALUE_LEN: usize = 1024;
 
 /// Default VeriSimDB endpoint when VERISIMDB_URL is not set.
+/// SAFETY: HTTP is acceptable for localhost-only connections. Production
+/// deployments MUST set VERISIMDB_URL to an https:// endpoint.
 const DEFAULT_VERISIM_URL = "http://localhost:8080";
 
 /// Maximum HTTP response body we will capture from curl (50 KiB).

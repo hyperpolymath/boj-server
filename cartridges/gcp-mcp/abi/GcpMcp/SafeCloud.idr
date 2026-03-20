@@ -84,7 +84,9 @@ data GcpService
   = Compute
   | Storage
   | Functions
+  | Firestore
   | PubSub
+  | CloudRun
   | BigQuery
   | IAM
 
@@ -94,7 +96,9 @@ serviceEndpoint : GcpService -> String
 serviceEndpoint Compute   = "compute.googleapis.com"
 serviceEndpoint Storage   = "storage.googleapis.com"
 serviceEndpoint Functions = "cloudfunctions.googleapis.com"
+serviceEndpoint Firestore = "firestore.googleapis.com"
 serviceEndpoint PubSub    = "pubsub.googleapis.com"
+serviceEndpoint CloudRun  = "run.googleapis.com"
 serviceEndpoint BigQuery  = "bigquery.googleapis.com"
 serviceEndpoint IAM       = "iam.googleapis.com"
 
@@ -104,9 +108,11 @@ serviceToInt : GcpService -> Int
 serviceToInt Compute   = 0
 serviceToInt Storage   = 1
 serviceToInt Functions = 2
-serviceToInt PubSub    = 3
-serviceToInt BigQuery  = 4
-serviceToInt IAM       = 5
+serviceToInt Firestore = 3
+serviceToInt PubSub    = 4
+serviceToInt CloudRun  = 5
+serviceToInt BigQuery  = 6
+serviceToInt IAM       = 7
 
 ||| Decode integer to GCP service.
 export
@@ -114,9 +120,11 @@ intToService : Int -> Maybe GcpService
 intToService 0 = Just Compute
 intToService 1 = Just Storage
 intToService 2 = Just Functions
-intToService 3 = Just PubSub
-intToService 4 = Just BigQuery
-intToService 5 = Just IAM
+intToService 3 = Just Firestore
+intToService 4 = Just PubSub
+intToService 5 = Just CloudRun
+intToService 6 = Just BigQuery
+intToService 7 = Just IAM
 intToService _ = Nothing
 
 -- ---------------------------------------------------------------------------
@@ -124,67 +132,109 @@ intToService _ = Nothing
 -- ---------------------------------------------------------------------------
 
 ||| Actions available through the GCP MCP cartridge.
-||| Grouped by service: Compute (instances), Storage (buckets/objects),
-||| Functions (cloud functions), Pub/Sub (topics/subscriptions),
-||| BigQuery (datasets/queries), IAM (policies).
+||| Grouped by service: Compute (instances), Storage (buckets/objects/signed URLs),
+||| Functions (cloud functions), Firestore (document CRUD/queries),
+||| Pub/Sub (topics/subscriptions), Cloud Run (services/deploy),
+||| BigQuery (datasets/tables/queries), IAM (policies/permissions).
 public export
 data GcpAction
+  -- Compute (0-3)
   = ListProjects
   | ListInstances
   | StartInstance
   | StopInstance
+  -- Storage (4-7)
   | ListBuckets
   | GetObject
   | PutObject
+  | GenerateSignedUrl
+  -- Functions (8-9)
   | ListFunctions
   | InvokeFunction
+  -- Firestore (10-14)
+  | FirestoreCreateDocument
+  | FirestoreGetDocument
+  | FirestoreUpdateDocument
+  | FirestoreDeleteDocument
+  | FirestoreQuery
+  -- Pub/Sub (15-18)
   | ListPubSubTopics
   | PublishMessage
   | ListSubscriptions
+  | CreateSubscription
+  -- Cloud Run (19-20)
+  | CloudRunListServices
+  | CloudRunDeployService
+  -- BigQuery (21-24)
   | RunQuery
   | ListDatasets
+  | ListTables
   | CreateDataset
+  -- IAM (25-26)
   | GetIamPolicy
+  | TestIamPermissions
 
 ||| Which service handles a given action.
 export
 actionService : GcpAction -> GcpService
-actionService ListProjects      = Compute
-actionService ListInstances     = Compute
-actionService StartInstance     = Compute
-actionService StopInstance      = Compute
-actionService ListBuckets       = Storage
-actionService GetObject         = Storage
-actionService PutObject         = Storage
-actionService ListFunctions     = Functions
-actionService InvokeFunction    = Functions
-actionService ListPubSubTopics  = PubSub
-actionService PublishMessage    = PubSub
-actionService ListSubscriptions = PubSub
-actionService RunQuery          = BigQuery
-actionService ListDatasets      = BigQuery
-actionService CreateDataset     = BigQuery
-actionService GetIamPolicy      = IAM
+actionService ListProjects           = Compute
+actionService ListInstances          = Compute
+actionService StartInstance          = Compute
+actionService StopInstance           = Compute
+actionService ListBuckets            = Storage
+actionService GetObject              = Storage
+actionService PutObject              = Storage
+actionService GenerateSignedUrl      = Storage
+actionService ListFunctions          = Functions
+actionService InvokeFunction         = Functions
+actionService FirestoreCreateDocument = Firestore
+actionService FirestoreGetDocument   = Firestore
+actionService FirestoreUpdateDocument = Firestore
+actionService FirestoreDeleteDocument = Firestore
+actionService FirestoreQuery         = Firestore
+actionService ListPubSubTopics       = PubSub
+actionService PublishMessage         = PubSub
+actionService ListSubscriptions      = PubSub
+actionService CreateSubscription     = PubSub
+actionService CloudRunListServices   = CloudRun
+actionService CloudRunDeployService  = CloudRun
+actionService RunQuery               = BigQuery
+actionService ListDatasets           = BigQuery
+actionService ListTables             = BigQuery
+actionService CreateDataset          = BigQuery
+actionService GetIamPolicy           = IAM
+actionService TestIamPermissions     = IAM
 
 ||| Encode action as C-compatible integer for FFI.
 export
 actionToInt : GcpAction -> Int
-actionToInt ListProjects      = 0
-actionToInt ListInstances     = 1
-actionToInt StartInstance     = 2
-actionToInt StopInstance      = 3
-actionToInt ListBuckets       = 4
-actionToInt GetObject         = 5
-actionToInt PutObject         = 6
-actionToInt ListFunctions     = 7
-actionToInt InvokeFunction    = 8
-actionToInt ListPubSubTopics  = 9
-actionToInt PublishMessage    = 10
-actionToInt ListSubscriptions = 11
-actionToInt RunQuery          = 12
-actionToInt ListDatasets      = 13
-actionToInt CreateDataset     = 14
-actionToInt GetIamPolicy      = 15
+actionToInt ListProjects           = 0
+actionToInt ListInstances          = 1
+actionToInt StartInstance          = 2
+actionToInt StopInstance           = 3
+actionToInt ListBuckets            = 4
+actionToInt GetObject              = 5
+actionToInt PutObject              = 6
+actionToInt GenerateSignedUrl      = 7
+actionToInt ListFunctions          = 8
+actionToInt InvokeFunction         = 9
+actionToInt FirestoreCreateDocument = 10
+actionToInt FirestoreGetDocument   = 11
+actionToInt FirestoreUpdateDocument = 12
+actionToInt FirestoreDeleteDocument = 13
+actionToInt FirestoreQuery         = 14
+actionToInt ListPubSubTopics       = 15
+actionToInt PublishMessage         = 16
+actionToInt ListSubscriptions      = 17
+actionToInt CreateSubscription     = 18
+actionToInt CloudRunListServices   = 19
+actionToInt CloudRunDeployService  = 20
+actionToInt RunQuery               = 21
+actionToInt ListDatasets           = 22
+actionToInt ListTables             = 23
+actionToInt CreateDataset          = 24
+actionToInt GetIamPolicy           = 25
+actionToInt TestIamPermissions     = 26
 
 ||| Decode integer to GCP action.
 export
@@ -196,15 +246,26 @@ intToAction 3  = Just StopInstance
 intToAction 4  = Just ListBuckets
 intToAction 5  = Just GetObject
 intToAction 6  = Just PutObject
-intToAction 7  = Just ListFunctions
-intToAction 8  = Just InvokeFunction
-intToAction 9  = Just ListPubSubTopics
-intToAction 10 = Just PublishMessage
-intToAction 11 = Just ListSubscriptions
-intToAction 12 = Just RunQuery
-intToAction 13 = Just ListDatasets
-intToAction 14 = Just CreateDataset
-intToAction 15 = Just GetIamPolicy
+intToAction 7  = Just GenerateSignedUrl
+intToAction 8  = Just ListFunctions
+intToAction 9  = Just InvokeFunction
+intToAction 10 = Just FirestoreCreateDocument
+intToAction 11 = Just FirestoreGetDocument
+intToAction 12 = Just FirestoreUpdateDocument
+intToAction 13 = Just FirestoreDeleteDocument
+intToAction 14 = Just FirestoreQuery
+intToAction 15 = Just ListPubSubTopics
+intToAction 16 = Just PublishMessage
+intToAction 17 = Just ListSubscriptions
+intToAction 18 = Just CreateSubscription
+intToAction 19 = Just CloudRunListServices
+intToAction 20 = Just CloudRunDeployService
+intToAction 21 = Just RunQuery
+intToAction 22 = Just ListDatasets
+intToAction 23 = Just ListTables
+intToAction 24 = Just CreateDataset
+intToAction 25 = Just GetIamPolicy
+intToAction 26 = Just TestIamPermissions
 intToAction _  = Nothing
 
 ||| Whether an action requires Authenticated state.
@@ -216,13 +277,18 @@ actionRequiresAuth _ = True
 ||| Whether an action is a write/mutating operation.
 export
 actionIsMutating : GcpAction -> Bool
-actionIsMutating StartInstance  = True
-actionIsMutating StopInstance   = True
-actionIsMutating PutObject      = True
-actionIsMutating InvokeFunction = True
-actionIsMutating PublishMessage = True
-actionIsMutating CreateDataset  = True
-actionIsMutating _              = False
+actionIsMutating StartInstance           = True
+actionIsMutating StopInstance            = True
+actionIsMutating PutObject               = True
+actionIsMutating InvokeFunction          = True
+actionIsMutating FirestoreCreateDocument = True
+actionIsMutating FirestoreUpdateDocument = True
+actionIsMutating FirestoreDeleteDocument = True
+actionIsMutating PublishMessage          = True
+actionIsMutating CreateSubscription      = True
+actionIsMutating CloudRunDeployService   = True
+actionIsMutating CreateDataset           = True
+actionIsMutating _                       = False
 
 -- ---------------------------------------------------------------------------
 -- MCP tool declarations
@@ -256,9 +322,9 @@ toolCount = 6
 ||| Total action count for this cartridge.
 export
 actionCount : Nat
-actionCount = 16
+actionCount = 27
 
 ||| Total service count for this cartridge.
 export
 serviceCount : Nat
-serviceCount = 6
+serviceCount = 8

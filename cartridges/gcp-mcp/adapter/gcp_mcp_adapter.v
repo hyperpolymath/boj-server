@@ -47,9 +47,11 @@ enum GcpService {
 	compute   = 0
 	storage   = 1
 	functions = 2
-	pubsub    = 3
-	bigquery  = 4
-	iam       = 5
+	firestore = 3
+	pubsub    = 4
+	cloud_run = 5
+	bigquery  = 6
+	iam       = 7
 }
 
 fn state_label(s int) string {
@@ -67,9 +69,11 @@ fn service_label(s int) string {
 		0 { 'compute' }
 		1 { 'storage' }
 		2 { 'functions' }
-		3 { 'pubsub' }
-		4 { 'bigquery' }
-		5 { 'iam' }
+		3 { 'firestore' }
+		4 { 'pubsub' }
+		5 { 'cloud_run' }
+		6 { 'bigquery' }
+		7 { 'iam' }
 		else { 'unknown' }
 	}
 }

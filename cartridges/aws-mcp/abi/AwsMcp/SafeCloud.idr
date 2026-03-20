@@ -5,8 +5,8 @@
 --
 -- Dependent-type state machine governing AWS API access through vault-mcp
 -- credential proxy. Encodes AWS Signature V4 auth flow, multi-service
--- routing (S3, EC2, Lambda, SQS, DynamoDB), and rate-limit back-pressure
--- as compile-time invariants. No unsafe escape hatches.
+-- routing (S3, Lambda, DynamoDB, SQS, CloudWatch, IAM, STS), and rate-limit
+-- back-pressure as compile-time invariants. No unsafe escape hatches.
 
 module AwsMcp.SafeCloud
 
@@ -19,7 +19,7 @@ module AwsMcp.SafeCloud
 ||| Session state for AWS MCP operations.
 ||| Unauthenticated: no credentials loaded.
 ||| Authenticated: AWS Signature V4 credentials active (access_key_id +
-|||   secret_access_key + region), obtained via vault-mcp.
+|||   secret_access_key + region + optional session_token), obtained via vault-mcp.
 ||| RateLimited: AWS throttling response received; must wait before retry.
 ||| Error: unrecoverable error (invalid credentials, permission denied, etc.).
 public export
@@ -80,40 +80,51 @@ aws_mcp_can_transition from to =
 -- ---------------------------------------------------------------------------
 
 ||| AWS services accessible through this cartridge.
+||| S3: object storage. Lambda: serverless compute. DynamoDB: NoSQL database.
+||| SQS: message queues. CloudWatch: metrics/monitoring.
+||| IAM: identity management (read-only). STS: security token service.
 public export
 data AwsService
   = S3
-  | EC2
   | Lambda
-  | SQS
   | DynamoDB
+  | SQS
+  | CloudWatch
+  | IAM
+  | STS
 
 ||| Map service to its API endpoint prefix.
 export
 serviceEndpoint : AwsService -> String
-serviceEndpoint S3       = "s3"
-serviceEndpoint EC2      = "ec2"
-serviceEndpoint Lambda   = "lambda"
-serviceEndpoint SQS      = "sqs"
-serviceEndpoint DynamoDB = "dynamodb"
+serviceEndpoint S3         = "s3"
+serviceEndpoint Lambda     = "lambda"
+serviceEndpoint DynamoDB   = "dynamodb"
+serviceEndpoint SQS        = "sqs"
+serviceEndpoint CloudWatch = "monitoring"
+serviceEndpoint IAM        = "iam"
+serviceEndpoint STS        = "sts"
 
 ||| Encode service as C-compatible integer for FFI.
 export
 serviceToInt : AwsService -> Int
-serviceToInt S3       = 0
-serviceToInt EC2      = 1
-serviceToInt Lambda   = 2
-serviceToInt SQS      = 3
-serviceToInt DynamoDB = 4
+serviceToInt S3         = 0
+serviceToInt Lambda     = 1
+serviceToInt DynamoDB   = 2
+serviceToInt SQS        = 3
+serviceToInt CloudWatch = 4
+serviceToInt IAM        = 5
+serviceToInt STS        = 6
 
 ||| Decode integer to AWS service.
 export
 intToService : Int -> Maybe AwsService
 intToService 0 = Just S3
-intToService 1 = Just EC2
-intToService 2 = Just Lambda
+intToService 1 = Just Lambda
+intToService 2 = Just DynamoDB
 intToService 3 = Just SQS
-intToService 4 = Just DynamoDB
+intToService 4 = Just CloudWatch
+intToService 5 = Just IAM
+intToService 6 = Just STS
 intToService _ = Nothing
 
 -- ---------------------------------------------------------------------------
@@ -121,86 +132,119 @@ intToService _ = Nothing
 -- ---------------------------------------------------------------------------
 
 ||| Actions available through the AWS MCP cartridge.
-||| Grouped by service: S3 (bucket/object), EC2 (instance), Lambda (function),
-||| SQS (queue/message), DynamoDB (table/item).
+||| Grouped by service:
+|||   S3: bucket/object operations including presigned URLs
+|||   Lambda: function invocation and listing
+|||   DynamoDB: table/item operations (query, scan, get, put)
+|||   SQS: queue/message operations
+|||   CloudWatch: metrics (get/put)
+|||   IAM: read-only user/role listing
+|||   STS: caller identity and role assumption
 public export
 data AwsAction
-  = ListBuckets
-  | GetObject
-  | PutObject
-  | DeleteObject
-  | ListInstances
-  | StartInstance
-  | StopInstance
-  | ListFunctions
-  | InvokeFunction
-  | ListQueues
-  | SendMessage
-  | ReceiveMessage
-  | ListTables
-  | PutItem
-  | GetItem
-  | QueryTable
+  -- S3 (0-4)
+  = S3ListBuckets
+  | S3GetObject
+  | S3PutObject
+  | S3DeleteObject
+  | S3PresignedUrl
+  -- Lambda (5-6)
+  | LambdaListFunctions
+  | LambdaInvoke
+  -- DynamoDB (7-10)
+  | DynamoQuery
+  | DynamoScan
+  | DynamoPutItem
+  | DynamoGetItem
+  -- SQS (11-14)
+  | SqsListQueues
+  | SqsSendMessage
+  | SqsReceiveMessage
+  | SqsDeleteMessage
+  -- CloudWatch (15-16)
+  | CwGetMetrics
+  | CwPutMetricData
+  -- IAM (17-18) — read-only
+  | IamListUsers
+  | IamListRoles
+  -- STS (19-20)
+  | StsGetCallerIdentity
+  | StsAssumeRole
 
 ||| Which service handles a given action.
 export
 actionService : AwsAction -> AwsService
-actionService ListBuckets    = S3
-actionService GetObject      = S3
-actionService PutObject      = S3
-actionService DeleteObject   = S3
-actionService ListInstances  = EC2
-actionService StartInstance  = EC2
-actionService StopInstance   = EC2
-actionService ListFunctions  = Lambda
-actionService InvokeFunction = Lambda
-actionService ListQueues     = SQS
-actionService SendMessage    = SQS
-actionService ReceiveMessage = SQS
-actionService ListTables     = DynamoDB
-actionService PutItem        = DynamoDB
-actionService GetItem        = DynamoDB
-actionService QueryTable     = DynamoDB
+actionService S3ListBuckets        = S3
+actionService S3GetObject          = S3
+actionService S3PutObject          = S3
+actionService S3DeleteObject       = S3
+actionService S3PresignedUrl       = S3
+actionService LambdaListFunctions  = Lambda
+actionService LambdaInvoke         = Lambda
+actionService DynamoQuery          = DynamoDB
+actionService DynamoScan           = DynamoDB
+actionService DynamoPutItem        = DynamoDB
+actionService DynamoGetItem        = DynamoDB
+actionService SqsListQueues        = SQS
+actionService SqsSendMessage       = SQS
+actionService SqsReceiveMessage    = SQS
+actionService SqsDeleteMessage     = SQS
+actionService CwGetMetrics         = CloudWatch
+actionService CwPutMetricData      = CloudWatch
+actionService IamListUsers         = IAM
+actionService IamListRoles         = IAM
+actionService StsGetCallerIdentity = STS
+actionService StsAssumeRole        = STS
 
 ||| Encode action as C-compatible integer for FFI.
 export
 actionToInt : AwsAction -> Int
-actionToInt ListBuckets    = 0
-actionToInt GetObject      = 1
-actionToInt PutObject      = 2
-actionToInt DeleteObject   = 3
-actionToInt ListInstances  = 4
-actionToInt StartInstance  = 5
-actionToInt StopInstance   = 6
-actionToInt ListFunctions  = 7
-actionToInt InvokeFunction = 8
-actionToInt ListQueues     = 9
-actionToInt SendMessage    = 10
-actionToInt ReceiveMessage = 11
-actionToInt ListTables     = 12
-actionToInt PutItem        = 13
-actionToInt GetItem        = 14
-actionToInt QueryTable     = 15
+actionToInt S3ListBuckets        = 0
+actionToInt S3GetObject          = 1
+actionToInt S3PutObject          = 2
+actionToInt S3DeleteObject       = 3
+actionToInt S3PresignedUrl       = 4
+actionToInt LambdaListFunctions  = 5
+actionToInt LambdaInvoke         = 6
+actionToInt DynamoQuery          = 7
+actionToInt DynamoScan           = 8
+actionToInt DynamoPutItem        = 9
+actionToInt DynamoGetItem        = 10
+actionToInt SqsListQueues        = 11
+actionToInt SqsSendMessage       = 12
+actionToInt SqsReceiveMessage    = 13
+actionToInt SqsDeleteMessage     = 14
+actionToInt CwGetMetrics         = 15
+actionToInt CwPutMetricData      = 16
+actionToInt IamListUsers         = 17
+actionToInt IamListRoles         = 18
+actionToInt StsGetCallerIdentity = 19
+actionToInt StsAssumeRole        = 20
 
 ||| Decode integer to AWS action.
 export
 intToAction : Int -> Maybe AwsAction
-intToAction 0  = Just ListBuckets
-intToAction 1  = Just GetObject
-intToAction 2  = Just PutObject
-intToAction 3  = Just DeleteObject
-intToAction 4  = Just ListInstances
-intToAction 5  = Just StartInstance
-intToAction 6  = Just StopInstance
-intToAction 7  = Just ListFunctions
-intToAction 8  = Just InvokeFunction
-intToAction 9  = Just ListQueues
-intToAction 10 = Just SendMessage
-intToAction 11 = Just ReceiveMessage
-intToAction 12 = Just ListTables
-intToAction 13 = Just PutItem
-intToAction 14 = Just GetItem
-intToAction 15 = Just QueryTable
+intToAction 0  = Just S3ListBuckets
+intToAction 1  = Just S3GetObject
+intToAction 2  = Just S3PutObject
+intToAction 3  = Just S3DeleteObject
+intToAction 4  = Just S3PresignedUrl
+intToAction 5  = Just LambdaListFunctions
+intToAction 6  = Just LambdaInvoke
+intToAction 7  = Just DynamoQuery
+intToAction 8  = Just DynamoScan
+intToAction 9  = Just DynamoPutItem
+intToAction 10 = Just DynamoGetItem
+intToAction 11 = Just SqsListQueues
+intToAction 12 = Just SqsSendMessage
+intToAction 13 = Just SqsReceiveMessage
+intToAction 14 = Just SqsDeleteMessage
+intToAction 15 = Just CwGetMetrics
+intToAction 16 = Just CwPutMetricData
+intToAction 17 = Just IamListUsers
+intToAction 18 = Just IamListRoles
+intToAction 19 = Just StsGetCallerIdentity
+intToAction 20 = Just StsAssumeRole
 intToAction _  = Nothing
 
 ||| Whether an action requires Authenticated state.
@@ -210,16 +254,25 @@ actionRequiresAuth : AwsAction -> Bool
 actionRequiresAuth _ = True
 
 ||| Whether an action is a write/mutating operation.
+||| IAM listing, STS GetCallerIdentity, S3 reads, DynamoDB reads, SQS reads,
+||| and CloudWatch reads are non-mutating. Everything else mutates state.
 export
 actionIsMutating : AwsAction -> Bool
-actionIsMutating PutObject      = True
-actionIsMutating DeleteObject   = True
-actionIsMutating StartInstance  = True
-actionIsMutating StopInstance   = True
-actionIsMutating InvokeFunction = True
-actionIsMutating SendMessage    = True
-actionIsMutating PutItem        = True
-actionIsMutating _              = False
+actionIsMutating S3PutObject      = True
+actionIsMutating S3DeleteObject   = True
+actionIsMutating LambdaInvoke     = True
+actionIsMutating DynamoPutItem    = True
+actionIsMutating SqsSendMessage   = True
+actionIsMutating SqsDeleteMessage = True
+actionIsMutating CwPutMetricData  = True
+actionIsMutating StsAssumeRole    = True
+actionIsMutating _                = False
+
+||| Whether an action is strictly read-only (safe for audit/inspection).
+||| Useful for enforcing least-privilege in IAM policy generation.
+export
+actionIsReadOnly : AwsAction -> Bool
+actionIsReadOnly act = not (actionIsMutating act)
 
 -- ---------------------------------------------------------------------------
 -- MCP tool declarations
@@ -253,9 +306,9 @@ toolCount = 6
 ||| Total action count for this cartridge.
 export
 actionCount : Nat
-actionCount = 16
+actionCount = 21
 
 ||| Total service count for this cartridge.
 export
 serviceCount : Nat
-serviceCount = 5
+serviceCount = 7

@@ -37,6 +37,7 @@ PASS=0
 FAIL=0
 SKIP=0
 PIDS=()
+TMPDIR_TEST="$(mktemp -d "${TMPDIR:-/tmp}/boj-e2e-test.XXXXXXXXXX")"
 
 # ─── Colour helpers (match existing test style) ──────────────────────
 green() { printf '\033[32m%s\033[0m\n' "$*"; }
@@ -78,7 +79,7 @@ cleanup() {
         kill "$pid" 2>/dev/null || true
     done
     wait 2>/dev/null || true
-    rm -rf /tmp/boj-e2e-test-feedback 2>/dev/null || true
+    rm -rf "$TMPDIR_TEST" 2>/dev/null || true
 }
 trap cleanup EXIT
 
@@ -127,7 +128,7 @@ echo ""
 # Step 1: Start the V-lang server
 # ═══════════════════════════════════════════════════════════════════════
 bold "Step 1: Starting BoJ server on port $REST_PORT..."
-BOJ_REST_PORT="$REST_PORT" "$BOJ_BIN" > /tmp/boj-e2e-full.log 2>&1 &
+BOJ_REST_PORT="$REST_PORT" "$BOJ_BIN" > "$TMPDIR_TEST/boj-e2e-full.log" 2>&1 &
 PIDS+=($!)
 
 # Wait for health check (up to 10 seconds)
@@ -139,7 +140,7 @@ for i in $(seq 1 50); do
     if [[ $i -eq 50 ]]; then
         red "  ERROR: Server did not start within 10 seconds"
         red "  Log tail:"
-        tail -20 /tmp/boj-e2e-full.log 2>/dev/null || true
+        tail -20 "$TMPDIR_TEST/boj-e2e-full.log" 2>/dev/null || true
         exit 1
     fi
     sleep 0.2

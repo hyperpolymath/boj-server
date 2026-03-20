@@ -1,0 +1,16 @@
+# SPDX-License-Identifier: PMPL-1.0-or-later
+# Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+
+name = "duckdb-mcp"
+description = "DuckDB embedded analytics MCP cartridge — query, export, attach, parquet/CSV"
+version = "0.1.0"
+domain = "Database"
+protocols = [
+    "MCP",
+    "Embedded",
+]
+tier = "Ayo"
+backend = "universal"
+generate_panel = true
+auth = "none"
+api_base = "embedded://duckdb"

@@ -56,6 +56,11 @@ const ConnectionSlot = struct {
     url_len: usize,
 };
 
+/// THREAD SAFETY: All reads/writes to `connections` are protected by `mutex`.
+/// Every C-ABI export acquires mutex at entry via lock/defer-unlock pattern.
+/// The two-phase functions (db_execute_vql, db_execute_kql, db_execute_gql)
+/// release the mutex during blocking I/O (curl) and re-acquire afterwards,
+/// re-validating slot state after re-acquisition to handle concurrent changes.
 var connections: [MAX_CONNECTIONS]ConnectionSlot = [_]ConnectionSlot{.{
     .active = false,
     .state = .disconnected,
@@ -65,6 +70,11 @@ var connections: [MAX_CONNECTIONS]ConnectionSlot = [_]ConnectionSlot{.{
     .url_len = 0,
 }} ** MAX_CONNECTIONS;
 
+/// Module-level mutex protecting all mutable global state (connections array).
+///
+/// INVARIANT: Every C-ABI export function acquires this mutex before accessing
+/// `connections`. Internal helpers (isValidTransition, appendJsonEscaped) are
+/// pure and do not need the mutex.
 var mutex: std.Thread.Mutex = .{};
 
 /// Validate a state transition (matches Idris2 canTransition).
@@ -79,14 +89,22 @@ fn isValidTransition(from: ConnState, to: ConnState) bool {
 
 /// Open a new connection. Returns slot index or -1 on failure.
 /// For non-sqlite backends, this only transitions state (no real handle).
+///
+/// HARDENED: Validates backend enum value before @enumFromInt to prevent
+/// undefined behaviour / panic on out-of-range c_int values.
 pub export fn db_connect(backend: c_int) c_int {
     mutex.lock();
     defer mutex.unlock();
+
+    // SAFETY: validate that backend is a known DatabaseBackend value before
+    // calling @enumFromInt, which would panic on invalid values
+    const valid_backend = std.meta.intToEnum(DatabaseBackend, backend) catch return -1;
+
     for (&connections, 0..) |*slot, i| {
         if (!slot.active) {
             slot.active = true;
             slot.state = .connected;
-            slot.backend = @enumFromInt(backend);
+            slot.backend = valid_backend;
             slot.db_handle = null;
             return @intCast(i);
         }
@@ -99,9 +117,15 @@ pub export fn db_connect(backend: c_int) c_int {
 /// Returns slot index or negative error code:
 ///   -1 = no slots available
 ///   -3 = sqlite3_open failed
+///   -6 = path_len is zero or exceeds maximum
+///
+/// HARDENED: Rejects empty and oversized paths before any pointer dereference.
 pub export fn db_connect_sqlite(path_ptr: [*]const u8, path_len: usize) c_int {
     mutex.lock();
     defer mutex.unlock();
+
+    // SAFETY: reject empty paths and paths exceeding our buffer before dereference
+    if (path_len == 0 or path_len >= 4096) return -6;
 
     // Find a free slot
     var free_idx: ?usize = null;
@@ -242,11 +266,15 @@ pub export fn db_query_error(slot_idx: c_int) c_int {
 }
 
 /// Validate a state transition (C-ABI export).
+///
+/// HARDENED: Uses std.meta.intToEnum instead of raw @enumFromInt to return
+/// -1 on invalid enum values rather than panicking/triggering UB.
 pub export fn db_can_transition(from: c_int, to: c_int) c_int {
     mutex.lock();
     defer mutex.unlock();
-    const f: ConnState = @enumFromInt(from);
-    const t: ConnState = @enumFromInt(to);
+    // SAFETY: validate enum range before conversion — @enumFromInt panics on invalid values
+    const f = std.meta.intToEnum(ConnState, from) catch return -1;
+    const t = std.meta.intToEnum(ConnState, to) catch return -1;
     return if (isValidTransition(f, t)) 1 else 0;
 }
 
@@ -290,9 +318,15 @@ pub export fn db_reset() void {
 ///   -3    : no sqlite3 handle on this slot (wrong backend)
 ///   -4    : sqlite3_exec error (state transitions to Error, then Disconnected)
 ///   -5    : output buffer too small
+///   -8    : sql_len is zero or out_len is zero
+///
+/// HARDENED: Bounds checks on sql_len and out_len before pointer dereference.
 pub export fn db_execute_sql(slot: u8, sql_ptr: [*]const u8, sql_len: usize, out_ptr: [*]u8, out_len: usize) callconv(.c) i32 {
     mutex.lock();
     defer mutex.unlock();
+
+    // SAFETY: reject zero-length SQL and zero-length output buffers before dereference
+    if (sql_len == 0 or out_len == 0) return -8;
 
     if (slot >= MAX_CONNECTIONS) return -1;
     const idx: usize = @intCast(slot);
@@ -332,6 +366,9 @@ pub export fn db_execute_sql(slot: u8, sql_ptr: [*]const u8, sql_len: usize, out
         .row_count = 0,
     };
 
+    // SAFETY: @ptrCast is required here to pass ExecContext* as sqlite3_exec's
+    // void* callback argument. The matching @ptrCast(@alignCast(...)) in
+    // execCallback reverses this with a null guard (orelse return 1).
     var errmsg: [*c]u8 = null;
     const rc = c.sqlite3_exec(
         db_handle,
@@ -371,13 +408,21 @@ const ExecContext = struct {
 
 /// sqlite3_exec callback — called once per result row.
 /// Serializes each row as a JSON object with column names as keys.
+///
+/// HARDENED: Null check on ctx_ptr; bounds check on col_count (reject negative
+/// values and cap at a sane maximum to prevent resource exhaustion); null checks
+/// on col_values/col_names array pointers before dereference.
 fn execCallback(
     ctx_ptr: ?*anyopaque,
     col_count: c_int,
     col_values: [*c][*c]u8,
     col_names: [*c][*c]u8,
 ) callconv(.c) c_int {
+    // SAFETY: null guard on context pointer — return error to sqlite3_exec
     const ctx: *ExecContext = @ptrCast(@alignCast(ctx_ptr orelse return 1));
+    // SAFETY: reject negative col_count (should never happen but guard against it)
+    // and cap at 1024 columns to prevent resource exhaustion from malformed data
+    if (col_count < 0 or col_count > 1024) return 1;
     const ncols: usize = @intCast(col_count);
     const alloc = ctx.allocator;
 
@@ -464,7 +509,13 @@ fn appendJsonEscaped(list: *std.ArrayListUnmanaged(u8), alloc: std.mem.Allocator
 ///   -6    : no URL stored on this slot (wrong backend)
 ///   -7    : curl execution failed (state transitions to Error)
 ///   -5    : output buffer too small
+///   -8    : vql_len is zero or out_len is zero
+///
+/// HARDENED: Bounds checks on vql_len and out_len before pointer dereference.
 pub export fn db_execute_vql(slot: u8, vql_ptr: [*]const u8, vql_len: usize, out_ptr: [*]u8, out_len: usize) callconv(.c) i32 {
+    // SAFETY: reject zero-length query and zero-length output buffers
+    if (vql_len == 0 or out_len == 0) return -8;
+
     // Phase 1: validate and transition state under lock
     var endpoint_buf: [600]u8 = undefined;
     var endpoint_total: usize = 0;
@@ -538,6 +589,10 @@ pub export fn db_execute_vql(slot: u8, vql_ptr: [*]const u8, vql_len: usize, out
 /// Run curl as a child process for an HTTP POST with JSON body.
 /// Returns a heap-allocated slice with stdout output, or an error.
 /// Caller must free the returned slice with page_allocator.free().
+///
+/// HARDENED: Checks termination signal type (Exited vs Signal/Stopped/Unknown)
+/// instead of unconditionally accessing .Exited, which would be undefined
+/// behaviour if the child was killed by a signal.
 fn runCurlPost(endpoint: [:0]const u8, body: [:0]const u8) ![]u8 {
     const argv = [_][]const u8{
         "curl",
@@ -566,9 +621,20 @@ fn runCurlPost(endpoint: [:0]const u8, body: [:0]const u8) ![]u8 {
     try child.collectOutput(alloc, &stdout_list, &stderr_list, 65536);
     const term = try child.wait();
 
-    if (term.Exited != 0) {
-        stdout_list.deinit(alloc);
-        return error.CurlFailed;
+    // SAFETY: check that process exited normally (not signalled/stopped)
+    // before inspecting exit code. Accessing .Exited on a Signal term is UB.
+    switch (term) {
+        .Exited => |code| {
+            if (code != 0) {
+                stdout_list.deinit(alloc);
+                return error.CurlFailed;
+            }
+        },
+        else => {
+            // Process was killed by signal, stopped, or unknown termination
+            stdout_list.deinit(alloc);
+            return error.CurlFailed;
+        },
     }
 
     return stdout_list.toOwnedSlice(alloc);
@@ -610,7 +676,12 @@ pub export fn db_connect_quandledb(url_ptr: [*]const u8, url_len: usize) c_int {
 
 /// Execute a KQL query against a QuandleDB connection via child curl.
 /// POSTs to {url}/kql/execute with the KQL query as JSON body.
+///
+/// HARDENED: Bounds checks on kql_len and out_len before pointer dereference.
 pub export fn db_execute_kql(slot: u8, kql_ptr: [*]const u8, kql_len: usize, out_ptr: [*]u8, out_len: usize) callconv(.c) i32 {
+    // SAFETY: reject zero-length query and zero-length output buffers
+    if (kql_len == 0 or out_len == 0) return -8;
+
     var endpoint_buf: [600]u8 = undefined;
     var endpoint_total: usize = 0;
     var kql_buf: [8192]u8 = undefined;
@@ -704,7 +775,12 @@ pub export fn db_connect_lithoglyph(url_ptr: [*]const u8, url_len: usize) c_int 
 
 /// Execute a GQL query against a LithoGlyph connection via child curl.
 /// POSTs to {url}/gql/execute with the GQL query as JSON body.
+///
+/// HARDENED: Bounds checks on gql_len and out_len before pointer dereference.
 pub export fn db_execute_gql(slot: u8, gql_ptr: [*]const u8, gql_len: usize, out_ptr: [*]u8, out_len: usize) callconv(.c) i32 {
+    // SAFETY: reject zero-length query and zero-length output buffers
+    if (gql_len == 0 or out_len == 0) return -8;
+
     var endpoint_buf: [600]u8 = undefined;
     var endpoint_total: usize = 0;
     var gql_buf: [8192]u8 = undefined;
@@ -778,6 +854,8 @@ pub export fn boj_cartridge_deinit() void {
 }
 
 /// Return the cartridge name as a null-terminated C string.
+/// NOTE: mutex acquired for consistency with C-ABI export contract, even though
+/// this returns a compile-time string literal (no mutable state accessed).
 pub export fn boj_cartridge_name() [*:0]const u8 {
     mutex.lock();
     defer mutex.unlock();
@@ -785,6 +863,8 @@ pub export fn boj_cartridge_name() [*:0]const u8 {
 }
 
 /// Return the cartridge version as a null-terminated C string.
+/// NOTE: mutex acquired for consistency with C-ABI export contract, even though
+/// this returns a compile-time string literal (no mutable state accessed).
 pub export fn boj_cartridge_version() [*:0]const u8 {
     mutex.lock();
     defer mutex.unlock();
