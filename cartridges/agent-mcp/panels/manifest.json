@@ -1,0 +1,67 @@
+{
+  "$schema": "https://panll.dev/schemas/panel-manifest/v1.json",
+  "spdx": "PMPL-1.0-or-later",
+  "cartridge": "agent-mcp",
+  "domain": "Agent Orchestration",
+  "version": "0.1.0",
+  "panels": [
+    {
+      "id": "agent-status",
+      "title": "Agent Gateway Status",
+      "description": "AI agent orchestration health and active sessions",
+      "type": "status-indicator",
+      "data_source": {
+        "endpoint": "/cartridge/agent-mcp/invoke",
+        "method": "POST",
+        "body": { "tool": "status" },
+        "refresh_interval_ms": 5000
+      },
+      "widgets": [
+        {
+          "type": "state-badge",
+          "field": "state",
+          "states": {
+            "ready": { "color": "#2ecc71", "icon": "bot" },
+            "degraded": { "color": "#f39c12", "icon": "alert-circle" },
+            "error": { "color": "#e74c3c", "icon": "alert-triangle" }
+          }
+        },
+        { "type": "text", "field": "version", "label": "Version" }
+      ]
+    },
+    {
+      "id": "agent-sessions",
+      "title": "Active Agent Sessions",
+      "description": "Running agent sessions with model and task details",
+      "type": "metric",
+      "data_source": {
+        "endpoint": "/cartridge/agent-mcp/invoke",
+        "method": "POST",
+        "body": { "tool": "session_list" },
+        "refresh_interval_ms": 10000
+      },
+      "widgets": [
+        { "type": "counter", "field": "active_sessions", "label": "Active Sessions", "icon": "users" },
+        { "type": "counter", "field": "pending_tasks", "label": "Pending Tasks", "icon": "clock" },
+        { "type": "counter", "field": "completed_tasks", "label": "Completed", "icon": "check-circle" }
+      ]
+    },
+    {
+      "id": "agent-coprocessors",
+      "title": "Coprocessor Dispatch",
+      "description": "Axiom-style coprocessor detection and dispatch metrics",
+      "type": "metric",
+      "data_source": {
+        "endpoint": "/cartridge/agent-mcp/invoke",
+        "method": "POST",
+        "body": { "tool": "coprocessor_stats" },
+        "refresh_interval_ms": 15000
+      },
+      "widgets": [
+        { "type": "counter", "field": "dispatched", "label": "Dispatched", "icon": "send" },
+        { "type": "counter", "field": "fallbacks", "label": "Fallbacks", "icon": "rotate-ccw" },
+        { "type": "counter", "field": "avg_latency_ms", "label": "Avg Latency (ms)", "icon": "activity" }
+      ]
+    }
+  ]
+}

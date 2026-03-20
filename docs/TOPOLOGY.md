@@ -1,6 +1,6 @@
 <!-- SPDX-License-Identifier: PMPL-1.0-or-later -->
 <!-- TOPOLOGY.md — Project architecture map and completion dashboard -->
-<!-- Last updated: 2026-03-14 (18 cartridges, 307 tests, 18 .so files, all mounted, Grade D Alpha) -->
+<!-- Last updated: 2026-03-20 (55 cartridges total, 18 core with ABI+FFI+Adapter, 307 tests, 18 .so files, Grade D Alpha) -->
 
 # Bundle of Joy Server — Project Topology
 
@@ -13,6 +13,7 @@
                       │   orders for cartridges)         │
                       │  [Panel: COMPLETE — 887 lines]   │
                       │  [bojRouting: 10 panels wired]   │
+                      │  [55/55 cartridges have panels]  │
                       └──────────────┬──────────────────┘
                                      │ Order-Ticket Protocol
                                      ▼
@@ -67,7 +68,8 @@
  │  bsp-mcp                                                     │
  │                                                               │
  │  Each: abi/ (Idris2) + ffi/ (Zig) + adapter/ (V-lang)       │
- │  17/17 mounted + serving  |  307 tests total                  │
+ │  18/18 core mounted + serving  |  307 tests total              │
+│  55 total cartridges (37 community/provider-specific)         │
  └───────────────────────────────────────────────────────────────┘
            │
            ▼
@@ -139,9 +141,9 @@ BSP        │  ██  │      │      │  ██  │      │       │   
 | observe-mcp                      | `██████░░░░`  60%         | D (Alpha) .so  |
 | ssg-mcp                          | `██████░░░░`  60%         | D (Alpha) .so — Zola e2e test exists, not production |
 | proof-mcp                        | `██████░░░░`  60%         | D (Alpha) .so  |
-| lsp-mcp                          | `██████░░░░`  60%         | D (Alpha) .so — CI integration active |
-| dap-mcp                          | `██████░░░░`  60%         | D (Alpha) .so — CI integration active |
-| bsp-mcp                          | `██████░░░░`  60%         | D (Alpha) .so — CI integration active |
+| lsp-mcp                          | `███████░░░`  70%         | D (Alpha) .so — dedicated CI (lsp-dap-bsp.yml) |
+| dap-mcp                          | `███████░░░`  70%         | D (Alpha) .so — dedicated CI (lsp-dap-bsp.yml) |
+| bsp-mcp                          | `███████░░░`  70%         | D (Alpha) .so — dedicated CI (lsp-dap-bsp.yml) |
 | **Specialist Cartridges**        |                           |                |
 | feedback-o-tron (18th cartridge) | `██████░░░░`  60%         | D (Alpha) — full ABI+FFI, not collecting real feedback |
 | **Federation & Distribution**    |                           |                |
@@ -156,6 +158,7 @@ BSP        │  ██  │      │      │  ██  │      │       │   
 | feedback-o-tron (18th cartridge) | `██████░░░░`  60%         | D (Alpha) — full ABI+FFI, not collecting real feedback |
 | PanLL BoJ panel                  | `███████░░░`  70%         | D (Alpha) — 887 lines, 5 tabs, not tested with live data |
 | PanLL bojRouting (10 panels)     | `███████░░░`  70%         | D (Alpha) — conditional dispatch, no live traffic |
+| PanLL panel manifests (55/55)    | `██████████` 100%         | All cartridges have panel manifests              |
 | **Testing (307 total)**         |                           |                |
 | Core FFI tests (176)             | `██████████` 100%         | Passing        |
 | Cartridge FFI tests (113)        | `██████████` 100%         | Passing        |
@@ -167,6 +170,7 @@ BSP        │  ██  │      │      │  ██  │      │       │   
 | Benchmarks                       | `██████████` 100%         | Available      |
 | **CI/CD & Container**            |                           |                |
 | CI pipeline (zig-test.yml)       | `██████████` 100%         | Active         |
+| CI pipeline (lsp-dap-bsp.yml)   | `██████████` 100%         | Dedicated LSP/DAP/BSP CI |
 | Containerfile (Chainguard)       | `███████░░░`  70%         | D (Alpha) — present, no e2e container test |
 | selur-compose orchestration      | `█████░░░░░`  50%         | D (Alpha) — file present, not validated |
 | vordr runtime monitoring         | `█████░░░░░`  50%         | D (Alpha) — file present, not validated |

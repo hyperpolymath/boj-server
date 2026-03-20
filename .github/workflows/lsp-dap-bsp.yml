@@ -1,0 +1,181 @@
+# SPDX-License-Identifier: PMPL-1.0-or-later
+# lsp-dap-bsp.yml — Dedicated CI for Language Server, Debug Adapter, and Build Server cartridges
+# Validates ABI specs, FFI builds, adapter compilation, and panel manifests
+# for the three protocol cartridges (lsp-mcp, dap-mcp, bsp-mcp).
+
+name: LSP/DAP/BSP CI
+
+on:
+  push:
+    paths:
+      - 'cartridges/lsp-mcp/**'
+      - 'cartridges/dap-mcp/**'
+      - 'cartridges/bsp-mcp/**'
+      - 'src/abi/Boj/Protocol.idr'
+      - '.github/workflows/lsp-dap-bsp.yml'
+  pull_request:
+    paths:
+      - 'cartridges/lsp-mcp/**'
+      - 'cartridges/dap-mcp/**'
+      - 'cartridges/bsp-mcp/**'
+
+permissions: read-all
+
+jobs:
+  abi-check:
+    name: ABI Specification Check (Idris2)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+      - name: Validate ABI modules exist
+        run: |
+          echo "=== Checking LSP/DAP/BSP ABI modules ==="
+          for cart in lsp-mcp dap-mcp bsp-mcp; do
+            echo "--- $cart ---"
+            abi_dir="cartridges/$cart/abi"
+            if [ ! -d "$abi_dir" ]; then
+              echo "ERROR: $abi_dir directory missing"
+              exit 1
+            fi
+            idr_count=$(find "$abi_dir" -name '*.idr' | wc -l)
+            echo "  Found $idr_count .idr files"
+            if [ "$idr_count" -eq 0 ]; then
+              echo "ERROR: No .idr files in $abi_dir"
+              exit 1
+            fi
+            # Check for banned patterns
+            if grep -r 'believe_me\|assert_total\|sorry' "$abi_dir" 2>/dev/null; then
+              echo "ERROR: Banned pattern found in $abi_dir"
+              exit 1
+            fi
+            echo "  No banned patterns — OK"
+          done
+
+  ffi-build:
+    name: FFI Build & Test (Zig)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+      - name: Install Zig 0.15.2
+        run: |
+          curl -L https://ziglang.org/builds/zig-linux-x86_64-0.15.2.tar.xz | tar -xJ
+          echo "$PWD/zig-linux-x86_64-0.15.2" >> "$GITHUB_PATH"
+      - name: Build LSP/DAP/BSP cartridge FFI
+        run: |
+          for cart in lsp-mcp dap-mcp bsp-mcp; do
+            echo "=== Building $cart FFI ==="
+            ffi_dir="cartridges/$cart/ffi"
+            if [ ! -f "$ffi_dir/build.zig" ]; then
+              echo "ERROR: $ffi_dir/build.zig missing"
+              exit 1
+            fi
+            cd "$ffi_dir"
+            zig build 2>&1 || { echo "ERROR: Zig build failed for $cart"; exit 1; }
+            echo "  Build succeeded"
+            # Check .so output exists
+            so_file=$(find zig-out/lib/ -name '*.so' 2>/dev/null | head -1)
+            if [ -n "$so_file" ]; then
+              echo "  Shared library: $so_file"
+            else
+              echo "  WARNING: No .so output (may be static-only)"
+            fi
+            cd "$GITHUB_WORKSPACE"
+          done
+      - name: Run FFI tests
+        run: |
+          for cart in lsp-mcp dap-mcp bsp-mcp; do
+            echo "=== Testing $cart FFI ==="
+            cd "cartridges/$cart/ffi"
+            zig build test 2>&1 || { echo "ERROR: Tests failed for $cart"; exit 1; }
+            echo "  Tests passed"
+            cd "$GITHUB_WORKSPACE"
+          done
+
+  adapter-check:
+    name: V-lang Adapter Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+      - name: Install V-lang
+        run: |
+          sudo apt-get update && sudo apt-get install -y libgc-dev
+          git clone --depth=1 https://github.com/vlang/v
+          cd v && make && sudo ./v symlink
+      - name: Check LSP/DAP/BSP adapters
+        run: |
+          for cart in lsp-mcp dap-mcp bsp-mcp; do
+            echo "=== Checking $cart adapter ==="
+            adapter_dir="cartridges/$cart/adapter"
+            if [ ! -d "$adapter_dir" ]; then
+              echo "ERROR: $adapter_dir missing"
+              exit 1
+            fi
+            v_files=$(find "$adapter_dir" -name '*.v' | wc -l)
+            if [ "$v_files" -eq 0 ]; then
+              echo "ERROR: No .v files in $adapter_dir"
+              exit 1
+            fi
+            v check "$adapter_dir"/*.v 2>&1 || { echo "ERROR: V check failed for $cart"; exit 1; }
+            echo "  V-lang check passed ($v_files files)"
+          done
+
+  panel-validation:
+    name: Panel Manifest Validation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+      - name: Validate LSP/DAP/BSP panel manifests
+        run: |
+          for cart in lsp-mcp dap-mcp bsp-mcp; do
+            echo "=== Validating $cart panel manifest ==="
+            manifest="cartridges/$cart/panels/manifest.json"
+            if [ ! -f "$manifest" ]; then
+              echo "ERROR: $manifest missing"
+              exit 1
+            fi
+            # Validate JSON
+            python3 -m json.tool "$manifest" > /dev/null 2>&1 || {
+              echo "ERROR: Invalid JSON in $manifest"
+              exit 1
+            }
+            # Check required fields
+            for field in cartridge domain version panels; do
+              if ! python3 -c "import json; d=json.load(open('$manifest')); assert '$field' in d" 2>/dev/null; then
+                echo "ERROR: Missing field '$field' in $manifest"
+                exit 1
+              fi
+            done
+            # Count panels
+            panel_count=$(python3 -c "import json; print(len(json.load(open('$manifest'))['panels']))")
+            echo "  Valid JSON, $panel_count panels defined"
+          done
+
+  completeness:
+    name: Cartridge Completeness Check
+    runs-on: ubuntu-latest
+    needs: [abi-check, ffi-build, adapter-check, panel-validation]
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+      - name: Verify triadic structure
+        run: |
+          echo "=== LSP/DAP/BSP Triadic Structure Audit ==="
+          all_pass=true
+          for cart in lsp-mcp dap-mcp bsp-mcp; do
+            echo "--- $cart ---"
+            layers=("abi" "ffi" "adapter" "panels")
+            for layer in "${layers[@]}"; do
+              dir="cartridges/$cart/$layer"
+              if [ -d "$dir" ]; then
+                echo "  ✓ $layer/"
+              else
+                echo "  ✗ $layer/ MISSING"
+                all_pass=false
+              fi
+            done
+          done
+          if [ "$all_pass" != "true" ]; then
+            echo "ERROR: Incomplete triadic structure"
+            exit 1
+          fi
+          echo ""
+          echo "All 3 protocol cartridges have complete ABI+FFI+Adapter+Panel stacks."
