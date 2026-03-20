@@ -1,0 +1,13 @@
+{
+  "enrollment": {
+    "project": "boj-server",
+    "fleet": "gitbot-fleet",
+    "status": "active",
+    "managed_bots": [
+      "panicbot",
+      "hypatiabot",
+      "a2mlbot"
+    ],
+    "auto_remediate": true
+  }
+}

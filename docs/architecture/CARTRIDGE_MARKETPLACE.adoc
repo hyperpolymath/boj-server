@@ -1,0 +1,1963 @@
+= Cartridge Marketplace Architecture
+:toc: preamble
+:icons: font
+
+[TIP]
+====
+**Marketplace Status:** This document outlines the Cartridge Marketplace architecture for BOJ Server Mistral. Current implementation includes basic cartridge registry with discovery mechanisms in development.
+====
+
+== Why a Cartridge Marketplace Matters
+
+**Problem Statement:**
+* Users struggle to discover useful cartridges
+* No quality signals for cartridge selection
+* Difficult to find cartridges for specific use cases
+* Lack of community feedback and ratings
+* No curated recommendations for beginners
+
+**Marketplace Goals:**
+* **Discovery:** Help users find the right cartridge quickly
+* **Quality:** Surface high-quality, well-maintained cartridges
+* **Trust:** Provide verification and security information
+* **Community:** Enable user feedback and recommendations
+* **Monetization:** Support cartridge developers
+
+== Marketplace Architecture Overview
+
+=== High-Level Components
+
+[source,mermaid]
+--
+graph TD
+    A[User] -->|Browse| B[Marketplace Frontend]
+    A -->|Search| B
+    A -->|Filter| B
+    
+    B -->|API Request| C[Discovery Service]
+    C -->|Query| D[Search Index]
+    C -->|Query| E[Metadata Database]
+    C -->|Query| F[Usage Analytics]
+    
+    D -->|Indexed Data| G[Cartridge Registry]
+    E -->|Structured Data| G
+    F -->|Usage Data| G
+    
+    C -->|Response| B
+    B -->|Display| A
+    
+    H[Cartridge Developers] -->|Publish| G
+    H -->|Update| G
+    
+    I[Community] -->|Rate/Review| J[Feedback Service]
+    J -->|Store| E
+    J -->|Update| D
+
+    style A fill:#4CAF50,stroke:#388E3C
+    style B fill:#2196F3,stroke:#1976D2
+    style C fill:#FF9800,stroke:#F57C00
+    style D fill:#9C27B0,stroke:#7B1FA2
+    style E fill:#00BCD4,stroke:#0097A7
+    style F fill:#4CAF50,stroke:#388E3C
+    style G fill:#607D8B,stroke:#546E7A
+    style H fill:#FF5722,stroke:#E64A19
+    style I fill:#795548,stroke:#5D4037
+    style J fill:#607D8B,stroke:#546E7A
+--
+
+=== Key Components
+
+[cols="1,2,1,1"]
+|=== 
+| Component | Responsibility | Technology | Status
+
+| Marketplace Frontend 
+| User interface for browsing and discovery 
+| React + Next.js 
+| ✅ Designed
+
+| Discovery Service 
+| API for search, filtering, and recommendations 
+| Rust + Actix-Web 
+| 🚧 In Progress
+
+| Search Index 
+| Full-text search and faceted navigation 
+| Elasticsearch 
+| 📝 Planned
+
+| Metadata Database 
+| Structured cartridge information 
+| PostgreSQL 
+| ✅ Implemented
+
+| Usage Analytics 
+| Track downloads, usage, and popularity 
+| ClickHouse 
+| 🚧 Partial
+
+| Feedback Service 
+| Handle ratings, reviews, and comments 
+| Rust + SQLx 
+| 📝 Planned
+
+| Cartridge Registry 
+| Core cartridge storage and management 
+| Existing implementation 
+| ✅ Complete
+|=== 
+
+== Marketplace Roadmap
+
+=== Phase 1: Basic Discovery (Q2 2025)
+
+**Goal:** Implement core discovery functionality
+
+[cols="1,2,1,1"]
+|=== 
+| Feature | Description | Target | Status
+
+| Basic Search 
+| Full-text search by name/description 
+| Q2 2025 
+| ✅ Designed
+
+| Category Filtering 
+| Filter by cartridge type/use case 
+| Q2 2025 
+| ✅ Designed
+
+| Popular Cartridges 
+| Show most downloaded cartridges 
+| Q2 2025 
+| 🚧 In Progress
+
+| Recent Cartridges 
+| Show newly published cartridges 
+| Q2 2025 
+| 📝 Planned
+
+| Basic Metadata 
+| Display name, description, author 
+| Q2 2025 
+| ✅ Complete
+|=== 
+
+=== Phase 2: Enhanced Discovery (Q3 2025)
+
+**Goal:** Add quality signals and social features
+
+[cols="1,2,1,1"]
+|=== 
+| Feature | Description | Target | Status
+
+| Star/Fork Metrics 
+| GitHub-style popularity indicators 
+| Q3 2025 
+| 📝 Planned
+
+| User Ratings 
+| 1-5 star rating system 
+| Q3 2025 
+| 📝 Planned
+
+| Verified Cartridges 
+| Security audited and approved cartridges 
+| Q3 2025 
+| 📝 Planned
+
+| Trending Cartridges 
+| Show rapidly growing popularity 
+| Q3 2025 
+| 📝 Planned
+
+| Usage Statistics 
+| Display download and usage counts 
+| Q3 2025 
+| 📝 Planned
+|=== 
+
+=== Phase 3: Advanced Features (Q4 2025)
+
+**Goal:** Implement personalized recommendations and curation
+
+[cols="1,2,1,1"]
+|=== 
+| Feature | Description | Target | Status
+
+| Personalized Recommendations 
+| AI-powered suggestions based on usage 
+| Q4 2025 
+| 📝 Planned
+
+| Featured Cartridges 
+| Editorially curated high-quality cartridges 
+| Q4 2025 
+| 📝 Planned
+
+| Collection Support 
+| User-created cartridge collections 
+| Q4 2025 
+| 📝 Planned
+
+| Similar Cartridges 
+| "Users also deployed" recommendations 
+| Q4 2025 
+| 📝 Planned
+
+| Advanced Search 
+| Faceted search with multiple filters 
+| Q4 2025 
+| 📝 Planned
+|=== 
+
+=== Phase 4: Ecosystem Features (2026)
+
+**Goal:** Build a thriving cartridge ecosystem
+
+* **Monetization:** Paid cartridges and subscription models
+* **Developer Analytics:** Usage insights for cartridge creators
+* **Community Curation:** User-generated collections and guides
+* **Enterprise Catalog:** Private cartridge repositories for organizations
+* **AI Assistant:** Natural language cartridge search
+
+== Implementation Details
+
+=== Discovery API
+
+**REST API Endpoints:**
+
+[source,rust]
+--
+// src/routes/marketplace.rs
+pub fn init_routes() -> actix_web::Scope {
+    web::scope("/marketplace")
+        .service(search_cartridges)
+        .service(get_cartridge)
+        .service(list_popular)
+        .service(list_recent)
+        .service(list_trending)
+        .service(list_verified)
+        .service(get_recommendations)
+}
+
+#[actix_web::get("/search")]
+async fn search_cartridges(
+    query: web::Query<SearchQuery>,
+) -> Result<HttpResponse> {
+    let results = discovery_service.search(
+        &query.q,
+        query.category.as_deref(),
+        query.limit.unwrap_or(20),
+        query.offset.unwrap_or(0)
+    ).await?;
+    
+    Ok(HttpResponse::Ok().json(results))
+}
+
+#[actix_web::get("/popular")]
+async fn list_popular() -> Result<HttpResponse> {
+    let results = discovery_service.get_popular(20).await?;
+    Ok(HttpResponse::Ok().json(results))
+}
+
+#[actix_web::get("/trending")]
+async fn list_trending() -> Result<HttpResponse> {
+    let results = discovery_service.get_trending(20).await?;
+    Ok(HttpResponse::Ok().json(results))
+}
+
+#[actix_web::get("/verified")]
+async fn list_verified() -> Result<HttpResponse> {
+    let results = discovery_service.get_verified(20).await?;
+    Ok(HttpResponse::Ok().json(results))
+}
+--
+
+**GraphQL API:**
+[source,graphql]
+--
+# marketplace/schema.graphql
+type Query {
+    searchCartridges(
+        query: String!
+        category: String
+        limit: Int = 20
+        offset: Int = 0
+    ): CartridgeSearchResult!
+    
+    popularCartridges(limit: Int = 20): [Cartridge!]!
+    trendingCartridges(limit: Int = 20): [Cartridge!]!
+    verifiedCartridges(limit: Int = 20): [Cartridge!]!
+    recommendedCartridges(userId: ID, limit: Int = 10): [Cartridge!]!
+    
+    cartridge(id: ID!): Cartridge
+}
+
+type Cartridge {
+    id: ID!
+    name: String!
+    description: String!
+    version: String!
+    author: User!
+    createdAt: DateTime!
+    updatedAt: DateTime!
+    
+    # Quality signals
+    stars: Int!
+    forks: Int!
+    downloads: Int!
+    rating: Float
+    reviewCount: Int!
+    
+    # Verification
+    isVerified: Boolean!
+    verificationLevel: String
+    
+    # Categories
+    categories: [String!]!
+    tags: [String!]!
+    
+    # Usage
+    weeklyDownloads: Int!
+    monthlyDownloads: Int!
+    totalDownloads: Int!
+    
+    # Metadata
+    documentationUrl: String
+    supportUrl: String
+    license: String!
+}
+
+type CartridgeSearchResult {
+    results: [Cartridge!]!
+    total: Int!
+    limit: Int!
+    offset: Int!
+}
+--
+
+=== Search Implementation
+
+**Elasticsearch Index Mapping:**
+[source,json]
+--
+{
+  "mappings": {
+    "properties": {
+      "name": {
+        "type": "text",
+        "analyzer": "english",
+        "fields": {
+          "keyword": {
+            "type": "keyword"
+          }
+        }
+      },
+      "description": {
+        "type": "text",
+        "analyzer": "english"
+      },
+      "categories": {
+        "type": "keyword"
+      },
+      "tags": {
+        "type": "keyword"
+      },
+      "author": {
+        "type": "keyword"
+      },
+      "content": {
+        "type": "text",
+        "analyzer": "english"
+      },
+      "stars": {
+        "type": "integer"
+      },
+      "forks": {
+        "type": "integer"
+      },
+      "downloads": {
+        "type": "integer"
+      },
+      "rating": {
+        "type": "float"
+      },
+      "created_at": {
+        "type": "date"
+      },
+      "updated_at": {
+        "type": "date"
+      },
+      "is_verified": {
+        "type": "boolean"
+      }
+    }
+  }
+}
+--
+
+**Search Service:**
+[source,rust]
+--
+// src/services/search.rs
+pub struct SearchService {
+    elastic_client: Elasticsearch,
+    metadata_db: PgPool,
+}
+
+impl SearchService {
+    pub async fn search(
+        &self,
+        query: &str,
+        category: Option<&str>,
+        limit: usize,
+        offset: usize
+    ) -> Result<SearchResult> {
+        // Build Elasticsearch query
+        let mut es_query = ElasticsearchQuery::new();
+        
+        if !query.is_empty() {
+            es_query = es_query.with_query(
+                Query::multi_match([
+                    ("name", query),
+                    ("description", query),
+                    ("content", query),
+                ])
+            );
+        }
+        
+        if let Some(cat) = category {
+            es_query = es_query.with_filter(
+                Filter::term("categories", cat)
+            );
+        }
+        
+        // Execute search
+        let es_results = self.elastic_client.search(es_query)
+            .from(offset)
+            .size(limit)
+            .execute().await?;
+        
+        // Enrich with metadata
+        let cartridge_ids: Vec<_> = es_results.hits.iter()
+            .map(|hit| hit.id.clone())
+            .collect();
+        
+        let metadata = self.get_metadata_batch(&cartridge_ids).await?;
+        
+        Ok(SearchResult {
+            results: es_results.hits.into_iter()
+                .map(|hit| self.enrich_result(hit, &metadata))
+                .collect(),
+            total: es_results.total,
+            limit,
+            offset,
+        })
+    }
+    
+    async fn get_metadata_batch(&self, ids: &[String]) -> Result<HashMap<String, CartridgeMetadata>> {
+        // Query PostgreSQL for additional metadata
+        let rows = sqlx::query!(
+            "SELECT id, stars, forks, downloads, rating, is_verified FROM cartridges WHERE id = ANY($1)",
+            &ids
+        )
+        .fetch_all(&self.metadata_db)
+        .await?;
+        
+        Ok(rows.into_iter()
+            .map(|row| (
+                row.id,
+                CartridgeMetadata {
+                    stars: row.stars,
+                    forks: row.forks,
+                    downloads: row.downloads,
+                    rating: row.rating,
+                    is_verified: row.is_verified,
+                }
+            ))
+            .collect())
+    }
+}
+--
+
+=== Popularity Metrics
+
+**Star/Fork System:**
+[source,rust]
+--
+// src/services/engagement.rs
+pub struct EngagementService {
+    db: PgPool,
+}
+
+impl EngagementService {
+    pub async fn star_cartridge(&self, user_id: &str, cartridge_id: &str) -> Result<bool> {
+        let result = sqlx::query!(
+            "INSERT INTO cartridge_stars (user_id, cartridge_id) VALUES ($1, $2)
+             ON CONFLICT (user_id, cartridge_id) DO NOTHING",
+            user_id,
+            cartridge_id
+        )
+        .execute(&self.db)
+        .await?;
+        
+        // Update cartridge star count
+        self.update_star_count(cartridge_id).await?;
+        
+        Ok(result.rows_affected() > 0)
+    }
+    
+    pub async fn fork_cartridge(&self, user_id: &str, cartridge_id: &str) -> Result<bool> {
+        // Create a fork record
+        let fork_id = Uuid::new_v4().to_string();
+        
+        sqlx::query!(
+            "INSERT INTO cartridge_forks (id, user_id, cartridge_id, created_at)
+             VALUES ($1, $2, $3, NOW())",
+            fork_id,
+            user_id,
+            cartridge_id
+        )
+        .execute(&self.db)
+        .await?;
+        
+        // Update cartridge fork count
+        self.update_fork_count(cartridge_id).await?;
+        
+        Ok(true)
+    }
+    
+    async fn update_star_count(&self, cartridge_id: &str) -> Result<()> {
+        sqlx::query!(
+            "UPDATE cartridges SET stars = (
+                SELECT COUNT(*) FROM cartridge_stars WHERE cartridge_id = $1
+             ) WHERE id = $1",
+            cartridge_id
+        )
+        .execute(&self.db)
+        .await?;
+        
+        Ok(())
+    }
+}
+--
+
+**Usage Analytics:**
+[source,rust]
+--
+// src/services/analytics.rs
+pub struct AnalyticsService {
+    db: PgPool,
+    clickhouse: ClickHouse,
+}
+
+impl AnalyticsService {
+    pub async fn record_download(&self, cartridge_id: &str, user_id: Option<&str>) -> Result<()> {
+        // Record in ClickHouse for analytics
+        self.clickhouse.execute(
+            "INSERT INTO cartridge_downloads (cartridge_id, user_id, timestamp)
+             VALUES (?, ?, now())",
+            &[cartridge_id.into(), user_id.unwrap_or("").into()]
+        ).await?;
+        
+        // Update PostgreSQL counter
+        sqlx::query!(
+            "UPDATE cartridges SET 
+                downloads = downloads + 1,
+                weekly_downloads = weekly_downloads + 1,
+                monthly_downloads = monthly_downloads + 1
+             WHERE id = $1",
+            cartridge_id
+        )
+        .execute(&self.db)
+        .await?;
+        
+        Ok(())
+    }
+    
+    pub async fn get_trending(&self, limit: usize) -> Result<Vec<TrendingCartridge>> {
+        // Get cartridges with highest download growth
+        let results = self.clickhouse.query(
+            "SELECT 
+                cartridge_id,
+                COUNT(*) as downloads,
+                COUNT(DISTINCT user_id) as unique_users
+             FROM cartridge_downloads
+             WHERE timestamp > now() - INTERVAL 7 DAY
+             GROUP BY cartridge_id
+             ORDER BY downloads DESC
+             LIMIT ?",
+            &[limit.into()]
+        ).await?;
+        
+        Ok(results.into_iter().map(|row| TrendingCartridge {
+            cartridge_id: row.cartridge_id,
+            downloads: row.downloads,
+            unique_users: row.unique_users,
+            growth_rate: self.calculate_growth_rate(&row.cartridge_id).await?,
+        }).collect())
+    }
+}
+--
+
+=== Verification System
+
+**Verification Levels:**
+[cols="1,1,1,1"]
+|=== 
+| Level | Name | Requirements | Badge
+
+| Level 0 
+| Unverified 
+| Basic cartridge, no verification 
+| ❌ None
+
+| Level 1 
+| Basic Verification 
+| Author identity verified 
+| ✅ Verified Author
+
+| Level 2 
+| Security Reviewed 
+| Code scan passed, no critical vulnerabilities 
+| 🔒 Security Reviewed
+
+| Level 3 
+| Community Approved 
+| Level 2 + 10+ stars, 4.5+ rating 
+| 🌟 Community Approved
+
+| Level 4 
+| Enterprise Grade 
+| Level 3 + professional audit, SLA 
+| 🏢 Enterprise Grade
+
+| Level 5 
+| BOJ Certified 
+| Level 4 + BOJ team certification 
+| 🏆 BOJ Certified
+|=== 
+
+**Verification Service:**
+[source,rust]
+--
+// src/services/verification.rs
+pub struct VerificationService {
+    db: PgPool,
+    security_scanner: SecurityScanner,
+}
+
+impl VerificationService {
+    pub async fn verify_cartridge(&self, cartridge_id: &str) -> Result<VerificationResult> {
+        // Get cartridge details
+        let cartridge = self.get_cartridge(cartridge_id).await?;
+        
+        // Level 1: Author verification
+        let author_verified = self.check_author_verified(&cartridge.author_id).await?;
+        
+        // Level 2: Security scan
+        let security_result = self.security_scanner.scan(&cartridge).await?;
+        
+        // Level 3: Community metrics
+        let community_metrics = self.get_community_metrics(cartridge_id).await?;
+        
+        // Determine verification level
+        let level = if !author_verified {
+            0
+        } else if !security_result.passed {
+            1
+        } else if community_metrics.stars < 10 || community_metrics.rating < 4.5 {
+            2
+        } else {
+            3
+        };
+        
+        // Update verification status
+        self.update_verification_status(cartridge_id, level).await?;
+        
+        Ok(VerificationResult {
+            level,
+            author_verified,
+            security_result,
+            community_metrics,
+        })
+    }
+    
+    pub async fn request_professional_audit(&self, cartridge_id: &str) -> Result<AuditRequest> {
+        // Create audit request
+        let request_id = Uuid::new_v4().to_string();
+        
+        sqlx::query!(
+            "INSERT INTO audit_requests (id, cartridge_id, status, requested_at)
+             VALUES ($1, $2, 'pending', NOW())",
+            request_id,
+            cartridge_id
+        )
+        .execute(&self.db)
+        .await?;
+        
+        Ok(AuditRequest {
+            id: request_id,
+            cartridge_id: cartridge_id.to_string(),
+            status: "pending".to_string(),
+            requested_at: Utc::now(),
+        })
+    }
+}
+--
+
+=== Recommendation Engine
+
+**Collaborative Filtering:**
+[source,rust]
+--
+// src/services/recommendations.rs
+pub struct RecommendationService {
+    db: PgPool,
+    clickhouse: ClickHouse,
+}
+
+impl RecommendationService {
+    pub async fn get_recommendations(&self, user_id: &str, limit: usize) -> Result<Vec<Cartridge>> {
+        // Get user's deployed cartridges
+        let user_cartridges = self.get_user_cartridges(user_id).await?;
+        
+        if user_cartridges.is_empty() {
+            // Fallback to popular cartridges for new users
+            return self.get_popular_cartridges(limit).await;
+        }
+        
+        // Find users with similar cartridge usage
+        let similar_users = self.find_similar_users(&user_cartridges).await?;
+        
+        // Get cartridges deployed by similar users but not by current user
+        let recommendations = self.get_unused_cartridges(&user_cartridges, &similar_users).await?;
+        
+        // Rank by popularity among similar users
+        let ranked = self.rank_by_similarity(&recommendations, &similar_users).await?;
+        
+        Ok(ranked.into_iter().take(limit).collect())
+    }
+    
+    async fn find_similar_users(&self, user_cartridges: &[String]) -> Result<Vec<String>> {
+        // Use Jaccard similarity on cartridge sets
+        let result = self.clickhouse.query(
+            "WITH user_cartridge_counts AS (
+                SELECT 
+                    user_id,
+                    COUNT(*) as common_count
+                FROM cartridge_deployments
+                WHERE cartridge_id IN ?
+                GROUP BY user_id
+                HAVING COUNT(*) > 0
+             )
+             SELECT 
+                user_id,
+                common_count / (
+                    SELECT COUNT(DISTINCT cartridge_id)
+                    FROM cartridge_deployments
+                    WHERE user_id = user_cartridge_counts.user_id
+                ) as similarity
+             FROM user_cartridge_counts
+             ORDER BY similarity DESC
+             LIMIT 100",
+            &[user_cartridges.into()]
+        ).await?;
+        
+        Ok(result.into_iter().map(|row| row.user_id).collect())
+    }
+}
+--
+
+**Featured Cartridges Curation:**
+[source,rust]
+--
+// src/services/curation.rs
+pub struct CurationService {
+    db: PgPool,
+}
+
+impl CurationService {
+    pub async fn get_featured_cartridges(&self, limit: usize) -> Result<Vec<FeaturedCartridge>> {
+        // Get manually curated featured cartridges
+        let curated = sqlx::query_as!(
+            FeaturedCartridge,
+            "SELECT c.*, fc.featured_at, fc.reason, fc.category
+             FROM cartridges c
+             JOIN featured_cartridges fc ON c.id = fc.cartridge_id
+             WHERE fc.is_active = true
+             ORDER BY fc.featured_at DESC
+             LIMIT $1",
+            limit as i64
+        )
+        .fetch_all(&self.db)
+        .await?;
+        
+        // Fallback: if not enough curated, add top rated
+        if curated.len() < limit {
+            let needed = limit - curated.len();
+            let top_rated = self.get_top_rated(needed).await?;
+            curated.extend(top_rated);
+        }
+        
+        Ok(curated)
+    }
+    
+    pub async fn feature_cartridge(
+        &self,
+        cartridge_id: &str,
+        reason: &str,
+        category: &str
+    ) -> Result<()> {
+        sqlx::query!(
+            "INSERT INTO featured_cartridges 
+                (cartridge_id, featured_at, reason, category, is_active)
+             VALUES ($1, NOW(), $2, $3, true)
+             ON CONFLICT (cartridge_id) DO UPDATE SET
+                reason = EXCLUDED.reason,
+                category = EXCLUDED.category,
+                is_active = true,
+                featured_at = NOW()",
+            cartridge_id,
+            reason,
+            category
+        )
+        .execute(&self.db)
+        .await?;
+        
+        Ok(())
+    }
+}
+--
+
+== Frontend Implementation
+
+=== Marketplace UI Components
+
+**React Components:**
+[source,jsx]
+--
+// frontend/components/Marketplace.jsx
+import React, { useState, useEffect } from 'react';
+import { searchCartridges, getPopular, getTrending, getVerified } from '../api/marketplace';
+
+const Marketplace = () => {
+  const [activeTab, setActiveTab] = useState('popular');
+  const [cartridges, setCartridges] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+
+  useEffect(() => {
+    fetchCartridges();
+  }, [activeTab]);
+
+  const fetchCartridges = async () => {
+    setLoading(true);
+    try {
+      let results;
+      switch (activeTab) {
+        case 'popular':
+          results = await getPopular();
+          break;
+        case 'trending':
+          results = await getTrending();
+          break;
+        case 'verified':
+          results = await getVerified();
+          break;
+        default:
+          results = await searchCartridges(searchQuery);
+      }
+      setCartridges(results);
+    } catch (error) {
+      console.error('Failed to fetch cartridges:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSearch = (e) => {
+    e.preventDefault();
+    setActiveTab('search');
+    fetchCartridges();
+  };
+
+  return (
+    <div className="marketplace">
+      <h1>🛒 Cartridge Marketplace</h1>
+      
+      <div className="search-bar">
+        <form onSubmit={handleSearch}>
+          <input
+            type="text"
+            placeholder="Search cartridges..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+          <button type="submit">🔍 Search</button>
+        </form>
+      </div>
+
+      <div className="tabs">
+        <button
+          className={activeTab === 'popular' ? 'active' : ''}
+          onClick={() => setActiveTab('popular')}
+        >
+          🌟 Popular
+        </button>
+        <button
+          className={activeTab === 'trending' ? 'active' : ''}
+          onClick={() => setActiveTab('trending')}
+        >
+          📈 Trending
+        </button>
+        <button
+          className={activeTab === 'verified' ? 'active' : ''}
+          onClick={() => setActiveTab('verified')}
+        >
+          ✅ Verified
+        </button>
+      </div>
+
+      {loading ? (
+        <div className="loading">Loading cartridges...</div>
+      ) : (
+        <div className="cartridge-grid">
+          {cartridges.map(cartridge => (
+            <CartridgeCard key={cartridge.id} cartridge={cartridge} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+const CartridgeCard = ({ cartridge }) => {
+  const getVerificationBadge = () => {
+    switch (cartridge.verificationLevel) {
+      case 1: return '✅ Verified';
+      case 2: return '🔒 Security Reviewed';
+      case 3: return '🌟 Community Approved';
+      case 4: return '🏢 Enterprise';
+      case 5: return '🏆 BOJ Certified';
+      default: return '';
+    }
+  };
+
+  return (
+    <div className="cartridge-card">
+      <div className="cartridge-header">
+        <h3>{cartridge.name}</h3>
+        {getVerificationBadge() && (
+          <span className="verification-badge">{getVerificationBadge()}</span>
+        )}
+      </div>
+      <p className="description">{cartridge.description}</p>
+      
+      <div className="stats">
+        <span>🌟 {cartridge.stars}</span>
+        <span>🍴 {cartridge.forks}</span>
+        <span>📥 {cartridge.downloads}</span>
+        <span>⭐ {cartridge.rating || 'New'}</span>
+      </div>
+      
+      <div className="categories">
+        {cartridge.categories.map(cat => (
+          <span key={cat} className="category-tag">{cat}</span>
+        ))}
+      </div>
+      
+      <div className="cartridge-actions">
+        <button className="deploy-btn">⚡ Deploy</button>
+        <button className="details-btn">📖 Details</button>
+      </div>
+    </div>
+  );
+};
+
+export default Marketplace;
+--
+
+**Cartridge Detail Page:**
+[source,jsx]
+--
+// frontend/components/CartridgeDetail.jsx
+const CartridgeDetail = () => {
+  const { id } = useParams();
+  const [cartridge, setCartridge] = useState(null);
+  const [reviews, setReviews] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [cartridgeData, reviewData] = await Promise.all([
+          getCartridge(id),
+          getCartridgeReviews(id)
+        ]);
+        setCartridge(cartridgeData);
+        setReviews(reviewData);
+      } catch (error) {
+        console.error('Failed to fetch cartridge details:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchData();
+  }, [id]);
+
+  if (loading) return <div>Loading...</div>;
+  if (!cartridge) return <div>Cartridge not found</div>;
+
+  return (
+    <div className="cartridge-detail">
+      <div className="header">
+        <div className="info">
+          <h1>{cartridge.name}</h1>
+          <div className="author">
+            by <a href={`/users/${cartridge.author.id}`}>{cartridge.author.name}</a>
+          </div>
+          <div className="verification">
+            {getVerificationBadge(cartridge.verificationLevel)}
+          </div>
+        </div>
+        
+        <div className="actions">
+          <button className="deploy-btn">⚡ One-Click Deploy</button>
+          <button className="fork-btn">🍴 Fork</button>
+          <button className="star-btn">
+            🌟 {cartridge.stars} Star
+          </button>
+        </div>
+      </div>
+
+      <div className="stats-row">
+        <div className="stat">
+          <div className="value">{cartridge.downloads}</div>
+          <div className="label">Downloads</div>
+        </div>
+        <div className="stat">
+          <div className="value">{cartridge.rating || 'New'}</div>
+          <div className="label">Rating</div>
+        </div>
+        <div className="stat">
+          <div className="value">{cartridge.forks}</div>
+          <div className="label">Forks</div>
+        </div>
+        <div className="stat">
+          <div className="value">{cartridge.reviewCount}</div>
+          <div className="label">Reviews</div>
+        </div>
+      </div>
+
+      <div className="content">
+        <div className="description">
+          <h2>Description</h2>
+          <Markdown content={cartridge.description} />
+        </div>
+
+        <div className="features">
+          <h2>Features</h2>
+          <ul>
+            {cartridge.features.map(feature => (
+              <li key={feature}>{feature}</li>
+            ))}
+          </ul>
+        </div>
+
+        <div className="documentation">
+          <h2>Documentation</h2>
+          <a href={cartridge.documentationUrl} target="_blank">
+            📖 View Full Documentation
+          </a>
+        </div>
+
+        <div className="usage-examples">
+          <h2>Usage Examples</h2>
+          <CodeExample language="rust">
+            {cartridge.exampleCode}
+          </CodeExample>
+        </div>
+
+        <div className="reviews">
+          <h2>User Reviews</h2>
+          <ReviewList reviews={reviews} />
+          <ReviewForm cartridgeId={id} onReviewSubmitted={fetchReviews} />
+        </div>
+      </div>
+    </div>
+  );
+};
+--
+
+=== Deployment Flow
+
+**One-Click Deployment:**
+[source,mermaid]
+--
+sequenceDiagram
+    User->>Frontend: Click "Deploy"
+    Frontend->>Deployment API: POST /deployments
+    Deployment API->>Cartridge Registry: Get cartridge details
+    Cartridge Registry-->>Deployment API: Cartridge manifest
+    Deployment API->>Provisioner: Create deployment
+    Provisioner->>Kubernetes: Create resources
+    Kubernetes-->>Provisioner: Deployment status
+    Provisioner->>Configurator: Apply configuration
+    Configurator-->>Provisioner: Configuration applied
+    Provisioner-->>Deployment API: Deployment successful
+    Deployment API->>Analytics: Record deployment
+    Deployment API-->>Frontend: Deployment ID
+    Frontend->>User: Show deployment dashboard
+    User->>Frontend: Monitor deployment
+    Frontend->>Deployment API: Get status
+    Deployment API-->>Frontend: Current status
+    Frontend-->>User: Real-time updates
+--
+
+**Deployment API:**
+[source,rust]
+--
+// src/routes/deployments.rs
+#[actix_web::post("/deployments")]
+async fn create_deployment(
+    req: HttpRequest,
+    deployment_data: web::Json<DeploymentRequest>,
+    user: ReqData<User>
+) -> Result<HttpResponse> {
+    // Validate user can deploy this cartridge
+    let cartridge = cartridge_service.get_cartridge(&deployment_data.cartridge_id)
+        .await?;
+    
+    if !cartridge.is_public && !user.can_access(&cartridge) {
+        return Err(DeploymentError::Unauthorized);
+    }
+    
+    // Create deployment record
+    let deployment_id = deployment_service.create_deployment(
+        &user.id,
+        &deployment_data.cartridge_id,
+        deployment_data.config.clone()
+    ).await?;
+    
+    // Trigger provisioning
+    provisioner.deploy_cartridge(
+        &deployment_id,
+        &cartridge,
+        deployment_data.config
+    ).await?;
+    
+    // Record analytics
+    analytics_service.record_deployment(
+        &user.id,
+        &cartridge.id,
+        &deployment_id
+    ).await?;
+    
+    Ok(HttpResponse::Created().json(DeploymentResponse {
+        id: deployment_id,
+        status: "provisioning".to_string(),
+        cartridge: cartridge.into(),
+        created_at: Utc::now(),
+    }))
+}
+
+#[actix_web::get("/deployments/{deployment_id}")]
+async fn get_deployment_status(
+    deployment_id: web::Path<String>,
+    user: ReqData<User>
+) -> Result<HttpResponse> {
+    let deployment = deployment_service.get_deployment(&deployment_id, &user.id)
+        .await?;
+    
+    Ok(HttpResponse::Ok().json(deployment))
+}
+--
+
+== Monitoring & Analytics
+
+=== Key Metrics
+
+[cols="1,1,1,1"]
+|=== 
+| Metric | Description | Threshold | Action
+
+| marketplace_searches 
+| Number of search queries 
+| - 
+| Track user engagement
+
+| cartridge_views 
+| Cartridge detail page views 
+| - 
+| Measure interest
+
+| deployment_rate 
+| Deployments per hour 
+| Sudden spikes 
+| Check for issues
+
+| search_success_rate 
+| Searches returning results 
+| < 80% 
+| Improve search relevance
+
+| conversion_rate 
+| Views to deployments ratio 
+| < 5% 
+| Improve cartridge descriptions
+
+| error_rate 
+| Failed deployment attempts 
+| > 1% 
+| Alert operations team
+|=== 
+
+=== Prometheus Alerts
+
+[source,yaml]
+--
+# src/monitoring/marketplace_alerts.yml
+groups:
+- name: marketplace-alerts
+  rules:
+  - alert: HighDeploymentFailureRate
+    expr: rate(deployment_failures_total[5m]) / rate(deployment_attempts_total[5m]) > 0.01
+    for: 5m
+    labels:
+      severity: critical
+    annotations:
+      summary: "High deployment failure rate"
+      description: "{{ $value }}% of deployments are failing"
+
+  - alert: LowSearchSuccessRate
+    expr: rate(search_with_results_total[1h]) / rate(search_total[1h]) < 0.8
+    for: 1h
+    labels:
+      severity: warning
+    annotations:
+      summary: "Low search success rate"
+      description: "Only {{ $value }}% of searches return results"
+
+  - alert: CartridgeNotFoundSpike
+    expr: increase(cartridge_not_found_errors[5m]) > 5
+    labels:
+      severity: warning
+    annotations:
+      summary: "Cartridge not found errors"
+      description: "{{ $value }} cartridge not found errors in last 5 minutes"
+
+  - alert: MarketplaceLatencyHigh
+    expr: histogram_quantile(0.95, sum(rate(marketplace_api_latency_seconds_bucket[5m])) by (le)) > 1
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: "High marketplace API latency"
+      description: "95th percentile latency is {{ $value }}s"
+--
+
+== Testing Strategy
+
+=== Test Coverage
+
+[cols="1,1,1"]
+|=== 
+| Test Type | Coverage | Status
+
+| Unit Tests 
+| API endpoints and services 
+| ✅ Implemented
+
+| Integration Tests 
+| Full deployment workflow 
+| 🚧 Partial
+
+| Search Tests 
+| Search relevance and ranking 
+| 📝 Planned
+
+| Load Tests 
+| Performance under load 
+| 📝 Planned
+
+| UI Tests 
+| Frontend functionality 
+| 📝 Planned
+|=== 
+
+=== Test Examples
+
+[source,rust]
+--
+// tests/marketplace_tests.rs
+#[actix_rt::test]
+async fn test_search_cartridges() {
+    // Setup test data
+    let test_cartridge = Cartridge {
+        id: "test-cartridge".to_string(),
+        name: "Test Cartridge".to_string(),
+        description: "A test cartridge for searching".to_string(),
+        ..Default::default()
+    };
+    
+    // Insert into database
+    setup_test_cartridge(&test_cartridge).await;
+    
+    // Test search
+    let results = search_service.search("test", None, 10, 0).await.unwrap();
+    
+    assert_eq!(results.total, 1);
+    assert_eq!(results.results[0].name, "Test Cartridge");
+}
+
+#[actix_rt::test]
+async fn test_popular_cartridges() {
+    // Setup test data with different star counts
+    let cartridge1 = Cartridge { id: "cart1".to_string(), stars: 100, ..Default::default() };
+    let cartridge2 = Cartridge { id: "cart2".to_string(), stars: 50, ..Default::default() };
+    
+    setup_test_cartridges(&[cartridge1, cartridge2]).await;
+    
+    // Test popular endpoint
+    let results = discovery_service.get_popular(10).await.unwrap();
+    
+    assert_eq!(results.len(), 2);
+    assert_eq!(results[0].id, "cart1"); // Higher stars first
+    assert_eq!(results[1].id, "cart2");
+}
+
+#[actix_rt::test]
+async fn test_deployment_workflow() {
+    // Setup test cartridge
+    let cartridge = setup_test_cartridge(&Default::default()).await;
+    
+    // Test deployment creation
+    let deployment = deployment_service.create_deployment(
+        "test-user",
+        &cartridge.id,
+        Default::default()
+    ).await.unwrap();
+    
+    assert_eq!(deployment.cartridge_id, cartridge.id);
+    assert_eq!(deployment.status, "pending");
+    
+    // Verify analytics recorded
+    let metrics = analytics_service.get_deployment_metrics(&cartridge.id).await;
+    assert_eq!(metrics.deployment_count, 1);
+}
+--
+
+== Migration Plan
+
+=== Current State Assessment
+
+[cols="1,1,1"]
+|=== 
+| Component | Current Status | Gap
+
+| Cartridge Registry 
+| Basic registry implemented 
+| No discovery features
+
+| Search 
+| No search functionality 
+| Full implementation needed
+
+| Popularity Metrics 
+| No tracking 
+| Complete implementation
+
+| Verification 
+| No verification system 
+| Full implementation
+
+| Recommendations 
+| No recommendation engine 
+| Complete implementation
+
+| Frontend 
+| Basic UI exists 
+| Marketplace pages needed
+|=== 
+
+=== Migration Steps
+
+[cols="1,1,1,1"]
+|=== 
+| Phase | Action | Timeline | Owner
+
+| 1. Foundation 
+| Implement search service 
+| Q2 2025 
+| Backend Team
+
+| 2. Discovery 
+| Add popularity metrics 
+| Q2 2025 
+| Analytics Team
+
+| 3. Quality Signals 
+| Implement verification system 
+| Q3 2025 
+| Security Team
+
+| 4. Frontend 
+| Build marketplace UI 
+| Q3 2025 
+| Frontend Team
+
+| 5. Recommendations 
+| Implement recommendation engine 
+| Q4 2025 
+| ML Team
+
+| 6. Curation 
+| Add featured cartridges 
+| Q4 2025 
+| Product Team
+
+| 7. Monitoring 
+| Setup marketplace analytics 
+| Q4 2025 
+| DevOps Team
+
+| 8. Optimization 
+| Performance tuning 
+| Q1 2026 
+| Performance Team
+|=== 
+
+=== Rollout Strategy
+
+**Phased Approach:**
+
+1. **Basic Discovery (Q2 2025):**
+   - Implement search and basic filtering
+   - Add popularity sorting
+   - Build simple marketplace UI
+
+2. **Quality Signals (Q3 2025):**
+   - Add star/fork system
+   - Implement verification badges
+   - Show usage statistics
+
+3. **Personalization (Q4 2025):**
+   - Add recommendation engine
+   - Implement featured cartridges
+   - Enable user collections
+
+4. **Ecosystem Features (2026):**
+   - Monetization support
+   - Advanced analytics
+   - Community curation
+
+**Fallback Plan:**
+* Maintain direct cartridge registry access during transition
+* Gradual rollout with feature flags
+* Comprehensive monitoring of new features
+* Rapid rollback capability
+
+== Documentation & Training
+
+=== Developer Guide
+
+**Adding Cartridges to Marketplace:**
+
+1. **Publish to Registry:**
+   ```bash
+   # Publish your cartridge
+   cartridge publish --registry boj-mistral.example.com/my-cartridge
+   ```
+
+2. **Add Metadata:**
+   ```yaml
+   # cartridge.yaml
+   name: My Awesome Cartridge
+   description: Solves important problems efficiently
+   categories:
+     - ai
+     - data-processing
+   tags:
+     - machine-learning
+     - nlp
+   ```
+
+3. **Submit for Verification:**
+   ```bash
+   # Request verification
+   cartridge verify --level 2
+   ```
+
+=== User Guide
+
+**Finding Cartridges:**
+
+1. **Browse Categories:**
+   - Navigate to marketplace
+   - Select category from dropdown
+   - Browse available cartridges
+
+2. **Search:**
+   - Enter keywords in search bar
+   - Use filters to narrow results
+   - Sort by popularity or rating
+
+3. **Evaluate Quality:**
+   - Check verification badges
+   - Read user reviews
+   - View star/fork counts
+
+4. **Deploy:**
+   - Click "Deploy" button
+   - Configure basic settings
+   - Monitor deployment status
+
+== Risks & Mitigations
+
+[cols="1,1,1,1"]
+|=== 
+| Risk | Impact | Mitigation | Owner
+
+| Search Performance 
+| High 
+| Elasticsearch optimization 
+| Backend Team
+
+| Discovery Quality 
+| Medium 
+| Continuous relevance tuning 
+| ML Team
+
+| Verification Abuse 
+| Medium 
+| Manual review for high levels 
+| Security Team
+
+| Spam Cartridges 
+| High 
+| Community reporting system 
+| Moderation Team
+
+| Deployment Failures 
+| Critical 
+| Comprehensive error handling 
+| DevOps Team
+
+| Adoption 
+| High 
+| Marketing and education 
+| Product Team
+|=== 
+
+== Future Enhancements
+
+1. **AI-Powered Discovery:**
+   - Natural language search
+   - Intent-based recommendations
+   - Automated categorization
+
+2. **Monetization:**
+   - Paid cartridges
+   - Subscription models
+   - Revenue sharing
+
+3. **Enterprise Features:**
+   - Private marketplace
+   - Organization catalogs
+   - Approval workflows
+
+4. **Community Features:**
+   - User collections
+   - Curated guides
+   - Social sharing
+
+5. **Advanced Analytics:**
+   - Usage patterns
+   - Performance insights
+   - Cost optimization
+
+== References
+
+* Elasticsearch Documentation: https://www.elastic.co/guide/index.html
+* PostgreSQL JSON: https://www.postgresql.org/docs/current/datatype-json.html
+* ClickHouse Analytics: https://clickhouse.com/docs/en/
+* OpenAPI Specification: https://swagger.io/specification/
+
+== Appendix: API Examples
+
+**Search Request:**
+```bash
+curl -X GET "https://api.boj-mistral.example.com/marketplace/search?q=sentiment&category=ai&limit=10"
+```
+
+**Search Response:**
+[source,json]
+--
+{
+  "results": [
+    {
+      "id": "sentiment-analysis-v1",
+      "name": "Sentiment Analysis",
+      "description": "Advanced sentiment analysis using transformer models",
+      "version": "1.2.0",
+      "author": {
+        "id": "ai-experts",
+        "name": "AI Experts Inc."
+      },
+      "categories": ["ai", "nlp"],
+      "tags": ["sentiment", "text-analysis", "transformers"],
+      "stars": 42,
+      "forks": 8,
+      "downloads": 1250,
+      "rating": 4.8,
+      "reviewCount": 15,
+      "isVerified": true,
+      "verificationLevel": 3,
+      "createdAt": "2025-01-15T10:30:00Z",
+      "updatedAt": "2025-03-10T14:25:00Z"
+    },
+    {
+      "id": "simple-sentiment",
+      "name": "Simple Sentiment Analysis",
+      "description": "Lightweight sentiment analysis for basic needs",
+      "version": "0.9.5",
+      "author": {
+        "id": "dev-team",
+        "name": "Development Team"
+      },
+      "categories": ["ai", "nlp"],
+      "tags": ["sentiment", "lightweight"],
+      "stars": 12,
+      "forks": 3,
+      "downloads": 320,
+      "rating": 4.2,
+      "reviewCount": 4,
+      "isVerified": false,
+      "verificationLevel": 1,
+      "createdAt": "2024-11-05T08:15:00Z",
+      "updatedAt": "2025-02-20T09:40:00Z"
+    }
+  ],
+  "total": 2,
+  "limit": 10,
+  "offset": 0
+}
+--
+
+**Deployment Request:**
+```bash
+curl -X POST "https://api.boj-mistral.example.com/deployments" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "cartridgeId": "sentiment-analysis-v1",
+    "config": {
+      "modelSize": "medium",
+      "maxLength": 512,
+      "language": "en"
+    }
+  }'
+```
+
+**Deployment Response:**
+[source,json]
+--
+{
+  "id": "dep-a1b2c3d4",
+  "status": "provisioning",
+  "cartridge": {
+    "id": "sentiment-analysis-v1",
+    "name": "Sentiment Analysis",
+    "version": "1.2.0"
+  },
+  "createdAt": "2025-03-19T12:00:00Z",
+  "updatedAt": "2025-03-19T12:00:00Z",
+  "endpoint": null,
+  "logs": "/deployments/dep-a1b2c3d4/logs"
+}
+--
+
+== Appendix: Cartridge Metadata Schema
+
+**Complete Cartridge Metadata:**
+[source,json]
+--
+{
+  "$schema": "https://boj-mistral.example.com/schemas/cartridge-v1.json",
+  "id": "sentiment-analysis-v1",
+  "name": "Sentiment Analysis",
+  "description": "Advanced sentiment analysis using transformer models. Supports multiple languages and can handle up to 1024 token inputs.",
+  "version": "1.2.0",
+  "author": {
+    "id": "ai-experts",
+    "name": "AI Experts Inc.",
+    "email": "support@ai-experts.example.com",
+    "website": "https://ai-experts.example.com"
+  },
+  "license": "Apache-2.0",
+  "categories": ["ai", "nlp"],
+  "tags": ["sentiment", "text-analysis", "transformers", "multilingual"],
+  "keywords": ["sentiment", "analysis", "nlp", "ai", "text"],
+  "features": [
+    "Multi-language support",
+    "Custom model sizes",
+    "Batch processing",
+    "Real-time analysis",
+    "REST API endpoint"
+  ],
+  "requirements": {
+    "cpu": "2 cores minimum",
+    "memory": "4GB minimum",
+    "gpu": "Optional but recommended",
+    "storage": "1GB for model files"
+  },
+  "configuration": {
+    "modelSize": {
+      "type": "string",
+      "enum": ["small", "medium", "large"],
+      "default": "medium"
+    },
+    "maxLength": {
+      "type": "integer",
+      "minimum": 64,
+      "maximum": 1024,
+      "default": 512
+    },
+    "language": {
+      "type": "string",
+      "enum": ["en", "es", "fr", "de", "it"],
+      "default": "en"
+    }
+  },
+  "inputs": {
+    "text": {
+      "type": "string",
+      "description": "Text to analyze",
+      "required": true
+    }
+  },
+  "outputs": {
+    "sentiment": {
+      "type": "string",
+      "enum": ["positive", "neutral", "negative"],
+      "description": "Detected sentiment"
+    },
+    "score": {
+      "type": "number",
+      "minimum": -1,
+      "maximum": 1,
+      "description": "Sentiment score (-1 to 1)"
+    },
+    "confidence": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1,
+      "description": "Confidence score"
+    }
+  },
+  "examples": [
+    {
+      "input": {
+        "text": "I love this product! It's amazing."
+      },
+      "output": {
+        "sentiment": "positive",
+        "score": 0.95,
+        "confidence": 0.98
+      }
+    }
+  ],
+  "documentation": "https://ai-experts.example.com/sentiment-analysis/docs",
+  "support": "https://ai-experts.example.com/support",
+  "source": "https://github.com/ai-experts/sentiment-analysis",
+  "createdAt": "2025-01-15T10:30:00Z",
+  "updatedAt": "2025-03-10T14:25:00Z",
+  "verification": {
+    "level": 3,
+    "status": "verified",
+    "lastScan": "2025-03-15T09:15:00Z",
+    "security": {
+      "vulnerabilities": 0,
+      "score": "A+"
+    }
+  }
+}
+--
+
+**Recommendation Algorithm:**
+[source,python]
+--
+# Pseudocode for recommendation algorithm
+def recommend_cartridges(user_id, limit=10):
+    # Get user's deployed cartridges
+    user_cartridges = get_user_cartridges(user_id)
+    
+    if not user_cartridges:
+        # New user - return popular cartridges
+        return get_popular_cartridges(limit)
+    
+    # Find similar users (Jaccard similarity)
+    similar_users = find_similar_users(user_cartridges)
+    
+    # Get cartridges used by similar users but not by current user
+    candidate_cartridges = get_unused_cartridges(user_cartridges, similar_users)
+    
+    # Rank by:
+    # 1. Frequency among similar users
+    # 2. Overall popularity
+    # 3. Rating
+    # 4. Recency
+    ranked = rank_cartridges(candidate_cartridges, similar_users)
+    
+    # Add some diversity
+    diverse_ranked = add_diversity(ranked)
+    
+    return diverse_ranked[:limit]
+
+def find_similar_users(user_cartridges, top_n=100):
+    # Calculate Jaccard similarity between users
+    # J(A,B) = |A ∩ B| / |A ∪ B|
+    similarities = []
+    
+    for user in all_users:
+        if user == user_id:
+            continue
+            
+        user_set = set(get_user_cartridges(user))
+        current_set = set(user_cartridges)
+        
+        intersection = len(user_set & current_set)
+        union = len(user_set | current_set)
+        
+        if union > 0:
+            similarity = intersection / union
+            similarities.append((user, similarity))
+    
+    # Return top N most similar users
+    return sorted(similarities, key=lambda x: x[1], reverse=True)[:top_n]
+--
+
+== Appendix: Marketplace Success Metrics
+
+**Key Performance Indicators:**
+
+[cols="1,1,1,1"]
+|=== 
+| Metric | Target | Current | Status
+
+| Time to Discovery 
+| < 30 seconds 
+| - 
+| 📝 Not measured
+
+| Deployment Conversion 
+| > 10% 
+| - 
+| 📝 Not measured
+
+| User Satisfaction 
+| > 4.5/5 
+| - 
+| 📝 Not measured
+
+| Cartridge Diversity 
+| > 500 cartridges 
+| - 
+| 📝 Not measured
+
+| Verification Rate 
+| > 30% verified 
+| - 
+| 📝 Not measured
+
+| Search Relevance 
+| > 85% success rate 
+| - 
+| 📝 Not measured
+|=== 
+
+**Growth Targets:**
+
+[cols="1,1,1"]
+|=== 
+| Timeframe | Cartridges | Deployments | Active Users
+
+| Q2 2025 
+| 100+ 
+| 500+ 
+| 200+
+
+| Q3 2025 
+| 300+ 
+| 2,000+ 
+| 500+
+
+| Q4 2025 
+| 500+ 
+| 5,000+ 
+| 1,000+
+
+| 2026 
+| 1,000+ 
+| 20,000+ 
+| 5,000+
+|=== 
+
+**Recommendation Quality Metrics:**
+
+[cols="1,1,1"]
+|=== 
+| Metric | Description | Target
+
+| Click-Through Rate 
+| % of recommendations clicked 
+| > 15%
+
+| Conversion Rate 
+| % of clicks leading to deployment 
+| > 8%
+
+| Diversity Score 
+| Coverage of different categories 
+| > 0.7
+
+| Novelty Rate 
+| % of recommendations new to user 
+| > 30%
+
+| Serendipity 
+| Unexpected but useful recommendations 
+| > 10%
+|=== 
+
+**Marketplace Health Indicators:**
+
+[cols="1,1,1"]
+|=== 
+| Indicator | Description | Target
+
+| Cartridge Churn 
+| % of cartridges updated monthly 
+| > 20%
+
+| Verification Growth 
+| New verifications per month 
+| > 10
+
+| Community Engagement 
+| Reviews and ratings per cartridge 
+| > 2
+
+| Deployment Success 
+| % of deployments succeeding 
+| > 95%
+
+| User Retention 
+| % of users returning monthly 
+| > 40%
+|=== 
+
+**Recommendation:** Start with basic discovery features and iteratively add quality signals and personalization. Focus on search relevance and user engagement metrics to guide development priorities.

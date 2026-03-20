@@ -1,68 +1,136 @@
-SPDX-License-Identifier: PMPL-1.0-or-later
+SPDX-License-Identifier: PMPL-1.0-or-later-or-later
+SPDX-FileCopyrightText: 2024-2025 Palimpsest Stewardship Council
 
 ================================================================================
-EXHIBIT A — ETHICAL USE GUIDELINES
-Palimpsest-MPL License Version 1.0
+EXHIBIT A - ETHICAL USE GUIDELINES
 ================================================================================
 
-1. PURPOSE
+Supplement to Palimpsest-MPL License v1.0
 
-   These guidelines define ethical use expectations for software distributed
-   under the Palimpsest-MPL License. They are not legally binding restrictions
-   but represent the community's shared values and expectations.
+--------------------------------------------------------------------------------
+PURPOSE
+--------------------------------------------------------------------------------
 
-2. PRINCIPLES
+These guidelines establish ethical expectations for use of Covered Software.
+While legal enforcement focuses on specific obligations, these principles
+address broader concerns about respect, attribution, and cultural sensitivity
+that law alone cannot capture.
 
-   2.1. Respect for Emotional Lineage
-        Users and distributors should acknowledge and preserve the cultural,
-        narrative, and symbolic meaning embedded in Covered Software. This
-        includes protest traditions, cultural heritage, trauma narratives,
-        and community stories where documented.
+--------------------------------------------------------------------------------
+CORE PRINCIPLES
+--------------------------------------------------------------------------------
 
-   2.2. Transparency in Automated Processing
-        When Covered Software is processed by Non-Interpretive Systems
-        (AI training, content aggregation, automated summarization), such
-        use should be documented publicly and not misrepresent the
-        provenance of outputs.
+1. RESPECT FOR EMOTIONAL LINEAGE
 
-   2.3. Good Faith Attribution
-        Contributors should be credited accurately. Derivative works should
-        maintain the attribution chain and not obscure the origins of
-        contributions.
+   Creative works carry meaning beyond their literal content. Protest songs,
+   cultural narratives, trauma stories, and community expressions have
+   emotional weight and historical context that deserve recognition.
 
-   2.4. Community Benefit
-        Commercial use of Covered Software should contribute to the broader
-        community through bug fixes, documentation, or other improvements
-        where feasible.
+   When using Covered Software:
+   - Acknowledge the cultural and historical context where documented
+   - Avoid uses that trivialize, mock, or misappropriate such content
+   - Consider how your use affects communities connected to the work
 
-3. SPECIFIC GUIDANCE
+2. TRANSPARENT ATTRIBUTION
 
-   3.1. AI and Machine Learning
-        - Training on Covered Software requires disclosure
-        - Generated outputs must not claim Emotional Lineage of the original
-        - Model cards should reference source materials
+   Attribution is more than legal compliance; it is recognition of creative
+   labor and intellectual contribution.
 
-   3.2. Content Aggregation
-        - Aggregators must link back to original sources
-        - Context must not be stripped in ways that distort meaning
-        - Cultural and narrative context should be preserved
+   Best practices:
+   - Provide meaningful attribution, not just license text
+   - Link to original sources where possible
+   - Acknowledge the lineage of ideas, not just code
 
-   3.3. Commercial Products
-        - Products built on Covered Software should acknowledge it
-        - Pricing should not exploit communities that created the work
-        - Support and improvements should flow back to the community
+3. AI AND AUTOMATED SYSTEMS
 
-4. ENFORCEMENT
+   Automated systems, particularly AI/ML training, present unique challenges
+   for creative attribution and meaning preservation.
 
-   These guidelines are enforced through community norms, not legal action.
-   Disputes should be raised with the Palimpsest Stewardship Council for
-   non-binding guidance.
+   When using Covered Software with AI systems:
+   - Document all training uses in your model cards or system documentation
+   - Do not claim AI outputs inherit the creative authority of training data
+   - Consider opt-out mechanisms for creators who object to AI training use
+   - Preserve provenance information through your processing pipelines
 
-5. AMENDMENTS
+4. COMMERCIAL RESPONSIBILITY
 
-   These guidelines may be updated by the Palimpsest Stewardship Council.
-   Updates apply to new distributions, not retroactively.
+   Commercial entities have greater resources and therefore greater
+   responsibility to uphold ethical use.
 
-================================================================================
+   Commercial users should:
+   - Conduct due diligence on the provenance and licensing of works used
+   - Implement systems to preserve and communicate attribution
+   - Support the communities whose creative works enable your products
+   - Consider contributing back to projects you depend upon
+
+5. CULTURAL SENSITIVITY
+
+   Works may have significance to specific communities, including:
+   - Indigenous and diaspora narratives
+   - Marginalized community expressions
+   - Religious and spiritual content
+   - Historical trauma documentation
+
+   Exercise care when:
+   - Adapting works from cultural contexts you do not share
+   - Creating derivative works that might alter cultural meaning
+   - Distributing works in contexts the original creators might not have
+     anticipated or approved
+
+--------------------------------------------------------------------------------
+IMPLEMENTATION GUIDANCE
+--------------------------------------------------------------------------------
+
+FOR INDIVIDUAL DEVELOPERS
+
+- Read and consider the Emotional Lineage documentation if present
+- Include meaningful CONTRIBUTORS or AUTHORS files in your projects
+- When in doubt about appropriate use, contact the original creators
+
+FOR ORGANIZATIONS
+
+- Establish clear policies for open source and creative commons use
+- Train staff on attribution and ethical use requirements
+- Implement technical systems to preserve provenance metadata
+- Conduct periodic audits of compliance
+
+FOR AI/ML PRACTITIONERS
+
+- Maintain detailed records of training data provenance
+- Implement filtering for works with explicit opt-out declarations
+- Document model lineage and training data sources publicly
+- Consider creating opt-out mechanisms and respecting them
+
+--------------------------------------------------------------------------------
+ENFORCEMENT PHILOSOPHY
+--------------------------------------------------------------------------------
+
+These guidelines are enforced primarily through community norms rather than
+litigation. The Palimpsest Stewardship Council may:
+
+- Issue public statements about violations of ethical use principles
+- Maintain lists of known bad actors for community awareness
+- Provide guidance to creators on responding to misuse
+- Recommend creators pursue legal remedies for serious violations
+
+We believe that reputation and community standing are powerful incentives
+for ethical behavior, and that litigation should be a last resort.
+
+--------------------------------------------------------------------------------
+EVOLUTION
+--------------------------------------------------------------------------------
+
+These guidelines will evolve as technology and community understanding
+develop. The Palimpsest Stewardship Council welcomes input from:
+
+- Creators and artists
+- Indigenous and marginalized communities
+- AI/ML researchers and practitioners
+- Legal scholars and practitioners
+- Open source community members
+
+Submit feedback via the project repository Issues.
+
+--------------------------------------------------------------------------------
 END OF EXHIBIT A
-================================================================================
+--------------------------------------------------------------------------------

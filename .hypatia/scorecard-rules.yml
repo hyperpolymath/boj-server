@@ -74,6 +74,23 @@ rules:
           - docs/SECURITY.md
     remediation: "Add SECURITY.md with vulnerability reporting instructions"
 
+  vulnerability-scanning:
+    severity: high
+    description: "Repository must have automated vulnerability scanning (Gitleaks, TruffleHog, etc.)"
+    checks:
+      - workflow_exists: secret-scanner.yml
+      - uses_action: gitleaks/gitleaks-action
+      - uses_action: trufflesecurity/trufflehog
+    remediation: "Add .github/workflows/secret-scanner.yml with Gitleaks/TruffleHog"
+
+  dependency-update-tool:
+    severity: medium
+    description: "Repository must use an automated dependency update tool (Dependabot, Renovate)"
+    checks:
+      - file_exists: .github/dependabot.yml
+      - file_exists: renovate.json
+    remediation: "Create .github/dependabot.yml to enable automated updates"
+
   # --- Workflow-specific rules ---
 
   action-sha-pinning:

@@ -1,0 +1,556 @@
+= BOJ Server Mistral: Gossip Protocol Specification
+:description: QUIC-based gossip protocol for node discovery, message passing, and fault tolerance
+
+[.lead]
+This document specifies the **gossip protocol** used by BOJ Server Mistral for peer-to-peer communication, node discovery, and fault tolerance.
+
+== 🎯 Protocol Overview
+
+[cols="1,2,3", options="header"]
+|=== 
+| Aspect | Specification | Status
+
+| Transport Protocol
+| QUIC (UDP-based)
+| ✅ Implemented
+
+| Serialization
+| MessagePack + Protobuf
+| ✅ Implemented
+
+| Node Discovery
+| Hybrid (DHT + Seed Nodes)
+| 🔄 Design
+
+| Message Passing
+| Reliable + Unreliable channels
+| 🔄 Design
+
+| Fault Tolerance
+| Epidemic broadcast + ACKs
+| 🔄 Design
+
+| Consensus
+| Conflict-Free Replicated Data Types (CRDTs)
+| 📋 Planned
+
+| Encryption
+| TLS 1.3 (QUIC native)
+| ✅ Implemented
+
+| Authentication
+| JWT + mTLS
+| 🔄 Design
+|=== 
+
+== 🔧 Protocol Layers
+
+[plantuml,gossip-layers,png]
+----
+@startuml
+skinparam monochrome true
+
+rectangle "Application Layer" as app {
+  [CRDTs] as crdts
+  [Consensus] as consensus
+}
+
+rectangle "Gossip Layer" as gossip {
+  [Epidemic Broadcast] as epidemic
+  [Reliable Delivery] as reliable
+  [Fault Detection] as fault
+}
+
+rectangle "Transport Layer" as transport {
+  [QUIC] as quic
+  [TLS 1.3] as tls
+}
+
+rectangle "Network Layer" as network {
+  [UDP] as udp
+  [IPv4/IPv6] as ip
+}
+
+app --> gossip : Messages
+Gossip --> transport : Encrypted Streams
+transport --> network : Packets
+
+@enduml
+---- 
+
+== 📋 Node Discovery Protocol
+
+### 1. Hybrid Discovery Mechanism
+
+[cols="1,2,3", options="header"]
+|=== 
+| Method | Description | Usage
+
+| Seed Nodes
+| Pre-configured well-known nodes
+| Initial bootstrap
+
+| DHT (Kademlia)
+| Distributed hash table for peer discovery
+| Dynamic node joining
+
+| mDNS
+| Multicast DNS for local network discovery
+| Local cluster formation
+
+| Gossip Advertisement
+| Periodic node information broadcast
+| Continuous discovery
+|=== 
+
+### 2. Node Discovery Messages
+
+[source,protobuf]
+----
+message NodeDiscovery {
+  message NodeInfo {
+    bytes node_id = 1;           // Unique node identifier
+    string address = 2;          // IP:port
+    uint64 timestamp = 3;        // Discovery timestamp
+    map<string, string> metadata = 4; // Node metadata
+  }
+  
+  repeated NodeInfo nodes = 1;  // List of known nodes
+  uint32 ttl = 2;               // Time-to-live (hops)
+  bytes signature = 3;          // Cryptographic signature
+}
+---- 
+
+### 3. Discovery Algorithm
+
+[source,rust]
+----
+async fn discover_nodes(
+    seed_nodes: Vec<String>,
+    max_peers: usize
+) -> Result<Vec<NodeInfo>, DiscoveryError> {
+    // 1. Contact seed nodes
+    let mut peers = contact_seeds(seed_nodes).await?;
+    
+    // 2. Query DHT for additional peers
+    if let Ok(dht_peers) = query_dht().await {
+        peers.extend(dht_peers);
+    }
+    
+    // 3. Local network discovery
+    if let Ok(local_peers) = multicast_discovery().await {
+        peers.extend(local_peers);
+    }
+    
+    // 4. Filter and limit
+    let peers = filter_healthy(peers);
+    let peers = peers.into_iter().take(max_peers).collect();
+    
+    Ok(peers)
+}
+---- 
+
+## 📫 Message Passing Protocol
+
+### 1. Message Types
+
+[cols="1,2,2,2", options="header"]
+|=== 
+| Type | Purpose | Reliability | Format
+
+| `GOSSIP`
+| Epidemic broadcast
+| Unreliable
+| MessagePack
+
+| `REQUEST`
+| Direct request
+| Reliable
+| Protobuf
+
+| `RESPONSE`
+| Direct response
+| Reliable
+| Protobuf
+
+| `ACK`
+| Acknowledgement
+| Reliable
+| Binary
+
+| `PING`
+| Liveness check
+| Unreliable
+| Binary
+
+| `PONG`
+| Liveness response
+| Unreliable
+| Binary
+|=== 
+
+### 2. Message Format
+
+[source,protobuf]
+----
+syntax = "proto3";
+
+message GossipMessage {
+  enum MessageType {
+    GOSSIP = 0;
+    REQUEST = 1;
+    RESPONSE = 2;
+    ACK = 3;
+    PING = 4;
+    PONG = 5;
+  }
+  
+  MessageType type = 1;
+  bytes message_id = 2;       // Unique message identifier
+  bytes payload = 3;          // Message content
+  uint64 timestamp = 4;       // Creation timestamp
+  uint32 ttl = 5;              // Time-to-live (hops)
+  bytes signature = 6;        // Cryptographic signature
+  string source_node = 7;      // Source node ID
+  string target_node = 8;      // Target node ID (if any)
+}
+---- 
+
+### 3. Reliable Delivery
+
+[source,rust]
+----
+async fn send_reliable(
+    node: &NodeInfo,
+    message: GossipMessage,
+    timeout: Duration
+) -> Result<GossipMessage, SendError> {
+    // 1. Send initial message
+    let seq_num = generate_seq_num();
+    let mut message = message.clone();
+    message.message_id = seq_num.to_be_bytes().to_vec();
+    
+    // 2. Send with retry logic
+    let mut attempts = 0;
+    loop {
+        match quic_send(node, &message).await {
+            Ok(_) => {
+                // 3. Wait for ACK
+                match wait_for_ack(seq_num, timeout).await {
+                    Ok(ack) => return Ok(ack),
+                    Err(_) if attempts < MAX_RETRIES => {
+                        attempts += 1;
+                        continue;
+                    }
+                    Err(e) => return Err(e),
+                }
+            }
+            Err(e) if attempts < MAX_RETRIES => {
+                attempts += 1;
+                continue;
+            }
+            Err(e) => return Err(e),
+        }
+    }
+}
+---- 
+
+## 🛡️ Fault Tolerance Protocol
+
+### 1. Failure Detection
+
+[cols="1,2,2", options="header"]
+|=== 
+| Mechanism | Threshold | Action
+
+| PING/PONG
+| 3 failed attempts
+| Mark as suspect
+
+| Gossip Timeout
+| No messages for 30s
+| Mark as suspect
+
+| ACK Timeout
+| No ACK for 5s
+| Retry or mark failed
+
+| Consensus Failure
+| No quorum for 10s
+| Trigger recovery
+
+| Network Partition
+| Partition detected
+| Enter degraded mode
+|=== 
+
+### 2. Epidemic Broadcast
+
+[source,rust]
+----
+async fn epidemic_broadcast(
+    message: GossipMessage,
+    fanout: usize,
+    ttl: u32
+) -> Result<(), BroadcastError> {
+    // 1. Send to random peers
+    let peers = select_random_peers(fanout).await?;
+    
+    // 2. Parallel sending
+    let mut handles = vec![];
+    for peer in peers {
+        let msg = message.clone();
+        handles.push(tokio::spawn(async move {
+            quic_send(&peer, &msg).await
+        }));
+    }
+    
+    // 3. Wait for completion
+    for handle in handles {
+        handle.await??;
+    }
+    
+    Ok(())
+}
+---- 
+
+### 3. Failure Recovery
+
+[source,rust]
+----
+async fn handle_node_failure(
+    failed_node: &NodeInfo
+) -> Result<(), RecoveryError> {
+    // 1. Notify cluster
+    broadcast_failure(failed_node).await?;
+    
+    // 2. Redistribute data
+    if let Some(data) = get_node_data(failed_node).await {
+        redistribute_data(data).await?;
+    }
+    
+    // 3. Update routing tables
+    update_routing_tables(failed_node).await?;
+    
+    // 4. Attempt reconnection
+    if should_reconnect(failed_node) {
+        tokio::spawn(async move {
+            reconnect_loop(failed_node).await;
+        });
+    }
+    
+    Ok(())
+}
+---- 
+
+## 🌐 Geo-Redundancy Protocol
+
+### 1. Region Awareness
+
+[cols="1,2,2", options="header"]
+|=== 
+| Aspect | Implementation | Purpose
+
+| Region Tags
+| Node metadata
+| Identify node location
+
+| Latency Measurement
+| Periodic ping
+| Optimize routing
+
+| Data Replication
+| Multi-region storage
+| Fault tolerance
+
+| Traffic Routing
+| Latency-based
+| Optimal performance
+
+| Failover
+| Automatic region switch
+| High availability
+|=== 
+
+### 2. Multi-Region Gossip
+
+[source,rust]
+----
+async fn multi_region_gossip(
+    message: GossipMessage,
+    regions: Vec<String>
+) -> Result<(), GossipError> {
+    // 1. Get peers in each region
+    let mut region_peers = HashMap::new();
+    for region in regions {
+        let peers = get_region_peers(&region).await?;
+        region_peers.insert(region, peers);
+    }
+    
+    // 2. Parallel region broadcasting
+    let mut handles = vec![];
+    for (region, peers) in region_peers {
+        let msg = message.clone();
+        handles.push(tokio::spawn(async move {
+            broadcast_to_region(&region, peers, msg).await
+        }));
+    }
+    
+    // 3. Wait for all regions
+    for handle in handles {
+        handle.await??;
+    }
+    
+    Ok(())
+}
+---- 
+
+## 📊 Performance Targets
+
+[cols="1,2,2", options="header"]
+|=== 
+| Metric | Target | Current
+
+| Node Discovery Time
+| < 500ms
+| N/A
+
+| Message Latency (same region)
+| < 50ms
+| N/A
+
+| Message Latency (cross-region)
+| < 200ms
+| N/A
+
+| Broadcast Fanout
+| 10-20 peers
+| N/A
+
+| Fault Detection Time
+| < 2s
+| N/A
+
+| Recovery Time
+| < 5s
+| N/A
+
+| Cluster Scalability
+| 10,000+ nodes
+| N/A
+|=== 
+
+## 🔧 Implementation Status
+
+[cols="1,2,2", options="header"]
+|=== 
+| Component | Status | Next Steps
+
+| QUIC Transport
+| ✅ Implemented
+| Optimization
+
+| Node Discovery
+| 🔄 Design
+| Implement DHT + mDNS
+
+| Message Passing
+| 🔄 Design
+| Implement reliable channels
+
+| Fault Tolerance
+| 🔄 Design
+| Implement epidemic broadcast
+
+| Consensus (CRDTs)
+| 📋 Planned
+| Research and design
+
+| Geo-Redundancy
+| 📋 Planned
+| Multi-region testing
+
+| Benchmarking
+| 📋 Planned
+| Load testing
+|=== 
+
+## 📋 Protocol RFC
+
+### 1. Node Discovery RFC
+
+**Status**: Draft
+
+**Abstract**: Hybrid node discovery using seed nodes, DHT, and mDNS for resilient peer finding.
+
+**Motivation**: Enable nodes to discover each other in dynamic network environments.
+
+**Design**:
+- Seed nodes for initial bootstrap
+- Kademlia DHT for distributed discovery
+- mDNS for local network detection
+- Periodic gossip advertisement
+
+### 2. Reliable Message Passing RFC
+
+**Status**: Draft
+
+**Abstract**: Reliable message delivery with ACKs and retries over QUIC.
+
+**Motivation**: Ensure critical messages are delivered despite network issues.
+
+**Design**:
+- Sequence numbers for tracking
+- ACK/NACK protocol
+- Exponential backoff retries
+- Message expiration
+
+### 3. Fault Tolerance RFC
+
+**Status**: Draft
+
+**Abstract**: Epidemic broadcast with failure detection and recovery.
+
+**Motivation**: Maintain cluster consistency despite node failures.
+
+**Design**:
+- Gossip-based failure detection
+- Data redistribution on failure
+- Automatic reconnection attempts
+- Degraded mode operation
+
+## 🎯 Next Steps
+
+### Q2 2024
+1. Finalize node discovery protocol
+2. Implement basic message passing
+3. Add failure detection
+4. Create test cluster
+
+### Q3 2024
+1. Implement reliable delivery
+2. Add epidemic broadcast
+3. Implement fault recovery
+4. Geo-redundancy design
+
+### Q4 2024
+1. Consensus protocol (CRDTs)
+2. Multi-region testing
+3. Performance benchmarking
+4. Production hardening
+
+### 2025
+1. Large-scale deployment
+2. Protocol optimization
+3. Security hardening
+4. Continuous improvement
+
+## 📚 References
+
+- https://quicwg.org/
+- https://datatracker.ietf.org/doc/html/rfc6854 (Kademlia)
+- https://datatracker.ietf.org/doc/html/rfc6762 (mDNS)
+- https://github.com/quicwg/base-drafts
+- https://crdt.tech/
+- https://github.com/libp2p/specs
+- https://nats.io/

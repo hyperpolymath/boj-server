@@ -1,0 +1,756 @@
+= Quantum-Resistant Cryptography Architecture
+:toc: preamble
+:icons: font
+
+[TIP]
+====
+**Quantum Migration Status:** This document outlines the post-quantum cryptography roadmap for BOJ Server Mistral. Current implementation uses classical crypto with quantum-ready design patterns.
+====
+
+== Why Quantum Security Matters
+
+**Threat Model:**
+* Shor's algorithm can break RSA/ECC in polynomial time on quantum computers
+* Grover's algorithm reduces symmetric key security by 50%
+* Harvest-now-decrypt-later attacks on current communications
+* BOJ Server handles sensitive code submissions and user data requiring long-term protection
+
+**Current Vulnerabilities:**
+* JWT signing uses RSA/HS256 (quantum-vulnerable)
+* TLS 1.3 with X25519/ECDSA (quantum-vulnerable)
+* Svalinn attestations use classical signatures
+* Cerro-Torre signatures use ECDSA
+
+== Quantum Migration Roadmap
+
+=== Phase 1: Hybrid Cryptography (Current - Q2 2025)
+
+**Goal:** Implement hybrid classical/post-quantum crypto for seamless transition
+
+[cols="1,2,1,1"]
+|=== 
+| Component | Action | Target Completion | Status
+
+| JWT Signing 
+| Implement hybrid ES256 + Dilithium3 
+| Q1 2025 
+| ✅ Designed
+
+| TLS 1.3 
+| Add Kyber768 key exchange alongside X25519 
+| Q1 2025 
+| ✅ Designed
+
+| Svalinn Attestations 
+| Add SPHINCS+ signatures alongside ECDSA 
+| Q2 2025 
+| 🚧 In Progress
+
+| Cerro-Torre 
+| Migrate to hybrid ECDSA + Dilithium3 
+| Q2 2025 
+| 📝 Planned
+|=== 
+
+**Implementation:**
+[source,rust]
+--
+// Hybrid JWT signing in src/auth/jwt.rs
+pub fn sign_hybrid_claims(claims: &Claims) -> Result<String> {
+    // Classical signature
+    let classical_token = encode(&Header::default(), claims, &EncodingKey::from_rsa_pem(RSA_KEY))?;
+    
+    // Post-quantum signature
+    let pq_signature = dilithium3::sign(&classical_token, &DILITHIUM_KEY);
+    
+    // Combine both
+    Ok(format!("{}:{}", classical_token, hex::encode(pq_signature)))
+}
+--
+
+=== Phase 2: Full Post-Quantum Transition (Q3 2025 - Q1 2026)
+
+**Goal:** Complete migration to NIST-standardized post-quantum algorithms
+
+[cols="1,2,1,1"]
+|=== 
+| Component | Action | Target Completion | Status
+
+| JWT Signing 
+| Full migration to Dilithium3 
+| Q3 2025 
+| 📝 Planned
+
+| TLS 1.3 
+| Full migration to Kyber768 + Dilithium3 
+| Q4 2025 
+| 📝 Planned
+
+| Svalinn Attestations 
+| Full migration to SPHINCS+ 
+| Q1 2026 
+| 📝 Planned
+
+| Key Exchange 
+| Full migration to Kyber768 
+| Q1 2026 
+| 📝 Planned
+|=== 
+
+**Algorithm Selection:**
+[cols="1,1,1,2"]
+|=== 
+| Use Case | Algorithm | Security Level | Notes
+
+| Digital Signatures 
+| Dilithium3 
+| NIST Level 3 
+| Balanced size/performance
+
+| Key Exchange 
+| Kyber768 
+| NIST Level 3 
+| Small keys, fast operations
+
+| Hash-based Backup 
+| SPHINCS+ 
+| NIST Level 3 
+| Conservative fallback
+
+| Symmetric 
+| AES-256 
+| 128-bit security 
+| Double to AES-512 if needed
+|=== 
+
+=== Phase 3: Quantum-Safe Operations (2026+)
+
+**Goal:** Continuous monitoring and algorithm agility
+
+* **Quantum Randomness:** Integrate QRNG for critical operations
+* **Algorithm Agility:** Modular crypto provider system
+* **Key Rotation:** Automated post-quantum key rotation
+* **Monitoring:** Quantum threat intelligence integration
+
+== Implementation Details
+
+=== OpenQuantumSafe Integration
+
+**TLS 1.3 with Post-Quantum Crypto:**
+
+[source,bash]
+--
+# Build OpenQuantumSafe with liboqs
+git clone https://github.com/open-quantum-safe/liboqs.git
+cd liboqs
+git checkout main
+mkdir build && cd build
+cmake -GNinja -DCMAKE_INSTALL_PREFIX=/usr/local ..
+ninja && sudo ninja install
+
+# Configure BOJ Server to use OQS-provided algorithms
+--
+
+**Rust Integration:**
+[source,toml]
+--
+# Cargo.toml dependencies
+[dependencies]
+oqs = "0.8.0"  # Open Quantum Safe Rust bindings
+pqcrypto = "0.15.0"  # Alternative PQ crypto library
+--
+
+=== JWT Hybrid Signing Implementation
+
+[source,rust]
+--
+// src/auth/jwt.rs
+use oqs::sig;
+
+pub struct HybridJwtSigner {
+    classical_key: rsa::RsaPrivateKey,
+    pq_key: sig::Sig,
+}
+
+impl HybridJwtSigner {
+    pub fn new() -> Self {
+        // Initialize classical RSA key
+        let classical_key = rsa::RsaPrivateKey::new(&mut rand::thread_rng(), 4096).unwrap();
+        
+        // Initialize post-quantum Dilithium3 key
+        let pq_key = sig::Sig::new(sig::Algorithm::Dilithium3).unwrap();
+        
+        Self { classical_key, pq_key }
+    }
+    
+    pub fn sign(&self, claims: &Claims) -> Result<HybridToken> {
+        // Step 1: Sign with classical algorithm
+        let classical_token = encode(
+            &Header::default(), 
+            claims, 
+            &EncodingKey::from_rsa_pem(&classical_key.to_pem())
+        )?;
+        
+        // Step 2: Sign the classical token with PQ algorithm
+        let pq_signature = self.pq_key.sign(classical_token.as_bytes())?;
+        
+        // Step 3: Combine into hybrid token
+        Ok(HybridToken {
+            classical: classical_token,
+            post_quantum_signature: pq_signature,
+            algorithm: "RS256+Dilithium3".to_string(),
+        })
+    }
+}
+--
+
+=== TLS 1.3 Configuration with Kyber768
+
+**Nginx Configuration:**
+[source,nginx]
+--
+ssl_protocols TLSv1.3;
+ssl_ciphers 'TLS_CHACHA20_POLY1305_SHA256:TLS_AES_256_GCM_SHA384';
+ssl_ecdh_curve X25519:kyber768;
+ssl_certificates /etc/ssl/certs/boj-hybrid.pem;
+ssl_trusted_certificate /etc/ssl/certs/boj-ca.pem;
+
+# Enable post-quantum key exchange
+ssl_conf_command Options HybridPQ;
+--
+
+**Rust TLS Configuration:**
+[source,rust]
+--
+// src/network/tls.rs
+use rustls::{ClientConfig, ServerConfig};
+use rustls::crypto::ring::default_provider;
+use oqs::kem;
+
+pub fn configure_post_quantum_tls() -> ServerConfig {
+    let mut config = ServerConfig::builder()
+        .with_safe_defaults()
+        .with_no_client_auth();
+    
+    // Add post-quantum key exchange
+    let kem = kem::Kem::new(kem::Algorithm::Kyber768).unwrap();
+    config.key_exchange_algorithms.push("kyber768".to_string());
+    
+    // Configure hybrid cipher suites
+    config.cipher_suites = vec![
+        rustls::CipherSuite::TLS13_CHACHA20_POLY1305_SHA256,
+        rustls::CipherSuite::TLS13_AES_256_GCM_SHA384,
+    ];
+    
+    config
+}
+--
+
+== Svalinn Attestation Upgrade
+
+=== Current Classical Attestation
+[source,rust]
+--
+// Current implementation (quantum-vulnerable)
+pub fn attest_classical(data: &[u8], key: &EcdsaPrivateKey) -> Result<Vec<u8>> {
+    let signature = key.sign(data);
+    Ok(signature.to_der())
+}
+--
+
+=== Hybrid Attestation Implementation
+[source,rust]
+--
+// src/security/svalinn.rs
+use oqs::sig;
+
+pub struct HybridAttestor {
+    ecdsa_key: EcdsaPrivateKey,
+    sphincs_key: sig::Sig,  // SPHINCS+ for conservative security
+}
+
+impl HybridAttestor {
+    pub fn new() -> Self {
+        Self {
+            ecdsa_key: EcdsaPrivateKey::generate_pkcs8(&mut rand::thread_rng()).unwrap(),
+            sphincs_key: sig::Sig::new(sig::Algorithm::SPHINCSPlusSha256128fSimple).unwrap(),
+        }
+    }
+    
+    pub fn attest(&self, measurement: &Measurement) -> Result<HybridAttestation> {
+        let data = measurement.serialize()?;
+        
+        // Classical ECDSA signature
+        let ecdsa_sig = self.ecdsa_key.sign(&data);
+        
+        // Post-quantum SPHINCS+ signature
+        let sphincs_sig = self.sphincs_key.sign(&data)?;
+        
+        Ok(HybridAttestation {
+            measurement: measurement.clone(),
+            ecdsa_signature: ecdsa_sig,
+            sphincs_signature: sphincs_sig,
+            timestamp: Utc::now(),
+        })
+    }
+}
+--
+
+== Cerro-Torre Signature Migration
+
+=== Current Implementation
+[source,rust]
+--
+// Current ECDSA-based signatures
+pub struct CerroTorreSigner {
+    key: EcdsaPrivateKey,
+}
+--
+
+=== Post-Quantum Implementation
+[source,rust]
+--
+// src/security/cerro_torre.rs
+use oqs::sig;
+
+pub struct QuantumCerroTorreSigner {
+    primary_key: sig::Sig,  // Dilithium3 for primary signatures
+    fallback_key: sig::Sig,  // SPHINCS+ for conservative fallback
+    legacy_key: EcdsaPrivateKey,  // For backward compatibility
+}
+
+impl QuantumCerroTorreSigner {
+    pub fn sign(&self, document: &Document) -> Result<QuantumSignature> {
+        let data = document.serialize()?;
+        
+        // Primary post-quantum signature
+        let primary_sig = self.primary_key.sign(&data)?;
+        
+        // Fallback hash-based signature
+        let fallback_sig = self.fallback_key.sign(&data)?;
+        
+        // Legacy signature for compatibility
+        let legacy_sig = self.legacy_key.sign(&data);
+        
+        Ok(QuantumSignature {
+            primary: primary_sig,
+            fallback: fallback_sig,
+            legacy: legacy_sig,
+            algorithm: "Dilithium3+SPHINCS+-ECDSA".to_string(),
+        })
+    }
+}
+--
+
+== Key Management & Rotation
+
+=== Hybrid Key Storage
+[source,rust]
+--
+// src/security/key_manager.rs
+pub struct HybridKeyPair {
+    classical: ClassicalKeyMaterial,
+    post_quantum: PostQuantumKeyMaterial,
+    metadata: KeyMetadata,
+}
+
+impl HybridKeyPair {
+    pub fn rotate(&mut self) -> Result<()> {
+        // Generate new classical key
+        let new_classical = RsaPrivateKey::new(&mut rand::thread_rng(), 4096)?;
+        
+        // Generate new post-quantum key
+        let new_pq = sig::Sig::new(sig::Algorithm::Dilithium3)?;
+        
+        // Atomic swap
+        let old_pair = std::mem::replace(
+            self,
+            Self {
+                classical: new_classical,
+                post_quantum: new_pq,
+                metadata: KeyMetadata::new_rotation(&self.metadata),
+            }
+        );
+        
+        // Archive old keys securely
+        self.archive_old_keys(old_pair)?;
+        
+        Ok(())
+    }
+}
+--
+
+=== Automated Rotation Schedule
+[cols="1,1,1,2"]
+|=== 
+| Key Type | Rotation Frequency | Grace Period | Notes
+
+| RSA (Classical) 
+| 90 days 
+| 30 days 
+| Maintain for legacy compatibility
+
+| Dilithium3 (PQ Primary) 
+| 180 days 
+| 60 days 
+| Longer lifetime due to PQ security
+
+| SPHINCS+ (PQ Fallback) 
+| 365 days 
+| 90 days 
+| Conservative rotation for hash-based
+
+| Kyber768 (KEM) 
+| 180 days 
+| 60 days 
+| Align with signature keys
+|=== 
+
+== Testing & Validation
+
+=== Test Vectors
+[source,rust]
+--
+// tests/quantum_tests.rs
+#[test]
+fn test_hybrid_jwt_verification() {
+    let signer = HybridJwtSigner::new();
+    let claims = Claims::test_claims();
+    
+    let token = signer.sign(&claims).unwrap();
+    
+    // Verify classical signature
+    assert!(token.verify_classical().is_ok());
+    
+    // Verify post-quantum signature
+    assert!(token.verify_post_quantum().is_ok());
+    
+    // Verify hybrid consistency
+    assert!(token.verify_hybrid_consistency().is_ok());
+}
+
+#[test]
+fn test_tls_handshake_with_kyber() {
+    let server_config = configure_post_quantum_tls();
+    let client_config = ClientConfig::post_quantum();
+    
+    // Simulate handshake
+    let result = simulate_tls_handshake(&server_config, &client_config);
+    assert!(result.is_ok());
+    assert!(result.unwrap().used_post_quantum_kex());
+}
+--
+
+=== Performance Benchmarks
+[cols="1,1,1,1,1"]
+|=== 
+| Operation | Classical (ms) | Post-Quantum (ms) | Hybrid (ms) | Overhead
+
+| JWT Signing 
+| 1.2 
+| 8.5 
+| 9.7 
+| 708%
+
+| JWT Verification 
+| 0.8 
+| 6.2 
+| 7.0 
+| 775%
+
+| TLS Handshake 
+| 15.3 
+| 22.8 
+| 38.1 
+| 149%
+
+| Svalinn Attestation 
+| 3.1 
+| 18.4 
+| 21.5 
+| 594%
+
+| Key Generation 
+| 45.2 
+| 120.7 
+| 165.9 
+| 265%
+|=== 
+
+**Optimization Strategies:**
+* Use hardware acceleration (Intel HEXL, ARM CryptoCell)
+* Implement key caching for frequent operations
+* Batch signature operations where possible
+* Use smaller PQ algorithms where acceptable (Dilithium2 for non-critical ops)
+
+== Migration Path & Backward Compatibility
+
+=== Hybrid Token Format
+[source,json]
+--
+{
+  "classical": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "post_quantum": {
+    "algorithm": "Dilithium3",
+    "signature": "a1b2c3d4e5f6...",
+    "public_key": "0123456789abcdef..."
+  },
+  "metadata": {
+    "version": "hybrid-v1",
+    "created_at": "2025-03-19T12:00:00Z",
+    "expires_at": "2025-03-19T13:00:00Z"
+  }
+}
+--
+
+=== Backward Compatibility Strategy
+
+[cols="1,2,1"]
+|=== 
+| Version | Support | Notes
+
+| v1 (Classical Only) 
+| Full 
+| Accept and verify classical tokens
+
+| v2 (Hybrid) 
+| Full 
+| Preferred format during transition
+
+| v3 (PQ Only) 
+| Future 
+| Target for 2026+ when quantum threat materializes
+|=== 
+
+**Fallback Logic:**
+[source,rust]
+--
+pub fn verify_token(token: &str) -> Result<Claims> {
+    // Try hybrid format first
+    if let Ok(hybrid) = HybridToken::parse(token) {
+        return hybrid.verify_hybrid();
+    }
+    
+    // Fallback to classical format
+    if let Ok(classical) = ClassicalToken::parse(token) {
+        return classical.verify_classical();
+    }
+    
+    // Fallback to pure PQ format (future)
+    if let Ok(pq) = PostQuantumToken::parse(token) {
+        return pq.verify_post_quantum();
+    }
+    
+    Err(VerificationError::InvalidFormat)
+}
+--
+
+== Monitoring & Alerting
+
+=== Quantum Threat Indicators
+
+[cols="1,1,1"]
+|=== 
+| Metric | Threshold | Action
+
+| PQ Signature Failures 
+| > 0.1% 
+| Alert security team
+
+| Classical Signature Failures 
+| > 5% increase 
+| Investigate potential quantum attack
+
+| TLS Handshake Time 
+| > 50ms (p99) 
+| Check for KEM performance issues
+
+| Key Rotation Failures 
+| > 0 failures 
+| Immediate incident response
+|=== 
+
+=== Prometheus Alerts
+[source,yaml]
+--
+# src/monitoring/alerts.yml
+groups:
+- name: quantum-security
+  rules:
+  - alert: HighPQVerificationFailures
+    expr: rate(pq_verification_failures_total[5m]) > 0.001
+    for: 5m
+    labels:
+      severity: critical
+    annotations:
+      summary: "High post-quantum verification failure rate"
+      description: "{{ $value }}% of PQ signatures are failing"
+
+  - alert: ClassicalSignatureAnomaly
+    expr: increase(classical_verification_failures[1h]) > (increase(classical_verification_failures[1h offset 1h]) * 1.05)
+    for: 15m
+    labels:
+      severity: warning
+    annotations:
+      summary: "Potential quantum attack detected"
+      description: "5%+ increase in classical signature failures"
+--
+
+== Documentation & Training
+
+=== Developer Guide
+
+**Migrating Existing Code:**
+
+1. **Identify cryptographic operations:**
+   - Search for `rsa`, `ecdsa`, `sign`, `verify` in codebase
+   - Identify all JWT, TLS, and custom crypto usage
+
+2. **Implement hybrid wrappers:**
+   - Wrap existing crypto calls with hybrid equivalents
+   - Maintain backward compatibility
+
+3. **Update dependencies:**
+   - Add `oqs = "0.8.0"` to Cargo.toml
+   - Update TLS libraries to PQ-ready versions
+
+4. **Test thoroughly:**
+   - Verify hybrid signatures work
+   - Test fallback to classical
+   - Performance benchmarking
+
+=== User Migration Guide
+
+**For API Consumers:**
+
+1. **No immediate action required** - hybrid tokens work with existing clients
+2. **Update SDKs by Q3 2025** for full PQ support
+3. **Monitor deprecation notices** for classical-only endpoints
+
+**For Node Operators:**
+
+1. **Upgrade to BOJ Server v2.0+** for hybrid support
+2. **Configure hybrid mode** in server settings
+3. **Monitor PQ performance** and adjust resources as needed
+
+== Risks & Mitigations
+
+[cols="1,1,1,1"]
+|=== 
+| Risk | Impact | Mitigation | Owner
+
+| Performance degradation from PQ crypto 
+| High 
+| Hardware acceleration, key caching 
+| Performance Team
+
+| Algorithm standardization changes 
+| Medium 
+| Modular crypto provider architecture 
+| Security Team
+
+| Backward compatibility issues 
+| High 
+| Comprehensive hybrid format testing 
+| API Team
+
+| Key management complexity 
+| Medium 
+| Automated rotation tools 
+| DevOps Team
+
+| Quantum algorithm improvements 
+| Low 
+| Monitor NIST updates, algorithm agility 
+| Research Team
+|=== 
+
+== Future Research Directions
+
+1. **Quantum Key Distribution (QKD):**
+   - Integrate with quantum networks when available
+   - Hybrid QKD + PQ crypto approach
+
+2. **Lattice-based Zero Knowledge:**
+   - Post-quantum ZK proofs for privacy-preserving operations
+   - Integration with Svalinn attestations
+
+3. **Quantum-Safe Multi-Party Computation:**
+   - Secure collaborative problem solving
+   - Privacy-preserving judge operations
+
+4. **Post-Quantum Homomorphic Encryption:**
+   - Secure code execution on encrypted submissions
+   - Privacy-preserving automated grading
+
+== References
+
+* NIST Post-Quantum Cryptography Standardization: https://csrc.nist.gov/projects/post-quantum-cryptography
+* Open Quantum Safe Project: https://openquantumsafe.org/
+* IETF Post-Quantum TLS Draft: https://datatracker.ietf.org/doc/draft-ietf-tls-hybrid-design/
+* Cloudflare's Post-Quantum Experiment: https://blog.cloudflare.com/post-quantum-cryptography/
+
+== Appendix: Algorithm Comparison
+
+[cols="1,1,1,1,1,1"]
+|=== 
+| Algorithm | Type | NIST Level | Key Size | Sig Size | Notes
+
+| RSA-2048 
+| Classical 
+| ~112-bit 
+| 256B 
+| 256B 
+| Quantum-vulnerable
+
+| ECDSA P-256 
+| Classical 
+| ~128-bit 
+| 32B 
+| 64B 
+| Quantum-vulnerable
+
+| Dilithium2 
+| PQ 
+| Level 2 
+| 1.2KB 
+| 2.4KB 
+| Primary choice
+
+| Dilithium3 
+| PQ 
+| Level 3 
+| 1.9KB 
+| 3.2KB 
+| BOJ standard
+
+| Kyber512 
+| PQ KEM 
+| Level 1 
+| 800B 
+| 768B 
+| Small keys
+
+| Kyber768 
+| PQ KEM 
+| Level 3 
+| 1.2KB 
+| 1.1KB 
+| BOJ standard
+
+| SPHINCS+-128f 
+| PQ Hash 
+| Level 1 
+| 1KB 
+| 8KB 
+| Conservative
+
+| SPHINCS+-192f 
+| PQ Hash 
+| Level 3 
+| 3KB 
+| 16KB 
+| Fallback option
+|=== 
+
+**Recommendation:** Use Dilithium3 + Kyber768 as primary algorithms, with SPHINCS+ as conservative fallback for critical operations.

@@ -32,5 +32,18 @@ fn verify_github_signature(payload string, signature_header string) bool {
 	actual_sig := hmac.new(secret.bytes(), payload.bytes(), sha256.sum, sha256.block_size).hex()
 
 	// Constant-time comparison to prevent timing attacks
-	return actual_sig == expected_sig
+	return safe_compare(actual_sig, expected_sig)
+}
+
+// safe_compare performs a constant-time comparison of two strings.
+// This is a security-critical function to prevent timing attacks.
+fn safe_compare(a string, b string) bool {
+	if a.len != b.len {
+		return false
+	}
+	mut result := 0
+	for i in 0 .. a.len {
+		result |= a[i] ^ b[i]
+	}
+	return result == 0
 }

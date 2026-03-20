@@ -1,0 +1,9 @@
+{
+  "farm_enrollment": {
+    "repository": "hyperpolymath/boj-server",
+    "tier": "tier-1-critical",
+    "sync_interval": "daily",
+    "backup_strategy": "distributed-ipfs",
+    "branch_protection_enforced": true
+  }
+}

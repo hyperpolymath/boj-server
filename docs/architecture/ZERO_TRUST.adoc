@@ -1,0 +1,1405 @@
+= Zero Trust Architecture for BOJ Server
+:toc: preamble
+:icons: font
+
+[TIP]
+====
+**Zero Trust Status:** This document outlines the Zero Trust Architecture roadmap for BOJ Server Mistral. Current implementation uses perimeter-based security with Zero Trust design patterns in development.
+====
+
+== Why Zero Trust Matters for BOJ Server
+
+**Threat Model:**
+* Traditional perimeter security assumes internal networks are trusted
+* Compromised nodes can move laterally within the network
+* Insider threats have excessive access by default
+* Cloud and hybrid environments blur network boundaries
+* BOJ Server handles sensitive code submissions requiring strict access control
+
+**Current Security Gaps:**
+* No mutual TLS (mTLS) for internal node communication
+* Implicit trust between BoJ nodes
+* No continuous authentication for Stapeln ↔ BoJ interactions
+* Gossip network lacks node identity verification
+* Over-reliance on network-level security
+
+== Zero Trust Principles Implementation
+
+=== Core Principles
+
+[cols="1,2,3"]
+|=== 
+| Principle | Current State | Target Implementation
+
+| **Never Trust, Always Verify** 
+| Perimeter-based trust 
+| Continuous authentication for every request
+
+| **Least Privilege Access** 
+| Role-based access control 
+| Fine-grained attribute-based access control
+
+| **Assume Breach** 
+| Reactive security 
+| Proactive threat detection and containment
+
+| **Explicit Verification** 
+| Username/password + API keys 
+| Multi-factor authentication + cryptographic identity
+
+| **Micro-Segmentation** 
+| Network-level segmentation 
+| Application-layer segmentation with mTLS
+
+| **Continuous Monitoring** 
+| Basic logging 
+| Real-time behavioral analysis and anomaly detection
+|=== 
+
+== Zero Trust Architecture Roadmap
+
+=== Phase 1: Identity Foundation (Q2 2025)
+
+**Goal:** Establish cryptographic identity for all components
+
+[cols="1,2,1,1"]
+|=== 
+| Component | Action | Target Completion | Status
+
+| SPIFFE/SPIRE Integration 
+| Deploy SPIRE server and agents 
+| Q2 2025 
+| ✅ Designed
+
+| Workload Identity 
+| Issue SVIDs to all BOJ components 
+| Q2 2025 
+| 🚧 In Progress
+
+| Node Attestation 
+| Implement Svalinn + SPIFFE integration 
+| Q2 2025 
+| 📝 Planned
+
+| Identity Provider Integration 
+| Connect to enterprise IdP 
+| Q2 2025 
+| 📝 Planned
+|=== 
+
+=== Phase 2: Mutual Authentication (Q3 2025)
+
+**Goal:** Implement mTLS for all internal communications
+
+[cols="1,2,1,1"]
+|=== 
+| Component | Action | Target Completion | Status
+
+| BoJ Node-to-Node mTLS 
+| Enforce mTLS for gossip protocol 
+| Q3 2025 
+| 📝 Planned
+
+| Stapeln ↔ BoJ mTLS 
+| Secure multiplier communications 
+| Q3 2025 
+| 📝 Planned
+
+| Gossip Network mTLS 
+| Node identity verification 
+| Q3 2025 
+| 📝 Planned
+
+| Service Mesh Integration 
+| Istio/Linkerd for mTLS enforcement 
+| Q3 2025 
+| 📝 Planned
+|=== 
+
+=== Phase 3: Access Control (Q4 2025)
+
+**Goal:** Implement fine-grained, dynamic access control
+
+[cols="1,2,1,1"]
+|=== 
+| Component | Action | Target Completion | Status
+
+| Policy Engine 
+| Deploy Open Policy Agent (OPA) 
+| Q4 2025 
+| 📝 Planned
+
+| Attribute-Based Access 
+| Replace RBAC with ABAC 
+| Q4 2025 
+| 📝 Planned
+
+| Continuous Authorization 
+| Real-time access decision making 
+| Q4 2025 
+| 📝 Planned
+
+| Policy-as-Code 
+| Version-controlled security policies 
+| Q4 2025 
+| 📝 Planned
+|=== 
+
+=== Phase 4: Continuous Verification (Q1 2026)
+
+**Goal:** Implement real-time threat detection and response
+
+* **Behavioral Analysis:** Machine learning-based anomaly detection
+* **Risk Scoring:** Dynamic risk assessment for each request
+* **Automated Response:** Automatic access revocation for suspicious activity
+* **Session Monitoring:** Continuous session validation
+
+== Implementation Details
+
+=== SPIFFE/SPIRE Integration
+
+**Architecture Overview:**
+[source,mermaid]
+--
+graph TD
+    A[BOJ Node] -->|Attestation| B[SPIRE Agent]
+    B -->|SVID Request| C[SPIRE Server]
+    C -->|Validate| D[Svalinn Attestation]
+    C -->|Issue SVID| B
+    B -->|SVID| A
+    A -->|mTLS with SVID| E[Other BOJ Node]
+    E -->|Validate SVID| C
+
+    style A fill:#4CAF50,stroke:#388E3C
+    style B fill:#2196F3,stroke:#1976D2
+    style C fill:#FF9800,stroke:#F57C00
+    style D fill:#9C27B0,stroke:#7B1FA2
+    style E fill:#4CAF50,stroke:#388E3C
+--
+
+**SPIRE Server Configuration:**
+[source,hcl]
+--
+# spire/server/conf/server.conf
+server {
+    bind_address = "0.0.0.0"
+    bind_port = "8081"
+    trust_domain = "boj.example.com"
+    data_dir = "/opt/spire/data"
+    log_level = "DEBUG"
+}
+
+plugins {
+    NodeAttestor "svalinn" {
+        plugin_cmd = "/opt/spire/bin/nodeattestor-svalinn"
+        plugin_checksum = "..."
+        plugin_data {
+            attestation_endpoint = "unix:///var/run/svalinn/attestation.sock"
+            trust_bundle_path = "/opt/spire/conf/trust-bundle.pem"
+        }
+    }
+    
+    KeyManager "disk" {
+        plugin_cmd = "/opt/spire/bin/keymanager-disk"
+        plugin_checksum = "..."
+        plugin_data {
+            keys_path = "/opt/spire/data/keys.json"
+        }
+    }
+    
+    Notifier "k8sbundle" {
+        plugin_cmd = "/opt/spire/bin/notifier-k8sbundle"
+        plugin_checksum = "..."
+    }
+}
+
+cluster_federation {
+    bundle_endpoint {
+        address = "0.0.0.0"
+        port = "8082"
+    }
+}
+--
+
+**SPIRE Agent Configuration:**
+[source,hcl]
+--
+# spire/agent/conf/agent.conf
+agent {
+    data_dir = "/var/run/spire"
+    log_level = "DEBUG"
+    server_address = "spire-server.boj-system"
+    server_port = "8081"
+    socket_path = "/tmp/spire-agent/public/api.sock"
+    trust_bundle_path = "/var/run/spire/bundle/bundle.crt"
+    trust_domain = "boj.example.com"
+}
+
+plugins {
+    NodeAttestor "svalinn" {
+        plugin_cmd = "/opt/spire/bin/nodeattestor-svalinn"
+        plugin_checksum = "..."
+        plugin_data {
+            attestation_endpoint = "unix:///var/run/svalinn/attestation.sock"
+        }
+    }
+    
+    KeyManager "disk" {
+        plugin_cmd = "/opt/spire/bin/keymanager-disk"
+        plugin_checksum = "..."
+        plugin_data {
+            keys_path = "/var/run/spire/agent/keys.json"
+        }
+    }
+    
+    WorkloadAttestor "unix" {
+        plugin_cmd = "/opt/spire/bin/workloadattestor-unix"
+        plugin_checksum = "..."
+    }
+}
+--
+
+=== Svalinn-SPIFFE Integration
+
+**Custom Node Attestor:**
+[source,rust]
+--
+// src/security/spire/svalinn_attestor.rs
+use spire_api::node::NodeAttestor;
+use svalinn::attestation::AttestationClient;
+
+pub struct SvalinnNodeAttestor {
+    attestation_client: AttestationClient,
+    trust_bundle: Vec<u8>,
+}
+
+impl NodeAttestor for SvalinnNodeAttestor {
+    fn attest(&self, challenge: &[u8]) -> Result<AttestationResponse> {
+        // Get Svalinn attestation
+        let svalinn_attestation = self.attestation_client.attest_current_node()?;
+        
+        // Create SPIFFE attestation response
+        let response = AttestationResponse {
+            attestation_data: serde_json::to_vec(&svalinn_attestation)?,
+            certificates: self.trust_bundle.clone(),
+            // Include Svalinn-specific claims
+            claims: vec![
+                Claim {
+                    name: "svalinn.node_id".to_string(),
+                    value: svalinn_attestation.node_id,
+                },
+                Claim {
+                    name: "svalinn.security_level".to_string(),
+                    value: svalinn_attestation.security_level.to_string(),
+                },
+            ],
+        };
+        
+        Ok(response)
+    }
+    
+    fn fetch_attestation_ca(&self) -> Result<Vec<u8>> {
+        Ok(self.trust_bundle.clone())
+    }
+}
+--
+
+=== Mutual TLS Implementation
+
+**Rust mTLS Client:**
+[source,rust]
+--
+// src/network/mtls/client.rs
+use rustls::{ClientConfig, RootCertStore};
+use std::sync::Arc;
+
+pub struct MtlsClient {
+    client_config: Arc<ClientConfig>,
+    identity: Arc<dyn Identity>,
+}
+
+impl MtlsClient {
+    pub fn new(identity: Arc<dyn Identity>, ca_certs: Vec<Certificate>) -> Result<Self> {
+        let mut root_store = RootCertStore::empty();
+        for cert in ca_certs {
+            root_store.add(&cert)?;
+        }
+        
+        let mut config = ClientConfig::builder()
+            .with_safe_defaults()
+            .with_root_certificates(root_store)
+            .with_client_auth_cert_resolver(Arc::new(IdentityResolver::new(identity.clone())))?;
+        
+        // Require server certificate validation
+        config.dangerous().set_certificate_verifier(Arc::new(
+            WebPkiVerifier::new(root_store, None)
+        ));
+        
+        Ok(Self {
+            client_config: Arc::new(config),
+            identity,
+        })
+    }
+    
+    pub async fn connect(&self, domain: &str) -> Result<ClientConnection> {
+        let server_name = ServerName::try_from(domain)?
+            .to_owned();
+        
+        let conn = ClientConnection::new(Arc::clone(&self.client_config), server_name)?;
+        Ok(conn)
+    }
+}
+--
+
+**Rust mTLS Server:**
+[source,rust]
+--
+// src/network/mtls/server.rs
+use rustls::{ServerConfig, NoClientAuth, RootCertStore};
+
+pub struct MtlsServer {
+    server_config: Arc<ServerConfig>,
+    identity: Arc<dyn Identity>,
+}
+
+impl MtlsServer {
+    pub fn new(
+        identity: Arc<dyn Identity>,
+        ca_certs: Vec<Certificate>,
+        client_auth: ClientAuth
+    ) -> Result<Self> {
+        let mut root_store = RootCertStore::empty();
+        for cert in ca_certs {
+            root_store.add(&cert)?;
+        }
+        
+        let client_auth = match client_auth {
+            ClientAuth::Required => {
+                let verifier = WebPkiVerifier::new(root_store, None);
+                AllowAnyAnonymousOrAuthenticatedClient::new(Arc::new(verifier))
+            }
+            ClientAuth::Optional => NoClientAuth::new(),
+        };
+        
+        let mut config = ServerConfig::builder()
+            .with_safe_defaults()
+            .with_client_cert_verifier(client_auth)
+            .with_single_cert(identity.cert_chain(), identity.key())?;
+        
+        Ok(Self {
+            server_config: Arc::new(config),
+            identity,
+        })
+    }
+    
+    pub fn accept(&self, stream: TcpStream) -> Result<ServerConnection> {
+        let conn = ServerConnection::new(Arc::clone(&self.server_config))?;
+        Ok(conn)
+    }
+}
+--
+
+=== Gossip Protocol Security
+
+**Current Insecure Implementation:**
+[source,rust]
+--
+// Current vulnerable implementation
+pub struct GossipNode {
+    address: String,
+    // No authentication!
+}
+
+impl GossipNode {
+    pub fn send_message(&self, message: &GossipMessage) -> Result<()> {
+        let mut stream = TcpStream::connect(&self.address)?;
+        // Send plaintext message
+        stream.write_all(&message.serialize()?)?;
+        Ok(())
+    }
+}
+--
+
+**Zero Trust Implementation:**
+[source,rust]
+--
+// src/network/gossip/secure.rs
+pub struct SecureGossipNode {
+    address: String,
+    mtls_client: MtlsClient,
+    node_identity: Arc<dyn Identity>,
+    policy_engine: Arc<dyn PolicyEngine>,
+}
+
+impl SecureGossipNode {
+    pub fn new(
+        address: String,
+        mtls_client: MtlsClient,
+        identity: Arc<dyn Identity>,
+        policy_engine: Arc<dyn PolicyEngine>
+    ) -> Self {
+        Self {
+            address,
+            mtls_client,
+            node_identity: identity,
+            policy_engine,
+        }
+    }
+    
+    pub async fn send_message(&self, message: &GossipMessage) -> Result<()> {
+        // Step 1: Establish mTLS connection
+        let domain = extract_domain(&self.address);
+        let mut conn = self.mtls_client.connect(domain).await?;
+        
+        // Step 2: Perform policy check
+        let peer_identity = conn.peer_identity()?;
+        self.policy_engine.can_send_to(
+            &self.node_identity,
+            &peer_identity,
+            message.message_type()
+        )?;
+        
+        // Step 3: Sign the message
+        let signed_message = self.sign_message(message)?;
+        
+        // Step 4: Send encrypted message
+        conn.write_all(&signed_message.serialize()?)?;
+        
+        Ok(())
+    }
+    
+    fn sign_message(&self, message: &GossipMessage) -> Result<SignedGossipMessage> {
+        let signature = self.node_identity.sign(&message.serialize()?)?;
+        Ok(SignedGossipMessage {
+            message: message.clone(),
+            signature,
+            timestamp: Utc::now(),
+            node_id: self.node_identity.id().to_string(),
+        })
+    }
+    
+    pub async fn receive_message(&self, stream: TcpStream) -> Result<GossipMessage> {
+        // Step 1: Establish mTLS connection
+        let mut conn = self.mtls_client.accept(stream)?;
+        
+        // Step 2: Get peer identity
+        let peer_identity = conn.peer_identity()?;
+        
+        // Step 3: Read and verify message
+        let signed_message = conn.read_signed_message()?;
+        
+        // Step 4: Verify signature
+        peer_identity.verify(&signed_message.message, &signed_message.signature)?;
+        
+        // Step 5: Policy check
+        self.policy_engine.can_receive_from(
+            &peer_identity,
+            &self.node_identity,
+            signed_message.message.message_type()
+        )?;
+        
+        Ok(signed_message.message)
+    }
+}
+--
+
+=== Stapeln-BOJ Secure Communication
+
+**Current Implementation:**
+[source,rust]
+--
+// Current insecure implementation
+pub struct StapelnConnection {
+    url: String,
+    api_key: String, // Static API key
+}
+
+impl StapelnConnection {
+    pub fn multiply(&self, problem: &Problem) -> Result<MultipliedProblem> {
+        let client = reqwest::Client::new();
+        let response = client.post(&format!("{}/multiply", self.url))
+            .header("X-API-Key", &self.api_key)
+            .json(problem)
+            .send()?;
+        response.json::<MultipliedProblem>()
+    }
+}
+--
+
+**Zero Trust Implementation:**
+[source,rust]
+--
+// src/elixir/stapeln/secure.rs
+pub struct SecureStapelnConnection {
+    mtls_client: MtlsClient,
+    identity: Arc<dyn Identity>,
+    policy_engine: Arc<dyn PolicyEngine>,
+    service_discovery: Arc<dyn ServiceDiscovery>,
+}
+
+impl SecureStapelnConnection {
+    pub async fn multiply(&self, problem: &Problem) -> Result<MultipliedProblem> {
+        // Step 1: Discover Stapeln service with current security posture
+        let stapeln_service = self.service_discovery.discover("stapeln")
+            .await?;
+        
+        // Step 2: Check policy - can we connect to this Stapeln instance?
+        self.policy_engine.can_connect_to(
+            &self.identity,
+            &stapeln_service.identity,
+            "multiply"
+        )?;
+        
+        // Step 3: Establish mTLS connection
+        let mut conn = self.mtls_client.connect(&stapeln_service.address)
+            .await?;
+        
+        // Step 4: Create signed request
+        let request = self.create_signed_request(problem)?;
+        
+        // Step 5: Send request and verify response
+        let response = conn.send_request(&request).await?;
+        self.verify_response(&response)?;
+        
+        Ok(response.problem)
+    }
+    
+    fn create_signed_request(&self, problem: &Problem) -> Result<SignedRequest> {
+        let request_id = Uuid::new_v4();
+        let request = Request {
+            id: request_id,
+            problem: problem.clone(),
+            timestamp: Utc::now(),
+            caller: self.identity.id().to_string(),
+        };
+        
+        let signature = self.identity.sign(&request.serialize()?)?;
+        
+        Ok(SignedRequest {
+            request,
+            signature,
+            request_certificate: self.identity.cert().clone(),
+        })
+    }
+    
+    fn verify_response(&self, response: &SignedResponse) -> Result<()> {
+        // Verify response signature
+        response.identity.verify(
+            &response.response,
+            &response.signature
+        )?;
+        
+        // Check response freshness
+        if response.response.timestamp < Utc::now() - ChronoDuration::minutes(5) {
+            return Err(SecurityError::StaleResponse);
+        }
+        
+        // Verify response matches request
+        if response.response.request_id != self.current_request_id {
+            return Err(SecurityError::InvalidResponse);
+        }
+        
+        Ok(())
+    }
+}
+--
+
+== Policy Engine Implementation
+
+=== Open Policy Agent Integration
+
+**Policy Structure:**
+[source,rego]
+--
+# policies/boj/access.rego
+package boj.access
+
+# Default deny
+default allow = false
+
+# Allow gossip between BOJ nodes with valid identities
+allow {
+    input.action == "gossip"
+    input.source.identity.trust_domain == "boj.example.com"
+    input.destination.identity.trust_domain == "boj.example.com"
+    input.source.identity.security_level >= input.destination.identity.security_level
+    valid_gossip_message_type(input.message.type)
+}
+
+# Allow Stapeln multiplication requests
+allow {
+    input.action == "multiply"
+    input.source.identity.trust_domain == "boj.example.com"
+    input.destination.identity.trust_domain == "stapeln.example.com"
+    input.source.identity.service == "problem-processor"
+    input.destination.identity.service == "multiplier"
+}
+
+# Allow admin access to all services
+allow {
+    input.source.identity.groups[_] == "boj-admins"
+    input.source.identity.trust_domain == "boj.example.com"
+}
+
+# Valid gossip message types
+valid_gossip_message_type(type) {
+    type == "problem-update"
+    type == "node-status"
+    type == "health-check"
+}
+
+# Security level requirements
+require_security_level(action, required) {
+    action == "node-shutdown" 
+    required = 3
+}
+
+require_security_level(action, required) {
+    action == "key-rotation"
+    required = 3
+}
+
+require_security_level(action, required) {
+    action == "gossip"
+    required = 2
+}
+
+# Check security level
+security_level_ok {
+    input.source.identity.security_level >= require_security_level(input.action, required)
+}
+--
+
+**Policy Engine Integration:**
+[source,rust]
+--
+// src/security/policy/opa.rs
+use opa::OpaClient;
+
+pub struct OpaPolicyEngine {
+    client: OpaClient,
+    source_id: String,
+}
+
+impl PolicyEngine for OpaPolicyEngine {
+    fn can_send_to(
+        &self,
+        source: &dyn Identity,
+        destination: &dyn Identity,
+        message_type: &str
+    ) -> Result<bool> {
+        let input = serde_json::json!({
+            "action": "gossip",
+            "source": {
+                "identity": source.claims(),
+                "security_level": source.security_level(),
+            },
+            "destination": {
+                "identity": destination.claims(),
+                "security_level": destination.security_level(),
+            },
+            "message": {
+                "type": message_type,
+            }
+        });
+        
+        let result = self.client.evaluate(
+            "boj/access/allow",
+            &input
+        )?;
+        
+        if !result.allow {
+            return Err(PolicyError::AccessDenied {
+                source: source.id().to_string(),
+                destination: destination.id().to_string(),
+                action: "gossip".to_string(),
+            });
+        }
+        
+        Ok(true)
+    }
+    
+    fn can_connect_to(
+        &self,
+        source: &dyn Identity,
+        destination: &dyn Identity,
+        service: &str
+    ) -> Result<bool> {
+        let input = serde_json::json!({
+            "action": service,
+            "source": {
+                "identity": source.claims(),
+            },
+            "destination": {
+                "identity": destination.claims(),
+            }
+        });
+        
+        let result = self.client.evaluate(
+            "boj/access/allow",
+            &input
+        )?;
+        
+        if !result.allow {
+            return Err(PolicyError::AccessDenied {
+                source: source.id().to_string(),
+                destination: destination.id().to_string(),
+                action: service.to_string(),
+            });
+        }
+        
+        Ok(true)
+    }
+}
+--
+
+=== Continuous Authorization
+
+**Real-time Policy Evaluation:**
+[source,rust]
+--
+// src/security/policy/continuous.rs
+pub struct ContinuousAuthorizer {
+    policy_engine: Arc<dyn PolicyEngine>,
+    risk_engine: Arc<dyn RiskEngine>,
+    session_store: Arc<dyn SessionStore>,
+}
+
+impl ContinuousAuthorizer {
+    pub async fn authorize_request(&self, request: &Request) -> Result<AuthorizationDecision> {
+        // Step 1: Initial policy check
+        let initial_decision = self.evaluate_policy(request).await?;
+        if !initial_decision.allowed {
+            return Ok(initial_decision);
+        }
+        
+        // Step 2: Risk assessment
+        let risk_score = self.evaluate_risk(request).await?;
+        
+        // Step 3: Continuous monitoring setup
+        let session_id = self.session_store.create_session(
+            request,
+            risk_score,
+            initial_decision.policies
+        ).await?;
+        
+        Ok(AuthorizationDecision {
+            allowed: true,
+            session_id,
+            risk_score,
+            policies: initial_decision.policies,
+            expires_at: Utc::now() + ChronoDuration::minutes(5),
+        })
+    }
+    
+    pub async fn reauthorize_session(&self, session_id: &str) -> Result<ReauthorizationDecision> {
+        let session = self.session_store.get_session(session_id).await?;
+        
+        // Check if session is still valid
+        if session.expires_at < Utc::now() {
+            return Ok(ReauthorizationDecision::Denied("Session expired".to_string()));
+        }
+        
+        // Re-evaluate risk
+        let current_risk = self.evaluate_risk(&session.original_request).await?;
+        
+        if current_risk > session.risk_score + 20.0 { // 20% increase threshold
+            return Ok(ReauthorizationDecision::Denied(
+                format!("Risk score increased from {} to {}", session.risk_score, current_risk)
+            ));
+        }
+        
+        // Extend session
+        self.session_store.extend_session(session_id).await?;
+        
+        Ok(ReauthorizationDecision::Allowed {
+            expires_at: Utc::now() + ChronoDuration::minutes(5),
+            new_risk_score: current_risk,
+        })
+    }
+    
+    async fn evaluate_risk(&self, request: &Request) -> Result<f32> {
+        let behavioral_score = self.risk_engine.evaluate_behavior(request).await?;
+        let threat_intel_score = self.risk_engine.evaluate_threat_intel(request).await?;
+        let anomaly_score = self.risk_engine.evaluate_anomalies(request).await?;
+        
+        Ok(behavioral_score * 0.5 + threat_intel_score * 0.3 + anomaly_score * 0.2)
+    }
+}
+--
+
+== Monitoring & Alerting
+
+=== Key Security Metrics
+
+[cols="1,1,1,1"]
+|=== 
+| Metric | Description | Threshold | Action
+
+| mTLS_handshake_failures 
+| Failed mTLS handshakes 
+| > 0.1% 
+| Alert security team
+
+| policy_denials 
+| Access denied by policy engine 
+| > 5% increase 
+| Investigate policy changes
+
+| certificate_expirations 
+| Certificates expiring soon 
+| < 7 days 
+| Trigger rotation workflow
+
+| session_risk_increase 
+| Sessions with increased risk 
+| > 20% increase 
+| Revoke high-risk sessions
+
+| unattested_nodes 
+| Nodes without valid attestation 
+| > 0 
+| Quarantine nodes
+
+| gossip_auth_failures 
+| Failed gossip message authentication 
+| > 0.01% 
+| Investigate network issues
+|=== 
+
+=== Prometheus Alerts
+
+[source,yaml]
+--
+# src/monitoring/zero_trust_alerts.yml
+groups:
+- name: zero-trust-alerts
+  rules:
+  - alert: HighMTLSHandshakeFailures
+    expr: rate(mtls_handshake_failures_total[5m]) > 0.001
+    for: 5m
+    labels:
+      severity: critical
+    annotations:
+      summary: "High mTLS handshake failure rate"
+      description: "{{ $value }}% of mTLS handshakes are failing"
+
+  - alert: PolicyDenialSpike
+    expr: increase(policy_denials_total[1h]) > (increase(policy_denials_total[1h offset 1h]) * 1.05)
+    for: 15m
+    labels:
+      severity: warning
+    annotations:
+      summary: "Policy denial rate increased by 5%+"
+      description: "Potential policy misconfiguration or attack"
+
+  - alert: CertificateExpiringSoon
+    expr: certificate_expiration_days < 7
+    labels:
+      severity: warning
+    annotations:
+      summary: "Certificate expiring in {{ $value }} days"
+      description: "Certificate {{ $labels.cert_id }} needs rotation"
+
+  - alert: UnattestedNodesDetected
+    expr: unattested_nodes > 0
+    for: 1m
+    labels:
+      severity: critical
+    annotations:
+      summary: "{{ $value }} nodes without valid attestation"
+      description: "Nodes may be compromised or misconfigured"
+
+  - alert: HighSessionRisk
+    expr: session_risk_score > 80
+    labels:
+      severity: warning
+    annotations:
+      summary: "High risk session detected"
+      description: "Session {{ $labels.session_id }} has risk score {{ $value }}"
+--
+
+== Testing & Validation
+
+=== Test Coverage
+
+[cols="1,1,1"]
+|=== 
+| Test Type | Coverage | Status
+
+| Unit Tests 
+| SPIFFE/SPIRE integration 
+| ✅ Implemented
+
+| Integration Tests 
+| End-to-end mTLS flows 
+| 🚧 Partial
+
+| Failure Tests 
+| Certificate expiration, revocation 
+| 📝 Planned
+
+| Performance Tests 
+| mTLS handshake latency 
+| 📝 Planned
+
+| Security Tests 
+| Penetration testing 
+| 📝 Planned
+|=== 
+
+=== Test Examples
+
+[source,rust]
+--
+// tests/zero_trust_tests.rs
+#[tokio::test]
+async fn test_mtls_handshake() {
+    // Setup test identities
+    let server_identity = TestIdentity::new_server();
+    let client_identity = TestIdentity::new_client();
+    
+    // Create mTLS server and client
+    let server = MtlsServer::new(
+        Arc::new(server_identity),
+        vec![client_identity.cert().clone()],
+        ClientAuth::Required
+    ).unwrap();
+    
+    let client = MtlsClient::new(
+        Arc::new(client_identity),
+        vec![server_identity.cert().clone()]
+    ).unwrap();
+    
+    // Simulate connection
+    let (client_stream, server_stream) = tokio::io::duplex(1024);
+    
+    let server_task = tokio::spawn(async move {
+        let mut conn = server.accept(server_stream).unwrap();
+        conn.read_message().await.unwrap()
+    });
+    
+    let client_task = tokio::spawn(async move {
+        let mut conn = client.connect("test.example.com").await.unwrap();
+        conn.write_message(b"test message").await.unwrap()
+    });
+    
+    // Verify handshake completed
+    client_task.await.unwrap();
+    let received = server_task.await.unwrap();
+    assert_eq!(received, b"test message");
+}
+
+#[tokio::test]
+async fn test_policy_denial() {
+    // Setup policy engine with restrictive policy
+    let policy_engine = TestPolicyEngine::deny_all();
+    
+    // Setup identities
+    let source = TestIdentity::new_with_claims(vec![
+        ("service", "test-service"),
+        ("security_level", "2")
+    ]);
+    
+    let destination = TestIdentity::new_with_claims(vec![
+        ("service", "protected-service"),
+        ("security_level", "3")
+    ]);
+    
+    // Test policy evaluation
+    let result = policy_engine.can_send_to(
+        &source,
+        &destination,
+        "gossip"
+    );
+    
+    assert!(matches!(result, Err(PolicyError::AccessDenied { .. })));
+}
+
+#[tokio::test]
+async fn test_svalinn_spiffe_integration() {
+    // Setup Svalinn attestation
+    let attestation = TestAttestation::new_valid();
+    
+    // Setup SPIFFE node attestor
+    let attestor = SvalinnNodeAttestor::new(attestation);
+    
+    // Perform attestation
+    let challenge = b"test-challenge";
+    let response = attestor.attest(challenge).unwrap();
+    
+    // Verify response contains Svalinn claims
+    assert!(response.claims.contains_key("svalinn.node_id"));
+    assert!(response.claims.contains_key("svalinn.security_level"));
+    
+    // Verify response is properly signed
+    assert!(attestor.verify_attestation(&response).is_ok());
+}
+--
+
+== Migration Plan
+
+=== Current State Assessment
+
+[cols="1,1,1"]
+|=== 
+| Component | Current Security | Risk Level
+
+| Node-to-Node Communication 
+| Plaintext TCP 
+| Critical
+
+| Stapeln ↔ BOJ Communication 
+| API keys over HTTPS 
+| High
+
+| Gossip Protocol 
+| Unauthenticated broadcasts 
+| Critical
+
+| Service Discovery 
+| DNS-based, no authentication 
+| High
+
+| Access Control 
+| Static RBAC 
+| Medium
+
+| Authentication 
+| API keys and JWT 
+| Medium
+|=== 
+
+=== Migration Steps
+
+[cols="1,1,1,1"]
+|=== 
+| Phase | Action | Timeline | Owner
+
+| 1. Assessment 
+| Inventory all communication flows 
+| Q2 2025 
+| Security Team
+
+| 2. SPIFFE Setup 
+| Deploy SPIRE server and agents 
+| Q2 2025 
+| Infrastructure Team
+
+| 3. Identity Rollout 
+| Issue SVIDs to all components 
+| Q2 2025 
+| DevOps Team
+
+| 4. mTLS Implementation 
+| Implement mTLS for critical paths 
+| Q3 2025 
+| Engineering Team
+
+| 5. Policy Engine 
+| Deploy OPA with initial policies 
+| Q3 2025 
+| Security Team
+
+| 6. Gossip Security 
+| Secure gossip protocol 
+| Q3 2025 
+| Networking Team
+
+| 7. Stapeln Integration 
+| Secure Stapeln communications 
+| Q3 2025 
+| Elixir Team
+
+| 8. Monitoring 
+| Implement Zero Trust monitoring 
+| Q4 2025 
+| SRE Team
+
+| 9. Continuous Auth 
+| Implement continuous authorization 
+| Q1 2026 
+| Security Team
+
+| 10. Optimization 
+| Performance tuning 
+| Q2 2026 
+| Performance Team
+|=== 
+
+=== Rollout Strategy
+
+**Phased Approach:**
+
+1. **Development Environment:**
+   - Implement Zero Trust in dev/staging
+   - Test all communication flows
+   - Validate policy engine behavior
+
+2. **Critical Paths First:**
+   - Secure gossip protocol
+   - Secure node-to-node communication
+   - Secure service discovery
+
+3. **Non-Critical Services:**
+   - Monitoring and logging
+   - Administrative interfaces
+   - Backup and maintenance
+
+4. **Full Cutover:**
+   - Disable legacy authentication
+   - Enforce mTLS everywhere
+   - Activate continuous monitoring
+
+**Fallback Plan:**
+* Maintain legacy API key system during transition
+* Implement circuit breakers for mTLS failures
+* Comprehensive monitoring of Zero Trust metrics
+* Rapid rollback capability
+
+== Documentation & Training
+
+=== Developer Guide
+
+**Implementing Zero Trust in New Services:**
+
+1. **Add Dependencies:**
+   ```toml
+   [dependencies]
+   boj-zero-trust = { path = "../zero-trust" }
+   ```
+
+2. **Initialize Identity:**
+   ```rust
+   let identity = Identity::from_spiffe_id("spiffe://boj.example.com/ns/default/sa/my-service")?;
+   ```
+
+3. **Create Secure Client:**
+   ```rust
+   let mtls_client = MtlsClient::new(identity.clone(), ca_certs)?;
+   ```
+
+4. **Implement Policy Checks:**
+   ```rust
+   if !policy_engine.can_perform_action(&identity, "read-problems", &resource) {
+       return Err(AuthorizationError::Denied);
+   }
+   ```
+
+5. **Handle Continuous Authorization:**
+   ```rust
+   let auth_result = continuous_authorizer.authorize_request(&request).await?;
+   if !auth_result.allowed {
+       return Err(AuthorizationError::SessionExpired);
+   }
+   ```
+
+=== Operations Guide
+
+**Zero Trust Administration:**
+
+1. **SPIRE Management:**
+   ```bash
+   # Register new workload
+   spire-server entry create \
+     -parentID spiffe://boj.example.com/ns/default/sa/spire-agent \
+     -spiffeID spiffe://boj.example.com/ns/default/sa/my-service \
+     -selector k8s:sa:my-service \
+     -selector k8s:ns:default
+   ```
+
+2. **Policy Management:**
+   ```bash
+   # Test policy changes
+   opa test policies/ -v
+   
+   # Deploy policy updates
+   boj-admin policy deploy policies/boj/access.rego
+   ```
+
+3. **Certificate Rotation:**
+   ```bash
+   # Rotate SPIFFE certificates
+   spire-server bundle rotate
+   
+   # Monitor certificate status
+   boj-admin cert monitor
+   ```
+
+== Risks & Mitigations
+
+[cols="1,1,1,1"]
+|=== 
+| Risk | Impact | Mitigation | Owner
+
+| Performance Overhead 
+| High 
+| Connection pooling, session caching 
+| Performance Team
+
+| Complexity Increase 
+| High 
+| Comprehensive documentation, training 
+| Architecture Team
+
+| Integration Issues 
+| Medium 
+| Phased rollout, compatibility layers 
+| Engineering Team
+
+| Policy Misconfiguration 
+| Critical 
+| Policy testing framework, change control 
+| Security Team
+
+| Certificate Management 
+| High 
+| Automated rotation, monitoring 
+| DevOps Team
+
+| Vendor Lock-in 
+| Medium 
+| Abstraction layers, multi-vendor support 
+| Architecture Team
+|=== 
+
+== Future Enhancements
+
+1. **BeyondCorp Enterprise:**
+   - Google's Zero Trust implementation
+   - Device posture checking
+   - Context-aware access
+
+2. **Confidential Computing:**
+   - TEE-based workload identity
+   - Hardware-enforced isolation
+
+3. **Decentralized Identity:**
+   - DID-based workload identity
+   - Blockchain-anchored attestations
+
+4. **AI-Driven Security:**
+   - Machine learning anomaly detection
+   - Automated threat response
+
+5. **Quantum-Safe Zero Trust:**
+   - Post-quantum cryptography integration
+   - Quantum-resistant identities
+
+== References
+
+* SPIFFE Specification: https://github.com/spiffe/spiffe
+* SPIRE Documentation: https://spiffe.io/spire/
+* BeyondCorp: https://cloud.google.com/beyondcorp
+* NIST Zero Trust Architecture: https://csrc.nist.gov/publications/detail/sp/800-207/final
+* Open Policy Agent: https://www.openpolicyagent.org/
+
+== Appendix: Zero Trust Maturity Model
+
+[cols="1,1,1,1,1"]
+|=== 
+| Level | Description | BOJ Target | Current State | Gap
+
+| Level 1: Traditional 
+| Perimeter-based security 
+| - 
+| ✅ Current 
+| -
+
+| Level 2: Initial Zero Trust 
+| Basic identity, mTLS for critical paths 
+| Q3 2025 
+| 🚧 In Progress 
+| 6 months
+
+| Level 3: Advanced Zero Trust 
+| Comprehensive mTLS, policy engine, continuous auth 
+| Q1 2026 
+| 📝 Planned 
+| 12 months
+
+| Level 4: Optimized Zero Trust 
+| AI-driven, automated response, quantum-safe 
+| 2027 
+| 📝 Future 
+| 24 months
+
+| Level 5: Innovative Zero Trust 
+| Self-healing, autonomous security 
+| 2028+ 
+| 📝 Future 
+| 36+ months
+|=== 
+
+**BOJ Zero Trust Roadmap:**
+* **2025:** Identity foundation and mTLS implementation
+* **2026:** Policy engine and continuous authorization
+* **2027:** AI-driven security and optimization
+* **2028+:** Autonomous security and innovation
+
+== Appendix: Policy Examples
+
+**Gossip Protocol Policy:**
+[source,rego]
+--
+# Allow gossip only between nodes with valid Svalinn attestation
+allow {
+    input.action == "gossip"
+    input.source.identity.svalinn_attested == true
+    input.destination.identity.svalinn_attested == true
+    input.source.identity.security_level >= 2
+    input.destination.identity.security_level >= 2
+    same_trust_domain(input.source.identity, input.destination.identity)
+}
+
+same_trust_domain(a, b) {
+    a.trust_domain == b.trust_domain
+}
+--
+
+**Stapeln Access Policy:**
+[source,rego]
+--
+# Only problem-processor service can request multiplication
+allow {
+    input.action == "multiply"
+    input.source.identity.service == "problem-processor"
+    input.destination.identity.service == "multiplier"
+    input.source.identity.trust_domain == "boj.example.com"
+    input.destination.identity.trust_domain == "stapeln.example.com"
+}
+--
+
+**Administrative Access Policy:**
+[source,rego]
+--
+# Multi-factor required for administrative actions
+allow {
+    input.action == "admin"
+    input.source.identity.groups[_] == "boj-admins"
+    input.source.identity.mfa_completed == true
+    input.source.identity.device_posture == "secure"
+    time_now >= input.source.identity.last_auth_at + 300  # Re-auth every 5 minutes
+}
+--
+
+**Key Rotation Policy:**
+[source,rego]
+--
+# Only security team can rotate keys
+allow {
+    input.action == "rotate-key"
+    input.source.identity.groups[_] == "security-team"
+    input.source.identity.mfa_completed == true
+    input.destination.identity.service == "key-manager"
+    # Require approval from another security team member
+    count(input.approvals) > 0
+    all_approvers_valid(input.approvals)
+}
+
+all_approvers_valid(approvers) {
+    approvers[i].identity.groups[_] == "security-team"
+    approvers[i].identity.mfa_completed == true
+    approvers[i].timestamp >= time_now - 300  # Approval within last 5 minutes
+}
+--

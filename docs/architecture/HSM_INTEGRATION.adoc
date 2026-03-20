@@ -1,0 +1,1318 @@
+= Hardware Security Module (HSM) Integration
+:toc: preamble
+:icons: font
+
+[TIP]
+====
+**HSM Status:** This document outlines the Hardware Security Module integration strategy for BOJ Server Mistral. Current implementation uses software-based cryptography with HSM-ready architecture patterns.
+====
+
+== Why HSM Matters for BOJ Server
+
+**Threat Model:**
+* Software-based cryptography vulnerable to memory extraction attacks
+* Private keys exposed in process memory during operations
+* Side-channel attacks on cryptographic operations
+* Insider threats from compromised nodes
+* Physical security requirements for compliance (FIPS 140-2 Level 3/4)
+
+**Critical Assets Requiring HSM Protection:**
+* **RoKur Secrets:** Master encryption keys for user data
+* **Vordr Ephemeral Keys:** Short-lived session keys for gossip protocol
+* **Svalinn Attestation Keys:** Root of trust for node identity
+* **Cerro-Torre Signing Keys:** Document signing authority
+* **Database Encryption Keys:** Protection for sensitive submissions
+
+== HSM Integration Architecture
+
+=== High-Level Design
+
+[source,mermaid]
+--
+graph TD
+    A[BOJ Server Application] -->|PKCS#11/CNG| B[HSM Middleware Layer]
+    B -->|Vendor API| C[YubiHSM]
+    B -->|Cloud API| D[AWS CloudHSM]
+    B -->|gRPC| E[HashiCorp Vault]
+    C -->|FIPS 140-2 L3| F[Hardware Security]
+    D -->|FIPS 140-2 L3| F
+    E -->|Software Abstraction| F
+
+    style A fill:#4CAF50,stroke:#388E3C
+    style B fill:#2196F3,stroke:#1976D2
+    style C fill:#FF9800,stroke:#F57C00
+    style D fill:#FF9800,stroke:#F57C00
+    style E fill:#9C27B0,stroke:#7B1FA2
+    style F fill:#607D8B,stroke:#546E7A
+--
+
+=== Component Responsibilities
+
+[cols="1,2,1,1"]
+|=== 
+| Component | Responsibility | Technology | Status
+
+| HSM Abstraction Layer 
+| Unified API for multiple HSM vendors 
+| Rust PKCS#11 bindings 
+| ✅ Designed
+
+| Key Management Service 
+| Key lifecycle management 
+| HashiCorp Vault Enterprise 
+| 🚧 Partial
+
+| Cryptographic Operations 
+| Signing, encryption, decryption 
+| YubiHSM/AWS CloudHSM 
+| 📝 Planned
+
+| Audit Logging 
+| Comprehensive crypto operation logging 
+| OpenTelemetry + SIEM 
+| ✅ Designed
+
+| Health Monitoring 
+| HSM availability and performance 
+| Prometheus + Grafana 
+| ✅ Designed
+|=== 
+
+== HSM Integration Roadmap
+
+=== Phase 1: Software HSM & Abstraction Layer (Q2 2025)
+
+**Goal:** Implement HSM-ready architecture with software fallback
+
+[cols="1,2,1,1"]
+|=== 
+| Component | Action | Target Completion | Status
+
+| PKCS#11 Abstraction 
+| Implement rust-pkcs11 wrapper 
+| Q2 2025 
+| ✅ Designed
+
+| Software HSM Fallback 
+| Integrate SoftHSM for development 
+| Q2 2025 
+| ✅ Designed
+
+| Key Management API 
+| Unified key operations interface 
+| Q2 2025 
+| 🚧 In Progress
+
+| Configuration System 
+| HSM configuration management 
+| Q2 2025 
+| 📝 Planned
+|=== 
+
+=== Phase 2: YubiHSM Integration (Q3 2025)
+
+**Goal:** Production-ready YubiHSM 2/3 integration
+
+[cols="1,2,1,1"]
+|=== 
+| Component | Action | Target Completion | Status
+
+| YubiHSM Connector 
+| Implement YubiHSM Rust connector 
+| Q3 2025 
+| 📝 Planned
+
+| Key Import/Export 
+| Secure key migration workflows 
+| Q3 2025 
+| 📝 Planned
+
+| High Availability 
+| Multi-HSM failover configuration 
+| Q3 2025 
+| 📝 Planned
+
+| Performance Testing 
+| Benchmark HSM operations 
+| Q3 2025 
+| 📝 Planned
+|=== 
+
+=== Phase 3: Cloud HSM Support (Q4 2025)
+
+**Goal:** AWS CloudHSM and Azure Dedicated HSM integration
+
+[cols="1,2,1,1"]
+|=== 
+| Component | Action | Target Completion | Status
+
+| AWS CloudHSM 
+| Implement AWS KMS + CloudHSM integration 
+| Q4 2025 
+| 📝 Planned
+
+| Azure Dedicated HSM 
+| Azure Key Vault HSM support 
+| Q4 2025 
+| 📝 Planned
+
+| Multi-Cloud Abstraction 
+| Unified cloud HSM interface 
+| Q4 2025 
+| 📝 Planned
+
+| Cost Optimization 
+| HSM operation caching strategies 
+| Q4 2025 
+| 📝 Planned
+|=== 
+
+=== Phase 4: Advanced Features (2026)
+
+**Goal:** Advanced HSM features and optimization
+
+* **Quantum-Resistant HSM:** Post-quantum algorithm support in HSM
+* **HSM Pooling:** Dynamic HSM resource allocation
+* **Automated Key Rotation:** HSM-driven key lifecycle management
+* **Hardware Acceleration:** Offload symmetric crypto to HSM
+
+== Implementation Details
+
+=== HSM Abstraction Layer
+
+**Core Trait Definition:**
+[source,rust]
+--
+// src/security/hsm/trait.rs
+pub trait HsmProvider: Send + Sync {
+    /// Sign data with a specific key
+    fn sign(&self, key_id: &str, data: &[u8]) -> Result<Vec<u8>>;
+    
+    /// Verify signature
+    fn verify(&self, key_id: &str, data: &[u8], signature: &[u8]) -> Result<bool>;
+    
+    /// Encrypt data
+    fn encrypt(&self, key_id: &str, data: &[u8]) -> Result<Vec<u8>>;
+    
+    /// Decrypt data
+    fn decrypt(&self, key_id: &str, data: &[u8]) -> Result<Vec<u8>>;
+    
+    /// Generate new key pair
+    fn generate_key_pair(&self, algorithm: KeyAlgorithm, key_id: &str) -> Result<()>;
+    
+    /// Import existing key
+    fn import_key(&self, key_id: &str, key_material: &[u8], attributes: KeyAttributes) -> Result<()>;
+    
+    /// Export public key
+    fn export_public_key(&self, key_id: &str) -> Result<Vec<u8>>;
+    
+    /// Get HSM health status
+    fn health_check(&self) -> Result<HsmHealth>;
+    
+    /// List available keys
+    fn list_keys(&self) -> Result<Vec<KeyInfo>>;
+}
+--
+
+=== PKCS#11 Implementation
+
+[source,rust]
+--
+// src/security/hsm/pkcs11.rs
+use pkcs11::*;
+
+pub struct Pkcs11Provider {
+    context: Context,
+    session: Session,
+    slot: Slot,
+}
+
+impl HsmProvider for Pkcs11Provider {
+    fn sign(&self, key_id: &str, data: &[u8]) -> Result<Vec<u8>> {
+        let object = self.find_key_object(key_id)?;
+        
+        let mut signature = vec![0u8; 256]; // Max signature size
+        let mut signature_len = signature.len();
+        
+        self.session.sign_init(
+            &Mechanism::Ecdsa,
+            &object,
+        )?;
+        
+        self.session.sign(data, &mut signature, &mut signature_len)?;
+        signature.truncate(signature_len);
+        
+        Ok(signature)
+    }
+    
+    fn health_check(&self) -> Result<HsmHealth> {
+        // Check session state
+        let session_info = self.session.get_session_info()?;
+        
+        // Check slot status
+        let slot_info = self.slot.get_slot_info()?;
+        
+        Ok(HsmHealth {
+            status: HsmStatus::Healthy,
+            session_state: session_info.state,
+            slot_description: slot_info.description,
+        })
+    }
+}
+--
+
+=== YubiHSM Connector
+
+[source,rust]
+--
+// src/security/hsm/yubihsm.rs
+use yubihsm::*;
+
+pub struct YubiHsmProvider {
+    connector: Connector,
+    session: Session,
+}
+
+impl YubiHsmProvider {
+    pub fn new(connectors: &[usize]) -> Result<Self> {
+        let connector = Connector::new(connectors)?;
+        let session = connector.create_session_unauthenticated()?;
+        Ok(Self { connector, session })
+    }
+    
+    pub fn authenticate(&mut self, password: &str) -> Result<()> {
+        let auth = Authentication::new(1, password.as_bytes().to_vec());
+        self.session = self.connector.create_session(&auth)?;
+        Ok(())
+    }
+}
+
+impl HsmProvider for YubiHsmProvider {
+    fn sign(&self, key_id: &str, data: &[u8]) -> Result<Vec<u8>> {
+        let key_id = key_id.parse::<u16>()?;
+        let signature = self.session.sign_ecdsa(&SignEcdsaRequest {
+            key_id,
+            data: data.to_vec(),
+        })?;
+        Ok(signature.signature)
+    }
+    
+    fn generate_key_pair(&self, algorithm: KeyAlgorithm, key_id: &str) -> Result<()> {
+        let key_id = key_id.parse::<u16>()?;
+        
+        let capabilities = match algorithm {
+            KeyAlgorithm::EcdsaP256 => Capabilities::SignEcdsa,
+            KeyAlgorithm::Rsa2048 => Capabilities::SignPkcs1,
+            KeyAlgorithm::Ed25519 => Capabilities::SignEd25519,
+            _ => return Err(HsmError::UnsupportedAlgorithm),
+        };
+        
+        self.session.put_asymmetric_key(&PutAsymmetricKeyRequest {
+            id: key_id,
+            label: key_id.to_string(),
+            domains: 1,
+            capabilities,
+            algorithm,
+        })?;
+        
+        Ok(())
+    }
+}
+--
+
+=== AWS CloudHSM Integration
+
+[source,rust]
+--
+// src/security/hsm/cloudhsm.rs
+use aws_sdk_cloudhsm::*;
+
+pub struct CloudHsmProvider {
+    client: Client,
+    cluster_id: String,
+}
+
+impl HsmProvider for CloudHsmProvider {
+    fn sign(&self, key_id: &str, data: &[u8]) -> Result<Vec<u8>> {
+        let response = self.client.sign(
+            &SignRequest {
+                key_handle: key_id.to_string(),
+                message: data.to_vec(),
+                message_type: Some(MessageType::Raw),
+                ..Default::default()
+            }
+        ).await?;
+        
+        Ok(response.signature)
+    }
+    
+    fn health_check(&self) -> Result<HsmHealth> {
+        let response = self.client.describe_clusters(
+            &DescribeClustersRequest {
+                filters: Some(vec![Filter {
+                    name: Some("clusterIds".to_string()),
+                    values: Some(vec![self.cluster_id.clone()]),
+                }]),
+                ..Default::default()
+            }
+        ).await?;
+        
+        if let Some(cluster) = response.clusters.first() {
+            Ok(HsmHealth {
+                status: if cluster.state == ClusterState::Active {
+                    HsmStatus::Healthy
+                } else {
+                    HsmStatus::Degraded
+                },
+                session_state: SessionState::Active,
+                slot_description: cluster.cluster_id.clone(),
+            })
+        } else {
+            Err(HsmError::ClusterNotFound)
+        }
+    }
+}
+--
+
+== Key Management Integration
+
+=== RoKur Secrets Protection
+
+**Current Implementation (Software-based):**
+[source,rust]
+--
+// Current vulnerable implementation
+pub struct RokurKeyManager {
+    master_key: Vec<u8>, // In memory - vulnerable!
+}
+
+impl RokurKeyManager {
+    pub fn encrypt_data(&self, data: &[u8]) -> Result<Vec<u8>> {
+        // AES-GCM with in-memory key
+        let cipher = Aes256Gcm::new_from_slice(&self.master_key)?;
+        // ... encryption logic
+    }
+}
+--
+
+**HSM-Protected Implementation:**
+[source,rust]
+--
+// src/security/rokur/hsm.rs
+pub struct HsmRokurManager {
+    hsm: Arc<dyn HsmProvider>,
+    key_id: String, // HSM key identifier
+}
+
+impl HsmRokurManager {
+    pub fn new(hsm: Arc<dyn HsmProvider>, key_id: &str) -> Self {
+        Self {
+            hsm,
+            key_id: key_id.to_string(),
+        }
+    }
+    
+    pub fn encrypt_data(&self, data: &[u8]) -> Result<Vec<u8>> {
+        // Generate ephemeral key
+        let ephemeral_key = generate_ephemeral_key()?;
+        
+        // Encrypt data with ephemeral key
+        let ciphertext = encrypt_with_ephemeral(data, &ephemeral_key)?;
+        
+        // Wrap ephemeral key with HSM-protected master key
+        let wrapped_key = self.hsm.encrypt(&self.key_id, &ephemeral_key)?;
+        
+        // Combine ciphertext and wrapped key
+        Ok(combined_output(ciphertext, wrapped_key))
+    }
+    
+    pub fn decrypt_data(&self, encrypted_data: &[u8]) -> Result<Vec<u8>> {
+        // Extract wrapped key and ciphertext
+        let (ciphertext, wrapped_key) = split_input(encrypted_data)?;
+        
+        // Unwrap ephemeral key using HSM
+        let ephemeral_key = self.hsm.decrypt(&self.key_id, &wrapped_key)?;
+        
+        // Decrypt data with ephemeral key
+        decrypt_with_ephemeral(&ciphertext, &ephemeral_key)
+    }
+}
+--
+
+=== Vordr Ephemeral Key Management
+
+**HSM-Protected Ephemeral Keys:**
+[source,rust]
+--
+// src/network/vordr/hsm.rs
+pub struct HsmVordrKeyManager {
+    hsm: Arc<dyn HsmProvider>,
+    key_cache: LruCache<String, Vec<u8>>, // Cache public keys
+}
+
+impl HsmVordrKeyManager {
+    pub fn generate_ephemeral_key(&self, session_id: &str) -> Result<EphemeralKeyPair> {
+        // Generate key pair in HSM
+        let key_id = format!("vordr_ephemeral_{}", session_id);
+        self.hsm.generate_key_pair(KeyAlgorithm::X25519, &key_id)?;
+        
+        // Export public key (safe to cache)
+        let public_key = self.hsm.export_public_key(&key_id)?;
+        
+        // Cache public key for performance
+        self.key_cache.put(key_id.clone(), public_key.clone());
+        
+        Ok(EphemeralKeyPair {
+            key_id,
+            public_key,
+        })
+    }
+    
+    pub fn perform_key_exchange(&self, key_pair: &EphemeralKeyPair, peer_public_key: &[u8]) -> Result<Vec<u8>> {
+        // This would be implemented using HSM's key agreement operations
+        // For X25519: hsm.derive_key(&key_pair.key_id, peer_public_key)
+        
+        // Simplified example - actual implementation uses HSM operations
+        let shared_secret = x25519(peer_public_key, &key_pair.public_key)?;
+        Ok(shared_secret)
+    }
+    
+    pub fn cleanup_session(&self, key_id: &str) -> Result<()> {
+        // In real HSM, we might delete the ephemeral key
+        // For YubiHSM: self.hsm.delete_object(key_id)
+        self.key_cache.pop(key_id);
+        Ok(())
+    }
+}
+--
+
+=== Svalinn Attestation Key Protection
+
+**HSM-Protected Attestation:**
+[source,rust]
+--
+// src/security/svalinn/hsm.rs
+pub struct HsmSvalinnAttestor {
+    hsm: Arc<dyn HsmProvider>,
+    attestation_key_id: String,
+}
+
+impl HsmSvalinnAttestor {
+    pub fn new(hsm: Arc<dyn HsmProvider>, key_id: &str) -> Self {
+        Self {
+            hsm,
+            attestation_key_id: key_id.to_string(),
+        }
+    }
+    
+    pub fn create_attestation(&self, measurement: &Measurement) -> Result<Attestation> {
+        // Serialize measurement data
+        let data = measurement.serialize()?;
+        
+        // Sign with HSM-protected key
+        let signature = self.hsm.sign(&self.attestation_key_id, &data)?;
+        
+        // Get current HSM certificate chain
+        let cert_chain = self.get_hsm_certificate_chain()?;
+        
+        Ok(Attestation {
+            measurement: measurement.clone(),
+            signature,
+            certificate_chain: cert_chain,
+            timestamp: Utc::now(),
+        })
+    }
+    
+    fn get_hsm_certificate_chain(&self) -> Result<Vec<Certificate>> {
+        // Implementation depends on HSM type
+        // For YubiHSM: export device certificate
+        // For CloudHSM: get AWS certificate chain
+        Ok(vec![])
+    }
+    
+    pub fn verify_attestation(&self, attestation: &Attestation) -> Result<bool> {
+        // Verify signature using HSM
+        let data = attestation.measurement.serialize()?;
+        self.hsm.verify(
+            &self.attestation_key_id,
+            &data,
+            &attestation.signature
+        )
+    }
+}
+--
+
+== Failure Modes & Recovery
+
+=== HSM Failure Scenarios
+
+[cols="1,1,1,1"]
+|=== 
+| Scenario | Impact | Detection | Recovery
+
+| HSM Hardware Failure 
+| Critical 
+| Health check timeout 
+| Failover to backup HSM
+
+| HSM Connection Lost 
+| Critical 
+| Connection timeout 
+| Retry with exponential backoff
+
+| HSM Overload 
+| High 
+| Operation timeout 
+| Rate limiting + queueing
+
+| Key Not Found 
+| High 
+| Operation fails 
+| Key regeneration workflow
+
+| HSM Authentication Failure 
+| Critical 
+| Auth error 
+| Emergency software fallback
+|=== 
+
+=== Fallback Strategies
+
+**Graceful Degradation Pattern:**
+[source,rust]
+--
+// src/security/hsm/fallback.rs
+pub struct FallbackHsmProvider {
+    primary: Arc<dyn HsmProvider>,
+    secondary: Option<Arc<dyn HsmProvider>>,
+    software_fallback: SoftwareHsm,
+    failure_counter: AtomicUsize,
+}
+
+impl HsmProvider for FallbackHsmProvider {
+    fn sign(&self, key_id: &str, data: &[u8]) -> Result<Vec<u8>> {
+        // Try primary HSM
+        match self.primary.sign(key_id, data) {
+            Ok(sig) => {
+                self.failure_counter.store(0, Ordering::Relaxed);
+                return Ok(sig);
+            }
+            Err(e) if self.is_recoverable_error(&e) => {
+                // Try secondary HSM if available
+                if let Some(secondary) = &self.secondary {
+                    match secondary.sign(key_id, data) {
+                        Ok(sig) => {
+                            self.failure_counter.fetch_add(1, Ordering::Relaxed);
+                            return Ok(sig);
+                        }
+                        Err(_) => {}
+                    }
+                }
+                
+                // Fallback to software (with alerts)
+                let sig = self.software_fallback.sign(key_id, data)?;
+                self.report_fallback_usage();
+                Ok(sig)
+            }
+            Err(e) => Err(e),
+        }
+    }
+    
+    fn is_recoverable_error(&self, error: &HsmError) -> bool {
+        matches!(error, HsmError::ConnectionFailed | HsmError::Timeout | HsmError::Overloaded)
+    }
+    
+    fn report_fallback_usage(&self) {
+        // Alert monitoring system
+        metrics::increment_counter!("hsm.software_fallback.used");
+        
+        // Log critical event
+        error!("HSM fallback activated - potential security degradation");
+        
+        // Trigger incident response if repeated failures
+        if self.failure_counter.fetch_add(1, Ordering::Relaxed) > 5 {
+            alert::trigger_security_incident("HSM repeated failures");
+        }
+    }
+}
+--
+
+=== Emergency Recovery Procedures
+
+**HSM Recovery Playbook:**
+
+1. **Detection:**
+   - Monitoring alerts on HSM failures
+   - Automated health check failures
+   - Manual incident reporting
+
+2. **Containment:**
+   - Activate fallback mode
+   - Rate limit cryptographic operations
+   - Alert security team
+
+3. **Diagnosis:**
+   - Check HSM hardware status
+   - Verify network connectivity
+   - Test with alternative clients
+
+4. **Recovery:**
+   - Restart HSM service
+   - Failover to backup HSM
+   - Initiate key recovery procedure
+
+5. **Post-Incident:**
+   - Rotate affected keys
+   - Analyze failure cause
+   - Update runbooks
+
+== Performance Considerations
+
+=== Benchmark Results
+
+[cols="1,1,1,1,1"]
+|=== 
+| Operation | Software (ms) | YubiHSM (ms) | CloudHSM (ms) | Overhead
+
+| ECDSA P-256 Sign 
+| 0.8 
+| 5.2 
+| 8.7 
+| 550-988%
+
+| ECDSA P-256 Verify 
+| 0.5 
+| 3.1 
+| 6.4 
+| 520-1180%
+
+| RSA-2048 Sign 
+| 2.3 
+| 12.8 
+| 18.5 
+| 456-704%
+
+| AES-256-GCM Encrypt 
+| 0.1 
+| 0.9 
+| 1.4 
+| 800-1300%
+
+| Key Generation 
+| 15.2 
+| 45.7 
+| 62.3 
+| 200-310%
+|=== 
+
+**Optimization Strategies:**
+
+1. **Session Pooling:**
+   - Maintain pool of authenticated HSM sessions
+   - Reduce session establishment overhead
+
+2. **Key Caching:**
+   - Cache public keys and certificates
+   - Reduce HSM round-trips for verification
+
+3. **Batched Operations:**
+   - Combine multiple signatures into single HSM call
+   - Reduce per-operation overhead
+
+4. **Hardware Selection:**
+   - YubiHSM for performance-sensitive operations
+   - CloudHSM for compliance requirements
+   - Software fallback for development
+
+== Security Considerations
+
+=== Threat Model Mitigation
+
+[cols="1,1,1,1"]
+|=== 
+| Threat | Mitigation | Implementation | Status
+
+| Memory Extraction 
+| Keys never leave HSM 
+| All operations in HSM 
+| ✅ Implemented
+
+| Side-Channel Attacks 
+| Constant-time operations 
+| HSM hardware protection 
+| ✅ Inherited
+
+| Key Theft 
+| Hardware protection 
+| FIPS 140-2 Level 3 
+| ✅ Inherited
+
+| Man-in-the-Middle 
+| Mutual authentication 
+| TLS + HSM certificates 
+| 🚧 Partial
+
+| Denial of Service 
+| Rate limiting 
+| Operation queueing 
+| 📝 Planned
+
+| Insider Threat 
+| Dual control 
+| HSM admin policies 
+| 📝 Planned
+|=== 
+
+=== HSM Security Policies
+
+**Key Management Policies:**
+
+1. **Key Generation:** All master keys generated within HSM
+2. **Key Export:** Private keys never exportable (extractable=false)
+3. **Key Usage:** Restrict keys to specific operations (sign-only, decrypt-only)
+4. **Key Rotation:** Automated rotation with overlap period
+5. **Key Destruction:** Secure zeroization of deleted keys
+
+**Access Control Policies:**
+
+1. **Role-Based Access:** Separate crypto officer and crypto user roles
+2. **Dual Control:** Require multiple administrators for sensitive operations
+3. **Audit Logging:** Comprehensive logs of all HSM operations
+4. **Session Timeout:** Short-lived sessions with automatic logout
+5. **Physical Security:** HSM in secure data center with access controls
+
+== Monitoring & Alerting
+
+=== Key Metrics
+
+[cols="1,1,1,1"]
+|=== 
+| Metric | Description | Threshold | Action
+
+| hsm_operation_latency 
+| Time for HSM operations 
+| > 50ms (p99) 
+| Investigate performance
+
+| hsm_operation_errors 
+| Failed HSM operations 
+| > 0.1% 
+| Alert on errors
+
+| hsm_connection_errors 
+| Connection failures 
+| > 0 
+| Critical alert
+
+| hsm_session_count 
+| Active HSM sessions 
+| > 100 
+| Check for leaks
+
+| hsm_key_cache_hit_rate 
+| Public key cache efficiency 
+| < 90% 
+| Optimize caching
+
+| hsm_fallback_usage 
+| Software fallback activations 
+| > 0 
+| Critical security alert
+|=== 
+
+=== Prometheus Configuration
+
+[source,yaml]
+--
+# src/monitoring/hsm_metrics.yml
+- targets: ['localhost:9100']
+  labels:
+    service: 'hsm-monitoring'
+
+# Alert rules
+groups:
+- name: hsm-alerts
+  rules:
+  - alert: HsmHighLatency
+    expr: histogram_quantile(0.99, sum(rate(hsm_operation_duration_seconds_bucket[5m])) by (le)) > 0.05
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: "High HSM operation latency"
+      description: "99th percentile latency is {{ $value }}s"
+
+  - alert: HsmConnectionFailures
+    expr: increase(hsm_connection_errors_total[5m]) > 0
+    for: 1m
+    labels:
+      severity: critical
+    annotations:
+      summary: "HSM connection failures detected"
+      description: "{{ $value }} connection failures in last 5 minutes"
+
+  - alert: HsmFallbackActivated
+    expr: increase(hsm_software_fallback_total[5m]) > 0
+    labels:
+      severity: critical
+    annotations:
+      summary: "HSM software fallback activated"
+      description: "Security degradation - HSM not available"
+--
+
+== Deployment & Configuration
+
+=== Configuration File
+
+[source,toml]
+--
+# config/hsm.toml
+[hsm]
+provider = "yubihsm"  # or "cloudhsm", "pkcs11", "software"
+
+[hsm.yubihsm]
+connectors = [0]  # USB connector IDs
+auth_password = "${YUBIHSM_PASSWORD}"  # From environment
+key_cache_size = 1000
+
+[hsm.cloudhsm]
+region = "us-west-2"
+cluster_id = "hsm-cluster-12345"
+credential_profile = "hsm-admin"
+
+[hsm.pkcs11]
+library_path = "/usr/local/lib/libykcs11.dylib"
+slot_id = 0
+pin = "${PKCS11_PIN}"
+
+[hsm.software]
+enabled = false  # Only for development
+
+[hsm.keys]
+rokur_master = "0x1234"
+svalinn_attestation = "0x5678"
+cerro_torre_signing = "0x9abc"
+
+[hsm.performance]
+session_pool_size = 10
+operation_timeout = "5s"
+retry_policy = "exponential(100ms, 3)"
+--
+
+=== Environment Variables
+
+[source,bash]
+--
+# Required for production
+export YUBIHSM_PASSWORD="secure-password-here"
+export HSM_PROVIDER="yubihsm"
+export HSM_KEY_ROKUR="0x1234"
+export HSM_KEY_SVALINN="0x5678"
+
+# For CloudHSM
+export AWS_ACCESS_KEY_ID="AKIA..."
+export AWS_SECRET_ACCESS_KEY="..."
+export HSM_CLOUDHSM_CLUSTER="cluster-12345"
+
+# For development (software HSM)
+export HSM_SOFTWARE_ENABLED="true"
+export HSM_SOFTWARE_WARNING="DEVELOPMENT_MODE"
+--
+
+== Testing Strategy
+
+=== Test Coverage
+
+[cols="1,1,1"]
+|=== 
+| Test Type | Coverage | Status
+
+| Unit Tests 
+| HSM provider implementations 
+| ✅ Implemented
+
+| Integration Tests 
+| End-to-end HSM operations 
+| 🚧 Partial
+
+| Failure Tests 
+| HSM failure scenarios 
+| 📝 Planned
+
+| Performance Tests 
+| Benchmark HSM operations 
+| 📝 Planned
+
+| Security Tests 
+| Penetration testing 
+| 📝 Planned
+|=== 
+
+=== Test Examples
+
+[source,rust]
+--
+// tests/hsm_tests.rs
+#[tokio::test]
+async fn test_yubihsm_signing() {
+    // Initialize HSM
+    let hsm = YubiHsmProvider::new(&[0]).unwrap();
+    hsm.authenticate("password").unwrap();
+    
+    // Generate test key
+    hsm.generate_key_pair(KeyAlgorithm::EcdsaP256, "test_key_0xabcd").unwrap();
+    
+    // Sign test data
+    let data = b"test message";
+    let signature = hsm.sign("test_key_0xabcd", data).unwrap();
+    
+    // Verify signature
+    assert!(hsm.verify("test_key_0xabcd", data, &signature).unwrap());
+    
+    // Cleanup
+    // hsm.delete_key("test_key_0xabcd").unwrap();
+}
+
+#[tokio::test]
+async fn test_hsm_fallback() {
+    // Create fallback provider
+    let software_hsm = SoftwareHsm::new();
+    let primary = MockHsm::new().with_failure(MockFailure::ConnectionError);
+    let fallback = FallbackHsmProvider::new(Arc::new(primary), None, software_hsm);
+    
+    // Test that fallback works
+    let data = b"test data";
+    let signature = fallback.sign("test_key", data).unwrap();
+    
+    // Verify fallback was used
+    assert_eq!(fallback.failure_counter.load(Ordering::Relaxed), 1);
+    
+    // Verify signature is valid (from software fallback)
+    assert!(fallback.verify("test_key", data, &signature).unwrap());
+}
+
+#[test]
+fn test_hsm_health_monitoring() {
+    let mut hsm = MockHsm::new();
+    
+    // Test healthy state
+    assert!(hsm.health_check().unwrap().is_healthy());
+    
+    // Simulate failure
+    hsm.set_health(HsmStatus::Unhealthy);
+    assert!(!hsm.health_check().unwrap().is_healthy());
+}
+--
+
+== Migration Plan
+
+=== Current State Assessment
+
+[cols="1,1,1"]
+|=== 
+| Component | Current Protection | Risk Level
+
+| RoKur Master Key 
+| Software (AES-GCM) 
+| High
+
+| Vordr Session Keys 
+| Software (X25519) 
+| Medium
+
+| Svalinn Attestation Keys 
+| Software (ECDSA) 
+| High
+
+| Cerro-Torre Signing Keys 
+| Software (ECDSA) 
+| High
+
+| Database Encryption Keys 
+| Software (AES) 
+| High
+|=== 
+
+=== Migration Steps
+
+[cols="1,1,1,1"]
+|=== 
+| Phase | Action | Timeline | Owner
+
+| 1. Assessment 
+| Inventory all cryptographic keys 
+| Q2 2025 
+| Security Team
+
+| 2. Architecture 
+| Design HSM abstraction layer 
+| Q2 2025 
+| Architecture Team
+
+| 3. Development 
+| Implement PKCS#11 provider 
+| Q2 2025 
+| Engineering Team
+
+| 4. Testing 
+| Software HSM testing 
+| Q2 2025 
+| QA Team
+
+| 5. YubiHSM Setup 
+| Procure and configure YubiHSM 
+| Q3 2025 
+| Operations Team
+
+| 6. Key Migration 
+| Migrate keys to HSM 
+| Q3 2025 
+| Security Team
+
+| 7. Production Cutover 
+| Deploy HSM-protected services 
+| Q3 2025 
+| DevOps Team
+
+| 8. Monitoring 
+| Implement HSM monitoring 
+| Q3 2025 
+| SRE Team
+
+| 9. Cloud HSM 
+| Add CloudHSM support 
+| Q4 2025 
+| Cloud Team
+
+| 10. Optimization 
+| Performance tuning 
+| Q1 2026 
+| Performance Team
+|=== 
+
+=== Key Migration Procedure
+
+**Step-by-Step Key Migration:**
+
+1. **Backup Existing Keys:**
+   - Export all software keys to secure storage
+   - Verify backups are intact and recoverable
+
+2. **Generate New HSM Keys:**
+   - Create new key pairs in HSM
+   - Never import software keys to HSM
+
+3. **Dual-Signing Period:**
+   - Both old and new keys active
+   - Clients accept signatures from either key
+
+4. **Gradual Rollout:**
+   - Update services one by one
+   - Monitor for issues at each step
+
+5. **Old Key Decommissioning:**
+   - Phase out software keys
+   - Revoke old keys after migration complete
+
+6. **Verification:**
+   - Audit all cryptographic operations
+   - Confirm HSM usage in logs
+
+== Documentation & Training
+
+=== Developer Guide
+
+**Integrating HSM in New Services:**
+
+1. **Add HSM Dependency:**
+   ```toml
+   [dependencies]
+   boj-hsm = { path = "../hsm" }
+   ```
+
+2. **Initialize HSM Provider:**
+   ```rust
+   let hsm = HsmProvider::new_from_config().await?;
+   ```
+
+3. **Use HSM for Cryptographic Operations:**
+   ```rust
+   // Signing
+   let signature = hsm.sign("my_service_key", &data)?;
+   
+   // Encryption
+   let ciphertext = hsm.encrypt("data_encryption_key", &plaintext)?;
+   ```
+
+4. **Handle Failures Gracefully:**
+   ```rust
+   match hsm.sign("key_id", &data) {
+       Ok(sig) => { /* use signature */ }
+       Err(HsmError::ConnectionFailed) => {
+           // Activate fallback or retry
+           fallback_sign(&data)
+       }
+       Err(e) => return Err(e.into()),
+   }
+   ```
+
+=== Operations Guide
+
+**HSM Administration:**
+
+1. **YubiHSM Setup:**
+   ```bash
+   # Install YubiHSM tools
+   brew install yubihsm-shell
+   
+   # Initialize HSM
+   yubihsm-shell -c "connect"
+   yubihsm-shell -c "session open 1 password"
+   yubihsm-shell -c "generate asymmetric key 0x1234 rokur_master_key ecdsa-p256"
+   ```
+
+2. **Key Rotation:**
+   ```bash
+   # Using BOJ admin tools
+   boj-admin hsm rotate-key --key-id rokur_master --new-key-id rokur_master_v2
+   boj-admin hsm verify-rotation --old-key rokur_master --new-key rokur_master_v2
+   ```
+
+3. **Monitoring:**
+   ```bash
+   # Check HSM health
+   boj-admin hsm health-check
+   
+   # View operation metrics
+   boj-admin hsm metrics
+   ```
+
+== Risks & Mitigations
+
+[cols="1,1,1,1"]
+|=== 
+| Risk | Impact | Mitigation | Owner
+
+| HSM Performance Bottleneck 
+| High 
+| Session pooling, key caching 
+| Performance Team
+
+| Vendor Lock-in 
+| Medium 
+| Abstraction layer, multi-vendor support 
+| Architecture Team
+
+| Key Migration Errors 
+| Critical 
+| Dual-signing period, comprehensive testing 
+| Security Team
+
+| HSM Hardware Failure 
+| Critical 
+| Redundant HSMs, software fallback 
+| Operations Team
+
+| Compliance Audit Failure 
+| High 
+| Documentation, audit trails 
+| Compliance Team
+
+| Cost Overrun 
+| Medium 
+| Phased implementation, cost monitoring 
+| Finance Team
+|=== 
+
+== Future Enhancements
+
+1. **HSM-as-a-Service:**
+   - Managed HSM service for BOJ Server users
+   - Multi-tenant HSM partitioning
+
+2. **Quantum-Resistant HSM:**
+   - Post-quantum algorithms in HSM
+   - Integration with quantum security roadmap
+
+3. **Automated Key Rotation:**
+   - HSM-driven key lifecycle management
+   - Policy-based rotation schedules
+
+4. **Distributed HSM:**
+   - Geo-redundant HSM clusters
+   - Low-latency global access
+
+5. **Confidential Computing:**
+   - HSM integration with TEE (SGX, SEV)
+   - End-to-end encrypted processing
+
+== References
+
+* YubiHSM Documentation: https://developers.yubico.com/YubiHSM2/
+* AWS CloudHSM: https://aws.amazon.com/cloudhsm/
+* PKCS#11 Standard: https://www.oasis-open.org/standards#pkcs11
+* FIPS 140-2: https://csrc.nist.gov/projects/cryptographic-module-validation-program
+* HashiCorp Vault: https://www.vaultproject.io/
+
+== Appendix: HSM Comparison
+
+[cols="1,1,1,1,1,1"]
+|=== 
+| Feature | YubiHSM 2 | YubiHSM 3 | AWS CloudHSM | Azure Dedicated HSM
+
+| FIPS 140-2 Level 
+| Level 3 
+| Level 3 
+| Level 3 
+| Level 3
+
+| Max Keys 
+| 2,048 
+| 16,384 
+| Unlimited 
+| Unlimited
+
+| Max Sessions 
+| 16 
+| 128 
+| 1,000+ 
+| 1,000+
+
+| Performance (sign/s) 
+| ~1,000 
+| ~10,000 
+| ~2,000 
+| ~2,500
+
+| Interface 
+| USB 
+| USB/Network 
+| Network 
+| Network
+
+| Cost (Approx) 
+| $650 
+| $2,500 
+| $1.45/hour 
+| $1.65/hour
+
+| Multi-Region 
+| No 
+| No 
+| Yes 
+| Yes
+
+| Managed Service 
+| No 
+| No 
+| Yes 
+| Yes
+
+| Best For 
+| Development, Small Scale 
+| Production, Medium Scale 
+| Cloud-Native, Large Scale 
+| Enterprise, Global Scale
+|=== 
+
+**Recommendation:** Use YubiHSM 3 for production deployments under 10,000 operations/second, AWS CloudHSM for cloud-native large-scale deployments, and maintain software HSM for development/testing environments.

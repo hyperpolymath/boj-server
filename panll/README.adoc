@@ -1,61 +1,10 @@
-// SPDX-License-Identifier: PMPL-1.0-or-later
 = BoJ Server PanLL Panel
 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
-v1.0.0, 2026-03-09
+v1.0.0, 2026-03-02
 :toc:
 
 == Overview
-
-The Bundle of Joy PanLL panel provides a visual control surface for the BoJ
-cartridge server.  It renders as a full-screen overlay within PanLL with five
-tabbed views: Dashboard, Cartridges (17x10 capability matrix), Topology,
-Federation (Umoja gossip), and Invoke (tool execution).
-
-== Implementation Location
-
-The panel source lives in the PanLL repository, not here.  This directory holds
-the clade definition (A2ML) that PanLL's clade loader reads at startup.
-
-[cols="1,3"]
-|===
-| File | Location
-
-| **BojModel.res**
-| `panll/src/model/BojModel.res` — types for cartridges, federation, grades
-
-| **BojEngine.res**
-| `panll/src/core/BojEngine.res` — pure helpers, JSON parsers, filtering
-
-| **BojCmd.res**
-| `panll/src/commands/BojCmd.res` — Tauri invoke wrappers for BoJ API
-
-| **Boj.res**
-| `panll/src/components/Boj.res` — 887-line TEA view (no JSX)
-
-| **Boj.a2ml**
-| `panll/panel-clades/clades/boj/Boj.a2ml` — clade definition
-|===
+This directory contains the ReScript/TEA (The Elm Architecture) source code for the BoJ Server's PanLL Panel.
 
 == Architecture
-
-The panel talks to the BoJ server over HTTP (default `http://localhost:7700/api/v1`)
-via Tauri command proxying.  State is managed with the custom TEA implementation
-(`src/tea/`).
-
-----
-PanLL UI (ReScript/TEA)
-  └── BojCmd.res → Tauri invoke
-        └── src-tauri/src/boj/commands.rs → HTTP proxy
-              └── BoJ Server :7700 /api/v1
-----
-
-== Panel Capabilities
-
-* **Dashboard** — cartridge count, loaded count, federation peers, grade breakdown
-* **Cartridges** — 17-row × 10-column protocol capability matrix with filter,
-  grade badges, layer progress, per-cartridge detail drawer
-* **Topology** — ASCII architecture diagram (Idris2 ABI → Zig FFI → V-lang adapter)
-* **Federation** — Umoja peer list with state badges, add/disconnect/sync controls,
-  gossip round trigger, catalogue digest comparison
-* **Invoke** — select cartridge + tool, pass JSON args, execute with latency
-  measurement, TypeLL cross-panel type intelligence
+The panel provides a visual "Maître D'" interface for the BoJ Server, allowing users to select cartridges from the Teranga Menu and generate an `order-ticket.scm` without modifying configuration files.
