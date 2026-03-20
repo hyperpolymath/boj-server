@@ -33,19 +33,20 @@ jobs:
 
       - name: Clone Hypatia
         run: |
-          if [ ! -d "$HOME/hypatia" ]; then
-            git clone https://github.com/hyperpolymath/hypatia.git "$HOME/hypatia"
+          HYPATIA_DIR="${GITHUB_WORKSPACE}/../hypatia"
+          if [ ! -d "$HYPATIA_DIR" ]; then
+            git clone --depth 1 https://github.com/hyperpolymath/hypatia.git "$HYPATIA_DIR"
           fi
+          echo "HYPATIA_DIR=$HYPATIA_DIR" >> "$GITHUB_ENV"
 
       - name: Build Hypatia scanner (if needed)
-        working-directory: ${{ env.HOME }}/hypatia
         run: |
+          cd "$HYPATIA_DIR"
           if [ ! -f hypatia-v2 ]; then
             echo "Building hypatia-v2 scanner..."
-            cd scanner
-            mix deps.get
+            mix deps.get --quiet
             mix escript.build
-            mv hypatia ../hypatia-v2
+            mv hypatia hypatia-v2
           fi
 
       - name: Run Hypatia scan
@@ -54,7 +55,7 @@ jobs:
           echo "Scanning repository: ${{ github.repository }}"
 
           # Run scanner
-          HYPATIA_FORMAT=json "$HOME/hypatia/hypatia-cli.sh" scan . > hypatia-findings.json
+          HYPATIA_FORMAT=json "$HYPATIA_DIR/hypatia-cli.sh" scan . > hypatia-findings.json
 
           # Count findings
           FINDING_COUNT=$(jq '. | length' hypatia-findings.json 2>/dev/null || echo 0)
