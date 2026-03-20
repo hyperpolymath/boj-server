@@ -1,0 +1,67 @@
+{
+  "$schema": "https://panll.dev/schemas/panel-manifest/v1.json",
+  "spdx": "PMPL-1.0-or-later",
+  "cartridge": "nesy-mcp",
+  "domain": "Neurosymbolic AI",
+  "version": "0.1.0",
+  "panels": [
+    {
+      "id": "nesy-status",
+      "title": "NeSy Engine Status",
+      "description": "Neurosymbolic inference engine readiness and current reasoning mode",
+      "type": "status-indicator",
+      "data_source": {
+        "endpoint": "/cartridge/nesy-mcp/invoke",
+        "method": "POST",
+        "body": { "tool": "status" },
+        "refresh_interval_ms": 5000
+      },
+      "widgets": [
+        {
+          "type": "state-badge",
+          "field": "state",
+          "states": {
+            "ready": { "color": "#2ecc71", "icon": "brain" },
+            "degraded": { "color": "#f39c12", "icon": "alert-circle" },
+            "error": { "color": "#e74c3c", "icon": "alert-triangle" }
+          }
+        },
+        { "type": "text", "field": "version", "label": "Version" }
+      ]
+    },
+    {
+      "id": "nesy-reasoning-stats",
+      "title": "Reasoning Statistics",
+      "description": "Inference count, average latency, and symbolic/neural split ratio",
+      "type": "metric",
+      "data_source": {
+        "endpoint": "/cartridge/nesy-mcp/invoke",
+        "method": "POST",
+        "body": { "tool": "reasoning_stats" },
+        "refresh_interval_ms": 10000
+      },
+      "widgets": [
+        { "type": "counter", "field": "total_inferences", "label": "Total Inferences", "icon": "activity" },
+        { "type": "counter", "field": "avg_latency_ms", "label": "Avg Latency (ms)", "icon": "clock" },
+        { "type": "gauge", "field": "symbolic_ratio", "label": "Symbolic Ratio", "min": 0, "max": 1 }
+      ]
+    },
+    {
+      "id": "nesy-knowledge-graph",
+      "title": "Knowledge Graph",
+      "description": "Node and edge counts in the active neurosymbolic knowledge graph",
+      "type": "metric",
+      "data_source": {
+        "endpoint": "/cartridge/nesy-mcp/invoke",
+        "method": "POST",
+        "body": { "tool": "graph_stats" },
+        "refresh_interval_ms": 30000
+      },
+      "widgets": [
+        { "type": "counter", "field": "node_count", "label": "Nodes", "icon": "circle" },
+        { "type": "counter", "field": "edge_count", "label": "Edges", "icon": "git-branch" },
+        { "type": "counter", "field": "rule_count", "label": "Rules", "icon": "book" }
+      ]
+    }
+  ]
+}

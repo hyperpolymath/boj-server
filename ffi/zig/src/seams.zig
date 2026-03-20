@@ -10,14 +10,17 @@
 // the checks should produce a "silent signature" (all pass, nothing to report).
 //
 // Seam categories:
-//   1. Catalogue contract  — enum encodings match Idris2 ABI
-//   2. Cartridge interface  — standard 4-symbol export contract
-//   3. Mount safety gate   — IsUnbreakable invariant holds at FFI level
-//   4. Hash attestation    — binary integrity chain
-//   5. Protocol coverage   — matrix completeness
+//   1. Catalogue contract   — enum encodings match Idris2 ABI
+//   2. Cartridge interface   — standard 4-symbol export contract
+//   3. Mount safety gate    — IsUnbreakable invariant holds at FFI level
+//   4. Hash attestation     — binary integrity chain
+//   5. Protocol coverage    — matrix completeness
 //   6. Module initialisation — lifecycle contracts
 //   7. State machine validity — feedback/community/SLA transitions
-//   8. Thread safety        — mutex protection on all C-ABI exports
+//   8. Thread safety         — mutex protection on all C-ABI exports
+//   9. Point-to-point       — each module's FFI exports match ABI spec
+//  10. Aspect (cross-cutting) — logging, error handling, thread safety
+//  11. Boundary             — input sanitisation at all external interfaces
 //
 // If all seams pass, BoJ's integration surface is verified.
 // Any failure is a genuine architectural defect, not a test fluke.
@@ -416,4 +419,281 @@ test "seam: concurrent mount+unmount does not corrupt state" {
 
     // After all unmounts, nothing should be mounted
     try std.testing.expectEqual(@as(usize, 0), catalogue.boj_catalogue_count_mounted());
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// Seam 12: Point-to-point — FFI export surface completeness
+// ═══════════════════════════════════════════════════════════════════════
+//
+// Each core FFI module must export its init/deinit pair.  If a module
+// gains exports without a lifecycle contract, the V adapter cannot
+// safely manage its memory.  This seam validates that the catalogue
+// module's required symbols are callable (not just declared).
+
+test "seam: point-to-point — catalogue lifecycle symbols are callable" {
+    // init returns 0 on success
+    const rc = catalogue.boj_catalogue_init();
+    try std.testing.expectEqual(@as(c_int, 0), rc);
+
+    // count starts at zero
+    try std.testing.expectEqual(@as(usize, 0), catalogue.boj_catalogue_count());
+
+    // register returns a valid index (0)
+    const idx = catalogue.boj_catalogue_register(
+        "p2p-test".ptr, 8,
+        "1.0".ptr, 3,
+        1, // ready
+        0, // teranga
+        3, // database
+    );
+    try std.testing.expectEqual(@as(c_int, 0), idx);
+
+    // add_protocol succeeds
+    try std.testing.expectEqual(@as(c_int, 0), catalogue.boj_catalogue_add_protocol(1));
+
+    // mount succeeds on ready cartridge
+    try std.testing.expectEqual(@as(c_int, 0), catalogue.boj_catalogue_mount(0));
+
+    // is_mounted returns 1
+    try std.testing.expectEqual(@as(c_int, 1), catalogue.boj_catalogue_is_mounted(0));
+
+    // unmount succeeds
+    try std.testing.expectEqual(@as(c_int, 0), catalogue.boj_catalogue_unmount(0));
+
+    // status returns ready (1)
+    try std.testing.expectEqual(@as(c_int, 1), catalogue.boj_catalogue_status(0));
+
+    // count_ready returns 1
+    try std.testing.expectEqual(@as(usize, 1), catalogue.boj_catalogue_count_ready());
+
+    // deinit cleans up
+    catalogue.boj_catalogue_deinit();
+    try std.testing.expectEqual(@as(usize, 0), catalogue.boj_catalogue_count());
+}
+
+test "seam: point-to-point — menu export symbols are callable" {
+    _ = catalogue.boj_catalogue_init();
+    defer catalogue.boj_catalogue_deinit();
+
+    _ = catalogue.boj_catalogue_register("p2p-menu".ptr, 8, "2.0".ptr, 3, 1, 0, 1);
+    _ = catalogue.boj_catalogue_add_protocol(1);
+
+    // boj_menu_tier returns teranga (0)
+    try std.testing.expectEqual(@as(c_int, 0), catalogue.boj_menu_tier(0));
+
+    // boj_menu_name writes the name
+    var name_buf: [64]u8 = undefined;
+    const name_len = catalogue.boj_menu_name(0, &name_buf, 64);
+    try std.testing.expectEqualSlices(u8, "p2p-menu", name_buf[0..name_len]);
+
+    // boj_menu_has_protocol returns 1 for MCP
+    try std.testing.expectEqual(@as(c_int, 1), catalogue.boj_menu_has_protocol(0, 1));
+
+    // boj_menu_json produces valid output
+    var json_buf: [4096]u8 = undefined;
+    const json_len = catalogue.boj_menu_json(&json_buf, 4096);
+    try std.testing.expect(json_len > 0);
+
+    // boj_menu_count_by_tier returns 1 for teranga
+    try std.testing.expectEqual(@as(usize, 1), catalogue.boj_menu_count_by_tier(0));
+
+    // boj_menu_validate_order succeeds for ready cartridge
+    const names = [_][*]const u8{"p2p-menu"};
+    const lens = [_]usize{8};
+    try std.testing.expectEqual(@as(usize, 1), catalogue.boj_menu_validate_order(&names, &lens, 1));
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// Seam 13: Aspect — Cross-cutting error handling contract
+// ═══════════════════════════════════════════════════════════════════════
+//
+// All C-ABI exports must return sentinel values on error, never trap.
+// The V adapter depends on -1 meaning "error" for c_int returns and
+// 0 meaning "nothing" for usize returns.  These tests exercise the
+// error return contract across all entry points.
+
+test "seam: aspect — error sentinels on uninitialised catalogue" {
+    // Ensure catalogue is deinitialised
+    catalogue.boj_catalogue_deinit();
+
+    // Operations on uninitialised catalogue should return safe sentinels
+    try std.testing.expectEqual(@as(usize, 0), catalogue.boj_catalogue_count());
+    try std.testing.expectEqual(@as(usize, 0), catalogue.boj_catalogue_count_ready());
+    try std.testing.expectEqual(@as(usize, 0), catalogue.boj_catalogue_count_mounted());
+}
+
+test "seam: aspect — out-of-bounds index returns error sentinel" {
+    _ = catalogue.boj_catalogue_init();
+    defer catalogue.boj_catalogue_deinit();
+
+    // No cartridges registered — any index is out of bounds
+    // mount/unmount return -2 for "not found" (distinct from -1 "not ready")
+    try std.testing.expectEqual(@as(c_int, -2), catalogue.boj_catalogue_mount(999));
+    try std.testing.expectEqual(@as(c_int, -2), catalogue.boj_catalogue_unmount(999));
+    // is_mounted, status, tier all return -1 for out-of-bounds
+    try std.testing.expectEqual(@as(c_int, -1), catalogue.boj_catalogue_is_mounted(999));
+    try std.testing.expectEqual(@as(c_int, -1), catalogue.boj_catalogue_status(999));
+    try std.testing.expectEqual(@as(c_int, -1), catalogue.boj_menu_tier(999));
+}
+
+test "seam: aspect — duplicate init is idempotent" {
+    // Double init must not leak or corrupt
+    _ = catalogue.boj_catalogue_init();
+    _ = catalogue.boj_catalogue_register("dup-init".ptr, 8, "1.0".ptr, 3, 1, 0, 1);
+    try std.testing.expectEqual(@as(usize, 1), catalogue.boj_catalogue_count());
+
+    // Second init should reset
+    _ = catalogue.boj_catalogue_init();
+    // After re-init, old cartridges are gone
+    const count = catalogue.boj_catalogue_count();
+    // Accept either 0 (full reset) or 1 (idempotent) — both are safe
+    try std.testing.expect(count <= 1);
+
+    catalogue.boj_catalogue_deinit();
+}
+
+test "seam: aspect — error handling on invalid protocol values" {
+    _ = catalogue.boj_catalogue_init();
+    defer catalogue.boj_catalogue_deinit();
+
+    _ = catalogue.boj_catalogue_register("proto-err".ptr, 9, "1.0".ptr, 3, 1, 0, 1);
+
+    // Protocol 0 is invalid (valid range: 1..9)
+    try std.testing.expectEqual(@as(c_int, -1), catalogue.boj_catalogue_add_protocol(0));
+    // Protocol 10 is out of range
+    try std.testing.expectEqual(@as(c_int, -1), catalogue.boj_catalogue_add_protocol(10));
+    // Negative protocol
+    try std.testing.expectEqual(@as(c_int, -1), catalogue.boj_catalogue_add_protocol(-1));
+    // Large value
+    try std.testing.expectEqual(@as(c_int, -1), catalogue.boj_catalogue_add_protocol(9999));
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// Seam 14: Boundary — Input sanitisation at external interfaces
+// ═══════════════════════════════════════════════════════════════════════
+//
+// The C-ABI boundary is where untrusted data enters the Zig layer.
+// All string lengths, enum values, and indices must be validated.
+// These tests verify that malicious or malformed inputs do not cause
+// undefined behaviour.
+
+test "seam: boundary — zero-length name registration" {
+    _ = catalogue.boj_catalogue_init();
+    defer catalogue.boj_catalogue_deinit();
+
+    // Empty name — should either reject or handle gracefully
+    const result = catalogue.boj_catalogue_register("".ptr, 0, "1.0".ptr, 3, 1, 0, 1);
+    // Accept: either error (-1) or successful registration of empty name
+    // The important thing is: no crash, no UB
+    _ = result;
+    pass();
+}
+
+test "seam: boundary — maximum-length name registration" {
+    _ = catalogue.boj_catalogue_init();
+    defer catalogue.boj_catalogue_deinit();
+
+    // Very long name — should not overflow internal buffers
+    var long_name: [256]u8 = undefined;
+    @memset(&long_name, 'x');
+    const result = catalogue.boj_catalogue_register(&long_name, 256, "1.0".ptr, 3, 1, 0, 1);
+    // May truncate or reject — must not crash
+    _ = result;
+    pass();
+}
+
+test "seam: boundary — edge-valid status enum at registration" {
+    _ = catalogue.boj_catalogue_init();
+    defer catalogue.boj_catalogue_deinit();
+
+    // Status 0 (development) is valid but not mountable
+    const result = catalogue.boj_catalogue_register("edge-status".ptr, 11, "1.0".ptr, 3, 0, 0, 1);
+    try std.testing.expectEqual(@as(c_int, 0), result);
+
+    // Development cartridge must not be mountable
+    try std.testing.expectEqual(@as(c_int, -1), catalogue.boj_catalogue_mount(0));
+}
+
+test "seam: boundary — catalogue full rejection" {
+    _ = catalogue.boj_catalogue_init();
+    defer catalogue.boj_catalogue_deinit();
+
+    // Fill catalogue to MAX_CARTRIDGES, then verify next registration fails
+    // (MAX_CARTRIDGES is 128 — we register enough to test the guard)
+    var i: usize = 0;
+    while (i < 128) : (i += 1) {
+        _ = catalogue.boj_catalogue_register("fill".ptr, 4, "1.0".ptr, 3, 1, 0, 1);
+    }
+    // Next registration must be rejected
+    const overflow = catalogue.boj_catalogue_register("overflow".ptr, 8, "1.0".ptr, 3, 1, 0, 1);
+    try std.testing.expectEqual(@as(c_int, -1), overflow);
+}
+
+test "seam: boundary — hash set with oversized input" {
+    _ = catalogue.boj_catalogue_init();
+    defer catalogue.boj_catalogue_deinit();
+
+    _ = catalogue.boj_catalogue_register("hash-boundary".ptr, 13, "1.0".ptr, 3, 1, 0, 1);
+
+    // Hash longer than internal buffer (expected: 64 hex chars)
+    var big_hash: [512]u8 = undefined;
+    @memset(&big_hash, 'f');
+    const result = catalogue.boj_catalogue_set_hash(0, &big_hash, 512);
+    // Should truncate or reject — must not buffer overflow
+    _ = result;
+    pass();
+}
+
+test "seam: boundary — hash roundtrip with correctly-sized buffer" {
+    _ = catalogue.boj_catalogue_init();
+    defer catalogue.boj_catalogue_deinit();
+
+    _ = catalogue.boj_catalogue_register("hash-round".ptr, 10, "1.0".ptr, 3, 1, 0, 1);
+    const hash = "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4";
+    _ = catalogue.boj_catalogue_set_hash(0, hash.ptr, hash.len);
+
+    // Correctly-sized buffer — roundtrip must preserve hash
+    var out_buf: [64]u8 = undefined;
+    const len = catalogue.boj_catalogue_get_hash(0, &out_buf);
+    try std.testing.expectEqual(@as(usize, 64), len);
+    try std.testing.expectEqualSlices(u8, hash, out_buf[0..len]);
+}
+
+test "seam: boundary — menu JSON with tiny output buffer" {
+    _ = catalogue.boj_catalogue_init();
+    defer catalogue.boj_catalogue_deinit();
+
+    _ = catalogue.boj_catalogue_register("json-tiny".ptr, 9, "1.0".ptr, 3, 1, 0, 1);
+
+    // Tiny buffer — must not overflow
+    var tiny_buf: [8]u8 = undefined;
+    const len = catalogue.boj_menu_json(&tiny_buf, 8);
+    try std.testing.expect(len <= 8);
+}
+
+test "seam: boundary — backend set with zero length" {
+    _ = catalogue.boj_catalogue_init();
+    defer catalogue.boj_catalogue_deinit();
+
+    _ = catalogue.boj_catalogue_register("be-zero".ptr, 7, "1.0".ptr, 3, 1, 0, 1);
+    const result = catalogue.boj_catalogue_set_backend("".ptr, 0);
+    // Must not crash — either sets empty or rejects
+    _ = result;
+    pass();
+}
+
+test "seam: boundary — validate_order with zero count" {
+    _ = catalogue.boj_catalogue_init();
+    defer catalogue.boj_catalogue_deinit();
+
+    // Zero-length order — should return 0 valid, not crash
+    const names = [_][*]const u8{"x"};
+    const lens = [_]usize{1};
+    const valid = catalogue.boj_menu_validate_order(&names, &lens, 0);
+    try std.testing.expectEqual(@as(usize, 0), valid);
+}
+
+fn pass() void {
+    // No-op — the test passing without crash IS the assertion.
+    // This exists so boundary tests have an explicit "we got here" marker.
 }

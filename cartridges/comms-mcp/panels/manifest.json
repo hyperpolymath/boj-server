@@ -1,0 +1,66 @@
+{
+  "$schema": "https://panll.dev/schemas/panel-manifest/v1.json",
+  "spdx": "PMPL-1.0-or-later",
+  "cartridge": "comms-mcp",
+  "domain": "Communications",
+  "version": "0.1.0",
+  "panels": [
+    {
+      "id": "comms-status",
+      "title": "Comms Gateway Status",
+      "description": "Health of email, calendar, and messaging integrations",
+      "type": "status-indicator",
+      "data_source": {
+        "endpoint": "/cartridge/comms-mcp/invoke",
+        "method": "POST",
+        "body": { "tool": "status" },
+        "refresh_interval_ms": 5000
+      },
+      "widgets": [
+        {
+          "type": "state-badge",
+          "field": "state",
+          "states": {
+            "ready": { "color": "#2ecc71", "icon": "mail" },
+            "degraded": { "color": "#f39c12", "icon": "mail-x" },
+            "error": { "color": "#e74c3c", "icon": "alert-triangle" }
+          }
+        },
+        { "type": "text", "field": "version", "label": "Version" }
+      ]
+    },
+    {
+      "id": "comms-channels",
+      "title": "Active Channels",
+      "description": "Connected communication channels — Gmail, Calendar, Slack, Matrix, etc.",
+      "type": "metric",
+      "data_source": {
+        "endpoint": "/cartridge/comms-mcp/invoke",
+        "method": "POST",
+        "body": { "tool": "channels" },
+        "refresh_interval_ms": 15000
+      },
+      "widgets": [
+        { "type": "counter", "field": "email_accounts", "label": "Email Accounts", "icon": "inbox" },
+        { "type": "counter", "field": "calendar_sources", "label": "Calendars", "icon": "calendar" },
+        { "type": "counter", "field": "chat_bridges", "label": "Chat Bridges", "icon": "message-square" }
+      ]
+    },
+    {
+      "id": "comms-unread",
+      "title": "Unread Summary",
+      "description": "Unread message counts across all communication channels",
+      "type": "metric",
+      "data_source": {
+        "endpoint": "/cartridge/comms-mcp/invoke",
+        "method": "POST",
+        "body": { "tool": "unread_summary" },
+        "refresh_interval_ms": 10000
+      },
+      "widgets": [
+        { "type": "counter", "field": "unread_emails", "label": "Unread Emails", "icon": "mail" },
+        { "type": "counter", "field": "upcoming_events", "label": "Upcoming Events", "icon": "bell" }
+      ]
+    }
+  ]
+}

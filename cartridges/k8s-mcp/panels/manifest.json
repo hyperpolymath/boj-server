@@ -1,0 +1,86 @@
+{
+  "$schema": "https://panll.dev/schemas/panel-manifest/v1.json",
+  "spdx": "PMPL-1.0-or-later",
+  "cartridge": "k8s-mcp",
+  "domain": "Kubernetes",
+  "version": "0.1.0",
+  "panels": [
+    {
+      "id": "k8s-status",
+      "title": "Cluster Status",
+      "description": "Kubernetes API server connectivity and cluster health",
+      "type": "status-indicator",
+      "data_source": {
+        "endpoint": "/cartridge/k8s-mcp/invoke",
+        "method": "POST",
+        "body": { "tool": "status" },
+        "refresh_interval_ms": 5000
+      },
+      "widgets": [
+        {
+          "type": "state-badge",
+          "field": "state",
+          "states": {
+            "ready": { "color": "#2ecc71", "icon": "server" },
+            "degraded": { "color": "#f39c12", "icon": "alert-circle" },
+            "error": { "color": "#e74c3c", "icon": "alert-triangle" }
+          }
+        },
+        { "type": "text", "field": "version", "label": "Version" },
+        { "type": "text", "field": "cluster_name", "label": "Cluster" }
+      ]
+    },
+    {
+      "id": "k8s-workloads",
+      "title": "Workload Summary",
+      "description": "Pod, Deployment, StatefulSet, and DaemonSet counts across namespaces",
+      "type": "metric",
+      "data_source": {
+        "endpoint": "/cartridge/k8s-mcp/invoke",
+        "method": "POST",
+        "body": { "tool": "workload_summary" },
+        "refresh_interval_ms": 10000
+      },
+      "widgets": [
+        { "type": "counter", "field": "pods_running", "label": "Pods Running", "icon": "box" },
+        { "type": "counter", "field": "pods_pending", "label": "Pods Pending", "icon": "clock" },
+        { "type": "counter", "field": "deployments", "label": "Deployments", "icon": "layers" },
+        { "type": "counter", "field": "statefulsets", "label": "StatefulSets", "icon": "database" }
+      ]
+    },
+    {
+      "id": "k8s-services",
+      "title": "Service & Ingress",
+      "description": "Service endpoints, ingress routes, and load balancer status",
+      "type": "metric",
+      "data_source": {
+        "endpoint": "/cartridge/k8s-mcp/invoke",
+        "method": "POST",
+        "body": { "tool": "service_summary" },
+        "refresh_interval_ms": 15000
+      },
+      "widgets": [
+        { "type": "counter", "field": "services", "label": "Services", "icon": "globe" },
+        { "type": "counter", "field": "ingresses", "label": "Ingresses", "icon": "arrow-right-circle" },
+        { "type": "counter", "field": "endpoints_healthy", "label": "Healthy Endpoints", "icon": "check-circle" }
+      ]
+    },
+    {
+      "id": "k8s-node-resources",
+      "title": "Node Resources",
+      "description": "Aggregate CPU, memory, and storage across cluster nodes",
+      "type": "metric",
+      "data_source": {
+        "endpoint": "/cartridge/k8s-mcp/invoke",
+        "method": "POST",
+        "body": { "tool": "node_resources" },
+        "refresh_interval_ms": 15000
+      },
+      "widgets": [
+        { "type": "counter", "field": "node_count", "label": "Nodes", "icon": "server" },
+        { "type": "gauge", "field": "cpu_utilization", "label": "CPU %", "min": 0, "max": 100 },
+        { "type": "gauge", "field": "memory_utilization", "label": "Memory %", "min": 0, "max": 100 }
+      ]
+    }
+  ]
+}

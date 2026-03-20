@@ -3063,6 +3063,20 @@ fn invoke_feedback(tool string, args string) http.Response {
 		if result == -2 {
 			return error_response(400, 'channel not in collecting state')
 		}
+		// NDJSON persistence — append feedback entry to /tmp/boj/feedback/{slot}.ndjson
+		ndjson_dir := '/tmp/boj/feedback'
+		os.mkdir_all(ndjson_dir) or {}
+		ndjson_path := '${ndjson_dir}/${slot}.ndjson'
+		now := time.now()
+		ndjson_line := json.encode({
+			'timestamp': now.format_rfc3339()
+			'slot':      slot_str
+			'sentiment': sentiment
+			'count':     '${result}'
+		})
+		// Append line to NDJSON file (read existing + append + write)
+		existing := os.read_file(ndjson_path) or { '' }
+		os.write_file(ndjson_path, existing + ndjson_line + '\n') or {}
 		return json_response(json.encode({
 			'tool':      'submit'
 			'slot':      slot_str
@@ -3074,23 +3088,87 @@ fn invoke_feedback(tool string, args string) http.Response {
 	if tool == 'summary' {
 		// Query all 8 possible slots
 		mut active_channels := []map[string]string{}
+		mut total_feedback := 0
+		mut total_positive := 0
+		mut total_negative := 0
+		mut total_neutral := 0
 		for i in 0 .. 8 {
 			state := C.fb_state(i)
 			if state > 0 { // not inactive
+				ch_total := C.fb_count(i)
+				ch_pos := C.fb_positive_count(i)
+				ch_neg := C.fb_negative_count(i)
+				ch_neu := C.fb_neutral_count(i)
+				total_feedback += ch_total
+				total_positive += ch_pos
+				total_negative += ch_neg
+				total_neutral += ch_neu
 				active_channels << {
 					'slot':     '${i}'
 					'state':    fb_state_label(state)
-					'total':    '${C.fb_count(i)}'
-					'positive': '${C.fb_positive_count(i)}'
-					'negative': '${C.fb_negative_count(i)}'
-					'neutral':  '${C.fb_neutral_count(i)}'
+					'total':    '${ch_total}'
+					'positive': '${ch_pos}'
+					'negative': '${ch_neg}'
+					'neutral':  '${ch_neu}'
 				}
 			}
 		}
+		// Derive overall sentiment from aggregated counts
+		overall := if total_positive > total_negative + total_neutral {
+			'good'
+		} else if total_negative > total_positive {
+			'poor'
+		} else {
+			'mixed'
+		}
 		return json_response(json.encode({
-			'tool':             'summary'
-			'active_channels':  '${active_channels.len}'
-			'status':           'ok'
+			'tool':              'summary'
+			'active_channels':   '${active_channels.len}'
+			'total_feedback':    '${total_feedback}'
+			'total_positive':    '${total_positive}'
+			'total_negative':    '${total_negative}'
+			'total_neutral':     '${total_neutral}'
+			'overall_sentiment': overall
+			'status':            'ok'
+		}))
+	}
+	if tool == 'sentiment_summary' {
+		// Aggregate all active channels' sentiment data into a summary response
+		mut total_feedback := 0
+		mut total_positive := 0
+		mut total_negative := 0
+		mut total_neutral := 0
+		mut channel_details := []string{}
+		for i in 0 .. 8 {
+			state := C.fb_state(i)
+			if state > 0 {
+				ch_total := C.fb_count(i)
+				ch_pos := C.fb_positive_count(i)
+				ch_neg := C.fb_negative_count(i)
+				ch_neu := C.fb_neutral_count(i)
+				total_feedback += ch_total
+				total_positive += ch_pos
+				total_negative += ch_neg
+				total_neutral += ch_neu
+				channel_details << 'slot${i}:${ch_pos}p/${ch_neg}n/${ch_neu}u'
+			}
+		}
+		overall := if total_positive > total_negative + total_neutral {
+			'good'
+		} else if total_negative > total_positive {
+			'poor'
+		} else {
+			'mixed'
+		}
+		return json_response(json.encode({
+			'tool':              'sentiment_summary'
+			'total_feedback':    '${total_feedback}'
+			'positive':          '${total_positive}'
+			'negative':          '${total_negative}'
+			'neutral':           '${total_neutral}'
+			'overall_sentiment': overall
+			'breakdown':         channel_details.join('; ')
+			'status':            'ok'
 		}))
 	}
 	if tool == 'status' {
@@ -3101,26 +3179,47 @@ fn invoke_feedback(tool string, args string) http.Response {
 		}))
 	}
 	if tool == 'export_feedback' {
-		// List feedback NDJSON files in the PanLL feedback directory
-		result := os.execute('ls -la /tmp/panll/feedback/ 2>/dev/null')
-		if result.exit_code != 0 {
+		// Read and concatenate all NDJSON feedback files from /tmp/boj/feedback/
+		ndjson_dir := '/tmp/boj/feedback'
+		files := os.ls(ndjson_dir) or {
 			return json_response(json.encode({
 				'tool':    'export_feedback'
-				'files':   ''
-				'message': 'No feedback directory found at /tmp/panll/feedback/'
+				'entries': '[]'
+				'message': 'No feedback directory found at ${ndjson_dir}'
+				'status':  'empty'
+			}))
+		}
+		mut all_lines := []string{}
+		for f in files {
+			if f.ends_with('.ndjson') {
+				content := os.read_file('${ndjson_dir}/${f}') or { '' }
+				for line in content.split('\n') {
+					trimmed := line.trim_space()
+					if trimmed.len > 0 {
+						all_lines << trimmed
+					}
+				}
+			}
+		}
+		if all_lines.len == 0 {
+			return json_response(json.encode({
+				'tool':    'export_feedback'
+				'entries': '[]'
+				'count':   '0'
 				'status':  'empty'
 			}))
 		}
 		return json_response(json.encode({
 			'tool':    'export_feedback'
-			'listing': result.output.trim_space()
+			'entries': '[' + all_lines.join(',') + ']'
+			'count':   '${all_lines.len}'
 			'status':  'ok'
 		}))
 	}
 	if tool == 'count_feedback' {
-		// Count total feedback entries across all NDJSON files
-		result := os.execute('wc -l /tmp/panll/feedback/*.ndjson 2>/dev/null')
-		if result.exit_code != 0 {
+		// Count total feedback entries across all NDJSON files in /tmp/boj/feedback/
+		ndjson_dir := '/tmp/boj/feedback'
+		files := os.ls(ndjson_dir) or {
 			return json_response(json.encode({
 				'tool':        'count_feedback'
 				'total_lines': '0'
@@ -3128,13 +3227,64 @@ fn invoke_feedback(tool string, args string) http.Response {
 				'status':      'empty'
 			}))
 		}
+		mut total := 0
+		mut per_slot := map[string]string{}
+		for f in files {
+			if f.ends_with('.ndjson') {
+				content := os.read_file('${ndjson_dir}/${f}') or { '' }
+				mut count := 0
+				for line in content.split('\n') {
+					if line.trim_space().len > 0 {
+						count++
+					}
+				}
+				total += count
+				slot_name := f.replace('.ndjson', '')
+				per_slot[slot_name] = '${count}'
+			}
+		}
 		return json_response(json.encode({
-			'tool':    'count_feedback'
-			'output':  result.output.trim_space()
-			'status':  'ok'
+			'tool':        'count_feedback'
+			'total_lines': '${total}'
+			'per_slot':    json.encode(per_slot)
+			'status':      if total > 0 { 'ok' } else { 'empty' }
 		}))
 	}
-	return error_response(400, 'unknown feedback-mcp tool: "${tool}" — available: list_channels, open_channel, submit, summary, status, export_feedback, count_feedback')
+	if tool == 'process' {
+		// Transition channel from Collecting → Processing, do a no-op process, then back to Collecting
+		params := json.decode(map[string]string, args) or {
+			return error_response(400, 'process requires {"slot": "0"}')
+		}
+		slot_str := params['slot'] or { '0' }
+		slot := slot_str.int()
+		state := C.fb_state(slot)
+		if state <= 0 {
+			return error_response(400, 'slot ${slot_str} is not active (state: ${fb_state_label(state)})')
+		}
+		// Transition to processing is implicit via the state machine:
+		// We use fb_start_collecting to ensure the channel is in collecting state first,
+		// then the processing is a no-op analysis pass, and we return to collecting.
+		collect_result := C.fb_start_collecting(slot)
+		if collect_result < 0 {
+			return error_response(400, 'failed to ensure collecting state for slot ${slot_str}')
+		}
+		// Gather current counts as the "processing" result
+		total := C.fb_count(slot)
+		positive := C.fb_positive_count(slot)
+		negative := C.fb_negative_count(slot)
+		neutral := C.fb_neutral_count(slot)
+		return json_response(json.encode({
+			'tool':      'process'
+			'slot':      slot_str
+			'state':     'collecting'
+			'processed': '${total}'
+			'positive':  '${positive}'
+			'negative':  '${negative}'
+			'neutral':   '${neutral}'
+			'status':    'processed_and_resumed'
+		}))
+	}
+	return error_response(400, 'unknown feedback-mcp tool: "${tool}" — available: list_channels, open_channel, submit, summary, sentiment_summary, status, process, export_feedback, count_feedback')
 }
 
 // ═══════════════════════════════════════════════════════════════════════

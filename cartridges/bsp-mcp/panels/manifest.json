@@ -1,0 +1,67 @@
+{
+  "$schema": "https://panll.dev/schemas/panel-manifest/v1.json",
+  "spdx": "PMPL-1.0-or-later",
+  "cartridge": "bsp-mcp",
+  "domain": "Build Server Protocol",
+  "version": "0.1.0",
+  "panels": [
+    {
+      "id": "bsp-status",
+      "title": "BSP Gateway Status",
+      "description": "Build server proxy health and connection to build tools",
+      "type": "status-indicator",
+      "data_source": {
+        "endpoint": "/cartridge/bsp-mcp/invoke",
+        "method": "POST",
+        "body": { "tool": "status" },
+        "refresh_interval_ms": 5000
+      },
+      "widgets": [
+        {
+          "type": "state-badge",
+          "field": "state",
+          "states": {
+            "ready": { "color": "#2ecc71", "icon": "hammer" },
+            "degraded": { "color": "#f39c12", "icon": "alert-circle" },
+            "error": { "color": "#e74c3c", "icon": "alert-triangle" }
+          }
+        },
+        { "type": "text", "field": "version", "label": "Version" }
+      ]
+    },
+    {
+      "id": "bsp-build-targets",
+      "title": "Build Targets",
+      "description": "Registered build targets with their compilation status",
+      "type": "metric",
+      "data_source": {
+        "endpoint": "/cartridge/bsp-mcp/invoke",
+        "method": "POST",
+        "body": { "tool": "build_targets" },
+        "refresh_interval_ms": 15000
+      },
+      "widgets": [
+        { "type": "counter", "field": "total_targets", "label": "Targets", "icon": "target" },
+        { "type": "counter", "field": "compiled", "label": "Compiled", "icon": "check-circle" },
+        { "type": "counter", "field": "failed", "label": "Failed", "icon": "x-circle" }
+      ]
+    },
+    {
+      "id": "bsp-compile-metrics",
+      "title": "Compilation Metrics",
+      "description": "Compile times, cache hit rates, and diagnostic counts",
+      "type": "metric",
+      "data_source": {
+        "endpoint": "/cartridge/bsp-mcp/invoke",
+        "method": "POST",
+        "body": { "tool": "compile_metrics" },
+        "refresh_interval_ms": 15000
+      },
+      "widgets": [
+        { "type": "text", "field": "avg_compile_time", "label": "Avg Compile Time" },
+        { "type": "gauge", "field": "cache_hit_rate", "label": "Cache Hit %", "min": 0, "max": 100 },
+        { "type": "counter", "field": "diagnostics_count", "label": "Diagnostics", "icon": "alert-circle" }
+      ]
+    }
+  ]
+}

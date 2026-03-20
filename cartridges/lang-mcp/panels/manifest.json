@@ -1,0 +1,67 @@
+{
+  "$schema": "https://panll.dev/schemas/panel-manifest/v1.json",
+  "spdx": "PMPL-1.0-or-later",
+  "cartridge": "lang-mcp",
+  "domain": "Language Toolchains",
+  "version": "0.1.0",
+  "panels": [
+    {
+      "id": "lang-status",
+      "title": "Language Toolchain Status",
+      "description": "Compiler, formatter, and linter availability across managed toolchains",
+      "type": "status-indicator",
+      "data_source": {
+        "endpoint": "/cartridge/lang-mcp/invoke",
+        "method": "POST",
+        "body": { "tool": "status" },
+        "refresh_interval_ms": 5000
+      },
+      "widgets": [
+        {
+          "type": "state-badge",
+          "field": "state",
+          "states": {
+            "ready": { "color": "#2ecc71", "icon": "terminal" },
+            "degraded": { "color": "#f39c12", "icon": "alert-circle" },
+            "error": { "color": "#e74c3c", "icon": "alert-triangle" }
+          }
+        },
+        { "type": "text", "field": "version", "label": "Version" }
+      ]
+    },
+    {
+      "id": "lang-toolchains",
+      "title": "Installed Toolchains",
+      "description": "Available language runtimes and their versions (via asdf)",
+      "type": "metric",
+      "data_source": {
+        "endpoint": "/cartridge/lang-mcp/invoke",
+        "method": "POST",
+        "body": { "tool": "toolchain_list" },
+        "refresh_interval_ms": 60000
+      },
+      "widgets": [
+        { "type": "counter", "field": "installed_toolchains", "label": "Toolchains", "icon": "wrench" },
+        { "type": "counter", "field": "outdated_count", "label": "Outdated", "icon": "alert-circle" },
+        { "type": "counter", "field": "managed_by_asdf", "label": "asdf-managed", "icon": "package" }
+      ]
+    },
+    {
+      "id": "lang-compilation-stats",
+      "title": "Compilation Activity",
+      "description": "Recent compilation jobs, success rates, and average build times",
+      "type": "metric",
+      "data_source": {
+        "endpoint": "/cartridge/lang-mcp/invoke",
+        "method": "POST",
+        "body": { "tool": "compilation_stats" },
+        "refresh_interval_ms": 15000
+      },
+      "widgets": [
+        { "type": "counter", "field": "jobs_today", "label": "Jobs Today", "icon": "activity" },
+        { "type": "gauge", "field": "success_rate", "label": "Success Rate %", "min": 0, "max": 100 },
+        { "type": "text", "field": "avg_build_time", "label": "Avg Build Time" }
+      ]
+    }
+  ]
+}

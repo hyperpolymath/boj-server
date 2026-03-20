@@ -1,0 +1,67 @@
+{
+  "$schema": "https://panll.dev/schemas/panel-manifest/v1.json",
+  "spdx": "PMPL-1.0-or-later",
+  "cartridge": "model-router-mcp",
+  "domain": "Model Routing",
+  "version": "0.1.0",
+  "panels": [
+    {
+      "id": "model-router-status",
+      "title": "Model Router Status",
+      "description": "LLM routing gateway health and upstream provider connectivity",
+      "type": "status-indicator",
+      "data_source": {
+        "endpoint": "/cartridge/model-router-mcp/invoke",
+        "method": "POST",
+        "body": { "tool": "status" },
+        "refresh_interval_ms": 5000
+      },
+      "widgets": [
+        {
+          "type": "state-badge",
+          "field": "state",
+          "states": {
+            "ready": { "color": "#2ecc71", "icon": "share-2" },
+            "degraded": { "color": "#f39c12", "icon": "alert-circle" },
+            "error": { "color": "#e74c3c", "icon": "alert-triangle" }
+          }
+        },
+        { "type": "text", "field": "version", "label": "Version" }
+      ]
+    },
+    {
+      "id": "model-router-providers",
+      "title": "Provider Overview",
+      "description": "Connected LLM providers, available models, and rate limit headroom",
+      "type": "metric",
+      "data_source": {
+        "endpoint": "/cartridge/model-router-mcp/invoke",
+        "method": "POST",
+        "body": { "tool": "provider_overview" },
+        "refresh_interval_ms": 15000
+      },
+      "widgets": [
+        { "type": "counter", "field": "active_providers", "label": "Providers", "icon": "server" },
+        { "type": "counter", "field": "available_models", "label": "Models", "icon": "cpu" },
+        { "type": "gauge", "field": "rate_limit_headroom", "label": "Rate Limit %", "min": 0, "max": 100 }
+      ]
+    },
+    {
+      "id": "model-router-routing-stats",
+      "title": "Routing Statistics",
+      "description": "Request routing decisions, fallback counts, and cost tracking",
+      "type": "metric",
+      "data_source": {
+        "endpoint": "/cartridge/model-router-mcp/invoke",
+        "method": "POST",
+        "body": { "tool": "routing_stats" },
+        "refresh_interval_ms": 10000
+      },
+      "widgets": [
+        { "type": "counter", "field": "requests_routed", "label": "Requests Routed", "icon": "arrow-right" },
+        { "type": "counter", "field": "fallback_count", "label": "Fallbacks", "icon": "repeat" },
+        { "type": "text", "field": "estimated_cost_today", "label": "Est. Cost Today" }
+      ]
+    }
+  ]
+}

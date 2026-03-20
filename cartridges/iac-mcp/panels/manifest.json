@@ -1,0 +1,67 @@
+{
+  "$schema": "https://panll.dev/schemas/panel-manifest/v1.json",
+  "spdx": "PMPL-1.0-or-later",
+  "cartridge": "iac-mcp",
+  "domain": "Infrastructure as Code",
+  "version": "0.1.0",
+  "panels": [
+    {
+      "id": "iac-status",
+      "title": "IaC Engine Status",
+      "description": "Terraform/OpenTofu and Pulumi provider readiness",
+      "type": "status-indicator",
+      "data_source": {
+        "endpoint": "/cartridge/iac-mcp/invoke",
+        "method": "POST",
+        "body": { "tool": "status" },
+        "refresh_interval_ms": 5000
+      },
+      "widgets": [
+        {
+          "type": "state-badge",
+          "field": "state",
+          "states": {
+            "ready": { "color": "#2ecc71", "icon": "settings" },
+            "degraded": { "color": "#f39c12", "icon": "alert-circle" },
+            "error": { "color": "#e74c3c", "icon": "alert-triangle" }
+          }
+        },
+        { "type": "text", "field": "version", "label": "Version" }
+      ]
+    },
+    {
+      "id": "iac-state-summary",
+      "title": "State Summary",
+      "description": "Managed resources, drift detection, and last apply timestamp",
+      "type": "metric",
+      "data_source": {
+        "endpoint": "/cartridge/iac-mcp/invoke",
+        "method": "POST",
+        "body": { "tool": "state_summary" },
+        "refresh_interval_ms": 30000
+      },
+      "widgets": [
+        { "type": "counter", "field": "managed_resources", "label": "Managed Resources", "icon": "layers" },
+        { "type": "counter", "field": "drift_detected", "label": "Drifted", "icon": "alert-circle" },
+        { "type": "text", "field": "last_apply", "label": "Last Apply" }
+      ]
+    },
+    {
+      "id": "iac-plan-queue",
+      "title": "Plan Queue",
+      "description": "Pending and running IaC plans with resource change counts",
+      "type": "table",
+      "data_source": {
+        "endpoint": "/cartridge/iac-mcp/invoke",
+        "method": "POST",
+        "body": { "tool": "plan_queue" },
+        "refresh_interval_ms": 10000
+      },
+      "widgets": [
+        { "type": "counter", "field": "plans_pending", "label": "Pending Plans", "icon": "clock" },
+        { "type": "counter", "field": "plans_running", "label": "Running Plans", "icon": "play-circle" },
+        { "type": "counter", "field": "resources_to_change", "label": "Resources Changing", "icon": "edit" }
+      ]
+    }
+  ]
+}

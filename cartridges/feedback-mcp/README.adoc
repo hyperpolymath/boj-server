@@ -1,0 +1,153 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+// Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+
+= feedback-mcp Cartridge
+:toc:
+:toclevels: 2
+
+== Overview
+
+The feedback-mcp cartridge implements **feedback-o-tron**, a feedback collection
+and sentiment tracking system for BoJ Server. It is the self-dogfooding loop:
+BoJ collects feedback on itself via its own feedback cartridge.
+
+The cartridge follows the standard BoJ triple-adapter pipeline:
+
+* **Idris2 ABI** — formal proofs for the feedback state machine
+* **Zig FFI** — C-compatible state machine execution
+* **V-lang Adapter** — HTTP/MCP dispatch with NDJSON persistence
+
+== Tools (10)
+
+[cols="2,1,4"]
+|===
+| Tool | Args | Description
+
+| `list_channels`
+| _none_
+| Lists all available feedback channel types (web_form, api, email, irc, mastodon, gitea, custom).
+
+| `open_channel`
+| `{"channel": "api"}`
+| Registers a new feedback channel and returns a slot index (0-7). Transitions the channel to `channel_registered` state.
+
+| `submit`
+| `{"slot": "0", "sentiment": "positive\|neutral\|negative"}`
+| Submits a feedback entry to the specified slot. Appends an NDJSON line to `/tmp/boj/feedback/{slot}.ndjson` with timestamp, slot, sentiment, and running count.
+
+| `summary`
+| _none_
+| Returns a summary of all active channels including per-channel sentiment counts, total feedback, and an overall sentiment classification (good/mixed/poor).
+
+| `sentiment_summary`
+| _none_
+| Aggregates all active channels' sentiment data into a compact summary with overall sentiment, per-channel breakdowns, and totals.
+
+| `status`
+| _none_
+| Health check — confirms feedback-o-tron is running and the Zig FFI state machine is wired.
+
+| `process`
+| `{"slot": "0"}`
+| Transitions a channel to processing state, performs a no-op analysis pass, then returns the channel to collecting state. Returns current sentiment counts.
+
+| `export_feedback`
+| _none_
+| Reads all NDJSON files from `/tmp/boj/feedback/` and returns concatenated feedback entries as a JSON array.
+
+| `count_feedback`
+| _none_
+| Counts total feedback entries across all NDJSON files, broken down per slot.
+
+| `close_channel`
+| `{"slot": "0"}`
+| _(planned)_ Deregisters a feedback channel and transitions it to inactive.
+
+|===
+
+== State Machine
+
+The feedback state machine is implemented in Zig FFI and exposed via C function declarations.
+
+....
+                        ┌──────────────┐
+                        │   inactive   │ (state 0)
+                        └──────┬───────┘
+                               │ fb_register()
+                               ▼
+                  ┌────────────────────────┐
+                  │  channel_registered    │ (state 1)
+                  └────────────┬───────────┘
+                               │ fb_start_collecting()
+                               ▼
+                  ┌────────────────────────┐
+              ┌──▶│      collecting        │◀──┐ (state 2)
+              │   └────────────┬───────────┘   │
+              │                │ process tool   │
+              │                ▼                │
+              │   ┌────────────────────────┐   │
+              │   │      processing        │───┘ (state 3)
+              │   └────────────────────────┘
+              │
+              │   ┌────────────────────────┐
+              └───│        error           │ (state 4)
+                  └────────────────────────┘
+....
+
+=== FFI Functions
+
+[cols="2,3"]
+|===
+| C Function | Purpose
+
+| `C.fb_register(channel_type)` | Register a new channel, returns slot index
+| `C.fb_start_collecting(slot)` | Transition slot to collecting state
+| `C.fb_submit(slot, sentiment)` | Submit feedback entry with sentiment value
+| `C.fb_state(slot)` | Query current state of a slot
+| `C.fb_count(slot)` | Total feedback count for slot
+| `C.fb_positive_count(slot)` | Positive sentiment count
+| `C.fb_negative_count(slot)` | Negative sentiment count
+| `C.fb_neutral_count(slot)` | Neutral sentiment count
+| `C.fb_deregister(slot)` | Deregister a channel
+| `C.fb_can_transition(from, to)` | Check if state transition is valid
+| `C.fb_reset()` | Reset all channels
+|===
+
+== Channels
+
+Six built-in channel types are supported, plus a custom type:
+
+[cols="1,1,3"]
+|===
+| Name | Type ID | Description
+
+| `web_form` | 1 | Web form submissions
+| `api` | 2 | Direct API calls
+| `email` | 3 | Email-based feedback
+| `irc` | 4 | IRC channel feedback
+| `mastodon` | 5 | Mastodon/fediverse feedback
+| `gitea` | 6 | Gitea issue/PR feedback
+| `custom` | 99 | Any other source
+|===
+
+Up to **8 concurrent channels** (slots 0-7) can be active simultaneously.
+
+== Persistence
+
+Feedback entries are persisted as NDJSON (newline-delimited JSON) files at
+`/tmp/boj/feedback/{slot}.ndjson`. Each line contains:
+
+[source,json]
+----
+{"timestamp":"2026-03-20T14:30:00Z","slot":"0","sentiment":"positive","count":"5"}
+----
+
+The `export_feedback` tool reads these files and returns all entries.
+The `count_feedback` tool counts lines per slot and in total.
+
+== PanLL Integration
+
+The cartridge ships a panel manifest at `panels/manifest.json` that provides:
+
+* **Feedback Dashboard** — live sentiment status indicator with counters and state badge
+* **Feedback Timeline** — chronological log table of all feedback entries

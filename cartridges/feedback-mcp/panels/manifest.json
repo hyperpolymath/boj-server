@@ -1,0 +1,41 @@
+{
+  "$schema": "https://panll.dev/schemas/panel-manifest/v1.json",
+  "spdx": "PMPL-1.0-or-later",
+  "cartridge": "feedback-mcp",
+  "domain": "Feedback",
+  "version": "0.1.0",
+  "panels": [
+    {
+      "id": "feedback-dashboard",
+      "title": "Feedback Dashboard",
+      "description": "Live feedback sentiment across all channels",
+      "type": "status-indicator",
+      "data_source": {
+        "endpoint": "/cartridge/feedback-mcp/invoke",
+        "method": "POST",
+        "body": {"tool": "summary"},
+        "refresh_interval_ms": 5000
+      },
+      "widgets": [
+        {"type": "counter", "field": "active_channels", "label": "Active Channels"},
+        {"type": "counter", "field": "total_feedback", "label": "Total Feedback"},
+        {"type": "state-badge", "field": "overall_sentiment", "states": {"good": "green", "mixed": "amber", "poor": "red"}}
+      ]
+    },
+    {
+      "id": "feedback-timeline",
+      "title": "Feedback Timeline",
+      "description": "Chronological feedback entries",
+      "type": "log-table",
+      "data_source": {
+        "endpoint": "/cartridge/feedback-mcp/invoke",
+        "method": "POST",
+        "body": {"tool": "export_feedback"},
+        "refresh_interval_ms": 10000
+      },
+      "widgets": [
+        {"type": "log-table", "columns": ["timestamp", "channel", "sentiment", "count"]}
+      ]
+    }
+  ]
+}

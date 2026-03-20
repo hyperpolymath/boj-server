@@ -1,0 +1,67 @@
+{
+  "$schema": "https://panll.dev/schemas/panel-manifest/v1.json",
+  "spdx": "PMPL-1.0-or-later",
+  "cartridge": "container-mcp",
+  "domain": "Containers",
+  "version": "0.1.0",
+  "panels": [
+    {
+      "id": "container-status",
+      "title": "Container Runtime Status",
+      "description": "Podman/OCI runtime health and socket connectivity",
+      "type": "status-indicator",
+      "data_source": {
+        "endpoint": "/cartridge/container-mcp/invoke",
+        "method": "POST",
+        "body": { "tool": "status" },
+        "refresh_interval_ms": 5000
+      },
+      "widgets": [
+        {
+          "type": "state-badge",
+          "field": "state",
+          "states": {
+            "ready": { "color": "#2ecc71", "icon": "box" },
+            "degraded": { "color": "#f39c12", "icon": "alert-circle" },
+            "error": { "color": "#e74c3c", "icon": "alert-triangle" }
+          }
+        },
+        { "type": "text", "field": "version", "label": "Version" }
+      ]
+    },
+    {
+      "id": "container-inventory",
+      "title": "Container Inventory",
+      "description": "Running, stopped, and total container counts with image summary",
+      "type": "metric",
+      "data_source": {
+        "endpoint": "/cartridge/container-mcp/invoke",
+        "method": "POST",
+        "body": { "tool": "inventory" },
+        "refresh_interval_ms": 10000
+      },
+      "widgets": [
+        { "type": "counter", "field": "running", "label": "Running", "icon": "play-circle" },
+        { "type": "counter", "field": "stopped", "label": "Stopped", "icon": "stop-circle" },
+        { "type": "counter", "field": "images", "label": "Images", "icon": "layers" }
+      ]
+    },
+    {
+      "id": "container-resource-usage",
+      "title": "Resource Usage",
+      "description": "Aggregate CPU and memory consumption across all running containers",
+      "type": "metric",
+      "data_source": {
+        "endpoint": "/cartridge/container-mcp/invoke",
+        "method": "POST",
+        "body": { "tool": "resource_usage" },
+        "refresh_interval_ms": 10000
+      },
+      "widgets": [
+        { "type": "gauge", "field": "cpu_percent", "label": "CPU %", "min": 0, "max": 100 },
+        { "type": "gauge", "field": "memory_percent", "label": "Memory %", "min": 0, "max": 100 },
+        { "type": "text", "field": "memory_used", "label": "Memory Used" }
+      ]
+    }
+  ]
+}

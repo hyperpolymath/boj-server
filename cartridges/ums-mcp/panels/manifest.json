@@ -1,0 +1,67 @@
+{
+  "$schema": "https://panll.dev/schemas/panel-manifest/v1.json",
+  "spdx": "PMPL-1.0-or-later",
+  "cartridge": "ums-mcp",
+  "domain": "Unified Messaging",
+  "version": "0.1.0",
+  "panels": [
+    {
+      "id": "ums-status",
+      "title": "UMS Gateway Status",
+      "description": "Unified messaging service health across Slack, Discord, Matrix, Telegram bridges",
+      "type": "status-indicator",
+      "data_source": {
+        "endpoint": "/cartridge/ums-mcp/invoke",
+        "method": "POST",
+        "body": { "tool": "status" },
+        "refresh_interval_ms": 5000
+      },
+      "widgets": [
+        {
+          "type": "state-badge",
+          "field": "state",
+          "states": {
+            "ready": { "color": "#2ecc71", "icon": "message-circle" },
+            "degraded": { "color": "#f39c12", "icon": "message-circle-x" },
+            "error": { "color": "#e74c3c", "icon": "alert-triangle" }
+          }
+        },
+        { "type": "text", "field": "version", "label": "Version" }
+      ]
+    },
+    {
+      "id": "ums-bridges",
+      "title": "Platform Bridges",
+      "description": "Connected messaging platforms and their bridge status",
+      "type": "metric",
+      "data_source": {
+        "endpoint": "/cartridge/ums-mcp/invoke",
+        "method": "POST",
+        "body": { "tool": "bridge_status" },
+        "refresh_interval_ms": 15000
+      },
+      "widgets": [
+        { "type": "counter", "field": "connected_bridges", "label": "Connected", "icon": "link" },
+        { "type": "counter", "field": "total_bridges", "label": "Total Bridges", "icon": "share-2" },
+        { "type": "counter", "field": "active_channels", "label": "Active Channels", "icon": "hash" }
+      ]
+    },
+    {
+      "id": "ums-message-stats",
+      "title": "Message Throughput",
+      "description": "Message volume, delivery success rate, and queue depth",
+      "type": "metric",
+      "data_source": {
+        "endpoint": "/cartridge/ums-mcp/invoke",
+        "method": "POST",
+        "body": { "tool": "message_stats" },
+        "refresh_interval_ms": 10000
+      },
+      "widgets": [
+        { "type": "counter", "field": "messages_today", "label": "Messages Today", "icon": "mail" },
+        { "type": "gauge", "field": "delivery_rate", "label": "Delivery Rate %", "min": 0, "max": 100 },
+        { "type": "counter", "field": "queue_depth", "label": "Queue Depth", "icon": "list" }
+      ]
+    }
+  ]
+}
