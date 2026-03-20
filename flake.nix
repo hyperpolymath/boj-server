@@ -64,26 +64,79 @@
           '';
         };
 
+        # MCP bridge package (Node.js, zero dependencies)
         packages.default = pkgs.stdenv.mkDerivation {
           pname = "boj-server";
-          version = "0.1.0";
+          version = "0.3.0";
           src = self;
 
-          nativeBuildInputs = with pkgs; [ zig ];
+          nativeBuildInputs = with pkgs; [ nodejs makeWrapper ];
+
+          dontBuild = true;
+
+          installPhase = ''
+            mkdir -p $out/lib/boj-server $out/bin $out/share/doc/boj-server
+
+            # Install MCP bridge
+            cp -r mcp-bridge $out/lib/boj-server/
+            cp gemini-extension.json $out/lib/boj-server/ 2>/dev/null || true
+            cp GEMINI.md $out/lib/boj-server/ 2>/dev/null || true
+
+            # Wrapper script
+            makeWrapper ${pkgs.nodejs}/bin/node $out/bin/boj-server \
+              --add-flags "$out/lib/boj-server/mcp-bridge/main.js"
+
+            # Documentation
+            cp README.adoc $out/share/doc/boj-server/ 2>/dev/null || true
+            cp CHANGELOG.md $out/share/doc/boj-server/ 2>/dev/null || true
+            cp docs/GETTING-STARTED.md $out/share/doc/boj-server/ 2>/dev/null || true
+          '';
+
+          meta = with pkgs.lib; {
+            description = "Bundle of Joy — cartridge-based MCP server with 53 formally verified domain cartridges";
+            homepage = "https://github.com/hyperpolymath/boj-server";
+            license = licenses.mpl20; # PMPL-1.0-or-later extends MPL-2.0
+            mainProgram = "boj-server";
+            maintainers = [];
+            platforms = [ "x86_64-linux" "aarch64-linux" ];
+          };
+        };
+
+        # Full build with Zig FFI (for contributors/developers)
+        packages.full = pkgs.stdenv.mkDerivation {
+          pname = "boj-server-full";
+          version = "0.3.0";
+          src = self;
+
+          nativeBuildInputs = with pkgs; [ zig nodejs makeWrapper ];
 
           buildPhase = ''
             cd ffi/zig && zig build -Doptimize=ReleaseSafe
           '';
 
           installPhase = ''
-            mkdir -p $out/share/doc
-            cp README.adoc $out/share/doc/ 2>/dev/null || true
+            mkdir -p $out/lib/boj-server $out/bin $out/share/doc/boj-server
+
+            # Install MCP bridge
+            cp -r mcp-bridge $out/lib/boj-server/
+
+            # Install FFI shared libraries
+            mkdir -p $out/lib/boj-server/ffi
+            cp ffi/zig/zig-out/lib/*.so $out/lib/boj-server/ffi/ 2>/dev/null || true
+
+            # Wrapper script
+            makeWrapper ${pkgs.nodejs}/bin/node $out/bin/boj-server \
+              --add-flags "$out/lib/boj-server/mcp-bridge/main.js" \
+              --set LD_LIBRARY_PATH "$out/lib/boj-server/ffi"
+
+            cp README.adoc $out/share/doc/boj-server/ 2>/dev/null || true
           '';
 
           meta = with pkgs.lib; {
-            description = "Unified server capability catalogue with formally verified cartridges";
+            description = "Bundle of Joy — full build with Zig FFI shared libraries";
             homepage = "https://github.com/hyperpolymath/boj-server";
             license = licenses.mpl20; # PMPL-1.0-or-later extends MPL-2.0
+            mainProgram = "boj-server";
             maintainers = [];
             platforms = [ "x86_64-linux" "aarch64-linux" ];
           };
