@@ -1,0 +1,275 @@
+{
+  "$schema": "https://boj.dev/schemas/cartridge/v1.json",
+  "spdx": "PMPL-1.0-or-later",
+  "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath)",
+  "name": "fly-mcp",
+  "version": "0.1.0",
+  "description": "Fly.io Machines API v1 cartridge -- app, machine, volume, secret, region, IP, and certificate management",
+  "domain": "Cloud",
+  "tier": "Ayo",
+  "protocols": ["MCP", "REST"],
+  "auth": {
+    "method": "bearer_token",
+    "env_var": "FLY_API_TOKEN",
+    "credential_source": "vault-mcp"
+  },
+  "api": {
+    "base_url": "https://api.machines.dev/v1",
+    "content_type": "application/json"
+  },
+  "tools": [
+    {
+      "name": "fly_list_apps",
+      "description": "List all Fly.io apps in the authenticated organisation",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "org_slug": { "type": "string", "description": "Organisation slug (default: personal)" }
+        }
+      }
+    },
+    {
+      "name": "fly_get_app",
+      "description": "Get details of a specific Fly.io app",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "app_name": { "type": "string", "description": "App name" }
+        },
+        "required": ["app_name"]
+      }
+    },
+    {
+      "name": "fly_create_app",
+      "description": "Create a new Fly.io app",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "app_name": { "type": "string", "description": "App name (must be globally unique)" },
+          "org_slug": { "type": "string", "description": "Organisation slug (default: personal)" },
+          "network": { "type": "string", "description": "Network name to join (optional)" }
+        },
+        "required": ["app_name"]
+      }
+    },
+    {
+      "name": "fly_destroy_app",
+      "description": "Destroy a Fly.io app and all its machines (irreversible)",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "app_name": { "type": "string", "description": "App name to destroy" }
+        },
+        "required": ["app_name"]
+      }
+    },
+    {
+      "name": "fly_list_machines",
+      "description": "List all machines in a Fly.io app",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "app_name": { "type": "string", "description": "App name" },
+          "include_deleted": { "type": "boolean", "description": "Include deleted machines (default false)" },
+          "region": { "type": "string", "description": "Filter by region code (e.g. lhr, iad, sin)" }
+        },
+        "required": ["app_name"]
+      }
+    },
+    {
+      "name": "fly_get_machine",
+      "description": "Get details of a specific machine in a Fly.io app",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "app_name": { "type": "string", "description": "App name" },
+          "machine_id": { "type": "string", "description": "Machine ID" }
+        },
+        "required": ["app_name", "machine_id"]
+      }
+    },
+    {
+      "name": "fly_create_machine",
+      "description": "Create a new machine in a Fly.io app",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "app_name": { "type": "string", "description": "App name" },
+          "name": { "type": "string", "description": "Machine name (optional)" },
+          "region": { "type": "string", "description": "Region code (e.g. lhr, iad, sin, cdg, nrt)" },
+          "config": { "type": "object", "description": "Machine config (image, guest: {cpus, memory_mb}, services, env, auto_destroy)" }
+        },
+        "required": ["app_name", "config"]
+      }
+    },
+    {
+      "name": "fly_start_machine",
+      "description": "Start a stopped Fly.io machine",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "app_name": { "type": "string", "description": "App name" },
+          "machine_id": { "type": "string", "description": "Machine ID" }
+        },
+        "required": ["app_name", "machine_id"]
+      }
+    },
+    {
+      "name": "fly_stop_machine",
+      "description": "Stop a running Fly.io machine",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "app_name": { "type": "string", "description": "App name" },
+          "machine_id": { "type": "string", "description": "Machine ID" },
+          "signal": { "type": "string", "description": "Signal to send (e.g. SIGTERM, SIGKILL). Default SIGTERM." }
+        },
+        "required": ["app_name", "machine_id"]
+      }
+    },
+    {
+      "name": "fly_restart_machine",
+      "description": "Restart a Fly.io machine (stop then start)",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "app_name": { "type": "string", "description": "App name" },
+          "machine_id": { "type": "string", "description": "Machine ID" },
+          "timeout": { "type": "string", "description": "Timeout for graceful shutdown (e.g. '30s')" }
+        },
+        "required": ["app_name", "machine_id"]
+      }
+    },
+    {
+      "name": "fly_destroy_machine",
+      "description": "Destroy a Fly.io machine (irreversible)",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "app_name": { "type": "string", "description": "App name" },
+          "machine_id": { "type": "string", "description": "Machine ID" },
+          "force": { "type": "boolean", "description": "Force destroy even if running (default false)" }
+        },
+        "required": ["app_name", "machine_id"]
+      }
+    },
+    {
+      "name": "fly_list_volumes",
+      "description": "List all volumes in a Fly.io app",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "app_name": { "type": "string", "description": "App name" }
+        },
+        "required": ["app_name"]
+      }
+    },
+    {
+      "name": "fly_create_volume",
+      "description": "Create a new persistent volume for a Fly.io app",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "app_name": { "type": "string", "description": "App name" },
+          "name": { "type": "string", "description": "Volume name" },
+          "region": { "type": "string", "description": "Region code" },
+          "size_gb": { "type": "number", "description": "Size in GB (min 1)" },
+          "encrypted": { "type": "boolean", "description": "Encrypt volume (default true)" },
+          "snapshot_id": { "type": "string", "description": "Snapshot ID to restore from (optional)" }
+        },
+        "required": ["app_name", "name", "region", "size_gb"]
+      }
+    },
+    {
+      "name": "fly_list_secrets",
+      "description": "List secret names (not values) for a Fly.io app",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "app_name": { "type": "string", "description": "App name" }
+        },
+        "required": ["app_name"]
+      }
+    },
+    {
+      "name": "fly_set_secrets",
+      "description": "Set one or more secrets on a Fly.io app (triggers redeploy)",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "app_name": { "type": "string", "description": "App name" },
+          "secrets": { "type": "object", "description": "Key-value map of secrets to set" }
+        },
+        "required": ["app_name", "secrets"]
+      }
+    },
+    {
+      "name": "fly_delete_secret",
+      "description": "Remove a secret from a Fly.io app (triggers redeploy)",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "app_name": { "type": "string", "description": "App name" },
+          "key": { "type": "string", "description": "Secret key name to delete" }
+        },
+        "required": ["app_name", "key"]
+      }
+    },
+    {
+      "name": "fly_list_certificates",
+      "description": "List TLS certificates for a Fly.io app",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "app_name": { "type": "string", "description": "App name" }
+        },
+        "required": ["app_name"]
+      }
+    },
+    {
+      "name": "fly_add_certificate",
+      "description": "Add a TLS certificate for a hostname to a Fly.io app",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "app_name": { "type": "string", "description": "App name" },
+          "hostname": { "type": "string", "description": "Hostname for the certificate (e.g. example.com)" }
+        },
+        "required": ["app_name", "hostname"]
+      }
+    },
+    {
+      "name": "fly_list_regions",
+      "description": "List all available Fly.io regions",
+      "inputSchema": {
+        "type": "object",
+        "properties": {}
+      }
+    },
+    {
+      "name": "fly_allocate_ip",
+      "description": "Allocate a public IP address (v4 or v6) for a Fly.io app",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "app_name": { "type": "string", "description": "App name" },
+          "type": { "type": "string", "description": "IP type: v4 or v6 (default v6)" },
+          "region": { "type": "string", "description": "Region for shared IPv4 (optional)" }
+        },
+        "required": ["app_name"]
+      }
+    },
+    {
+      "name": "fly_release_ip",
+      "description": "Release a public IP address from a Fly.io app",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "app_name": { "type": "string", "description": "App name" },
+          "ip_address_id": { "type": "string", "description": "IP address ID to release" }
+        },
+        "required": ["app_name", "ip_address_id"]
+      }
+    }
+  ]
+}

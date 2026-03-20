@@ -1,0 +1,295 @@
+{
+  "$schema": "https://boj.dev/schemas/cartridge/v1.json",
+  "spdx": "PMPL-1.0-or-later",
+  "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath)",
+  "name": "hetzner-mcp",
+  "version": "0.2.0",
+  "description": "Hetzner Cloud API cartridge -- server, volume, firewall, network, SSH key, image, snapshot, floating IP, and load balancer management with per-second rate limiting",
+  "domain": "Cloud",
+  "tier": "Ayo",
+  "protocols": ["MCP", "REST"],
+  "auth": {
+    "method": "bearer_token",
+    "env_var": "HETZNER_API_TOKEN",
+    "credential_source": "vault-mcp"
+  },
+  "api": {
+    "base_url": "https://api.hetzner.cloud/v1",
+    "rate_limit_per_hour": 3600,
+    "content_type": "application/json"
+  },
+  "tools": [
+    {
+      "name": "hetzner_list_servers",
+      "description": "List all servers in the Hetzner Cloud project",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "page": { "type": "number", "description": "Page number (default 1)" },
+          "per_page": { "type": "number", "description": "Results per page (default 25, max 50)" },
+          "sort": { "type": "string", "description": "Sort field (id, name, created)" },
+          "status": { "type": "string", "description": "Filter by status (initializing, starting, running, stopping, off, deleting, migrating, rebuilding, unknown)" },
+          "label_selector": { "type": "string", "description": "Filter by label selector (e.g. 'env=production')" }
+        }
+      }
+    },
+    {
+      "name": "hetzner_get_server",
+      "description": "Get details of a specific Hetzner Cloud server by ID",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "server_id": { "type": "number", "description": "Numeric server ID" }
+        },
+        "required": ["server_id"]
+      }
+    },
+    {
+      "name": "hetzner_create_server",
+      "description": "Create a new Hetzner Cloud server",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string", "description": "Server name (must be unique within project)" },
+          "server_type": { "type": "string", "description": "Server type (e.g. cx22, cx32, cx42, cpx11, cax11)" },
+          "image": { "type": "string", "description": "Image name or ID (e.g. ubuntu-24.04, debian-12, fedora-41)" },
+          "location": { "type": "string", "description": "Location name (e.g. nbg1, fsn1, hel1, ash, hil)" },
+          "ssh_keys": { "type": "array", "items": { "type": "string" }, "description": "SSH key names or IDs to install" },
+          "labels": { "type": "object", "description": "Key-value labels for the server" },
+          "user_data": { "type": "string", "description": "Cloud-init user data (cloud-config or script)" },
+          "firewalls": { "type": "array", "items": { "type": "object" }, "description": "Firewall IDs to apply" },
+          "networks": { "type": "array", "items": { "type": "number" }, "description": "Network IDs to attach" },
+          "public_net": { "type": "object", "description": "Public network config (enable_ipv4, enable_ipv6)" }
+        },
+        "required": ["name", "server_type", "image"]
+      }
+    },
+    {
+      "name": "hetzner_delete_server",
+      "description": "Delete a Hetzner Cloud server (irreversible)",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "server_id": { "type": "number", "description": "Numeric server ID to delete" }
+        },
+        "required": ["server_id"]
+      }
+    },
+    {
+      "name": "hetzner_server_action",
+      "description": "Perform a power action on a Hetzner Cloud server (poweron, poweroff, reboot, shutdown, reset, rebuild)",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "server_id": { "type": "number", "description": "Numeric server ID" },
+          "action": { "type": "string", "description": "Action to perform: poweron, poweroff, reboot, shutdown, reset, rebuild" },
+          "image": { "type": "string", "description": "Image for rebuild action (required when action=rebuild)" }
+        },
+        "required": ["server_id", "action"]
+      }
+    },
+    {
+      "name": "hetzner_resize_server",
+      "description": "Change the type (resize) of a Hetzner Cloud server. Server must be powered off first for non-disk upgrades.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "server_id": { "type": "number", "description": "Numeric server ID" },
+          "server_type": { "type": "string", "description": "New server type (e.g. cx32, cx42)" },
+          "upgrade_disk": { "type": "boolean", "description": "Whether to upgrade disk size (irreversible, default false)" }
+        },
+        "required": ["server_id", "server_type"]
+      }
+    },
+    {
+      "name": "hetzner_list_floating_ips",
+      "description": "List all floating IPs in the Hetzner Cloud project",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "page": { "type": "number", "description": "Page number" },
+          "per_page": { "type": "number", "description": "Results per page" },
+          "label_selector": { "type": "string", "description": "Filter by label selector" }
+        }
+      }
+    },
+    {
+      "name": "hetzner_create_floating_ip",
+      "description": "Create a new floating IP (IPv4 or IPv6) in Hetzner Cloud",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "type": { "type": "string", "description": "IP type: ipv4 or ipv6" },
+          "home_location": { "type": "string", "description": "Home location (e.g. nbg1, fsn1)" },
+          "server": { "type": "number", "description": "Server ID to assign to (optional)" },
+          "description": { "type": "string", "description": "Description for the floating IP" },
+          "labels": { "type": "object", "description": "Key-value labels" }
+        },
+        "required": ["type", "home_location"]
+      }
+    },
+    {
+      "name": "hetzner_list_volumes",
+      "description": "List all block storage volumes in the Hetzner Cloud project",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "page": { "type": "number", "description": "Page number" },
+          "per_page": { "type": "number", "description": "Results per page" },
+          "label_selector": { "type": "string", "description": "Filter by label selector" },
+          "status": { "type": "string", "description": "Filter by status (creating, available)" }
+        }
+      }
+    },
+    {
+      "name": "hetzner_create_volume",
+      "description": "Create a new block storage volume in Hetzner Cloud",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string", "description": "Volume name" },
+          "size": { "type": "number", "description": "Size in GB (min 10)" },
+          "location": { "type": "string", "description": "Location (e.g. nbg1, fsn1)" },
+          "server": { "type": "number", "description": "Server ID to attach to (optional)" },
+          "format": { "type": "string", "description": "Filesystem format (ext4, xfs, or empty for unformatted)" },
+          "labels": { "type": "object", "description": "Key-value labels" },
+          "automount": { "type": "boolean", "description": "Auto-mount when attached (default false)" }
+        },
+        "required": ["name", "size"]
+      }
+    },
+    {
+      "name": "hetzner_list_firewalls",
+      "description": "List all firewalls in the Hetzner Cloud project",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "page": { "type": "number", "description": "Page number" },
+          "per_page": { "type": "number", "description": "Results per page" },
+          "label_selector": { "type": "string", "description": "Filter by label selector" }
+        }
+      }
+    },
+    {
+      "name": "hetzner_create_firewall",
+      "description": "Create a new firewall with rules in Hetzner Cloud",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string", "description": "Firewall name" },
+          "rules": { "type": "array", "items": { "type": "object" }, "description": "Array of firewall rules (direction, protocol, port, source_ips/destination_ips)" },
+          "apply_to": { "type": "array", "items": { "type": "object" }, "description": "Resources to apply to (type: server, server: {id: N})" },
+          "labels": { "type": "object", "description": "Key-value labels" }
+        },
+        "required": ["name", "rules"]
+      }
+    },
+    {
+      "name": "hetzner_list_ssh_keys",
+      "description": "List all SSH keys in the Hetzner Cloud project",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "page": { "type": "number", "description": "Page number" },
+          "per_page": { "type": "number", "description": "Results per page" },
+          "label_selector": { "type": "string", "description": "Filter by label selector" }
+        }
+      }
+    },
+    {
+      "name": "hetzner_create_ssh_key",
+      "description": "Add an SSH public key to the Hetzner Cloud project",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string", "description": "Key name" },
+          "public_key": { "type": "string", "description": "SSH public key string" },
+          "labels": { "type": "object", "description": "Key-value labels" }
+        },
+        "required": ["name", "public_key"]
+      }
+    },
+    {
+      "name": "hetzner_list_images",
+      "description": "List available images (OS images, snapshots, backups) in Hetzner Cloud",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "type": { "type": "string", "description": "Filter by type: system, snapshot, backup, app" },
+          "status": { "type": "string", "description": "Filter by status: available, creating" },
+          "sort": { "type": "string", "description": "Sort field (id, name, created)" },
+          "page": { "type": "number", "description": "Page number" },
+          "per_page": { "type": "number", "description": "Results per page" }
+        }
+      }
+    },
+    {
+      "name": "hetzner_create_snapshot",
+      "description": "Create a snapshot of a Hetzner Cloud server",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "server_id": { "type": "number", "description": "Server ID to snapshot" },
+          "description": { "type": "string", "description": "Snapshot description" },
+          "labels": { "type": "object", "description": "Key-value labels" }
+        },
+        "required": ["server_id"]
+      }
+    },
+    {
+      "name": "hetzner_list_networks",
+      "description": "List all networks in the Hetzner Cloud project",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "page": { "type": "number", "description": "Page number" },
+          "per_page": { "type": "number", "description": "Results per page" },
+          "label_selector": { "type": "string", "description": "Filter by label selector" }
+        }
+      }
+    },
+    {
+      "name": "hetzner_create_network",
+      "description": "Create a new network in Hetzner Cloud",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string", "description": "Network name" },
+          "ip_range": { "type": "string", "description": "IP range in CIDR notation (e.g. 10.0.0.0/16)" },
+          "subnets": { "type": "array", "items": { "type": "object" }, "description": "Subnets (type, ip_range, network_zone)" },
+          "labels": { "type": "object", "description": "Key-value labels" }
+        },
+        "required": ["name", "ip_range"]
+      }
+    },
+    {
+      "name": "hetzner_list_load_balancers",
+      "description": "List all load balancers in the Hetzner Cloud project",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "page": { "type": "number", "description": "Page number" },
+          "per_page": { "type": "number", "description": "Results per page" },
+          "label_selector": { "type": "string", "description": "Filter by label selector" }
+        }
+      }
+    },
+    {
+      "name": "hetzner_create_load_balancer",
+      "description": "Create a new load balancer in Hetzner Cloud",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string", "description": "Load balancer name" },
+          "load_balancer_type": { "type": "string", "description": "Type (e.g. lb11, lb21, lb31)" },
+          "location": { "type": "string", "description": "Location (e.g. nbg1, fsn1)" },
+          "algorithm": { "type": "object", "description": "Algorithm config (type: round_robin or least_connections)" },
+          "services": { "type": "array", "items": { "type": "object" }, "description": "Service definitions (protocol, listen_port, destination_port, health_check)" },
+          "targets": { "type": "array", "items": { "type": "object" }, "description": "Targets (type: server, server: {id: N})" },
+          "labels": { "type": "object", "description": "Key-value labels" }
+        },
+        "required": ["name", "load_balancer_type"]
+      }
+    }
+  ]
+}
