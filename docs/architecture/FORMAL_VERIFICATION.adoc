@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
 = BOJ Server Mistral: Formal Verification Strategy
 :description: Formal verification approach for the complete BOJ + Stapeln + Security stack
 

@@ -1,0 +1,9 @@
+# .gitleaksignore
+# SPDX-License-Identifier: PMPL-1.0-or-later
+
+# Skip known test placeholders in Zig FFI tests
+/var/mnt/eclipse/repos/boj-server/cartridges/cloud-mcp/ffi/cloud_ffi.zig:generic-api-key:1068
+/var/mnt/eclipse/repos/boj-server/cartridges/cloud-mcp/ffi/cloud_ffi.zig:generic-api-key:1095
+/var/mnt/eclipse/repos/boj-server/cartridges/cloud-mcp/ffi/cloud_ffi.zig:generic-api-key:1129
+/var/mnt/eclipse/repos/boj-server/cartridges/cloud-mcp/ffi/cloud_ffi.zig:generic-api-key:1176
+/var/mnt/eclipse/repos/boj-server/cartridges/research-mcp/ffi/research_ffi.zig:generic-api-key:391

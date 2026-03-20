@@ -118,7 +118,7 @@ echo "Step 7: Matrix verification..."
 cd "$PROJECT_DIR"
 for cart in database-mcp fleet-mcp nesy-mcp agent-mcp; do
     abi_ok=false; ffi_ok=false; adapter_ok=false
-    [ -f "cartridges/$cart/abi"/*/*.idr ] 2>/dev/null && abi_ok=true
+    find "cartridges/$cart/abi" -name '*.idr' 2>/dev/null | grep -q . && abi_ok=true
     [ -f "cartridges/$cart/ffi"/*_ffi.zig ] 2>/dev/null && ffi_ok=true
     [ -f "cartridges/$cart/adapter"/*_adapter.v ] 2>/dev/null && adapter_ok=true
 

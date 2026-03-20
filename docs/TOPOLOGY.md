@@ -227,6 +227,21 @@ What is genuinely done:
 - Auto-SDP perimeter (zero-trust, allow-list, auto-ban, 10 tests)
 - 4-continent seed node config (EU-West, EU-Central, US-East, AP-South)
 
+## Architecture Documentation
+
+| Document | Path | Coverage |
+|----------|------|----------|
+| Quantum Security | `docs/architecture/QUANTUM_SECURITY.adoc` | PQC roadmap, hybrid signatures |
+| HSM Integration | `docs/architecture/HSM_INTEGRATION.adoc` | PKCS#11, YubiHSM, CloudHSM |
+| Cartridge Marketplace | `docs/architecture/CARTRIDGE_MARKETPLACE.adoc` | Discovery, quality signals, ratings |
+| BoJ OS | `docs/architecture/BOJ_OS.adoc` | Lightweight node OS (<100MB) |
+| Formal Verification | `docs/architecture/FORMAL_VERIFICATION.adoc` | Idris2/Lean/TLA+ strategy |
+| Type Safety | `docs/architecture/TYPE_SAFETY.adoc` | Cross-language type mappings |
+| Zero Trust | `docs/architecture/ZERO_TRUST.adoc` | SPIFFE/SPIRE, mTLS, OPA |
+| SDP Architecture | `docs/architecture/SDP_ARCHITECTURE.adoc` | QUIC proxy, geo-redundancy |
+| Gossip Protocol | `docs/architecture/GOSSIP_PROTOCOL.adoc` | Umoja gossip protocol details |
+| Cartridge Tools | `docs/specification/cartridge-tools/README.md` | Minter, Provisioner, Configurator, Panel Harness |
+
 Remaining:
 - Deploy seed nodes to actual infrastructure
 - Domain registration for named Cloudflare tunnel

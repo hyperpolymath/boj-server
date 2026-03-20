@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
 = BOJ Server Mistral: Type Safety Across Boundaries
 :description: Type safety guarantees and formal mappings between language boundaries
 

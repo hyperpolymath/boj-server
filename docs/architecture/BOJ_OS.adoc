@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
 = BoJ OS - Lightweight Operating System for AI Agents
 :toc: preamble
 :icons: font

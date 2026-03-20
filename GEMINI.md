@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: PMPL-1.0-or-later -->
 # BoJ Server Gemini Extension
 
 This extension integrates the **Bundle of Joy (BoJ) Server** infrastructure directly into Gemini CLI.

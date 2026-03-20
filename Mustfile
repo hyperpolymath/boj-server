@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: PMPL-1.0-or-later
 # BoJ Server Invariant Classifications
 # This file defines the invariants for the BoJ Server repository.
 # All updates must comply with these invariants.

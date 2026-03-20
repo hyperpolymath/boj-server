@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: PMPL-1.0-or-later
 # BoJ Server Intentfile (Lustfile)
 # Defines the intentions and invariants for AI agents accessing the repository.
 # AI agents must comply with these intentions when interacting with the repo.

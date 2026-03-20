@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
 = BOJ Server Mistral: Secure Data Plane (SDP) Architecture
 :description: SDP implementation for preventing access except via single route
 

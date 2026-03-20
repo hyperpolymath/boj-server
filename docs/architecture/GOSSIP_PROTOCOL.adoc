@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
 = BOJ Server Mistral: Gossip Protocol Specification
 :description: QUIC-based gossip protocol for node discovery, message passing, and fault tolerance
 

@@ -3,6 +3,30 @@
 
 All notable changes to Bundle of Joy Server are documented here.
 
+## [0.3.0] — 2026-03-20
+
+### Added
+- Consolidated boj-server-mistral and boj-server-gemini into unified repo
+- PanLL ReScript/TEA UI components (BojModel, BojEngine, Boj, BojModule)
+- Gemini CLI extension support (gemini-extension.json, GEMINI.md)
+- 9 architecture docs: Quantum Security, HSM Integration, Cartridge Marketplace,
+  BoJ OS, Formal Verification, Type Safety, Zero Trust, SDP Architecture, Gossip Protocol
+- Cartridge tools specification (Minter, Provisioner, Configurator, Panel Harness)
+- Intentfile and Mustfile (contractile invariant declarations)
+- Farm/fleet enrollment configs
+- EXHIBIT-A (Ethical Use) and EXHIBIT-B (Quantum-Safe Provenance)
+- Hypatia vulnerability-scanning and dependency-update rules
+
+### Fixed
+- Constant-time comparison in webhook HMAC verification (timing attack prevention)
+- .mcp.json version aligned to 0.3.0
+- package.json license corrected to PMPL-1.0-or-later
+- SPDX headers added to all new files
+
+### Removed
+- boj-server-gemini repo (consolidated, deleted from GitHub)
+- boj-server-mistral repo (consolidated, deleted locally)
+
 ## [0.2.0] — 2026-03-09
 
 ### Added

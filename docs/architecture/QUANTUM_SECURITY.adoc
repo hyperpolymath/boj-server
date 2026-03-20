@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
 = Quantum-Resistant Cryptography Architecture
 :toc: preamble
 :icons: font
