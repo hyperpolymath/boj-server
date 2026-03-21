@@ -8,12 +8,24 @@ BoJ (Bureau of Justice) is a unified MCP server that consolidates all hyperpolym
 
 == Install
 
+Add to Claude Code:
+
 [source,bash]
 ----
-npx @anthropic-ai/claude-code mcp add boj-server -- deno run -A https://raw.githubusercontent.com/hyperpolymath/boj-server/main/src/index.ts
+claude mcp add boj-server -- node /path/to/boj-server/mcp-bridge/main.js
 ----
 
-Or via Glama: https://glama.ai/mcp/servers/hyperpolymath/boj-server
+Or clone and configure:
+
+[source,bash]
+----
+git clone https://github.com/hyperpolymath/boj-server
+cd boj-server/mcp-bridge && npm install
+# Start the BoJ REST API first (port 7700), then:
+claude mcp add boj-server -- node mcp-bridge/main.js
+----
+
+Glama listing: https://glama.ai/mcp/servers/hyperpolymath/boj-server
 
 == Features
 
