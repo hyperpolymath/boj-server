@@ -1,0 +1,10 @@
+-- SPDX-License-Identifier: PMPL-1.0-or-later
+package rokur_mcp
+
+version = "0.1.0"
+authors = "Jonathan D.A. Jewell"
+brief   = "Container pre-start secrets gate — Idris2 ABI for rokur-mcp"
+
+depends = base
+
+modules = RokurMcp.SafeGate

@@ -1,0 +1,12 @@
+# SPDX-License-Identifier: PMPL-1.0-or-later
+name = "rokur-mcp"
+description = "Container pre-start secrets gate — validates required secrets before launch"
+version = "0.1.0"
+domain = "Secrets"
+protocols = [
+    "MCP",
+    "REST",
+]
+tier = "Ayo"
+backend = "universal"
+generate_panel = true

@@ -1,0 +1,45 @@
+{
+  "$schema": "https://spec.modelcontextprotocol.io/2024-11-05/schema/tools",
+  "spdx": "PMPL-1.0-or-later",
+  "cartridge": "rokur-mcp",
+  "tools": [
+    {
+      "name": "boj_rokur_authorize_start",
+      "description": "Request pre-start authorization for a container. Rokur validates that all required secrets are present. Returns allow/deny verdict — never secret values. Gate must be in idle state.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "image": {
+            "type": "string",
+            "description": "Container image name (e.g. 'nginx:latest', 'ghcr.io/hyperpolymath/panll:v0.1.0')"
+          }
+        },
+        "required": ["image"]
+      }
+    },
+    {
+      "name": "boj_rokur_status",
+      "description": "Query the secrets presence status. Returns required/missing counts — never secret names or values. Available in any gate state.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {}
+      }
+    },
+    {
+      "name": "boj_rokur_reload",
+      "description": "Hot-reload required secrets from the environment without restarting the Rokur sidecar. Use after deploying new secrets.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {}
+      }
+    },
+    {
+      "name": "boj_rokur_health",
+      "description": "Liveness check on the Rokur sidecar service. Returns health status and non-sensitive configuration.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {}
+      }
+    }
+  ]
+}
