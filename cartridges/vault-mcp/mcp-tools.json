@@ -1,0 +1,69 @@
+{
+  "$schema": "https://spec.modelcontextprotocol.io/2024-11-05/schema/tools",
+  "spdx": "PMPL-1.0-or-later",
+  "cartridge": "vault-mcp",
+  "tools": [
+    {
+      "name": "boj_vault_execute",
+      "description": "Execute a command with vault-managed credentials. You NEVER see the credential — only the command output. The vault injects the secret into an isolated namespace. Requires the vault to be unlocked.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "command": {
+            "type": "string",
+            "description": "The command to execute (e.g. 'git push origin main', 'gh api /user'). Must match an allowlist prefix if enforcement is enabled."
+          },
+          "credential_hint": {
+            "type": "string",
+            "description": "Which service needs auth (e.g. 'github.com', 'cloudflare-api', 'ssh-deploy-key'). The vault resolves this to the actual credential internally."
+          }
+        },
+        "required": ["command", "credential_hint"]
+      }
+    },
+    {
+      "name": "boj_vault_list",
+      "description": "List available credential hints in the vault. Returns hint names only — never actual secrets. Requires the vault to be unlocked.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {}
+      }
+    },
+    {
+      "name": "boj_vault_status",
+      "description": "Query vault operational status (locked/unlocked/sealed, credential count, last access time). Available in any vault state.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {}
+      }
+    },
+    {
+      "name": "boj_vault_verify",
+      "description": "Verify the integrity of a credential without revealing it. Checks that the GUID fragments are complete and hash chains are valid. Requires the vault to be unlocked.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "credential_hint": {
+            "type": "string",
+            "description": "Which credential to verify (e.g. 'github.com')"
+          }
+        },
+        "required": ["credential_hint"]
+      }
+    },
+    {
+      "name": "boj_vault_audit",
+      "description": "Query the audit log of recent vault operations. Returns timestamps, actions, hints, and results — never actual credentials.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "max_entries": {
+            "type": "integer",
+            "description": "Maximum number of entries to return (default: 50)",
+            "default": 50
+          }
+        }
+      }
+    }
+  ]
+}

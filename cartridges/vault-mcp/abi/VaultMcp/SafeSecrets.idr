@@ -233,3 +233,47 @@ toolRequiresUnlock ToolVaultVerify  = True
 export
 toolCount : Nat
 toolCount = 5
+
+-- ---------------------------------------------------------------------------
+-- Audit log types
+-- ---------------------------------------------------------------------------
+
+||| An audit log entry records a vault operation with its outcome.
+||| The audit ring buffer retains the most recent MAX_AUDIT_ENTRIES entries.
+||| Credential values are NEVER recorded — only hints and action types.
+public export
+record AuditEntry where
+  constructor MkAuditEntry
+  timestamp      : Int
+  action         : VaultAction
+  credentialHint : CredentialHint
+  resultCode     : Int
+  agentId        : String
+
+-- ---------------------------------------------------------------------------
+-- Command allowlist
+-- ---------------------------------------------------------------------------
+
+||| A command prefix pattern in the AI agent allowlist.
+||| When enforcement is enabled, vault/execute rejects commands not matching
+||| any registered prefix. This prevents AI agents from running arbitrary
+||| commands with vault-injected credentials.
+public export
+data AllowlistEntry = MkAllowlistEntry String
+
+||| Extract the pattern string for FFI serialisation.
+export
+allowlistPattern : AllowlistEntry -> String
+allowlistPattern (MkAllowlistEntry s) = s
+
+||| C-ABI export for audit entry count query.
+export
+vault_mcp_audit_count : Int
+
+||| C-ABI export for allowlist add.
+export
+vault_mcp_allowlist_add : String -> Int -> Int
+
+||| C-ABI export for allowlist enforcement toggle.
+export
+vault_mcp_allowlist_enforce : Int -> ()

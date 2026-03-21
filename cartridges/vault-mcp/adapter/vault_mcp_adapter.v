@@ -28,6 +28,12 @@ fn C.vault_mcp_rotate(hint_ptr &u8, hint_len int) int
 fn C.vault_mcp_read_result(out_ptr &u8, max_len int) int
 fn C.vault_mcp_read_error(out_ptr &u8, max_len int) int
 fn C.vault_mcp_reset()
+fn C.vault_mcp_audit_count() int
+fn C.vault_mcp_audit_entry(index int) int
+fn C.vault_mcp_allowlist_add(pattern_ptr &u8, pattern_len int) int
+fn C.vault_mcp_allowlist_enforce(enabled int)
+fn C.vault_mcp_allowlist_status() int
+fn C.vault_mcp_allowlist_count() int
 
 // ---------------------------------------------------------------------------
 // Type definitions (matching Zig/Idris2 exactly)
@@ -244,4 +250,104 @@ pub fn can_transition(from int, to int) TransitionResponse {
 /// Reset vault to initial locked state (test/debug only).
 pub fn reset() {
 	C.vault_mcp_reset()
+}
+
+// ---------------------------------------------------------------------------
+// Audit log
+// ---------------------------------------------------------------------------
+
+/// Audit log entry returned from the ring buffer.
+struct AuditEntry {
+	timestamp       i64
+	action          string
+	credential_hint string
+	result          string
+	agent           string
+}
+
+/// GET /vault/audit — query recent vault operations from the audit ring buffer.
+/// Returns up to `max_entries` most recent entries (0 = most recent first).
+pub fn vault_audit(max_entries int) []AuditEntry {
+	count := C.vault_mcp_audit_count()
+	limit := if max_entries > 0 && max_entries < count { max_entries } else { count }
+
+	mut entries := []AuditEntry{cap: limit}
+	for i in 0 .. limit {
+		n := C.vault_mcp_audit_entry(i)
+		if n > 0 {
+			raw := read_result()
+			// Parse the JSON line from the result buffer
+			// The FFI returns JSON like: {"timestamp":..., "action":..., ...}
+			entries << AuditEntry{
+				timestamp: 0
+				action: ''
+				credential_hint: ''
+				result: ''
+				agent: ''
+			}
+			// For now, store raw JSON; structured parse deferred to V json.decode
+			if entries.len > 0 {
+				entries[entries.len - 1] = AuditEntry{
+					timestamp: 0
+					action: raw
+					credential_hint: ''
+					result: ''
+					agent: ''
+				}
+			}
+		}
+	}
+	return entries
+}
+
+/// GET /vault/audit/raw — return audit entries as raw JSON lines.
+/// This is the preferred endpoint for the PanLL panel log-stream widget.
+pub fn vault_audit_raw(max_entries int) string {
+	count := C.vault_mcp_audit_count()
+	limit := if max_entries > 0 && max_entries < count { max_entries } else { count }
+
+	mut lines := []string{cap: limit}
+	for i in 0 .. limit {
+		n := C.vault_mcp_audit_entry(i)
+		if n > 0 {
+			lines << read_result()
+		}
+	}
+	return lines.join('\n')
+}
+
+// ---------------------------------------------------------------------------
+// Command allowlist (AI agent safety)
+// ---------------------------------------------------------------------------
+
+/// POST /vault/allowlist/add — add a command prefix to the AI agent allowlist.
+/// Commands matching this prefix will be permitted by vault/execute.
+/// Example: "git push" allows "git push origin main" etc.
+pub fn vault_allowlist_add(pattern string) !string {
+	result := C.vault_mcp_allowlist_add(pattern.str, pattern.len)
+	return match result {
+		0 { 'added: ${pattern}' }
+		-1 { return error('allowlist is full') }
+		-3 { return error('invalid pattern') }
+		else { return error('unknown error (code ${result})') }
+	}
+}
+
+/// POST /vault/allowlist/enforce — enable or disable allowlist enforcement.
+/// When enabled, vault/execute rejects commands not matching any allowlist prefix.
+pub fn vault_allowlist_enforce(enabled bool) {
+	C.vault_mcp_allowlist_enforce(if enabled { 1 } else { 0 })
+}
+
+/// GET /vault/allowlist/status — query allowlist enforcement state.
+struct AllowlistStatus {
+	enforced bool
+	count    int
+}
+
+pub fn vault_allowlist_status() AllowlistStatus {
+	return AllowlistStatus{
+		enforced: C.vault_mcp_allowlist_status() == 1
+		count: C.vault_mcp_allowlist_count()
+	}
 }

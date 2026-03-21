@@ -74,6 +74,31 @@ const SVALINN_SOCKET: []const u8 = "/run/svalinn/api.sock";
 /// Path to the svalinn Ada CLI binary.
 const SVALINN_CLI: []const u8 = "svalinn_cli";
 
+/// Maximum audit log entries retained in memory (ring buffer).
+const MAX_AUDIT_ENTRIES = 128;
+
+/// Maximum commands in the AI agent allowlist.
+const MAX_ALLOWLIST = 64;
+
+/// A single audit log entry recording a vault operation.
+const AuditEntry = struct {
+    timestamp: i64 = 0,
+    action: VaultAction = .status,
+    hint_buf: [128]u8 = undefined,
+    hint_len: usize = 0,
+    result_code: c_int = 0,
+    agent_buf: [64]u8 = undefined,
+    agent_len: usize = 0,
+};
+
+/// A command pattern in the AI agent allowlist.
+/// Commands must match one of these prefixes to be executed via vault/execute.
+const AllowlistEntry = struct {
+    pattern_buf: [256]u8 = undefined,
+    pattern_len: usize = 0,
+    active: bool = false,
+};
+
 /// Thread-safe vault proxy state.
 const VaultProxy = struct {
     state: VaultState = .locked,
@@ -83,6 +108,16 @@ const VaultProxy = struct {
     last_error_len: usize = 0,
     credential_count: u32 = 0,
     last_access_epoch: i64 = 0,
+
+    // Audit ring buffer
+    audit: [MAX_AUDIT_ENTRIES]AuditEntry = [_]AuditEntry{.{}} ** MAX_AUDIT_ENTRIES,
+    audit_head: usize = 0,
+    audit_count: usize = 0,
+
+    // Command allowlist for AI agents
+    allowlist: [MAX_ALLOWLIST]AllowlistEntry = [_]AllowlistEntry{.{}} ** MAX_ALLOWLIST,
+    allowlist_count: usize = 0,
+    allowlist_enforced: bool = false,
 };
 
 var proxy: VaultProxy = .{};
@@ -216,12 +251,21 @@ pub export fn vault_mcp_execute(
     const command = command_ptr[0..cmd_ulen];
     const hint = hint_ptr[0..hint_ulen];
 
+    // Check command allowlist before executing
+    if (!isCommandAllowed(command)) {
+        setError("command not in allowlist");
+        recordAudit(.execute, hint, -4, "ai-agent");
+        return -4;
+    }
+
     const args = [_][]const u8{ "get", hint, "--exec", command };
     const bytes = runSvalinnCli(&args) catch {
         setError("svalinn_cli execution failed");
+        recordAudit(.execute, hint, -2, "ai-agent");
         return -2;
     };
 
+    recordAudit(.execute, hint, @intCast(bytes), "ai-agent");
     return @intCast(bytes);
 }
 
@@ -335,6 +379,141 @@ pub export fn vault_mcp_read_error(out_ptr: [*c]u8, max_len: c_int) c_int {
     return @intCast(copy_len);
 }
 
+// ---------------------------------------------------------------------------
+// Internal helpers — audit + allowlist
+// ---------------------------------------------------------------------------
+
+/// Record an audit entry in the ring buffer.
+fn recordAudit(action: VaultAction, hint: []const u8, result_code: c_int, agent: []const u8) void {
+    const idx = proxy.audit_head;
+    var entry = &proxy.audit[idx];
+
+    entry.timestamp = std.time.timestamp();
+    entry.action = action;
+    entry.result_code = result_code;
+
+    const h_len = @min(hint.len, entry.hint_buf.len);
+    @memcpy(entry.hint_buf[0..h_len], hint[0..h_len]);
+    entry.hint_len = h_len;
+
+    const a_len = @min(agent.len, entry.agent_buf.len);
+    @memcpy(entry.agent_buf[0..a_len], agent[0..a_len]);
+    entry.agent_len = a_len;
+
+    proxy.audit_head = (proxy.audit_head + 1) % MAX_AUDIT_ENTRIES;
+    if (proxy.audit_count < MAX_AUDIT_ENTRIES) proxy.audit_count += 1;
+}
+
+/// Check if a command is allowed by the allowlist.
+/// Returns true if allowlist is not enforced, or if command matches a prefix.
+fn isCommandAllowed(command: []const u8) bool {
+    if (!proxy.allowlist_enforced) return true;
+    if (proxy.allowlist_count == 0) return false;
+
+    for (proxy.allowlist[0..proxy.allowlist_count]) |entry| {
+        if (!entry.active) continue;
+        const pat = entry.pattern_buf[0..entry.pattern_len];
+        if (command.len >= pat.len and std.mem.eql(u8, command[0..pat.len], pat)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+// ---------------------------------------------------------------------------
+// C-ABI exports — audit log
+// ---------------------------------------------------------------------------
+
+/// Get the number of audit entries available.
+pub export fn vault_mcp_audit_count() c_int {
+    mutex.lock();
+    defer mutex.unlock();
+    return @intCast(proxy.audit_count);
+}
+
+/// Read an audit entry as JSON into the result buffer.
+/// Index 0 = most recent. Returns bytes written, or -1 if out of range.
+pub export fn vault_mcp_audit_entry(index: c_int) c_int {
+    mutex.lock();
+    defer mutex.unlock();
+
+    const uidx: usize = std.math.cast(usize, index) orelse return -1;
+    if (uidx >= proxy.audit_count) return -1;
+
+    // Walk backwards from head
+    const real_idx = (proxy.audit_head + MAX_AUDIT_ENTRIES - 1 - uidx) % MAX_AUDIT_ENTRIES;
+    const entry = &proxy.audit[real_idx];
+
+    const hint = entry.hint_buf[0..entry.hint_len];
+    const agent = entry.agent_buf[0..entry.agent_len];
+    const action_str: []const u8 = switch (entry.action) {
+        .execute => "execute",
+        .list => "list",
+        .rotate => "rotate",
+        .status => "status",
+        .verify => "verify",
+    };
+    const result_str: []const u8 = if (entry.result_code >= 0) "ok" else "error";
+
+    // Format as JSON line
+    const written = std.fmt.bufPrint(&proxy.result_buf, "{{\"timestamp\":{d},\"action\":\"{s}\",\"credential_hint\":\"{s}\",\"result\":\"{s}\",\"agent\":\"{s}\"}}", .{
+        entry.timestamp,
+        action_str,
+        hint,
+        result_str,
+        agent,
+    }) catch return -2;
+
+    proxy.result_len = written.len;
+    return @intCast(written.len);
+}
+
+// ---------------------------------------------------------------------------
+// C-ABI exports — command allowlist
+// ---------------------------------------------------------------------------
+
+/// Add a command prefix to the AI agent allowlist.
+/// Returns 0 on success, -1 if full, -3 if null/too long.
+pub export fn vault_mcp_allowlist_add(pattern_ptr: [*c]const u8, pattern_len: c_int) c_int {
+    mutex.lock();
+    defer mutex.unlock();
+
+    if (pattern_ptr == null) return -3;
+    const ulen: usize = std.math.cast(usize, pattern_len) orelse return -3;
+    if (ulen > 256) return -3;
+    if (proxy.allowlist_count >= MAX_ALLOWLIST) return -1;
+
+    const pattern = pattern_ptr[0..ulen];
+    var entry = &proxy.allowlist[proxy.allowlist_count];
+    @memcpy(entry.pattern_buf[0..ulen], pattern);
+    entry.pattern_len = ulen;
+    entry.active = true;
+    proxy.allowlist_count += 1;
+    return 0;
+}
+
+/// Enable or disable allowlist enforcement.
+/// When enabled (1), vault/execute rejects commands not matching any prefix.
+pub export fn vault_mcp_allowlist_enforce(enabled: c_int) void {
+    mutex.lock();
+    defer mutex.unlock();
+    proxy.allowlist_enforced = enabled != 0;
+}
+
+/// Get allowlist enforcement status. Returns 1 (enforced) or 0 (open).
+pub export fn vault_mcp_allowlist_status() c_int {
+    mutex.lock();
+    defer mutex.unlock();
+    return if (proxy.allowlist_enforced) 1 else 0;
+}
+
+/// Get the number of allowlist entries.
+pub export fn vault_mcp_allowlist_count() c_int {
+    mutex.lock();
+    defer mutex.unlock();
+    return @intCast(proxy.allowlist_count);
+}
+
 /// Reset vault proxy to initial state (test/debug only).
 pub export fn vault_mcp_reset() void {
     mutex.lock();
@@ -441,4 +620,61 @@ test "verify requires unlocked vault" {
 test "rotate requires unlocked vault" {
     vault_mcp_reset();
     try std.testing.expectEqual(@as(c_int, -1), vault_mcp_rotate("github.com", 10));
+}
+
+test "audit ring buffer" {
+    vault_mcp_reset();
+
+    // Initially empty
+    try std.testing.expectEqual(@as(c_int, 0), vault_mcp_audit_count());
+
+    // Execute when locked produces an audit entry (from the -1 error path)
+    _ = vault_mcp_execute("echo hello", 10, "github.com", 10);
+    // Note: the -1 path (not unlocked) doesn't call recordAudit in current impl,
+    // so audit count should still be 0 from that path.
+    // But once unlocked with allowlist enforced and blocked, it does record.
+
+    // Enable allowlist enforcement with no entries (blocks everything)
+    vault_mcp_allowlist_enforce(1);
+    try std.testing.expectEqual(@as(c_int, 1), vault_mcp_allowlist_status());
+
+    // Unlock the vault
+    _ = vault_mcp_transition(1); // locked -> mfa_pending
+    _ = vault_mcp_transition(2); // mfa_pending -> unlocked
+
+    // Execute should be blocked by allowlist and audited
+    const result = vault_mcp_execute("echo hello", 10, "github.com", 10);
+    try std.testing.expectEqual(@as(c_int, -4), result);
+
+    // Should now have 1 audit entry
+    try std.testing.expectEqual(@as(c_int, 1), vault_mcp_audit_count());
+
+    // Read the audit entry
+    const entry_bytes = vault_mcp_audit_entry(0);
+    try std.testing.expect(entry_bytes > 0);
+}
+
+test "allowlist enforcement" {
+    vault_mcp_reset();
+
+    // Add "git " prefix to allowlist
+    try std.testing.expectEqual(@as(c_int, 0), vault_mcp_allowlist_add("git ", 4));
+    try std.testing.expectEqual(@as(c_int, 1), vault_mcp_allowlist_count());
+
+    // Enable enforcement
+    vault_mcp_allowlist_enforce(1);
+    try std.testing.expectEqual(@as(c_int, 1), vault_mcp_allowlist_status());
+
+    // Unlock vault
+    _ = vault_mcp_transition(1);
+    _ = vault_mcp_transition(2);
+
+    // "rm -rf" should be blocked (doesn't match "git " prefix)
+    const blocked = vault_mcp_execute("rm -rf /", 8, "github.com", 10);
+    try std.testing.expectEqual(@as(c_int, -4), blocked);
+
+    // "git push" would try to execute (match found) but fail because
+    // svalinn_cli isn't available in test — returns -2 (CLI failed)
+    const allowed = vault_mcp_execute("git push", 8, "github.com", 10);
+    try std.testing.expectEqual(@as(c_int, -2), allowed);
 }
