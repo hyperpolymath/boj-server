@@ -1,0 +1,155 @@
+{
+  "$schema": "https://boj.dev/schemas/cartridge/v1.json",
+  "spdx": "PMPL-1.0-or-later",
+  "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath)",
+  "name": "zotero-mcp",
+  "version": "0.2.0",
+  "description": "Zotero reference manager cartridge -- library search, item retrieval, collection browsing, tag management, attachment access, citation export, note extraction, saved search execution, group library access, and bibliography generation via the Zotero Web API v3",
+  "domain": "Research",
+  "tier": "Ayo",
+  "protocols": ["MCP", "REST"],
+  "auth": {
+    "method": "bearer_token",
+    "env_var": "ZOTERO_API_KEY",
+    "credential_source": "vault-mcp"
+  },
+  "api": {
+    "base_url": "https://api.zotero.org",
+    "content_type": "application/json",
+    "user_agent_required": true
+  },
+  "tools": [
+    {
+      "name": "zotero_search_items",
+      "description": "Search Zotero library for items by text query across titles, authors, tags, and full-text content",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "query": { "type": "string", "description": "Search query (title, author, tag, full-text)" },
+          "item_type": { "type": "string", "description": "Filter by item type (e.g. 'journalArticle', 'book', 'conferencePaper')" },
+          "limit": { "type": "number", "description": "Max results (default 25, max 100)" },
+          "sort": { "type": "string", "description": "Sort field: dateAdded, dateModified, title, creator, itemType" }
+        },
+        "required": ["query"]
+      }
+    },
+    {
+      "name": "zotero_get_item",
+      "description": "Get full metadata for a Zotero item by key (title, authors, abstract, DOI, tags, notes)",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "item_key": { "type": "string", "description": "Zotero item key (8-character alphanumeric)" }
+        },
+        "required": ["item_key"]
+      }
+    },
+    {
+      "name": "zotero_list_collections",
+      "description": "List all collections in the Zotero library with item counts",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "parent_key": { "type": "string", "description": "Parent collection key (omit for top-level)" }
+        }
+      }
+    },
+    {
+      "name": "zotero_get_collection_items",
+      "description": "Get all items in a specific Zotero collection",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "collection_key": { "type": "string", "description": "Collection key" },
+          "limit": { "type": "number", "description": "Max results (default 25)" },
+          "sort": { "type": "string", "description": "Sort field" }
+        },
+        "required": ["collection_key"]
+      }
+    },
+    {
+      "name": "zotero_list_tags",
+      "description": "List all tags in the Zotero library with usage counts",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "limit": { "type": "number", "description": "Max results (default 50)" }
+        }
+      }
+    },
+    {
+      "name": "zotero_get_items_by_tag",
+      "description": "Get all items with a specific tag applied",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "tag": { "type": "string", "description": "Tag name" },
+          "limit": { "type": "number", "description": "Max results" }
+        },
+        "required": ["tag"]
+      }
+    },
+    {
+      "name": "zotero_get_attachments",
+      "description": "Get attachment metadata for a Zotero item (PDF, snapshot, linked files)",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "item_key": { "type": "string", "description": "Parent item key" }
+        },
+        "required": ["item_key"]
+      }
+    },
+    {
+      "name": "zotero_export_citation",
+      "description": "Export citation for an item in a given format (BibTeX, RIS, CSL JSON, etc.)",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "item_key": { "type": "string", "description": "Item key" },
+          "format": { "type": "string", "description": "Export format: bibtex, ris, csljson, refer, coins (default bibtex)" }
+        },
+        "required": ["item_key"]
+      }
+    },
+    {
+      "name": "zotero_get_notes",
+      "description": "Get child notes for a Zotero item",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "item_key": { "type": "string", "description": "Parent item key" }
+        },
+        "required": ["item_key"]
+      }
+    },
+    {
+      "name": "zotero_list_saved_searches",
+      "description": "List saved searches in the Zotero library",
+      "inputSchema": {
+        "type": "object",
+        "properties": {}
+      }
+    },
+    {
+      "name": "zotero_get_group_libraries",
+      "description": "List group libraries the user has access to",
+      "inputSchema": {
+        "type": "object",
+        "properties": {}
+      }
+    },
+    {
+      "name": "zotero_generate_bibliography",
+      "description": "Generate a formatted bibliography for one or more items using a CSL style",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "item_keys": { "type": "string", "description": "Comma-separated item keys" },
+          "style": { "type": "string", "description": "CSL style ID (e.g. 'apa', 'chicago-note-bibliography', 'ieee')" }
+        },
+        "required": ["item_keys"]
+      }
+    }
+  ]
+}

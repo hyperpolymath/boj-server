@@ -1,0 +1,133 @@
+{
+  "$schema": "https://boj.dev/schemas/cartridge/v1.json",
+  "spdx": "PMPL-1.0-or-later",
+  "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath)",
+  "name": "todoist-mcp",
+  "version": "0.2.0",
+  "description": "Todoist task manager cartridge -- task search, project listing, task creation, task completion, label management, comment retrieval, section browsing, filter queries, activity log access, and productivity stats via the Todoist REST API v2",
+  "domain": "Productivity",
+  "tier": "Ayo",
+  "protocols": ["MCP", "REST"],
+  "auth": {
+    "method": "bearer_token",
+    "env_var": "TODOIST_API_TOKEN",
+    "credential_source": "vault-mcp"
+  },
+  "api": {
+    "base_url": "https://api.todoist.com/rest/v2",
+    "content_type": "application/json"
+  },
+  "tools": [
+    {
+      "name": "todoist_get_tasks",
+      "description": "Get active tasks with optional filtering by project, label, or filter expression",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "project_id": { "type": "string", "description": "Filter by project ID" },
+          "label": { "type": "string", "description": "Filter by label name" },
+          "filter": { "type": "string", "description": "Todoist filter expression (e.g. 'today', 'overdue', 'priority 1')" }
+        }
+      }
+    },
+    {
+      "name": "todoist_get_task",
+      "description": "Get a single task by ID with full details (description, due date, priority, labels)",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "task_id": { "type": "string", "description": "Task ID" }
+        },
+        "required": ["task_id"]
+      }
+    },
+    {
+      "name": "todoist_create_task",
+      "description": "Create a new task with optional project, due date, priority, labels, and description",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "content": { "type": "string", "description": "Task title/content" },
+          "description": { "type": "string", "description": "Task description (markdown)" },
+          "project_id": { "type": "string", "description": "Project to add task to" },
+          "due_string": { "type": "string", "description": "Natural language due date (e.g. 'tomorrow', 'next Monday')" },
+          "due_date": { "type": "string", "description": "Due date in YYYY-MM-DD format" },
+          "priority": { "type": "number", "description": "Priority 1-4 (4 = urgent)" },
+          "labels": { "type": "string", "description": "Comma-separated label names" }
+        },
+        "required": ["content"]
+      }
+    },
+    {
+      "name": "todoist_complete_task",
+      "description": "Mark a task as completed",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "task_id": { "type": "string", "description": "Task ID to complete" }
+        },
+        "required": ["task_id"]
+      }
+    },
+    {
+      "name": "todoist_list_projects",
+      "description": "List all projects in the Todoist workspace",
+      "inputSchema": {
+        "type": "object",
+        "properties": {}
+      }
+    },
+    {
+      "name": "todoist_get_project",
+      "description": "Get details for a specific project by ID",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "project_id": { "type": "string", "description": "Project ID" }
+        },
+        "required": ["project_id"]
+      }
+    },
+    {
+      "name": "todoist_list_labels",
+      "description": "List all personal labels",
+      "inputSchema": {
+        "type": "object",
+        "properties": {}
+      }
+    },
+    {
+      "name": "todoist_get_comments",
+      "description": "Get comments for a task or project",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "task_id": { "type": "string", "description": "Task ID (mutually exclusive with project_id)" },
+          "project_id": { "type": "string", "description": "Project ID (mutually exclusive with task_id)" }
+        }
+      }
+    },
+    {
+      "name": "todoist_list_sections",
+      "description": "List sections within a project",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "project_id": { "type": "string", "description": "Project ID" }
+        },
+        "required": ["project_id"]
+      }
+    },
+    {
+      "name": "todoist_get_completed_tasks",
+      "description": "Get recently completed tasks (via Sync API)",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "project_id": { "type": "string", "description": "Filter by project ID" },
+          "limit": { "type": "number", "description": "Max results (default 30)" }
+        }
+      }
+    }
+  ]
+}

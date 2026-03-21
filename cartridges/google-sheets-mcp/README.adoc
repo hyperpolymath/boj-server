@@ -1,0 +1,89 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+// Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+= google-sheets-mcp
+Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+:spdx: PMPL-1.0-or-later
+:tier: Ayo
+:domain: Productivity
+:protocols: MCP, REST
+
+== Overview
+
+Google Sheets cartridge for the BoJ server. Provides type-safe access to
+the Google Sheets API v4 for spreadsheet metadata retrieval, cell range
+reading, sheet listing, named range access, cell value writing, row
+appending, sheet creation, batch reading, conditional format listing, and
+pivot table access.
+
+Connects to the Google Sheets API at `sheets.googleapis.com`. OAuth2
+bearer token auth is always required.
+
+=== State Machine
+
+`Disconnected -> Connected` (authenticated via OAuth2 token)
+
+`Connected -> RateLimited -> Connected` (normal flow)
+
+`Connected -> Error -> Disconnected` (error recovery)
+
+=== Actions (10)
+
+[cols="1,1"]
+|===
+| Category | Actions
+
+| Cell Reads
+| ReadRange, BatchRead, GetNamedRanges
+
+| Cell Writes
+| WriteRange, AppendRows
+
+| Sheet Management
+| GetSpreadsheet, ListSheets, CreateSheet
+
+| Formatting
+| GetConditionalFormats, GetPivotTables
+|===
+
+== Architecture
+
+[cols="1,1,2"]
+|===
+| Layer | Language | Purpose
+
+| ABI
+| Idris2
+| Formally verified state machine with dependent-type proofs (GoogleSheetsMcp.SafeRegistry)
+
+| FFI
+| Zig
+| C-compatible implementation with thread-safe session pool, action recording, category counting
+
+| Adapter
+| V-lang
+| REST bridge to BoJ unified adapter protocol
+|===
+
+== Building
+
+[source,bash]
+----
+# Build FFI shared library
+cd ffi && zig build
+
+# Run FFI tests
+cd ffi && zig build test
+
+# Type-check ABI
+cd abi && idris2 --check GoogleSheetsMcp.SafeRegistry
+----
+
+== Prerequisites
+
+1. Create a Google Cloud project with the Sheets API enabled.
+2. Generate an OAuth2 access token with `spreadsheets.readonly` (or `spreadsheets`) scope.
+3. Set `GOOGLE_SHEETS_ACCESS_TOKEN` to the token value.
+
+== Status
+
+Development -- customised with Google Sheets-specific A1 notation range reading, batch operations, cell writing, row appending, conditional formats, and pivot table access.

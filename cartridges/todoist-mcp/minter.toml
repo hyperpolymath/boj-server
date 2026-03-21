@@ -1,0 +1,23 @@
+# SPDX-License-Identifier: PMPL-1.0-or-later
+# Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+
+name = "todoist-mcp"
+description = "Todoist task manager cartridge — task listing, creation, completion, project browsing, label management, comments, sections, completed task history"
+version = "0.2.0"
+domain = "Productivity"
+protocols = [
+    "MCP",
+    "REST",
+]
+tier = "Ayo"
+backend = "universal"
+generate_panel = true
+
+[auth]
+method = "bearer_token"
+credential_source = "vault-mcp"
+fields = ["todoist_api_token"]
+
+[api]
+base_url = "https://api.todoist.com/rest/v2"
+local_only = false

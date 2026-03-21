@@ -1,0 +1,90 @@
+{
+  "$schema": "https://panll.dev/schemas/panel-manifest/v1.json",
+  "spdx": "PMPL-1.0-or-later",
+  "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath)",
+  "cartridge": "zotero-mcp",
+  "domain": "Research",
+  "version": "0.2.0",
+  "panels": [
+    {
+      "id": "zotero-connection-status",
+      "title": "Connection Status",
+      "description": "Zotero session state (Disconnected / Connected / RateLimited / Error)",
+      "type": "status-indicator",
+      "data_source": {
+        "endpoint": "/zotero/state",
+        "method": "GET",
+        "refresh_interval_ms": 5000
+      },
+      "widgets": [
+        {
+          "type": "state-badge",
+          "field": "state",
+          "states": {
+            "disconnected": { "color": "#95a5a6", "icon": "wifi-off" },
+            "connected": { "color": "#2ecc71", "icon": "wifi" },
+            "rate_limited": { "color": "#f39c12", "icon": "clock" },
+            "error": { "color": "#e74c3c", "icon": "alert-triangle" }
+          }
+        }
+      ]
+    },
+    {
+      "id": "zotero-search-count",
+      "title": "Library Searches",
+      "description": "Number of library search queries executed in the current session",
+      "type": "metric",
+      "data_source": {
+        "endpoint": "/zotero/status",
+        "method": "GET",
+        "refresh_interval_ms": 10000
+      },
+      "widgets": [
+        {
+          "type": "counter",
+          "field": "search_count",
+          "label": "Searches",
+          "icon": "search"
+        }
+      ]
+    },
+    {
+      "id": "zotero-item-reads",
+      "title": "Item Reads",
+      "description": "Number of item metadata reads in the current session",
+      "type": "metric",
+      "data_source": {
+        "endpoint": "/zotero/status",
+        "method": "GET",
+        "refresh_interval_ms": 10000
+      },
+      "widgets": [
+        {
+          "type": "counter",
+          "field": "item_reads",
+          "label": "Item Reads",
+          "icon": "book-open"
+        }
+      ]
+    },
+    {
+      "id": "zotero-collection-queries",
+      "title": "Collection Queries",
+      "description": "Number of collection browsing queries in the current session",
+      "type": "metric",
+      "data_source": {
+        "endpoint": "/zotero/status",
+        "method": "GET",
+        "refresh_interval_ms": 10000
+      },
+      "widgets": [
+        {
+          "type": "counter",
+          "field": "collection_queries",
+          "label": "Collections",
+          "icon": "folder"
+        }
+      ]
+    }
+  ]
+}
