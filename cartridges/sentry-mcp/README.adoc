@@ -1,0 +1,74 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+// Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+= sentry-mcp
+Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+:spdx: PMPL-1.0-or-later
+:tier: Ayo
+:domain: Monitoring
+:protocols: MCP, REST
+
+== Overview
+
+Sentry error tracking cartridge for the BoJ server. Provides type-safe access to
+the Sentry API for issue listing, event retrieval, project browsing, release
+management, DSN lookup, team listing, tag search, error resolution, and
+performance transaction queries.
+
+=== State Machine
+
+`Unauthenticated -> Authenticated` (required for all operations)
+
+`Authenticated -> RateLimited -> Authenticated` (normal flow)
+
+`Authenticated -> Error -> Unauthenticated` (error recovery)
+
+=== Actions (10)
+
+[cols="1,1"]
+|===
+| Category | Actions
+
+| Issues
+| ListIssues, GetIssue, ListEvents, ResolveIssue
+
+| Projects
+| ListProjects, ListReleases, GetDsn
+
+| Organization
+| ListTeams, SearchTags
+
+| Performance
+| ListTransactions
+|===
+
+== Architecture
+
+[cols="1,1,2"]
+|===
+| Layer | Language | Purpose
+
+| ABI
+| Idris2
+| Formally verified state machine with dependent-type proofs (SentryMcp.SafeRegistry)
+
+| FFI
+| Zig
+| C-compatible implementation with thread-safe session pool, category counting
+
+| Adapter
+| V-lang
+| REST bridge to BoJ unified adapter protocol
+|===
+
+== Building
+
+[source,bash]
+----
+cd ffi && zig build
+cd ffi && zig build test
+cd abi && idris2 --check SentryMcp.SafeRegistry
+----
+
+== Status
+
+Development -- Tier 6 monitoring cartridge with issue tracking, project management, and performance monitoring.

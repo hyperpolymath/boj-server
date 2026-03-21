@@ -1,0 +1,71 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+// Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+= github-actions-mcp
+Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+:spdx: PMPL-1.0-or-later
+:tier: Ayo
+:domain: CI/CD
+:protocols: MCP, REST
+
+== Overview
+
+GitHub Actions CI/CD cartridge for the BoJ server. Provides type-safe access to
+the GitHub Actions REST API for workflow listing, run management, job/step
+inspection, artifact listing, log retrieval, workflow dispatch, re-run,
+cancellation, secret listing, runner listing, and cache management.
+
+=== State Machine
+
+`Unauthenticated -> Authenticated` (required for all operations)
+
+`Authenticated -> RateLimited -> Authenticated` (normal flow)
+
+`Authenticated -> Error -> Unauthenticated` (error recovery)
+
+=== Actions (12)
+
+[cols="1,1"]
+|===
+| Category | Actions
+
+| Workflows
+| ListWorkflows, DispatchWorkflow
+
+| Runs
+| ListRuns, GetRun, ListJobs, GetLogs, ListArtifacts, RerunWorkflow, CancelRun
+
+| Infrastructure
+| ListSecrets, ListRunners, ListCaches
+|===
+
+== Architecture
+
+[cols="1,1,2"]
+|===
+| Layer | Language | Purpose
+
+| ABI
+| Idris2
+| Formally verified state machine (GithubActionsMcp.SafeRegistry)
+
+| FFI
+| Zig
+| Thread-safe session pool, action recording, category counting
+
+| Adapter
+| V-lang
+| REST bridge to BoJ unified adapter protocol
+|===
+
+== Building
+
+[source,bash]
+----
+cd ffi && zig build
+cd ffi && zig build test
+cd abi && idris2 --check GithubActionsMcp.SafeRegistry
+----
+
+== Status
+
+Development -- Tier 6 CI/CD cartridge with full GitHub Actions workflow management.

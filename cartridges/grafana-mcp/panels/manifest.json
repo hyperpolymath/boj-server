@@ -1,0 +1,90 @@
+{
+  "$schema": "https://panll.dev/schemas/panel-manifest/v1.json",
+  "spdx": "PMPL-1.0-or-later",
+  "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath)",
+  "cartridge": "grafana-mcp",
+  "domain": "Monitoring",
+  "version": "0.1.0",
+  "panels": [
+    {
+      "id": "grafana-auth-status",
+      "title": "Auth Status",
+      "description": "Grafana session state (Unauthenticated / Authenticated / RateLimited / Error)",
+      "type": "status-indicator",
+      "data_source": {
+        "endpoint": "/grafana/state",
+        "method": "GET",
+        "refresh_interval_ms": 5000
+      },
+      "widgets": [
+        {
+          "type": "state-badge",
+          "field": "state",
+          "states": {
+            "unauthenticated": { "color": "#95a5a6", "icon": "user-x" },
+            "authenticated": { "color": "#2ecc71", "icon": "user-check" },
+            "rate_limited": { "color": "#f39c12", "icon": "clock" },
+            "error": { "color": "#e74c3c", "icon": "alert-triangle" }
+          }
+        }
+      ]
+    },
+    {
+      "id": "grafana-dashboard-ops",
+      "title": "Dashboard Operations",
+      "description": "Number of dashboard CRUD operations in the current session",
+      "type": "metric",
+      "data_source": {
+        "endpoint": "/grafana/status",
+        "method": "GET",
+        "refresh_interval_ms": 10000
+      },
+      "widgets": [
+        {
+          "type": "counter",
+          "field": "dashboard_ops",
+          "label": "Dashboard Ops",
+          "icon": "layout-dashboard"
+        }
+      ]
+    },
+    {
+      "id": "grafana-query-count",
+      "title": "Datasource Queries",
+      "description": "Number of datasource queries executed in the current session",
+      "type": "metric",
+      "data_source": {
+        "endpoint": "/grafana/status",
+        "method": "GET",
+        "refresh_interval_ms": 10000
+      },
+      "widgets": [
+        {
+          "type": "counter",
+          "field": "query_count",
+          "label": "Queries",
+          "icon": "database"
+        }
+      ]
+    },
+    {
+      "id": "grafana-alert-checks",
+      "title": "Alert Checks",
+      "description": "Number of alert rule checks in the current session",
+      "type": "metric",
+      "data_source": {
+        "endpoint": "/grafana/status",
+        "method": "GET",
+        "refresh_interval_ms": 10000
+      },
+      "widgets": [
+        {
+          "type": "counter",
+          "field": "alert_checks",
+          "label": "Alert Checks",
+          "icon": "bell"
+        }
+      ]
+    }
+  ]
+}

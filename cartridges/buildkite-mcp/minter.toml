@@ -1,0 +1,22 @@
+# SPDX-License-Identifier: PMPL-1.0-or-later
+# Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+
+name = "buildkite-mcp"
+description = "Buildkite CI/CD cartridge — pipeline listing, build management, job inspection, artifacts, agents, log retrieval, build triggering, cancellation"
+version = "0.1.0"
+domain = "CI/CD"
+protocols = [
+    "MCP",
+    "REST",
+]
+tier = "Ayo"
+backend = "universal"
+generate_panel = true
+
+[auth]
+method = "bearer_token"
+credential_source = "vault-mcp"
+fields = ["buildkite_api_token"]
+
+[api]
+base_url = "https://api.buildkite.com/v2"

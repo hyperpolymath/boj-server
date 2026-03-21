@@ -1,0 +1,158 @@
+{
+  "$schema": "https://boj.dev/schemas/cartridge/v1.json",
+  "spdx": "PMPL-1.0-or-later",
+  "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath)",
+  "name": "buildkite-mcp",
+  "version": "0.1.0",
+  "description": "Buildkite CI/CD cartridge -- pipeline listing, build management, job inspection, artifact retrieval, agent listing, annotation creation, build triggering, log retrieval, environment listing, and build cancellation via the Buildkite REST API",
+  "domain": "CI/CD",
+  "tier": "Ayo",
+  "protocols": ["MCP", "REST"],
+  "auth": {
+    "method": "bearer_token",
+    "env_var": "BUILDKITE_API_TOKEN",
+    "credential_source": "vault-mcp"
+  },
+  "api": {
+    "base_url": "https://api.buildkite.com/v2",
+    "content_type": "application/json"
+  },
+  "tools": [
+    {
+      "name": "buildkite_list_pipelines",
+      "description": "List all pipelines in a Buildkite organization",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "organization": { "type": "string", "description": "Organization slug" },
+          "page": { "type": "number", "description": "Page number" },
+          "per_page": { "type": "number", "description": "Results per page (default 30)" }
+        },
+        "required": ["organization"]
+      }
+    },
+    {
+      "name": "buildkite_get_pipeline",
+      "description": "Get details for a specific Buildkite pipeline",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "organization": { "type": "string", "description": "Organization slug" },
+          "pipeline": { "type": "string", "description": "Pipeline slug" }
+        },
+        "required": ["organization", "pipeline"]
+      }
+    },
+    {
+      "name": "buildkite_list_builds",
+      "description": "List builds for a pipeline with optional state/branch filters",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "organization": { "type": "string", "description": "Organization slug" },
+          "pipeline": { "type": "string", "description": "Pipeline slug" },
+          "state": { "type": "string", "description": "Filter: running, scheduled, passed, failed, canceled, blocked" },
+          "branch": { "type": "string", "description": "Filter by branch" },
+          "page": { "type": "number", "description": "Page number" },
+          "per_page": { "type": "number", "description": "Results per page" }
+        },
+        "required": ["organization", "pipeline"]
+      }
+    },
+    {
+      "name": "buildkite_get_build",
+      "description": "Get detailed information about a specific Buildkite build",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "organization": { "type": "string", "description": "Organization slug" },
+          "pipeline": { "type": "string", "description": "Pipeline slug" },
+          "build_number": { "type": "number", "description": "Build number" }
+        },
+        "required": ["organization", "pipeline", "build_number"]
+      }
+    },
+    {
+      "name": "buildkite_create_build",
+      "description": "Trigger a new build on a Buildkite pipeline",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "organization": { "type": "string", "description": "Organization slug" },
+          "pipeline": { "type": "string", "description": "Pipeline slug" },
+          "commit": { "type": "string", "description": "Git commit SHA (or 'HEAD')" },
+          "branch": { "type": "string", "description": "Git branch" },
+          "message": { "type": "string", "description": "Build message" },
+          "env": { "type": "object", "description": "Environment variables" }
+        },
+        "required": ["organization", "pipeline", "commit", "branch"]
+      }
+    },
+    {
+      "name": "buildkite_cancel_build",
+      "description": "Cancel a running Buildkite build",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "organization": { "type": "string", "description": "Organization slug" },
+          "pipeline": { "type": "string", "description": "Pipeline slug" },
+          "build_number": { "type": "number", "description": "Build number" }
+        },
+        "required": ["organization", "pipeline", "build_number"]
+      }
+    },
+    {
+      "name": "buildkite_list_jobs",
+      "description": "List jobs for a specific Buildkite build with step details",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "organization": { "type": "string", "description": "Organization slug" },
+          "pipeline": { "type": "string", "description": "Pipeline slug" },
+          "build_number": { "type": "number", "description": "Build number" }
+        },
+        "required": ["organization", "pipeline", "build_number"]
+      }
+    },
+    {
+      "name": "buildkite_get_job_log",
+      "description": "Get the log output for a specific job in a Buildkite build",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "organization": { "type": "string", "description": "Organization slug" },
+          "pipeline": { "type": "string", "description": "Pipeline slug" },
+          "build_number": { "type": "number", "description": "Build number" },
+          "job_id": { "type": "string", "description": "Job UUID" }
+        },
+        "required": ["organization", "pipeline", "build_number", "job_id"]
+      }
+    },
+    {
+      "name": "buildkite_list_artifacts",
+      "description": "List artifacts produced by a Buildkite build",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "organization": { "type": "string", "description": "Organization slug" },
+          "pipeline": { "type": "string", "description": "Pipeline slug" },
+          "build_number": { "type": "number", "description": "Build number" }
+        },
+        "required": ["organization", "pipeline", "build_number"]
+      }
+    },
+    {
+      "name": "buildkite_list_agents",
+      "description": "List all agents in a Buildkite organization with status and metadata",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "organization": { "type": "string", "description": "Organization slug" },
+          "page": { "type": "number", "description": "Page number" },
+          "per_page": { "type": "number", "description": "Results per page" }
+        },
+        "required": ["organization"]
+      }
+    }
+  ]
+}

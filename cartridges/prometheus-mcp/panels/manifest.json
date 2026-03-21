@@ -1,0 +1,90 @@
+{
+  "$schema": "https://panll.dev/schemas/panel-manifest/v1.json",
+  "spdx": "PMPL-1.0-or-later",
+  "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath)",
+  "cartridge": "prometheus-mcp",
+  "domain": "Monitoring",
+  "version": "0.1.0",
+  "panels": [
+    {
+      "id": "prometheus-auth-status",
+      "title": "Auth Status",
+      "description": "Prometheus session state (Unauthenticated / Authenticated / RateLimited / Error)",
+      "type": "status-indicator",
+      "data_source": {
+        "endpoint": "/prometheus/state",
+        "method": "GET",
+        "refresh_interval_ms": 5000
+      },
+      "widgets": [
+        {
+          "type": "state-badge",
+          "field": "state",
+          "states": {
+            "unauthenticated": { "color": "#95a5a6", "icon": "user-x" },
+            "authenticated": { "color": "#2ecc71", "icon": "user-check" },
+            "rate_limited": { "color": "#f39c12", "icon": "clock" },
+            "error": { "color": "#e74c3c", "icon": "alert-triangle" }
+          }
+        }
+      ]
+    },
+    {
+      "id": "prometheus-instant-queries",
+      "title": "Instant Queries",
+      "description": "Number of instant PromQL queries executed in the current session",
+      "type": "metric",
+      "data_source": {
+        "endpoint": "/prometheus/status",
+        "method": "GET",
+        "refresh_interval_ms": 10000
+      },
+      "widgets": [
+        {
+          "type": "counter",
+          "field": "instant_queries",
+          "label": "Instant Queries",
+          "icon": "zap"
+        }
+      ]
+    },
+    {
+      "id": "prometheus-range-queries",
+      "title": "Range Queries",
+      "description": "Number of range PromQL queries executed in the current session",
+      "type": "metric",
+      "data_source": {
+        "endpoint": "/prometheus/status",
+        "method": "GET",
+        "refresh_interval_ms": 10000
+      },
+      "widgets": [
+        {
+          "type": "counter",
+          "field": "range_queries",
+          "label": "Range Queries",
+          "icon": "trending-up"
+        }
+      ]
+    },
+    {
+      "id": "prometheus-discovery-ops",
+      "title": "Discovery Operations",
+      "description": "Number of target/label/series discovery operations in the current session",
+      "type": "metric",
+      "data_source": {
+        "endpoint": "/prometheus/status",
+        "method": "GET",
+        "refresh_interval_ms": 10000
+      },
+      "widgets": [
+        {
+          "type": "counter",
+          "field": "discovery_ops",
+          "label": "Discovery Ops",
+          "icon": "compass"
+        }
+      ]
+    }
+  ]
+}

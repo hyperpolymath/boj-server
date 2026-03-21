@@ -1,0 +1,90 @@
+{
+  "$schema": "https://panll.dev/schemas/panel-manifest/v1.json",
+  "spdx": "PMPL-1.0-or-later",
+  "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath)",
+  "cartridge": "sentry-mcp",
+  "domain": "Monitoring",
+  "version": "0.1.0",
+  "panels": [
+    {
+      "id": "sentry-auth-status",
+      "title": "Auth Status",
+      "description": "Sentry session state (Unauthenticated / Authenticated / RateLimited / Error)",
+      "type": "status-indicator",
+      "data_source": {
+        "endpoint": "/sentry/state",
+        "method": "GET",
+        "refresh_interval_ms": 5000
+      },
+      "widgets": [
+        {
+          "type": "state-badge",
+          "field": "state",
+          "states": {
+            "unauthenticated": { "color": "#95a5a6", "icon": "user-x" },
+            "authenticated": { "color": "#2ecc71", "icon": "user-check" },
+            "rate_limited": { "color": "#f39c12", "icon": "clock" },
+            "error": { "color": "#e74c3c", "icon": "alert-triangle" }
+          }
+        }
+      ]
+    },
+    {
+      "id": "sentry-issue-ops",
+      "title": "Issue Operations",
+      "description": "Number of issue listing, retrieval, and resolution operations in the current session",
+      "type": "metric",
+      "data_source": {
+        "endpoint": "/sentry/status",
+        "method": "GET",
+        "refresh_interval_ms": 10000
+      },
+      "widgets": [
+        {
+          "type": "counter",
+          "field": "issue_ops",
+          "label": "Issue Ops",
+          "icon": "alert-circle"
+        }
+      ]
+    },
+    {
+      "id": "sentry-project-ops",
+      "title": "Project Operations",
+      "description": "Number of project, release, DSN, team, and tag operations in the current session",
+      "type": "metric",
+      "data_source": {
+        "endpoint": "/sentry/status",
+        "method": "GET",
+        "refresh_interval_ms": 10000
+      },
+      "widgets": [
+        {
+          "type": "counter",
+          "field": "project_ops",
+          "label": "Project Ops",
+          "icon": "folder"
+        }
+      ]
+    },
+    {
+      "id": "sentry-perf-queries",
+      "title": "Performance Queries",
+      "description": "Number of performance transaction queries in the current session",
+      "type": "metric",
+      "data_source": {
+        "endpoint": "/sentry/status",
+        "method": "GET",
+        "refresh_interval_ms": 10000
+      },
+      "widgets": [
+        {
+          "type": "counter",
+          "field": "perf_queries",
+          "label": "Perf Queries",
+          "icon": "activity"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,54 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+// Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+= buildkite-mcp
+Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+:spdx: PMPL-1.0-or-later
+:tier: Ayo
+:domain: CI/CD
+:protocols: MCP, REST
+
+== Overview
+
+Buildkite CI/CD cartridge for the BoJ server. Provides type-safe access to
+the Buildkite REST API v2 for pipeline listing, build management, job inspection,
+artifact retrieval, agent listing, build triggering, log retrieval, and cancellation.
+
+=== Actions (10)
+
+[cols="1,1"]
+|===
+| Category | Actions
+
+| Pipelines
+| ListPipelines, GetPipeline
+
+| Builds
+| ListBuilds, GetBuild, CreateBuild, CancelBuild, ListJobs, GetJobLog, ListArtifacts
+
+| Agents
+| ListAgents
+|===
+
+== Architecture
+
+[cols="1,1,2"]
+|===
+| Layer | Language | Purpose
+
+| ABI | Idris2 | Formally verified state machine (BuildkiteMcp.SafeRegistry)
+| FFI | Zig | Thread-safe session pool, action recording
+| Adapter | V-lang | REST bridge to BoJ unified adapter protocol
+|===
+
+== Building
+
+[source,bash]
+----
+cd ffi && zig build
+cd ffi && zig build test
+cd abi && idris2 --check BuildkiteMcp.SafeRegistry
+----
+
+== Status
+
+Development -- Tier 6 CI/CD cartridge with full Buildkite pipeline and build management.

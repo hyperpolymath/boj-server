@@ -1,0 +1,84 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+// Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+= prometheus-mcp
+Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+:spdx: PMPL-1.0-or-later
+:tier: Ayo
+:domain: Monitoring
+:protocols: MCP, REST
+
+== Overview
+
+Prometheus monitoring cartridge for the BoJ server. Provides type-safe access to
+the Prometheus HTTP API v1 for instant and range PromQL queries, target discovery,
+alert rule listing, label/value browsing, metric metadata, and series listing.
+
+=== State Machine
+
+`Unauthenticated -> Authenticated` (optional, reads work without auth)
+
+`Authenticated -> RateLimited -> Authenticated` (normal flow)
+
+`Authenticated -> Error -> Unauthenticated` (error recovery)
+
+=== Actions (8)
+
+[cols="1,1"]
+|===
+| Category | Actions
+
+| Queries
+| InstantQuery, RangeQuery
+
+| Targets
+| ListTargets
+
+| Alerts
+| ListAlerts
+
+| Labels
+| ListLabels, LabelValues
+
+| Metadata
+| GetMetadata
+
+| Series
+| ListSeries
+|===
+
+== Architecture
+
+[cols="1,1,2"]
+|===
+| Layer | Language | Purpose
+
+| ABI
+| Idris2
+| Formally verified state machine with dependent-type proofs (PrometheusMcp.SafeRegistry)
+
+| FFI
+| Zig
+| C-compatible implementation with thread-safe session pool, query counting
+
+| Adapter
+| V-lang
+| REST bridge to BoJ unified adapter protocol
+|===
+
+== Building
+
+[source,bash]
+----
+# Build FFI shared library
+cd ffi && zig build
+
+# Run FFI tests
+cd ffi && zig build test
+
+# Type-check ABI
+cd abi && idris2 --check PrometheusMcp.SafeRegistry
+----
+
+== Status
+
+Development -- Tier 6 monitoring cartridge with PromQL query and discovery support.

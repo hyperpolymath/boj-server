@@ -1,0 +1,137 @@
+{
+  "$schema": "https://boj.dev/schemas/cartridge/v1.json",
+  "spdx": "PMPL-1.0-or-later",
+  "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath)",
+  "name": "grafana-mcp",
+  "version": "0.1.0",
+  "description": "Grafana monitoring cartridge -- dashboard CRUD, panel queries, alert rule management, annotation creation, datasource listing, folder browsing, org info, snapshot management, health checks, and search via the Grafana HTTP API",
+  "domain": "Monitoring",
+  "tier": "Ayo",
+  "protocols": ["MCP", "REST"],
+  "auth": {
+    "method": "bearer_token",
+    "env_var": "GRAFANA_API_TOKEN",
+    "credential_source": "vault-mcp"
+  },
+  "api": {
+    "base_url": "https://grafana.example.com/api",
+    "content_type": "application/json"
+  },
+  "tools": [
+    {
+      "name": "grafana_search_dashboards",
+      "description": "Search Grafana dashboards by query string, tag, or folder",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "query": { "type": "string", "description": "Search query (dashboard title, description)" },
+          "tag": { "type": "string", "description": "Filter by tag" },
+          "folder_id": { "type": "number", "description": "Filter by folder ID" },
+          "limit": { "type": "number", "description": "Max results (default 25)" }
+        }
+      }
+    },
+    {
+      "name": "grafana_get_dashboard",
+      "description": "Get a Grafana dashboard by UID including all panels and settings",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "uid": { "type": "string", "description": "Dashboard UID" }
+        },
+        "required": ["uid"]
+      }
+    },
+    {
+      "name": "grafana_create_dashboard",
+      "description": "Create or update a Grafana dashboard from a JSON model",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "dashboard": { "type": "object", "description": "Dashboard JSON model" },
+          "folder_uid": { "type": "string", "description": "Target folder UID" },
+          "overwrite": { "type": "boolean", "description": "Overwrite if exists (default false)" }
+        },
+        "required": ["dashboard"]
+      }
+    },
+    {
+      "name": "grafana_delete_dashboard",
+      "description": "Delete a Grafana dashboard by UID",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "uid": { "type": "string", "description": "Dashboard UID to delete" }
+        },
+        "required": ["uid"]
+      }
+    },
+    {
+      "name": "grafana_query_datasource",
+      "description": "Execute a query against a Grafana datasource (Prometheus, InfluxDB, etc.)",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "datasource_uid": { "type": "string", "description": "Datasource UID" },
+          "query": { "type": "string", "description": "Query expression (PromQL, InfluxQL, etc.)" },
+          "from": { "type": "string", "description": "Start time (ISO 8601 or relative e.g. 'now-1h')" },
+          "to": { "type": "string", "description": "End time (ISO 8601 or relative e.g. 'now')" }
+        },
+        "required": ["datasource_uid", "query"]
+      }
+    },
+    {
+      "name": "grafana_list_alerts",
+      "description": "List Grafana alert rules with optional state filter",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "state": { "type": "string", "description": "Filter by state: alerting, pending, ok, no_data" },
+          "folder_uid": { "type": "string", "description": "Filter by folder UID" },
+          "limit": { "type": "number", "description": "Max results" }
+        }
+      }
+    },
+    {
+      "name": "grafana_create_annotation",
+      "description": "Create a Grafana annotation on a dashboard or globally",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "text": { "type": "string", "description": "Annotation text" },
+          "dashboard_uid": { "type": "string", "description": "Dashboard UID (optional, global if omitted)" },
+          "panel_id": { "type": "number", "description": "Panel ID within dashboard" },
+          "tags": { "type": "array", "items": { "type": "string" }, "description": "Tags for the annotation" },
+          "time": { "type": "number", "description": "Epoch milliseconds (default: now)" }
+        },
+        "required": ["text"]
+      }
+    },
+    {
+      "name": "grafana_list_datasources",
+      "description": "List all configured Grafana datasources with type and status",
+      "inputSchema": {
+        "type": "object",
+        "properties": {}
+      }
+    },
+    {
+      "name": "grafana_list_folders",
+      "description": "List Grafana dashboard folders",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "limit": { "type": "number", "description": "Max results" }
+        }
+      }
+    },
+    {
+      "name": "grafana_health",
+      "description": "Check Grafana instance health and version information",
+      "inputSchema": {
+        "type": "object",
+        "properties": {}
+      }
+    }
+  ]
+}

@@ -1,0 +1,114 @@
+{
+  "$schema": "https://boj.dev/schemas/cartridge/v1.json",
+  "spdx": "PMPL-1.0-or-later",
+  "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath)",
+  "name": "prometheus-mcp",
+  "version": "0.1.0",
+  "description": "Prometheus monitoring cartridge -- instant and range queries (PromQL), target discovery, alert rule listing, label/value browsing, metric metadata, series listing, and runtime/build info via the Prometheus HTTP API v1",
+  "domain": "Monitoring",
+  "tier": "Ayo",
+  "protocols": ["MCP", "REST"],
+  "auth": {
+    "method": "bearer_token",
+    "env_var": "PROMETHEUS_TOKEN",
+    "credential_source": "vault-mcp"
+  },
+  "api": {
+    "base_url": "https://prometheus.example.com/api/v1",
+    "content_type": "application/json"
+  },
+  "tools": [
+    {
+      "name": "prometheus_query",
+      "description": "Execute an instant PromQL query at a single point in time",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "query": { "type": "string", "description": "PromQL expression" },
+          "time": { "type": "string", "description": "Evaluation timestamp (ISO 8601 or Unix, default: now)" }
+        },
+        "required": ["query"]
+      }
+    },
+    {
+      "name": "prometheus_query_range",
+      "description": "Execute a range PromQL query over a time window with step interval",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "query": { "type": "string", "description": "PromQL expression" },
+          "start": { "type": "string", "description": "Start timestamp (ISO 8601 or Unix)" },
+          "end": { "type": "string", "description": "End timestamp (ISO 8601 or Unix)" },
+          "step": { "type": "string", "description": "Query resolution step (e.g. '15s', '1m', '5m')" }
+        },
+        "required": ["query", "start", "end", "step"]
+      }
+    },
+    {
+      "name": "prometheus_list_targets",
+      "description": "List all Prometheus scrape targets with health status and labels",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "state": { "type": "string", "description": "Filter by state: active, dropped, any" }
+        }
+      }
+    },
+    {
+      "name": "prometheus_list_alerts",
+      "description": "List active Prometheus alert rules with state and annotations",
+      "inputSchema": {
+        "type": "object",
+        "properties": {}
+      }
+    },
+    {
+      "name": "prometheus_list_labels",
+      "description": "List all label names known to Prometheus",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "start": { "type": "string", "description": "Start timestamp for label window" },
+          "end": { "type": "string", "description": "End timestamp for label window" }
+        }
+      }
+    },
+    {
+      "name": "prometheus_label_values",
+      "description": "List all values for a specific label name",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "label": { "type": "string", "description": "Label name (e.g. 'job', 'instance', '__name__')" },
+          "start": { "type": "string", "description": "Start timestamp" },
+          "end": { "type": "string", "description": "End timestamp" }
+        },
+        "required": ["label"]
+      }
+    },
+    {
+      "name": "prometheus_metadata",
+      "description": "Get metric metadata (type, help, unit) for metrics matching a name",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "metric": { "type": "string", "description": "Metric name or prefix" },
+          "limit": { "type": "number", "description": "Max metadata entries" }
+        }
+      }
+    },
+    {
+      "name": "prometheus_series",
+      "description": "List time series matching a set of label matchers",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "match": { "type": "string", "description": "Series selector (e.g. '{job=\"node\"}')" },
+          "start": { "type": "string", "description": "Start timestamp" },
+          "end": { "type": "string", "description": "End timestamp" }
+        },
+        "required": ["match"]
+      }
+    }
+  ]
+}
