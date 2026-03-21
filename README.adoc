@@ -2,4 +2,30 @@
 :toc: preamble
 :icons: font
 
+image:https://glama.ai/mcp/servers/hyperpolymath/boj-server/badge[Glama MCP Server,link=https://glama.ai/mcp/servers/hyperpolymath/boj-server]
+
+BoJ (Bureau of Justice) is a unified MCP server that consolidates all hyperpolymath tooling into a single endpoint — GitHub, GitLab, Cloudflare, Vercel, Verpex, Gmail, Calendar, browser automation, research, ML, and 50+ open-source cartridges.
+
+== Install
+
+[source,bash]
+----
+npx @anthropic-ai/claude-code mcp add boj-server -- deno run -A https://raw.githubusercontent.com/hyperpolymath/boj-server/main/src/index.ts
+----
+
+Or via Glama: https://glama.ai/mcp/servers/hyperpolymath/boj-server
+
+== Features
+
+* *GitHub/GitLab/Bitbucket* — repos, issues, PRs, code search, mirroring
+* *Cloud* — Cloudflare (DNS, Workers, KV, R2, D1), Vercel (deployments, projects), Verpex
+* *Communication* — Gmail, Google Calendar
+* *Browser* — headless navigation, screenshots, JS execution
+* *Research* — web search, deep research
+* *ML* — HuggingFace model/dataset operations
+* *Cartridges* — pluggable open-source service integrations (50+)
+
+== License
+
+PMPL-1.0-or-later
 
