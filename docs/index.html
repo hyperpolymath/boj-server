@@ -1,0 +1,84 @@
+<!-- SPDX-License-Identifier: PMPL-2.0-or-later -->
+<!-- Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>boj-server — unified MCP server for all hyperpolymath tooling</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0d1117;color:#c9d1d9;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;line-height:1.6;padding:2rem}
+.container{max-width:720px;margin:0 auto}
+h1,h2,h3{font-family:"JetBrains Mono",Consolas,"Courier New",monospace;color:#58a6ff}
+h1{font-size:2.2rem;margin-bottom:.3rem}
+.tagline{color:#8b949e;font-size:1.1rem;margin-bottom:1.5rem}
+.badge{display:inline-block;padding:.2rem .5rem;border-radius:3px;font-size:.75rem;font-weight:600;margin-right:.4rem;text-decoration:none}
+.badge-license{background:#1f6feb;color:#fff}
+.badge-glama{background:#8b5cf6;color:#fff}
+.badges{margin-bottom:1.8rem}
+pre{background:#161b22;border:1px solid #30363d;border-radius:6px;padding:1rem;overflow-x:auto;margin:1rem 0;color:#e6edf3;font-size:.9rem}
+code{font-family:"JetBrains Mono",Consolas,monospace}
+h2{font-size:1.3rem;margin-top:1.8rem;margin-bottom:.6rem;border-bottom:1px solid #21262d;padding-bottom:.3rem}
+ul{margin:.5rem 0 .5rem 1.5rem}
+li{margin:.3rem 0}
+a{color:#58a6ff;text-decoration:none}
+a:hover{text-decoration:underline}
+.links{margin-top:2rem;display:flex;gap:1rem;flex-wrap:wrap}
+.links a{border:1px solid #30363d;padding:.4rem 1rem;border-radius:6px;font-size:.9rem}
+.links a:hover{border-color:#58a6ff}
+footer{margin-top:3rem;padding-top:1rem;border-top:1px solid #21262d;color:#484f58;font-size:.8rem}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:.6rem;margin:1rem 0}
+.card{background:#161b22;border:1px solid #30363d;border-radius:6px;padding:.7rem}
+.card strong{color:#58a6ff;font-size:.9rem}
+.card p{font-size:.85rem;color:#8b949e;margin-top:.2rem}
+</style>
+</head>
+<body>
+<div class="container">
+<h1>boj-server</h1>
+<p class="tagline">Unified MCP server consolidating all hyperpolymath tooling into a single endpoint.</p>
+<div class="badges">
+  <a class="badge badge-license" href="https://github.com/hyperpolymath/palimpsest-license">PMPL-2.0</a>
+  <a class="badge badge-glama" href="https://glama.ai/mcp/servers/hyperpolymath/boj-server">Glama MCP</a>
+</div>
+
+<h2>Install</h2>
+<pre><code># Add to Claude Code
+claude mcp add boj-server -- node /path/to/boj-server/mcp-bridge/main.js
+
+# Or clone and configure
+git clone https://github.com/hyperpolymath/boj-server
+cd boj-server/mcp-bridge && npm install</code></pre>
+
+<h2>What It Does</h2>
+<p>BoJ (Bureau of Justice) consolidates GitHub, GitLab, Cloudflare, Vercel, Verpex,
+Gmail, Calendar, browser automation, research, ML, and 50+ open-source cartridges
+into a single MCP server endpoint for AI assistants.</p>
+
+<h2>Capabilities</h2>
+<div class="grid">
+  <div class="card"><strong>Forge</strong><p>GitHub, GitLab, Bitbucket — repos, issues, PRs, code search, mirroring</p></div>
+  <div class="card"><strong>Cloud</strong><p>Cloudflare (DNS, Workers, KV, R2, D1), Vercel, Verpex</p></div>
+  <div class="card"><strong>Comms</strong><p>Gmail, Google Calendar</p></div>
+  <div class="card"><strong>Browser</strong><p>Headless navigation, screenshots, JS execution</p></div>
+  <div class="card"><strong>Research</strong><p>Web search, deep research</p></div>
+  <div class="card"><strong>ML</strong><p>HuggingFace model and dataset operations</p></div>
+</div>
+
+<h2>Cartridges</h2>
+<p>50+ pluggable open-source service integrations: PostgreSQL, Redis, MongoDB, Slack,
+Discord, Telegram, Matrix, Notion, Jira, Grafana, Prometheus, Sentry, and more.
+Each cartridge is a self-contained MCP tool that slots into the BoJ runtime.</p>
+
+<div class="links">
+  <a href="https://github.com/hyperpolymath/boj-server">GitHub</a>
+  <a href="https://glama.ai/mcp/servers/hyperpolymath/boj-server">Glama</a>
+</div>
+
+<footer>
+  Licensed under <a href="https://github.com/hyperpolymath/palimpsest-license">PMPL-2.0-or-later</a>.
+</footer>
+</div>
+</body>
+</html>
