@@ -38,19 +38,30 @@ jobs:
       - name: Run readiness tests
         run: cd ffi/zig && zig build readiness --summary all
 
-      - name: Run cartridge FFI tests
+      - name: Run cartridge FFI tests (all 73 cartridges)
         run: |
-          for cart in database-mcp fleet-mcp nesy-mcp agent-mcp cloud-mcp container-mcp k8s-mcp git-mcp secrets-mcp queues-mcp iac-mcp observe-mcp ssg-mcp proof-mcp lsp-mcp dap-mcp bsp-mcp; do
-            echo "Testing $cart..."
-            cd cartridges/$cart/ffi && zig build test --summary all
+          failed=""
+          for cart in $(ls -d cartridges/*/ffi/ 2>/dev/null | sed 's|cartridges/||;s|/ffi/||' | sort); do
+            echo "::group::Testing $cart..."
+            if cd "cartridges/$cart/ffi" && zig build test --summary all 2>&1; then
+              echo "  ✓ $cart passed"
+            else
+              echo "  ✗ $cart FAILED"
+              failed="$failed $cart"
+            fi
             cd "$GITHUB_WORKSPACE"
+            echo "::endgroup::"
           done
+          if [ -n "$failed" ]; then
+            echo "::error::Failed cartridges:$failed"
+            exit 1
+          fi
 
-      - name: Build cartridge shared libraries
+      - name: Build cartridge shared libraries (all 73 cartridges)
         run: |
-          for cart in database-mcp fleet-mcp nesy-mcp agent-mcp cloud-mcp container-mcp k8s-mcp git-mcp secrets-mcp queues-mcp iac-mcp observe-mcp ssg-mcp proof-mcp lsp-mcp dap-mcp bsp-mcp; do
+          for cart in $(ls -d cartridges/*/ffi/ 2>/dev/null | sed 's|cartridges/||;s|/ffi/||' | sort); do
             echo "Building $cart .so..."
-            cd cartridges/$cart/ffi && zig build
+            cd "cartridges/$cart/ffi" && zig build
             cd "$GITHUB_WORKSPACE"
           done
 
