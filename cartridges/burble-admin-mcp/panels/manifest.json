@@ -1,0 +1,68 @@
+{
+  "$schema": "https://panll.dev/schemas/panel-manifest/v1.json",
+  "spdx": "PMPL-1.0-or-later",
+  "cartridge": "burble-admin-mcp",
+  "domain": "Voice Platform",
+  "version": "0.1.0",
+  "clade": "infrastructure/voice",
+  "description": "MCP cartridge for Burble voice platform administration — monitor rooms, voice quality, and node health via BoJ",
+  "panels": [
+    {
+      "id": "burble-server-status",
+      "title": "Burble Server Status",
+      "description": "Node health, uptime, active rooms count, and total participants",
+      "type": "status-indicator",
+      "data_source": {
+        "endpoint": "/cartridge/burble-admin-mcp/invoke",
+        "method": "POST",
+        "body": { "tool": "node_status" },
+        "refresh_interval_ms": 10000
+      },
+      "widgets": [
+        { "type": "state-badge", "field": "health", "label": "Health", "states": {
+          "healthy": { "color": "#2ecc71", "icon": "check-circle" },
+          "degraded": { "color": "#f39c12", "icon": "alert-circle" },
+          "down": { "color": "#e74c3c", "icon": "x-circle" }
+        }},
+        { "type": "text", "field": "uptime", "label": "Uptime" },
+        { "type": "counter", "field": "active_rooms", "label": "Active Rooms", "icon": "mic" },
+        { "type": "counter", "field": "total_participants", "label": "Participants", "icon": "users" }
+      ]
+    },
+    {
+      "id": "burble-voice-quality",
+      "title": "Voice Quality Metrics",
+      "description": "WebRTC quality indicators — bandwidth, jitter, packet loss, and codec distribution",
+      "type": "metric",
+      "data_source": {
+        "endpoint": "/cartridge/burble-admin-mcp/invoke",
+        "method": "POST",
+        "body": { "tool": "voice_stats" },
+        "refresh_interval_ms": 5000
+      },
+      "widgets": [
+        { "type": "gauge", "field": "avg_bandwidth_kbps", "label": "Avg Bandwidth (kbps)", "min": 0, "max": 512 },
+        { "type": "gauge", "field": "avg_jitter_ms", "label": "Avg Jitter (ms)", "min": 0, "max": 100 },
+        { "type": "gauge", "field": "avg_packet_loss_pct", "label": "Avg Packet Loss (%)", "min": 0, "max": 10 },
+        { "type": "text", "field": "codec_distribution", "label": "Codec Distribution" }
+      ]
+    },
+    {
+      "id": "burble-room-activity",
+      "title": "Room Activity",
+      "description": "Active rooms, peak participant count, and recordings in progress",
+      "type": "metric",
+      "data_source": {
+        "endpoint": "/cartridge/burble-admin-mcp/invoke",
+        "method": "POST",
+        "body": { "tool": "list_rooms" },
+        "refresh_interval_ms": 10000
+      },
+      "widgets": [
+        { "type": "counter", "field": "active_rooms", "label": "Active Rooms", "icon": "radio" },
+        { "type": "counter", "field": "peak_participants", "label": "Peak Participants", "icon": "trending-up" },
+        { "type": "counter", "field": "recordings_in_progress", "label": "Recordings", "icon": "disc" }
+      ]
+    }
+  ]
+}

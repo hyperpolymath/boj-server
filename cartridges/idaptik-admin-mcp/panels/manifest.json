@@ -1,0 +1,72 @@
+{
+  "$schema": "https://panll.dev/schemas/panel-manifest/v1.json",
+  "spdx": "AGPL-3.0-or-later",
+  "cartridge": "idaptik-admin-mcp",
+  "domain": "Game Server",
+  "version": "0.1.0",
+  "clade": "games/idaptik",
+  "description": "MCP cartridge for IDApTIK game server administration — monitor sessions, manage players, and control the asymmetric co-op stealth server via BoJ",
+  "panels": [
+    {
+      "id": "idaptik-server-status",
+      "title": "IDApTIK Server Status",
+      "description": "Server state, active sessions, player count, and current difficulty",
+      "type": "status-indicator",
+      "data_source": {
+        "endpoint": "/cartridge/idaptik-admin-mcp/invoke",
+        "method": "POST",
+        "body": { "tool": "server_status" },
+        "refresh_interval_ms": 10000
+      },
+      "widgets": [
+        { "type": "state-badge", "field": "state", "label": "Server State", "states": {
+          "running": { "color": "#2ecc71", "icon": "play-circle" },
+          "stopped": { "color": "#e74c3c", "icon": "stop-circle" },
+          "starting": { "color": "#f39c12", "icon": "loader" }
+        }},
+        { "type": "counter", "field": "active_sessions", "label": "Active Sessions", "icon": "users" },
+        { "type": "counter", "field": "player_count", "label": "Players", "icon": "user" },
+        { "type": "text", "field": "current_difficulty", "label": "Difficulty" }
+      ]
+    },
+    {
+      "id": "idaptik-session-monitor",
+      "title": "IDApTIK Session Monitor",
+      "description": "Active session metrics, average duration, level completion rate, and training mode status",
+      "type": "metric",
+      "data_source": {
+        "endpoint": "/cartridge/idaptik-admin-mcp/invoke",
+        "method": "POST",
+        "body": { "tool": "list_sessions" },
+        "refresh_interval_ms": 15000
+      },
+      "widgets": [
+        { "type": "counter", "field": "active_sessions", "label": "Active Sessions", "icon": "activity" },
+        { "type": "gauge", "field": "avg_session_duration_min", "label": "Avg Duration (min)", "min": 0, "max": 120 },
+        { "type": "gauge", "field": "level_completion_rate", "label": "Level Completion Rate", "min": 0, "max": 1 },
+        { "type": "state-badge", "field": "training_mode", "label": "Training Mode", "states": {
+          "active": { "color": "#2ecc71", "icon": "check-circle" },
+          "inactive": { "color": "#95a5a6", "icon": "minus-circle" }
+        }}
+      ]
+    },
+    {
+      "id": "idaptik-player-overview",
+      "title": "IDApTIK Player Overview",
+      "description": "Jessica and Q player statistics, asymmetric balance ratio, and spectator count",
+      "type": "metric",
+      "data_source": {
+        "endpoint": "/cartridge/idaptik-admin-mcp/invoke",
+        "method": "POST",
+        "body": { "tool": "server_status" },
+        "refresh_interval_ms": 15000
+      },
+      "widgets": [
+        { "type": "counter", "field": "jessica_players", "label": "Jessica Players", "icon": "user" },
+        { "type": "counter", "field": "q_players", "label": "Q Players", "icon": "eye" },
+        { "type": "gauge", "field": "asymmetric_balance_ratio", "label": "Balance Ratio (J:Q)", "min": 0, "max": 2 },
+        { "type": "counter", "field": "spectator_count", "label": "Spectators", "icon": "monitor" }
+      ]
+    }
+  ]
+}
