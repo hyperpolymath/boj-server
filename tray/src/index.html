@@ -232,9 +232,10 @@
 
   <footer>Bundle of Joy — Volunteer Node Operator v0.1.0</footer>
 
+  <script src="gossamer-bridge.js"></script>
   <script>
-    const { invoke } = window.__TAURI__.core;
-    const { listen } = window.__TAURI__.event;
+    // Use the unified bridge — works with both Gossamer and Tauri backends
+    const { invoke, listen } = window.GossamerBridge;
 
     // ── Helpers ──────────────────────────────────────────────────
     function formatUptime(secs) {
