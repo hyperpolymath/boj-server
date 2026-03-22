@@ -4,9 +4,10 @@
 // gitlab_api_mcp_ffi.zig — C-ABI FFI implementation for gitlab-api-mcp cartridge.
 //
 // Implements the authentication state machine defined in the Idris2 ABI layer
-// (GitlabApiMcp.SafeGit). Provides HTTP client stubs for GitLab REST API v4
-// and GraphQL, configurable base URL for self-hosted instances, Private-Token
-// authentication (token obtained from vault-mcp), and rate-limit tracking.
+// (GitlabApiMcp.SafeGit). Provides real HTTP dispatch to GitLab REST API v4
+// and GraphQL via std.http.Client, configurable base URL for self-hosted
+// instances, Private-Token authentication (token obtained from vault-mcp),
+// and rate-limit tracking.
 //
 // Thread-safe via std.Thread.Mutex. Fixed-size session pool, no heap
 // allocations for results.
@@ -262,8 +263,8 @@ pub export fn gitlab_api_mcp_authenticate(
 /// Returns 0 on success, -1 invalid slot, -2 bad state, -3 rate limited,
 /// -4 request error, -5 buffer too small.
 ///
-/// NOTE: This is a stub. Real HTTP dispatch will be wired via the adapter
-/// layer or a Zig HTTP client in a future iteration.
+/// HTTP dispatch is performed via std.http.Client to <base_url>/api/<version><path>
+/// with Private-Token authentication header.
 pub export fn gitlab_api_mcp_request(
     slot_idx: c_int,
     method: c_int,
@@ -275,10 +276,6 @@ pub export fn gitlab_api_mcp_request(
     out_cap: c_int,
     out_len: *c_int,
 ) c_int {
-    _ = body;
-    _ = body_len;
-    _ = method;
-
     mutex.lock();
     defer mutex.unlock();
 
@@ -291,29 +288,87 @@ pub export fn gitlab_api_mcp_request(
     const plen: usize = std.math.cast(usize, path_len) orelse return -4;
     if (path == null or plen == 0) return -4;
 
-    // Stub: echo back the constructed URL as a placeholder response.
-    // Format: "STUB <base_url>/api/<version><path>"
-    const cap: usize = std.math.cast(usize, out_cap) orelse return -5;
+    // Build full URL: <base_url>/api/<version><path>
+    var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+    defer arena.deinit();
+    const allocator = arena.allocator();
 
-    const prefix = "STUB ";
-    const api_seg = "/api/";
+    const base_url = slot.base_url_buf[0..slot.base_url_len];
+    const api_version = slot.api_version_buf[0..slot.api_version_len];
+    const path_slice = path[0..plen];
+    const url_str = std.fmt.allocPrint(allocator, "{s}/api/{s}{s}", .{ base_url, api_version, path_slice }) catch return -4;
 
-    const total_len = prefix.len + slot.base_url_len + api_seg.len + slot.api_version_len + plen;
-    if (total_len > cap) return -5;
+    // Determine HTTP method
+    const http_method_enum = std.meta.intToEnum(HttpMethod, method) catch return -4;
+    const http_method: std.http.Method = switch (http_method_enum) {
+        .get => .GET,
+        .post => .POST,
+        .put => .PUT,
+        .delete => .DELETE,
+    };
 
-    var pos: usize = 0;
-    @memcpy(out_buf[pos .. pos + prefix.len], prefix);
-    pos += prefix.len;
-    @memcpy(out_buf[pos .. pos + slot.base_url_len], slot.base_url_buf[0..slot.base_url_len]);
-    pos += slot.base_url_len;
-    @memcpy(out_buf[pos .. pos + api_seg.len], api_seg);
-    pos += api_seg.len;
-    @memcpy(out_buf[pos .. pos + slot.api_version_len], slot.api_version_buf[0..slot.api_version_len]);
-    pos += slot.api_version_len;
-    @memcpy(out_buf[pos .. pos + plen], path[0..plen]);
-    pos += plen;
+    // Build auth header: Private-Token
+    const auth_header = std.fmt.allocPrint(allocator, "{s}", .{slot.token_buf[0..slot.token_len]}) catch return -4;
 
-    out_len.* = @intCast(pos);
+    // Parse URI
+    const uri = std.Uri.parse(url_str) catch return -4;
+
+    // Create HTTP client
+    var client = std.http.Client{ .allocator = allocator };
+    defer client.deinit();
+
+    var headers_buf: [3]std.http.Header = .{
+        .{ .name = "PRIVATE-TOKEN", .value = auth_header },
+        .{ .name = "Content-Type", .value = "application/json" },
+        .{ .name = "User-Agent", .value = "boj-server/1.0 (gitlab-api-mcp cartridge)" },
+    };
+
+    // Determine body slice
+    const body_slice: ?[]const u8 = if (body != null and body_len > 0) blk: {
+        const blen: usize = std.math.cast(usize, body_len) orelse break :blk null;
+        break :blk body[0..blen];
+    } else null;
+
+    // Open request
+    var server_header_buffer: [16384]u8 = undefined;
+    var req = client.open(http_method, uri, .{
+        .server_header_buffer = &server_header_buffer,
+        .extra_headers = &headers_buf,
+    }) catch return -4;
+    defer req.deinit();
+
+    if (body_slice) |b| {
+        req.transfer_encoding = .{ .content_length = b.len };
+    }
+
+    req.send() catch return -4;
+
+    if (body_slice) |b| {
+        req.writer().writeAll(b) catch return -4;
+    }
+
+    req.finish() catch return -4;
+    req.wait() catch return -4;
+
+    // Handle rate limiting (HTTP 429)
+    const status_code = @intFromEnum(req.response.status);
+    if (status_code == 429) {
+        slot.state = .rate_limited;
+        slot.rate_limit_remaining = 0;
+        return -3;
+    }
+
+    // Read response body
+    const bytes_read = req.reader().readAll(out_buf[0..cap]) catch return -4;
+
+    // Handle server errors
+    if (status_code >= 500) {
+        slot.state = .err;
+        out_len.* = @intCast(bytes_read);
+        return -4;
+    }
+
+    out_len.* = @intCast(bytes_read);
     return 0;
 }
 
@@ -336,7 +391,8 @@ pub export fn gitlab_api_mcp_request(
 ///
 /// Returns 0 on success, negative on error (same codes as gitlab_api_mcp_request).
 ///
-/// NOTE: Stub implementation — real HTTP dispatch in a future iteration.
+/// HTTP dispatch is performed via std.http.Client to <base_url>/api/graphql
+/// with Private-Token authentication header.
 pub export fn gitlab_api_mcp_graphql(
     slot_idx: c_int,
     query: [*c]const u8,
@@ -347,9 +403,6 @@ pub export fn gitlab_api_mcp_graphql(
     out_cap: c_int,
     out_len: *c_int,
 ) c_int {
-    _ = variables;
-    _ = variables_len;
-
     mutex.lock();
     defer mutex.unlock();
 
@@ -364,22 +417,56 @@ pub export fn gitlab_api_mcp_graphql(
 
     const cap: usize = std.math.cast(usize, out_cap) orelse return -5;
 
-    // Stub: echo "GRAPHQL_STUB <base_url>/api/graphql <query_len_bytes>"
-    const prefix = "GRAPHQL_STUB ";
-    const gql_seg = "/api/graphql";
+    var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+    defer arena.deinit();
+    const allocator = arena.allocator();
 
-    const total_len = prefix.len + slot.base_url_len + gql_seg.len;
-    if (total_len > cap) return -5;
+    const base_url = slot.base_url_buf[0..slot.base_url_len];
+    const url_str = std.fmt.allocPrint(allocator, "{s}/api/graphql", .{base_url}) catch return -4;
 
-    var pos: usize = 0;
-    @memcpy(out_buf[pos .. pos + prefix.len], prefix);
-    pos += prefix.len;
-    @memcpy(out_buf[pos .. pos + slot.base_url_len], slot.base_url_buf[0..slot.base_url_len]);
-    pos += slot.base_url_len;
-    @memcpy(out_buf[pos .. pos + gql_seg.len], gql_seg);
-    pos += gql_seg.len;
+    // Build GraphQL JSON body
+    const query_slice = query[0..qlen];
+    const vlen: usize = std.math.cast(usize, variables_len) orelse 0;
+    const gql_body = if (variables != null and vlen > 0)
+        std.fmt.allocPrint(allocator, "{{\"query\":{s},\"variables\":{s}}}", .{ query_slice, variables[0..vlen] }) catch return -4
+    else
+        std.fmt.allocPrint(allocator, "{{\"query\":{s}}}", .{query_slice}) catch return -4;
 
-    out_len.* = @intCast(pos);
+    const auth_header = std.fmt.allocPrint(allocator, "{s}", .{slot.token_buf[0..slot.token_len]}) catch return -4;
+
+    const uri = std.Uri.parse(url_str) catch return -4;
+
+    var client = std.http.Client{ .allocator = allocator };
+    defer client.deinit();
+
+    var headers_buf: [3]std.http.Header = .{
+        .{ .name = "PRIVATE-TOKEN", .value = auth_header },
+        .{ .name = "Content-Type", .value = "application/json" },
+        .{ .name = "User-Agent", .value = "boj-server/1.0 (gitlab-api-mcp cartridge)" },
+    };
+
+    var server_header_buffer: [16384]u8 = undefined;
+    var req = client.open(.POST, uri, .{
+        .server_header_buffer = &server_header_buffer,
+        .extra_headers = &headers_buf,
+    }) catch return -4;
+    defer req.deinit();
+
+    req.transfer_encoding = .{ .content_length = gql_body.len };
+    req.send() catch return -4;
+    req.writer().writeAll(gql_body) catch return -4;
+    req.finish() catch return -4;
+    req.wait() catch return -4;
+
+    const status_code = @intFromEnum(req.response.status);
+    if (status_code == 429) {
+        slot.state = .rate_limited;
+        slot.rate_limit_remaining = 0;
+        return -3;
+    }
+
+    const bytes_read = req.reader().readAll(out_buf[0..cap]) catch return -5;
+    out_len.* = @intCast(bytes_read);
     return 0;
 }
 
@@ -401,7 +488,8 @@ pub export fn gitlab_api_mcp_graphql(
 ///
 /// Returns 0 on success, negative on error.
 ///
-/// NOTE: Stub implementation.
+/// HTTP dispatch is performed via std.http.Client to POST /projects/:id/remote_mirrors
+/// with Private-Token authentication header.
 pub export fn gitlab_api_mcp_setup_mirror(
     slot_idx: c_int,
     project_id: c_int,
@@ -425,29 +513,52 @@ pub export fn gitlab_api_mcp_setup_mirror(
 
     const cap: usize = std.math.cast(usize, out_cap) orelse return -5;
 
-    // Stub: "MIRROR_STUB project_id=<id> target=<url>"
-    const prefix = "MIRROR_STUB project_id=";
+    var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+    defer arena.deinit();
+    const allocator = arena.allocator();
 
-    // Format project_id as string.
-    var id_buf: [16]u8 = undefined;
-    const pid: usize = std.math.cast(usize, project_id) orelse return -4;
-    const id_str = std.fmt.bufPrint(&id_buf, "{d}", .{pid}) catch return -4;
+    const base_url = slot.base_url_buf[0..slot.base_url_len];
+    const api_version = slot.api_version_buf[0..slot.api_version_len];
+    const target_slice = target_url[0..tlen];
 
-    const target_prefix = " target=";
-    const total_len = prefix.len + id_str.len + target_prefix.len + tlen;
-    if (total_len > cap) return -5;
+    // POST /projects/:id/remote_mirrors
+    const url_str = std.fmt.allocPrint(allocator, "{s}/api/{s}/projects/{d}/remote_mirrors", .{ base_url, api_version, project_id }) catch return -4;
+    const mirror_body = std.fmt.allocPrint(allocator, "{{\"url\":\"{s}\",\"enabled\":true}}", .{target_slice}) catch return -4;
+    const auth_header = std.fmt.allocPrint(allocator, "{s}", .{slot.token_buf[0..slot.token_len]}) catch return -4;
 
-    var pos: usize = 0;
-    @memcpy(out_buf[pos .. pos + prefix.len], prefix);
-    pos += prefix.len;
-    @memcpy(out_buf[pos .. pos + id_str.len], id_str);
-    pos += id_str.len;
-    @memcpy(out_buf[pos .. pos + target_prefix.len], target_prefix);
-    pos += target_prefix.len;
-    @memcpy(out_buf[pos .. pos + tlen], target_url[0..tlen]);
-    pos += tlen;
+    const uri = std.Uri.parse(url_str) catch return -4;
 
-    out_len.* = @intCast(pos);
+    var client = std.http.Client{ .allocator = allocator };
+    defer client.deinit();
+
+    var headers_buf_mirror: [3]std.http.Header = .{
+        .{ .name = "PRIVATE-TOKEN", .value = auth_header },
+        .{ .name = "Content-Type", .value = "application/json" },
+        .{ .name = "User-Agent", .value = "boj-server/1.0 (gitlab-api-mcp cartridge)" },
+    };
+
+    var server_header_buffer: [16384]u8 = undefined;
+    var req = client.open(.POST, uri, .{
+        .server_header_buffer = &server_header_buffer,
+        .extra_headers = &headers_buf_mirror,
+    }) catch return -4;
+    defer req.deinit();
+
+    req.transfer_encoding = .{ .content_length = mirror_body.len };
+    req.send() catch return -4;
+    req.writer().writeAll(mirror_body) catch return -4;
+    req.finish() catch return -4;
+    req.wait() catch return -4;
+
+    const status_code = @intFromEnum(req.response.status);
+    if (status_code == 429) {
+        slot.state = .rate_limited;
+        slot.rate_limit_remaining = 0;
+        return -3;
+    }
+
+    const bytes_read = req.reader().readAll(out_buf[0..cap]) catch return -5;
+    out_len.* = @intCast(bytes_read);
     return 0;
 }
 
@@ -600,7 +711,7 @@ test "authentication lifecycle" {
     try std.testing.expectEqual(@as(c_int, 0), gitlab_api_mcp_session_close(slot));
 }
 
-test "self-hosted instance" {
+test "self-hosted instance auth" {
     gitlab_api_mcp_reset();
 
     const slot = gitlab_api_mcp_session_open();
@@ -617,24 +728,8 @@ test "self-hosted instance" {
     ));
     try std.testing.expectEqual(@as(c_int, 1), gitlab_api_mcp_session_state(slot));
 
-    // Make a stub request and verify URL contains self-hosted domain
-    var buf: [1024]u8 = undefined;
-    var out_len: c_int = 0;
-    const path = "/projects";
-    try std.testing.expectEqual(@as(c_int, 0), gitlab_api_mcp_request(
-        slot,
-        0, // GET
-        path,
-        @intCast(path.len),
-        null,
-        0,
-        &buf,
-        1024,
-        &out_len,
-    ));
-    const response = buf[0..@intCast(out_len)];
-    try std.testing.expect(std.mem.indexOf(u8, response, "git.example.org") != null);
-
+    // Verify request requires auth (pre-auth rejection tested elsewhere).
+    // Real HTTP dispatch will attempt to connect to self-hosted instance.
     try std.testing.expectEqual(@as(c_int, 0), gitlab_api_mcp_session_close(slot));
 }
 
@@ -675,17 +770,17 @@ test "error flow" {
     try std.testing.expectEqual(@as(c_int, 0), gitlab_api_mcp_session_close(slot));
 }
 
-test "graphql stub" {
+test "graphql pre-auth rejection" {
     gitlab_api_mcp_reset();
 
     const slot = gitlab_api_mcp_session_open();
-    const token = "glpat-graphql-test";
-    _ = gitlab_api_mcp_authenticate(slot, token, @intCast(token.len), null, 0);
+    try std.testing.expect(slot >= 0);
 
+    // Cannot issue GraphQL before authentication
     var buf: [1024]u8 = undefined;
     var out_len: c_int = 0;
     const query = "{ currentUser { name } }";
-    try std.testing.expectEqual(@as(c_int, 0), gitlab_api_mcp_graphql(
+    try std.testing.expect(gitlab_api_mcp_graphql(
         slot,
         query,
         @intCast(query.len),
@@ -694,25 +789,22 @@ test "graphql stub" {
         &buf,
         1024,
         &out_len,
-    ));
-    const response = buf[0..@intCast(out_len)];
-    try std.testing.expect(std.mem.indexOf(u8, response, "GRAPHQL_STUB") != null);
-    try std.testing.expect(std.mem.indexOf(u8, response, "gitlab.com") != null);
+    ) != 0);
 
     try std.testing.expectEqual(@as(c_int, 0), gitlab_api_mcp_session_close(slot));
 }
 
-test "mirror stub" {
+test "mirror pre-auth rejection" {
     gitlab_api_mcp_reset();
 
     const slot = gitlab_api_mcp_session_open();
-    const token = "glpat-mirror-test";
-    _ = gitlab_api_mcp_authenticate(slot, token, @intCast(token.len), null, 0);
+    try std.testing.expect(slot >= 0);
 
+    // Cannot setup mirror before authentication
     var buf: [1024]u8 = undefined;
     var out_len: c_int = 0;
     const target = "https://github.com/org/repo.git";
-    try std.testing.expectEqual(@as(c_int, 0), gitlab_api_mcp_setup_mirror(
+    try std.testing.expect(gitlab_api_mcp_setup_mirror(
         slot,
         42,
         target,
@@ -720,10 +812,7 @@ test "mirror stub" {
         &buf,
         1024,
         &out_len,
-    ));
-    const response = buf[0..@intCast(out_len)];
-    try std.testing.expect(std.mem.indexOf(u8, response, "MIRROR_STUB") != null);
-    try std.testing.expect(std.mem.indexOf(u8, response, "42") != null);
+    ) != 0);
 
     try std.testing.expectEqual(@as(c_int, 0), gitlab_api_mcp_session_close(slot));
 }

@@ -4,9 +4,9 @@
 // slack_mcp_ffi.zig — C-ABI FFI for the Slack Web API / Events API cartridge.
 //
 // Implements the state machine defined in SlackMcp.SafeComms (Idris2 ABI).
-// Provides HTTP client stubs for Slack Web API (https://slack.com/api/),
-// per-method rate-limit tracking (Tier 1–4), and Bearer-token authentication
-// via xoxb-* bot tokens obtained from vault-mcp.
+// Provides real HTTP dispatch to the Slack Web API (https://slack.com/api/)
+// via std.http.Client, per-method rate-limit tracking (Tier 1-4), and
+// Bearer-token authentication via xoxb-* bot tokens obtained from vault-mcp.
 //
 // Thread-safe via std.Thread.Mutex. No heap allocations for result buffers.
 
@@ -221,29 +221,63 @@ fn tryTransition(slot: *SessionSlot, target: ConnState) c_int {
     return 0;
 }
 
-/// Stub: format a Slack API call result into JSON.
-/// In production this would perform the actual HTTP POST to https://slack.com/api/<method>.
-fn formatStubResponse(buf: []u8, method: []const u8) usize {
-    const prefix = "{\"ok\":true,\"method\":\"";
-    const suffix = "\",\"stub\":true}";
-    var pos: usize = 0;
+/// Slack Web API base URL.
+const SLACK_API_BASE: []const u8 = "https://slack.com/api/";
 
-    for (prefix) |ch| {
-        if (pos >= buf.len) break;
-        buf[pos] = ch;
-        pos += 1;
+/// Perform a real HTTP POST to the Slack Web API.
+/// Slack API always uses POST with form or JSON body.
+/// slot: session slot (must be connected, caller verifies).
+/// method_name: Slack API method (e.g. "chat.postMessage").
+/// params_json: JSON-encoded parameters (may be null/empty).
+/// out_buf: fixed output buffer for writing the API response.
+/// Returns bytes written to out_buf, or 0 on error.
+fn doSlackApiCall(slot: *SessionSlot, method_name: []const u8, params_json: ?[]const u8, out_buf: []u8) usize {
+    var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+    defer arena.deinit();
+    const allocator = arena.allocator();
+
+    // Build URL: https://slack.com/api/<method>
+    const url_str = std.fmt.allocPrint(allocator, "{s}{s}", .{ SLACK_API_BASE, method_name }) catch return 0;
+    const uri = std.Uri.parse(url_str) catch return 0;
+
+    // Build Bearer auth header from stored token
+    const auth_header = std.fmt.allocPrint(allocator, "Bearer {s}", .{slot.token_buf[0..slot.token_len]}) catch return 0;
+
+    var client = std.http.Client{ .allocator = allocator };
+    defer client.deinit();
+
+    var headers_buf: [3]std.http.Header = .{
+        .{ .name = "Authorization", .value = auth_header },
+        .{ .name = "Content-Type", .value = "application/json; charset=utf-8" },
+        .{ .name = "User-Agent", .value = "boj-server/1.0 (slack-mcp cartridge)" },
+    };
+
+    var server_header_buffer: [16384]u8 = undefined;
+    var req = client.open(.POST, uri, .{
+        .server_header_buffer = &server_header_buffer,
+        .extra_headers = &headers_buf,
+    }) catch return 0;
+    defer req.deinit();
+
+    // Set body if we have params
+    const body = params_json orelse "{}";
+    req.transfer_encoding = .{ .content_length = body.len };
+
+    req.send() catch return 0;
+    req.writer().writeAll(body) catch return 0;
+    req.finish() catch return 0;
+    req.wait() catch return 0;
+
+    // Check for rate limiting (HTTP 429)
+    const status_code = @intFromEnum(req.response.status);
+    if (status_code == 429) {
+        slot.state = .rate_limited;
+        return 0;
     }
-    for (method) |ch| {
-        if (pos >= buf.len) break;
-        buf[pos] = ch;
-        pos += 1;
-    }
-    for (suffix) |ch| {
-        if (pos >= buf.len) break;
-        buf[pos] = ch;
-        pos += 1;
-    }
-    return pos;
+
+    // Read response body
+    const bytes_read = req.reader().readAll(out_buf) catch return 0;
+    return bytes_read;
 }
 
 // ---------------------------------------------------------------------------
@@ -285,10 +319,17 @@ pub export fn slack_mcp_authenticate(token: [*c]const u8) c_int {
             slot.messages_sent = 0;
             slot.rate_trackers = [_]TierTracker{.{}} ** 4;
 
-            // Stub: in production, POST to auth.test to verify token + get workspace.
-            const ws = "stub-workspace";
-            @memcpy(slot.workspace_buf[0..ws.len], ws);
-            slot.workspace_len = ws.len;
+            // Call auth.test to verify the token and retrieve workspace info.
+            const auth_response_len = doSlackApiCall(slot, "auth.test", "{}", &slot.workspace_buf);
+            if (auth_response_len == 0) {
+                // Network error during auth verification — still connect
+                // but mark workspace as unknown.
+                const ws = "unknown";
+                @memcpy(slot.workspace_buf[0..ws.len], ws);
+                slot.workspace_len = ws.len;
+            } else {
+                slot.workspace_len = auth_response_len;
+            }
 
             // Authenticating -> Connected.
             slot.state = .connected;
@@ -319,10 +360,6 @@ pub export fn slack_mcp_send_message(
     out_cap: c_int,
     out_len: *c_int,
 ) c_int {
-    _ = text;
-    _ = channel;
-    _ = thread_ts;
-
     mutex.lock();
     defer mutex.unlock();
 
@@ -338,9 +375,35 @@ pub export fn slack_mcp_send_message(
         return -5;
     }
 
-    // Stub response.
+    // Build JSON body for chat.postMessage
+    var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+    defer arena.deinit();
+    const allocator = arena.allocator();
+
+    const ch_str = if (channel != null) blk: {
+        var i: usize = 0;
+        while (i < 256 and channel[i] != 0) : (i += 1) {}
+        break :blk channel[0..i];
+    } else "";
+    const txt_str = if (text != null) blk: {
+        var i: usize = 0;
+        while (i < 4096 and text[i] != 0) : (i += 1) {}
+        break :blk text[0..i];
+    } else "";
+    const ts_str: ?[]const u8 = if (thread_ts != null) blk: {
+        var i: usize = 0;
+        while (i < 256 and thread_ts[i] != 0) : (i += 1) {}
+        if (i == 0) break :blk null;
+        break :blk thread_ts[0..i];
+    } else null;
+
+    const params = if (ts_str) |ts|
+        std.fmt.allocPrint(allocator, "{{\"channel\":\"{s}\",\"text\":\"{s}\",\"thread_ts\":\"{s}\"}}", .{ ch_str, txt_str, ts }) catch return -4
+    else
+        std.fmt.allocPrint(allocator, "{{\"channel\":\"{s}\",\"text\":\"{s}\"}}", .{ ch_str, txt_str }) catch return -4;
+
     const method = actionToMethod(.send_message);
-    const len = formatStubResponse(&slot.out_buf, method);
+    const len = doSlackApiCall(slot, method, params, &slot.out_buf);
     slot.out_len = len;
     slot.messages_sent += 1;
 
@@ -376,7 +439,7 @@ pub export fn slack_mcp_list_channels(
     }
 
     const method = actionToMethod(.list_channels);
-    const len = formatStubResponse(&slot.out_buf, method);
+    const len = doSlackApiCall(slot, method, null, &slot.out_buf);
     slot.out_len = len;
 
     const cap: usize = std.math.cast(usize, out_cap) orelse 0;
@@ -397,8 +460,6 @@ pub export fn slack_mcp_search(
     out_cap: c_int,
     out_len: *c_int,
 ) c_int {
-    _ = query;
-
     mutex.lock();
     defer mutex.unlock();
 
@@ -413,8 +474,21 @@ pub export fn slack_mcp_search(
         return -5;
     }
 
+    // Build search params from query C string
+    var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+    defer arena.deinit();
+    const allocator = arena.allocator();
+
+    const q_str = if (query != null) blk: {
+        var i: usize = 0;
+        while (i < 4096 and query[i] != 0) : (i += 1) {}
+        break :blk query[0..i];
+    } else "";
+
+    const params = std.fmt.allocPrint(allocator, "{{\"query\":\"{s}\"}}", .{q_str}) catch return -4;
+
     const method = actionToMethod(.search_messages);
-    const len = formatStubResponse(&slot.out_buf, method);
+    const len = doSlackApiCall(slot, method, params, &slot.out_buf);
     slot.out_len = len;
 
     const cap: usize = std.math.cast(usize, out_cap) orelse 0;
@@ -439,8 +513,6 @@ pub export fn slack_mcp_api_call(
     out_cap: c_int,
     out_len: *c_int,
 ) c_int {
-    _ = params;
-
     const action = std.meta.intToEnum(SlackAction, action_id) catch return -6;
 
     mutex.lock();
@@ -457,8 +529,16 @@ pub export fn slack_mcp_api_call(
         return -5;
     }
 
+    // Extract params as a slice if present
+    const params_slice: ?[]const u8 = if (params != null) blk: {
+        var i: usize = 0;
+        while (i < 8192 and params[i] != 0) : (i += 1) {}
+        if (i == 0) break :blk null;
+        break :blk params[0..i];
+    } else null;
+
     const method = actionToMethod(action);
-    const len = formatStubResponse(&slot.out_buf, method);
+    const len = doSlackApiCall(slot, method, params_slice, &slot.out_buf);
     slot.out_len = len;
 
     // Track messages sent for panel metrics.

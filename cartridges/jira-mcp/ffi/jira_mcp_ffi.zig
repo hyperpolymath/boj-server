@@ -4,10 +4,10 @@
 // jira_mcp_ffi.zig — C-ABI FFI for the Jira Cloud REST API cartridge.
 //
 // Implements the state machine defined in JiraMcp.SafeComms (Idris2 ABI).
-// Provides HTTP client stubs for the Jira REST API v3
-// (https://{instance}.atlassian.net/rest/api/3/) and the Agile API,
-// rate-limit tracking, and Basic auth (email + Atlassian API token)
-// obtained from vault-mcp.
+// Provides real HTTP dispatch to the Jira REST API v3
+// (https://{instance}.atlassian.net/rest/api/3/) and the Agile API
+// via std.http.Client, rate-limit tracking, and Basic auth
+// (email + Atlassian API token) obtained from vault-mcp.
 //
 // Thread-safe via std.Thread.Mutex. No heap allocations for result buffers.
 
@@ -205,41 +205,82 @@ fn tryTransition(slot: *SessionSlot, target: ConnState) c_int {
     return 0;
 }
 
-/// Stub: format a Jira API response into JSON.
-/// In production this would perform the actual HTTP request to the
-/// Jira Cloud instance with Basic auth header.
-fn formatStubResponse(buf: []u8, endpoint: []const u8, method: []const u8) usize {
-    const prefix = "{\"stub\":true,\"endpoint\":\"";
-    const mid = "\",\"method\":\"";
-    const suffix = "\",\"results\":[]}";
-    var pos: usize = 0;
+/// Perform a real HTTP request to the Jira Cloud REST API.
+/// slot: session slot (must be authenticated, caller verifies).
+/// endpoint: Jira REST API path (e.g. "/rest/api/3/issue").
+/// http_method: HTTP method string ("GET", "POST", "PUT", "DELETE").
+/// params_json: JSON body for POST/PUT (may be null).
+/// out_buf: fixed output buffer for writing the API response.
+/// Returns bytes written to out_buf, or 0 on error.
+fn doJiraApiCall(slot: *SessionSlot, endpoint: []const u8, http_method: []const u8, params_json: ?[]const u8, out_buf: []u8) usize {
+    var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+    defer arena.deinit();
+    const allocator = arena.allocator();
 
-    for (prefix) |ch| {
-        if (pos >= buf.len) break;
-        buf[pos] = ch;
-        pos += 1;
+    // Build URL: https://<instance>.atlassian.net<endpoint>
+    const instance = slot.instance_buf[0..slot.instance_len];
+    const url_str = std.fmt.allocPrint(allocator, "https://{s}.atlassian.net{s}", .{ instance, endpoint }) catch return 0;
+    const uri = std.Uri.parse(url_str) catch return 0;
+
+    // Build Basic auth header from stored credentials (email:token)
+    // Base64 encode the credentials
+    const cred_slice = slot.cred_buf[0..slot.cred_len];
+    const encoded_len = std.base64.standard.Encoder.calcSize(cred_slice.len);
+    const encoded = allocator.alloc(u8, encoded_len) catch return 0;
+    _ = std.base64.standard.Encoder.encode(encoded, cred_slice);
+    const auth_header = std.fmt.allocPrint(allocator, "Basic {s}", .{encoded}) catch return 0;
+
+    var client = std.http.Client{ .allocator = allocator };
+    defer client.deinit();
+
+    var headers_buf: [3]std.http.Header = .{
+        .{ .name = "Authorization", .value = auth_header },
+        .{ .name = "Content-Type", .value = "application/json" },
+        .{ .name = "User-Agent", .value = "boj-server/1.0 (jira-mcp cartridge)" },
+    };
+
+    // Parse HTTP method
+    const method: std.http.Method = if (std.ascii.eqlIgnoreCase(http_method, "POST"))
+        .POST
+    else if (std.ascii.eqlIgnoreCase(http_method, "PUT"))
+        .PUT
+    else if (std.ascii.eqlIgnoreCase(http_method, "DELETE"))
+        .DELETE
+    else
+        .GET;
+
+    var server_header_buffer: [16384]u8 = undefined;
+    var req = client.open(method, uri, .{
+        .server_header_buffer = &server_header_buffer,
+        .extra_headers = &headers_buf,
+    }) catch return 0;
+    defer req.deinit();
+
+    // Set body for POST/PUT
+    const body = params_json orelse "";
+    if (body.len > 0 and (method == .POST or method == .PUT)) {
+        req.transfer_encoding = .{ .content_length = body.len };
     }
-    for (endpoint) |ch| {
-        if (pos >= buf.len) break;
-        buf[pos] = ch;
-        pos += 1;
+
+    req.send() catch return 0;
+
+    if (body.len > 0 and (method == .POST or method == .PUT)) {
+        req.writer().writeAll(body) catch return 0;
     }
-    for (mid) |ch| {
-        if (pos >= buf.len) break;
-        buf[pos] = ch;
-        pos += 1;
+
+    req.finish() catch return 0;
+    req.wait() catch return 0;
+
+    // Check for rate limiting (HTTP 429)
+    const status_code = @intFromEnum(req.response.status);
+    if (status_code == 429) {
+        slot.state = .rate_limited;
+        return 0;
     }
-    for (method) |ch| {
-        if (pos >= buf.len) break;
-        buf[pos] = ch;
-        pos += 1;
-    }
-    for (suffix) |ch| {
-        if (pos >= buf.len) break;
-        buf[pos] = ch;
-        pos += 1;
-    }
-    return pos;
+
+    // Read response body
+    const bytes_read = req.reader().readAll(out_buf) catch return 0;
+    return bytes_read;
 }
 
 // ---------------------------------------------------------------------------
@@ -329,8 +370,6 @@ pub export fn jira_mcp_api_call(
     out_cap: c_int,
     out_len: *c_int,
 ) c_int {
-    _ = params;
-
     const action = std.meta.intToEnum(JiraAction, action_id) catch return -6;
 
     mutex.lock();
@@ -346,9 +385,17 @@ pub export fn jira_mcp_api_call(
         return -5;
     }
 
+    // Extract params as a slice if present
+    const params_slice: ?[]const u8 = if (params != null) blk: {
+        var i: usize = 0;
+        while (i < 8192 and params[i] != 0) : (i += 1) {}
+        if (i == 0) break :blk null;
+        break :blk params[0..i];
+    } else null;
+
     const endpoint = actionToEndpoint(action);
     const method = actionToMethod(action);
-    const len = formatStubResponse(&slot.out_buf, endpoint, method);
+    const len = doJiraApiCall(slot, endpoint, method, params_slice, &slot.out_buf);
     slot.out_len = len;
     slot.actions_performed += 1;
 

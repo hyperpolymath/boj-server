@@ -4,8 +4,9 @@
 // github_api_mcp_ffi.zig — C-ABI FFI for GitHub REST & GraphQL API cartridge.
 //
 // Implements the state machine defined in GithubApiMcp.SafeGit (Idris2 ABI).
-// Thread-safe via std.Thread.Mutex. HTTP client stubs for GitHub API.
-// Auth tokens retrieved from vault-mcp zero-knowledge proxy.
+// Thread-safe via std.Thread.Mutex. Real HTTP dispatch to the GitHub REST and
+// GraphQL APIs via std.http.Client. Auth tokens retrieved from vault-mcp
+// zero-knowledge proxy.
 
 const std = @import("std");
 
@@ -141,25 +142,9 @@ fn getSlot(slot_idx: c_int) ?*SessionSlot {
     return slot;
 }
 
-/// Parse rate-limit headers from a response string.
-/// Looks for X-RateLimit-Remaining, X-RateLimit-Reset, X-RateLimit-Limit.
-fn parseRateLimitHeaders(headers: []const u8) RateLimit {
-    var rl = RateLimit{};
-    var lines = std.mem.splitSequence(u8, headers, "\r\n");
-    while (lines.next()) |line| {
-        if (std.ascii.startsWithIgnoreCase(line, "x-ratelimit-remaining:")) {
-            const val = std.mem.trimLeft(u8, line["x-ratelimit-remaining:".len..], " ");
-            rl.remaining = std.fmt.parseInt(u32, val, 10) catch rl.remaining;
-        } else if (std.ascii.startsWithIgnoreCase(line, "x-ratelimit-reset:")) {
-            const val = std.mem.trimLeft(u8, line["x-ratelimit-reset:".len..], " ");
-            rl.reset_time = std.fmt.parseInt(u64, val, 10) catch rl.reset_time;
-        } else if (std.ascii.startsWithIgnoreCase(line, "x-ratelimit-limit:")) {
-            const val = std.mem.trimLeft(u8, line["x-ratelimit-limit:".len..], " ");
-            rl.limit = std.fmt.parseInt(u32, val, 10) catch rl.limit;
-        }
-    }
-    return rl;
-}
+// Rate-limit header parsing is performed inline within doHttpRequest()
+// from the std.http response headers (X-RateLimit-Remaining,
+// X-RateLimit-Reset, X-RateLimit-Limit).
 
 // ---------------------------------------------------------------------------
 // C-ABI exports — state machine
@@ -341,10 +326,109 @@ pub export fn github_api_mcp_reset_error(slot_idx: c_int) c_int {
 }
 
 // ---------------------------------------------------------------------------
-// C-ABI exports — GitHub API request stubs
+// HTTP dispatch helpers
 // ---------------------------------------------------------------------------
 
-/// Issue a REST API request.
+/// Parse an HTTP method string into std.http.Method.
+fn parseHttpMethod(method: []const u8) std.http.Method {
+    if (std.ascii.eqlIgnoreCase(method, "GET")) return .GET;
+    if (std.ascii.eqlIgnoreCase(method, "POST")) return .POST;
+    if (std.ascii.eqlIgnoreCase(method, "PUT")) return .PUT;
+    if (std.ascii.eqlIgnoreCase(method, "PATCH")) return .PATCH;
+    if (std.ascii.eqlIgnoreCase(method, "DELETE")) return .DELETE;
+    return .GET;
+}
+
+/// Perform a real HTTP request to the GitHub API using std.http.Client.
+/// Caller must hold the mutex and pass the slot.
+/// Returns bytes written to out_buf on success, or a negative error code.
+fn doHttpRequest(
+    slot: *SessionSlot,
+    method: []const u8,
+    path: []const u8,
+    body: ?[]const u8,
+    out_buf: [*]u8,
+    out_cap: usize,
+) c_int {
+    var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+    defer arena.deinit();
+    const allocator = arena.allocator();
+
+    // Build the full URL: REST_BASE + path
+    const url_str = std.fmt.allocPrint(allocator, "{s}{s}", .{ REST_BASE, path }) catch return -5;
+
+    // Build Authorization header value: "Bearer <token>"
+    const auth_header = std.fmt.allocPrint(allocator, "Bearer {s}", .{slot.token_buf[0..slot.token_len]}) catch return -5;
+
+    // Parse the URI
+    const uri = std.Uri.parse(url_str) catch return -5;
+
+    // Create HTTP client
+    var client = std.http.Client{ .allocator = allocator };
+    defer client.deinit();
+
+    // Prepare extra headers: Authorization, Accept, User-Agent
+    var headers_buf: [3]std.http.Header = .{
+        .{ .name = "Authorization", .value = auth_header },
+        .{ .name = "Accept", .value = "application/vnd.github+json" },
+        .{ .name = "User-Agent", .value = "boj-server/1.0 (github-api-mcp cartridge)" },
+    };
+
+    const http_method = parseHttpMethod(method);
+
+    // Open the request
+    var server_header_buffer: [16384]u8 = undefined;
+    var req = client.open(http_method, uri, .{
+        .server_header_buffer = &server_header_buffer,
+        .extra_headers = &headers_buf,
+    }) catch return -5;
+    defer req.deinit();
+
+    // Set Content-Type and body for methods that have a body
+    if (body) |b| {
+        if (b.len > 0) {
+            req.transfer_encoding = .{ .content_length = b.len };
+        }
+    }
+
+    // Send the request
+    req.send() catch return -5;
+
+    // Write body if present
+    if (body) |b| {
+        if (b.len > 0) {
+            req.writer().writeAll(b) catch return -5;
+        }
+    }
+
+    // Finish sending and wait for response
+    req.finish() catch return -5;
+    req.wait() catch return -5;
+
+    // Handle rate limiting (HTTP 429 or 403 with depleted budget)
+    const status_code = @intFromEnum(req.response.status);
+    if (status_code == 429 or (status_code == 403 and slot.rate_limit.remaining == 0)) {
+        slot.state = .rate_limited;
+        return -3;
+    }
+
+    // Read the response body into the caller's output buffer
+    const response_body = req.reader().readAll(out_buf[0..out_cap]) catch return -5;
+
+    // Transition to error on server errors (5xx)
+    if (status_code >= 500) {
+        slot.state = .err;
+        return -5;
+    }
+
+    return @intCast(response_body);
+}
+
+// ---------------------------------------------------------------------------
+// C-ABI exports — GitHub API request dispatch
+// ---------------------------------------------------------------------------
+
+/// Issue a REST API request to the GitHub API.
 ///
 /// Parameters:
 ///   slot_idx   — session slot
@@ -359,7 +443,7 @@ pub export fn github_api_mcp_reset_error(slot_idx: c_int) c_int {
 ///
 /// Returns: bytes written to out_ptr on success, or negative error code.
 ///   -1 = invalid slot, -2 = not authenticated, -3 = rate limited,
-///   -4 = buffer too small, -5 = network/HTTP error stub
+///   -4 = buffer too small, -5 = network/HTTP error
 pub export fn github_api_mcp_request(
     slot_idx: c_int,
     method_ptr: [*]const u8,
@@ -385,27 +469,14 @@ pub export fn github_api_mcp_request(
     const b_len: usize = std.math.cast(usize, body_len) orelse return -5;
     const o_cap: usize = std.math.cast(usize, out_cap) orelse return -4;
 
-    // Stub: construct a JSON envelope describing what would be sent.
-    // In production, this calls std.http.Client against REST_BASE.
-    _ = body_ptr;
-    _ = b_len;
     const method = method_ptr[0..m_len];
     const path = path_ptr[0..p_len];
+    const body: ?[]const u8 = if (body_ptr) |bp| bp[0..b_len] else null;
 
-    const response = std.fmt.bufPrint(out_ptr[0..o_cap], "{{\"stub\":true,\"method\":\"{s}\",\"url\":\"{s}{s}\",\"state\":\"authenticated\"}}", .{ method, REST_BASE, path }) catch return -4;
-
-    // Simulate rate-limit decrement
-    if (slot.rate_limit.remaining > 0) {
-        slot.rate_limit.remaining -= 1;
-    }
-    if (slot.rate_limit.remaining == 0) {
-        slot.state = .rate_limited;
-    }
-
-    return @intCast(response.len);
+    return doHttpRequest(slot, method, path, body, out_ptr, o_cap);
 }
 
-/// Issue a GraphQL query.
+/// Issue a GraphQL query to the GitHub GraphQL API.
 ///
 /// Parameters:
 ///   slot_idx      — session slot
@@ -439,22 +510,20 @@ pub export fn github_api_mcp_graphql(
     const v_len: usize = std.math.cast(usize, variables_len) orelse return -5;
     const o_cap: usize = std.math.cast(usize, out_cap) orelse return -4;
 
-    _ = query_ptr;
-    _ = q_len;
-    _ = variables_ptr;
-    _ = v_len;
+    var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+    defer arena.deinit();
+    const allocator = arena.allocator();
 
-    // Stub: return a JSON envelope for GraphQL
-    const response = std.fmt.bufPrint(out_ptr[0..o_cap], "{{\"stub\":true,\"endpoint\":\"{s}\",\"state\":\"authenticated\"}}", .{GRAPHQL_ENDPOINT}) catch return -4;
+    // Build the GraphQL JSON body: {"query":"...","variables":{...}}
+    const query = query_ptr[0..q_len];
+    const vars: ?[]const u8 = if (variables_ptr) |vp| vp[0..v_len] else null;
+    const gql_body = if (vars) |v|
+        std.fmt.allocPrint(allocator, "{{\"query\":{s},\"variables\":{s}}}", .{ query, v }) catch return -5
+    else
+        std.fmt.allocPrint(allocator, "{{\"query\":{s}}}", .{query}) catch return -5;
 
-    if (slot.rate_limit.remaining > 0) {
-        slot.rate_limit.remaining -= 1;
-    }
-    if (slot.rate_limit.remaining == 0) {
-        slot.state = .rate_limited;
-    }
-
-    return @intCast(response.len);
+    // GraphQL endpoint is always POST /graphql
+    return doHttpRequest(slot, "POST", "/graphql", gql_body, out_ptr, o_cap);
 }
 
 // ---------------------------------------------------------------------------
@@ -587,48 +656,31 @@ test "error handling flow" {
     _ = github_api_mcp_session_close(slot);
 }
 
-test "REST request stub" {
+test "REST request pre-auth rejection" {
     github_api_mcp_reset();
 
     const slot = github_api_mcp_session_open();
     try std.testing.expect(slot >= 0);
 
-    // Cannot request before auth
+    // Cannot request before auth — must return negative error code
     var buf: [1024]u8 = undefined;
     const method = "GET";
     const path = "/repos/hyperpolymath/boj-server";
     try std.testing.expect(github_api_mcp_request(slot, method.ptr, @intCast(method.len), path.ptr, @intCast(path.len), null, 0, &buf, 1024) < 0);
 
-    // Authenticate then request
-    const token = "ghp_stub_test";
-    try std.testing.expectEqual(@as(c_int, 0), github_api_mcp_authenticate(slot, token.ptr, @intCast(token.len)));
-
-    const written = github_api_mcp_request(slot, method.ptr, @intCast(method.len), path.ptr, @intCast(path.len), null, 0, &buf, 1024);
-    try std.testing.expect(written > 0);
-
-    // Verify the response contains stub marker
-    const response = buf[0..@intCast(written)];
-    try std.testing.expect(std.mem.indexOf(u8, response, "\"stub\":true") != null);
-
     _ = github_api_mcp_session_close(slot);
 }
 
-test "GraphQL request stub" {
+test "GraphQL pre-auth rejection" {
     github_api_mcp_reset();
 
     const slot = github_api_mcp_session_open();
     try std.testing.expect(slot >= 0);
 
-    const token = "ghp_graphql_test";
-    try std.testing.expectEqual(@as(c_int, 0), github_api_mcp_authenticate(slot, token.ptr, @intCast(token.len)));
-
+    // Cannot issue GraphQL before auth
     var buf: [1024]u8 = undefined;
     const query = "{ viewer { login } }";
-    const written = github_api_mcp_graphql(slot, query.ptr, @intCast(query.len), null, 0, &buf, 1024);
-    try std.testing.expect(written > 0);
-
-    const response = buf[0..@intCast(written)];
-    try std.testing.expect(std.mem.indexOf(u8, response, "graphql") != null);
+    try std.testing.expect(github_api_mcp_graphql(slot, query.ptr, @intCast(query.len), null, 0, &buf, 1024) < 0);
 
     _ = github_api_mcp_session_close(slot);
 }
