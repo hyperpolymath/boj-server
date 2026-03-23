@@ -1,7 +1,7 @@
 {
   "$schema": "https://gossamer.dev/schemas/config/v1",
   "productName": "BoJ Node",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "identifier": "dev.hyperpolymath.boj-node",
   "build": {
     "frontendDist": "./src",

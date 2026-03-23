@@ -1,0 +1,25 @@
+# SPDX-License-Identifier: MPL-2.0
+# (PMPL-1.0-or-later preferred; MPL-2.0 required for boj-server ecosystem)
+#
+# Cargo manifest for the BoJ Node Operator tray application.
+# Uses gossamer-rs (Gossamer webview shell) instead of Tauri.
+
+[package]
+name = "boj-tray"
+version = "0.2.0"
+edition = "2021"
+description = "System tray app for BoJ server — Gossamer webview shell"
+authors = ["Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>"]
+license = "MPL-2.0"
+
+[[bin]]
+name = "boj-tray"
+path = "src/main.rs"
+
+[dependencies]
+gossamer-rs = { path = "../../gossamer/bindings/rust" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+reqwest = { version = "0.12", features = ["json", "rustls-tls", "blocking"], default-features = false }
+tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
+dirs = "5"
