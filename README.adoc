@@ -4,6 +4,7 @@
 
 image:https://img.shields.io/badge/OpenSSF-Best_Practices-green?logo=opensourcesecurity[OpenSSF Best Practices,link="https://www.bestpractices.dev/en/projects/new?repo_url=https://github.com/hyperpolymath/boj-server"]
 image:https://glama.ai/mcp/servers/hyperpolymath/boj-server/badge[Glama MCP Server,link=https://glama.ai/mcp/servers/hyperpolymath/boj-server]
+image:https://api.thegreenwebfoundation.org/greencheckimage/jewell.nexus[Green Hosting,link="https://www.thegreenwebfoundation.org/green-web-check/?url=jewell.nexus"]
 
 BoJ (Bureau of Justice) is a unified MCP server that consolidates all hyperpolymath tooling into a single endpoint — GitHub, GitLab, Cloudflare, Vercel, Verpex, Gmail, Calendar, browser automation, research, ML, and 50+ open-source cartridges.
 
