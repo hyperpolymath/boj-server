@@ -1,0 +1,85 @@
+; SPDX-License-Identifier: PMPL-1.0-or-later
+; MUST.contractile — Baseline invariants for boj-server
+; These constraints MUST NOT be violated. K9 validators enforce them.
+
+(must-contractile
+  (version "1.0.0")
+  (repo "boj-server")
+
+  ; === Universal Invariants (apply to ALL repos) ===
+
+  (invariants
+    ; Paths
+    (must "no hardcoded absolute paths (/home/*, /mnt/*, /var/mnt/*)")
+    (must "all paths use env vars, XDG dirs, or relative references")
+
+    ; Language policy
+    (must "no new TypeScript files")
+    (must "no new Python files")
+    (must "no new Go files")
+    (must "no npm/bun/yarn/pnpm dependencies — Deno only")
+
+    ; Dangerous patterns
+    (must "no believe_me (Idris2)")
+    (must "no assert_total (Idris2)")
+    (must "no Admitted (Coq)")
+    (must "no sorry (Lean)")
+    (must "no unsafeCoerce (Haskell)")
+    (must "no Obj.magic (OCaml)")
+    (must "no unsafe {} blocks without safety comment (Rust)")
+
+    ; License
+    (must "SPDX-License-Identifier header on every source file")
+    (must "no removal or modification of LICENSE file")
+
+    ; Structure
+    (must ".machine_readable/ directory preserved")
+    (must "0-AI-MANIFEST.a2ml preserved")
+    (must "no SCM files in repo root — only in .machine_readable/")
+
+    ; CI
+    (must "no removal of CI workflows without explicit approval")
+    (must "all GitHub Actions SHA-pinned")
+
+    ; Code quality
+    (must "tests must not be deleted or weakened")
+    (must "generated code in generated/ directory only")
+    (must "no introduction of OWASP top 10 vulnerabilities")
+
+    ; ABI/FFI (if applicable)
+    (must "no modification of ABI contracts without proof update")
+    (must "no removal of formal verification proofs")
+  )
+
+  ; === Project-Specific Invariants (boj-server) ===
+
+  (invariants
+    ; Three-class architecture
+    (must "Class 1 Simple Track must never be damaged or replaced by Class 2/3 features")
+    (must "three-class architecture (Simple, Orchestrator, Multiplier) must be maintained")
+
+    ; MCP protocol
+    (must "MCP bridge must remain the sole entry point for Claude Code integration")
+    (must "REST API on port 7700 must remain operational for all cartridge invocations")
+    (must "all MCP tools must go through BoJ — no standalone MCP servers")
+
+    ; Cartridge system
+    (must "cartridge self-containment — each cartridge has own adapter in cartridges/<name>/adapter/")
+    (must "cartridge metadata (ai-plugin.json) must remain valid")
+    (must "no removal of existing cartridges without explicit approval")
+
+    ; Security
+    (must "HMAC-SHA256 webhook verification for Class 2 orchestrator track")
+    (must "API keys and tokens must never be committed — use environment variables")
+    (must "host_permissions in browser extensions must be localhost only")
+
+    ; Integrations
+    (must "GitHub, GitLab, Cloudflare, Vercel, Verpex, Gmail, Calendar adapters must remain functional")
+    (must "browser automation capabilities must not be removed")
+  )
+
+  (enforcement
+    (k9-validator "contractiles/k9/must-check.k9.ncl")
+    (ci "quality.yml runs must-check on every PR")
+  )
+)

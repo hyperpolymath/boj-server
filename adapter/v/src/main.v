@@ -389,6 +389,22 @@ fn BojApp.new() BojApp {
 }
 
 // ═══════════════════════════════════════════════════════════════════════
+// Path Helpers — resolve repo locations from environment, never hardcoded
+// ═══════════════════════════════════════════════════════════════════════
+
+// repos_root returns the parent directory containing all repos.
+// Reads BOJ_REPOS_DIR env var, falling back to the parent of BOJ_SERVER_DIR,
+// falling back to the parent of the current working directory.
+fn repos_root() string {
+	return os.getenv_opt('BOJ_REPOS_DIR') or {
+		boj_dir := os.getenv_opt('BOJ_SERVER_DIR') or {
+			os.getwd()
+		}
+		os.dir(boj_dir)
+	}
+}
+
+// ═══════════════════════════════════════════════════════════════════════
 // Catalogue Initialisation
 // ═══════════════════════════════════════════════════════════════════════
 
@@ -2657,9 +2673,10 @@ fn invoke_nesy(tool string, args string) http.Response {
 	}
 	if tool == 'scan_proven' {
 		// Count Idris2 source files in proven repo
-		file_count := os.execute('find /var/mnt/eclipse/repos/proven/src -name "*.idr" 2>/dev/null | wc -l')
+		proven_src := repos_root() + '/proven/src'
+		file_count := os.execute('find ${proven_src} -name "*.idr" 2>/dev/null | wc -l')
 		// Count believe_me occurrences (banned pattern)
-		believe_count := os.execute('grep -r "believe_me" /var/mnt/eclipse/repos/proven/src --include="*.idr" 2>/dev/null | wc -l')
+		believe_count := os.execute('grep -r "believe_me" ${proven_src} --include="*.idr" 2>/dev/null | wc -l')
 		return json_response(json.encode({
 			'tool':            'scan_proven'
 			'idr_file_count':  file_count.output.trim_space()
@@ -2672,7 +2689,7 @@ fn invoke_nesy(tool string, args string) http.Response {
 		// Check if echidna binary is available
 		echidna_bin := os.execute('command -v echidna 2>/dev/null')
 		// Count Idris2 modules in echidna if repo exists
-		mod_count := os.execute('find /var/mnt/eclipse/repos/proven/src -name "*.idr" -type f 2>/dev/null | wc -l')
+		mod_count := os.execute('find ${repos_root()}/proven/src -name "*.idr" -type f 2>/dev/null | wc -l')
 		return json_response(json.encode({
 			'tool':           'check_echidna'
 			'binary_found':   if echidna_bin.exit_code == 0 { 'true' } else { 'false' }
@@ -3502,12 +3519,13 @@ fn invoke_research(tool string, args string) http.Response {
 	}
 	if tool == 'search_local' {
 		// Find local bibliography files across the repos directory
-		result := os.execute('find /var/mnt/eclipse/repos -name "*.bib" -o -name "*.ris" 2>/dev/null | head -20')
+		rroot := repos_root()
+		result := os.execute('find ${rroot} -name "*.bib" -o -name "*.ris" 2>/dev/null | head -20')
 		if result.exit_code != 0 || result.output.trim_space() == '' {
 			return json_response(json.encode({
 				'tool':    'search_local'
 				'files':   ''
-				'message': 'No .bib or .ris files found in /var/mnt/eclipse/repos'
+				'message': 'No .bib or .ris files found in ${rroot}'
 				'status':  'empty'
 			}))
 		}
@@ -3758,7 +3776,7 @@ fn invoke_ums(tool string, args string) http.Response {
 	}
 	if tool == 'list_abi_modules' {
 		// List Idris2 ABI modules in the IDApTIK UMS directory
-		result := os.execute('find /var/mnt/eclipse/repos/idaptik/idaptik-ums/src/abi -name "*.idr" 2>/dev/null')
+		result := os.execute('find ${repos_root()}/idaptik/idaptik-ums/src/abi -name "*.idr" 2>/dev/null')
 		return json_response(json.encode({
 			'tool':    'list_abi_modules'
 			'modules': result.output.trim_space()
@@ -3767,7 +3785,7 @@ fn invoke_ums(tool string, args string) http.Response {
 	}
 	if tool == 'check_zig_ffi' {
 		// Check if the Zig FFI shared library is compiled
-		result := os.execute('test -f /var/mnt/eclipse/repos/idaptik/idaptik-ums/ffi/zig/zig-out/lib/libidaptik_ums.so && echo "FFI built" || echo "FFI not built"')
+		result := os.execute('test -f ${repos_root()}/idaptik/idaptik-ums/ffi/zig/zig-out/lib/libidaptik_ums.so && echo "FFI built" || echo "FFI not built"')
 		return json_response(json.encode({
 			'tool':   'check_zig_ffi'
 			'output': result.output.trim_space()

@@ -474,10 +474,16 @@ fn resolve_boj_root(explicit: Option<PathBuf>) -> PathBuf {
         }
     }
 
-    // Fallback to canonical location
-    let canonical = PathBuf::from("/var/mnt/eclipse/repos/boj-server");
-    if canonical.exists() {
-        return canonical;
+    // Fallback: check BOJ_SERVER_DIR env var, then current directory
+    if let Ok(dir) = std::env::var("BOJ_SERVER_DIR") {
+        let p = PathBuf::from(&dir);
+        if p.join("Justfile").exists() || p.join("Cargo.toml").exists() {
+            return p;
+        }
+    }
+    let cwd = std::env::current_dir().unwrap_or_default();
+    if cwd.join("Justfile").exists() || cwd.join("Cargo.toml").exists() {
+        return cwd;
     }
 
     eprintln!("Could not locate boj-server root. Use --boj-root to specify.");

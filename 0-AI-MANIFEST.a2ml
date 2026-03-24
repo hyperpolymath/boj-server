@@ -1,215 +1,110 @@
-# ⚠️ STOP - CRITICAL READING REQUIRED
+; SPDX-License-Identifier: PMPL-1.0-or-later
+; SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell (hyperpolymath)
+;
+; 0-AI-MANIFEST.a2ml — Universal AI entry point for Bundle of Joy Server
+; Media-Type: application/a2ml
 
-**THIS FILE MUST BE READ FIRST BY ALL AI AGENTS**
+; THIS FILE MUST BE READ FIRST BY ALL AI AGENTS
 
-## WHAT IS THIS?
+(manifest
+  (identity
+    (name "boj-server")
+    (full-name "Bundle of Joy Server")
+    (version "0.1.0")
+    (repo "https://github.com/hyperpolymath/boj-server")
+    (license "PMPL-1.0-or-later")
+    (author "Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>"))
 
-This is the AI manifest for **Bundle of Joy Server**. It declares:
-- Canonical file locations (where things MUST be, and nowhere else)
-- Critical invariants (rules that must NEVER be violated)
-- Repository structure and organization
+  (purpose
+    "Cartridge server and protocol gateway. Three-class architecture:
+     Class 1 (Simple) — self-contained cartridges via GitHub Actions.
+     Class 2 (Orchestrator) — unified gateways (WS/MQTT/Webhook).
+     Class 3 (Multiplier) — Elixir/BEAM for mass concurrency.
+     Every cartridge has Idris2 ABI + Zig FFI + V-lang Adapter triple.")
 
-## 🏰 THREE-CLASS ARCHITECTURE (ROADMAP)
+  ;; ===================================================================
+  ;; CONTEXT TIERS
+  ;; ===================================================================
 
-This repository implements a tiered design to balance simplicity, technical rigor, and global scale.
+  (context-tiers
+    ; Tier 0 (always load): This file + .claude/CLAUDE.md — orientation only
+    ; Tier 1 (load if working on code): README.adoc, EXPLAINME.adoc, Justfile
+    ; Tier 2 (load on demand): .machine_readable/*.a2ml, docs/
+    ; Tier 3 (never load unless asked): tests/, generated/, CI configs
+    ;
+    ; DO NOT READ unless specifically asked:
+    ;   tests/          — test files (run them, don't read them)
+    ;   generated/abi/  — auto-generated C headers
+    ;   target/         — build artifacts
+    ;   node_modules/   — dependencies
+    ;   *.lock          — lock files
+    )
 
-### **Class 1: Simple Track (Canonical)**
-- **Focus:** Zero-infrastructure simplicity.
-- **Workflow:** Repositories trigger builds via GitHub Actions (CLI/curl).
-- **Cartridge Pattern:** Each cartridge has its own self-contained V-lang adapters.
-- **Path:** Standard `cartridges/<name>/adapter/`.
+  ;; ===================================================================
+  ;; CANONICAL LOCATIONS
+  ;; ===================================================================
 
-### **Class 2: Orchestrator Track (Advanced)**
-- **Focus:** High-performance unified gateways.
-- **Workflow:** Secure Webhooks (HMAC-SHA256) and Real-time (MQTT/WS).
-- **Cartridge Pattern:** Uses core generic handlers to wrap cartridge FFI.
-- **Path:** `adapter/v/src/class_2_orchestrator/`.
+  (canonical-locations
+    (ai-manifest     "0-AI-MANIFEST.a2ml"           "THIS FILE")
+    (ai-instructions ".claude/CLAUDE.md"             "Claude-specific patterns")
+    (state           ".machine_readable/6a2/STATE.a2ml")
+    (meta            ".machine_readable/6a2/META.a2ml")
+    (ecosystem       ".machine_readable/6a2/ECOSYSTEM.a2ml")
+    (anchors         ".machine_readable/anchors/ANCHOR.a2ml")
+    (policies        ".machine_readable/policies/")
+    (bot-directives  ".machine_readable/bot_directives/")
+    (contractiles    ".machine_readable/contractiles/"))
 
-### **Class 3: Multiplier Track (Global)**
-- **Focus:** Extreme fault tolerance and mass concurrency.
-- **Workflow:** Extension Store proxying (Claude, ChatGPT, Mistral).
-- **Multiplier Pattern:** **Elixir / BEAM** piggyback unit for massive scale.
-- **Project:** `elixir-mcp-server` / `boj-server-gemini`.
+  ;; ===================================================================
+  ;; STRUCTURE OVERVIEW
+  ;; ===================================================================
 
-**INVARIANT:** Advanced features must NEVER damage or replace the Class 1 foundation.
+  (structure
+    "boj-server/
+     ├── 0-AI-MANIFEST.a2ml         # THIS FILE
+     ├── src/abi/                   # Idris2 ABI (Catalogue, Protocol, Domain, Menu, Federation)
+     ├── ffi/zig/                   # Zig FFI (catalogue mount/unmount, loader)
+     ├── generated/abi/             # Auto-generated C headers
+     ├── adapter/v/                 # V-lang triple adapter (REST+gRPC+GraphQL, port 9000)
+     ├── cartridges/                # One dir per matrix cell (database-mcp, nesy-mcp, fleet-mcp, ...)
+     ├── container/                 # Stapeln container ecosystem
+     ├── panll/src/                 # PanLL panel (ReScript/TEA)
+     ├── docs/                      # ARCHITECTURE, CULTURAL-RESPECT, FEDERATION, DEVELOPERS
+     └── .machine_readable/         # State, anchors, policies, bots, contractiles")
 
-## CANONICAL LOCATIONS (UNIVERSAL RULE)
+  ;; ===================================================================
+  ;; CRITICAL INVARIANTS
+  ;; ===================================================================
 
-### Machine-Readable Metadata: `.machine_readable/` ONLY
+  (critical-invariants
+    (rule "Three-Layer Stack: every cartridge = Idris2 ABI + Zig FFI + V-lang Adapter")
+    (rule "Zero believe_me anywhere in src/abi/ or cartridges/*/abi/")
+    (rule "%default total on all Idris2 files")
+    (rule "IsUnbreakable proof required for Ready cartridges")
+    (rule "Class 1 foundation MUST NOT be damaged by advanced features")
+    (rule "Cultural respect: Teranga, Umoja, Ayo terminology is permanent")
+    (rule "SCM files ONLY in .machine_readable/ — never in root")
+    (rule "Container: Chainguard base, Containerfile not Dockerfile, Podman not Docker")
+    (rule "PMPL-1.0-or-later on all source files"))
 
-These 6 a2ml files MUST exist in `.machine_readable/` directory ONLY:
-1. **STATE.a2ml** - Project state, progress, blockers
-2. **META.a2ml** - Architecture decisions, governance
-3. **ECOSYSTEM.a2ml** - Position in ecosystem, relationships
-4. **AGENTIC.a2ml** - AI agent interaction patterns
-5. **NEUROSYM.a2ml** - Neurosymbolic integration config
-6. **PLAYBOOK.a2ml** - Operational runbook
+  ;; ===================================================================
+  ;; SESSION LIFECYCLE
+  ;; ===================================================================
 
-**CRITICAL:** If ANY of these files exist in the root directory, this is an ERROR.
+  (lifecycle
+    (on-enter
+      (step "Read THIS file first")
+      (step "Read .machine_readable/6a2/STATE.a2ml for current status")
+      (step "Check for blockers before starting"))
 
-### Anchor File: `.machine_readable/anchors/ANCHOR.a2ml` ONLY
+    (on-exit
+      (step "Update .machine_readable/6a2/STATE.a2ml if changes made")
+      (step "Summarise outcomes")))
 
-Canonical authority and semantic-boundary declaration MUST exist at:
-
-` .machine_readable/anchors/ANCHOR.a2ml `
-
-Do not place `ANCHOR.a2ml` at repository root.
-
-### Maintenance Policies: `.machine_readable/policies/` ONLY
-
-Canonical maintenance/governance files MUST exist under:
-
-` .machine_readable/policies/ `
-
-Minimum required files:
-- `MAINTENANCE-AXES.a2ml`
-- `MAINTENANCE-CHECKLIST.a2ml`
-- `SOFTWARE-DEVELOPMENT-APPROACH.a2ml`
-
-Do not place maintenance policy files in repository root.
-
-### Bot Directives: `.machine_readable/bot_directives/` ONLY
-
-Bot-specific instructions for your automated agents. Example roles:
-- git-ops-bot - Git operations
-- quality-bot - Code quality
-- deps-bot - Dependency updates
-- docs-bot - Documentation
-- integration-bot - Integration
-- completion-bot - Task completion
-
-### Contractiles: `.machine_readable/contractiles/` ONLY
-
-Policy enforcement contracts:
-- k9 - Operational constraints (Nickel)
-- dust - Rollback and recovery semantics
-- lust - Future intent and roadmap direction
-- must - Required invariants and validations
-- trust - Cryptographic verification (Haskell)
-
-### Agent Instructions
-
-- `.claude/CLAUDE.md` - Claude-specific patterns (if exists)
-- `0-AI-MANIFEST.a2ml` - THIS FILE (universal entry point)
-
-## CORE INVARIANTS
-
-1. **No state file duplication** - Root must NOT contain STATE.a2ml, META.a2ml, etc.
-2. **Single source of truth** - `.machine_readable/` is authoritative
-3. **No stale metadata** - If root state files exist, they are OUT OF DATE
-4. **License consistency** - All code PMPL-1.0-or-later unless platform requires MPL-2.0
-5. **Author attribution** - Always "Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>"
-6. **Container images** - MUST use Chainguard base (`cgr.dev/chainguard/wolfi-base:latest` or `cgr.dev/chainguard/static:latest`)
-7. **Container runtime** - Podman, never Docker. Files are `Containerfile`, never `Dockerfile`
-8. **Container orchestration** - `selur-compose`, never `docker-compose`
-
-## REPOSITORY STRUCTURE
-
-```
-boj-server/
-├── 0-AI-MANIFEST.a2ml         # THIS FILE (start here)
-├── README.adoc                # Project overview
-├── Justfile                   # Task runner (just)
-├── src/abi/                   # Idris2 ABI — formally verified catalogue
-│   ├── Catalogue.idr          # Cartridge registry, IsUnbreakable proof
-│   ├── Protocol.idr           # Protocol types (MCP, LSP, DAP, BSP, ...)
-│   ├── Domain.idr             # Capability domains (Cloud, DB, K8s, ...)
-│   ├── Menu.idr               # Menu generation from catalogue state
-│   └── Federation.idr         # Umoja gossip protocol, node attestation
-├── ffi/zig/                   # Zig FFI — C-compatible native execution
-│   ├── build.zig
-│   ├── src/catalogue.zig      # Catalogue mount/unmount operations
-│   └── src/loader.zig         # Dynamic cartridge loader
-├── generated/abi/             # Auto-generated C headers from Idris2
-├── adapter/v/                 # V-lang triple adapter (REST+gRPC+GraphQL)
-│   ├── src/main.v             # Unified console on port 9000
-│   └── src/class_2_orchestrator/ # Advanced gateway logic (WS/MQTT/Webhook)
-├── cartridges/                # One dir per matrix cell (Idris2+Zig+V)
-│   ├── database-mcp/          # MCP × Database cartridge
-│   ├── nesy-mcp/              # MCP × NeSy cartridge
-│   ├── fleet-mcp/             # MCP × Fleet cartridge
-│   └── ...                    # Future cartridges fill the 2D matrix
-├── container/                 # Stapeln container ecosystem (node hosting)
-│   ├── Containerfile          # Multi-stage OCI build (Chainguard base)
-│   ├── compose.toml           # selur-compose orchestration
-│   ├── vordr.toml             # Runtime monitoring + ephemeral ports
-│   └── ...                    # Full Stapeln supply chain
-├── panll/src/                 # PanLL panel (ReScript/TEA)
-├── docs/
-│   ├── ARCHITECTURE.md        # 2D matrix design
-│   ├── CULTURAL-RESPECT.md    # Teranga/Umoja/Ayo terminology
-│   ├── FEDERATION.md          # Distributed hosting model
-│   └── DEVELOPERS.md          # Contributing cartridges
-└── .machine_readable/         # ALL machine-readable content
-    ├── STATE.a2ml             # Project state, progress, blockers
-    ├── META.a2ml              # Architecture decisions, governance
-    ├── ECOSYSTEM.a2ml         # Ecosystem position, relationships
-    ├── servers/
-    │   ├── menu.a2ml          # Live Teranga menu (cartridge catalogue)
-    │   └── order-ticket.scm   # Order protocol specification
-    ├── anchors/ANCHOR.a2ml    # Upstream anchor
-    ├── policies/              # Governance (MAINTENANCE-AXES, etc.)
-    ├── bot_directives/        # Per-bot rules
-    └── contractiles/          # Policy enforcement (k9, dust, lust, must, trust)
-```
-
-## BOJ-SPECIFIC INVARIANTS
-
-1. **Three-Layer Stack**: Every cartridge has Idris2 ABI + Zig FFI + V-lang Adapter
-2. **Zero believe_me**: No `believe_me` anywhere in `src/abi/` or `cartridges/*/abi/`
-3. **%default total**: All Idris2 files use `%default total`
-4. **IsUnbreakable**: Only Ready cartridges pass the `IsUnbreakable` proof
-5. **Hash attestation**: Community nodes must match the canonical binary hash
-6. **PMPL-1.0-or-later**: The BoJ network license — provenance is built-in
-7. **Cultural respect**: Teranga, Umoja, Ayo terminology is permanent and sacred
-
-## SESSION STARTUP CHECKLIST
-
-✅ Read THIS file (0-AI-MANIFEST.a2ml) first
-✅ Understand canonical location: `.machine_readable/` (state, anchors, bots, contractiles)
-✅ Know the invariants (no state file duplication, etc.)
-✅ Check for MCP enforcement (if applicable)
-✅ Read `.machine_readable/policies/MAINTENANCE-AXES.a2ml` for axis ordering and audit expectations
-✅ Read `.machine_readable/policies/MAINTENANCE-CHECKLIST.a2ml` for maintenance baseline controls
-✅ Read `.machine_readable/policies/SOFTWARE-DEVELOPMENT-APPROACH.a2ml` for execution sequence
-✅ Read `.machine_readable/6a2/STATE.a2ml` for current status
-✅ Read `.machine_readable/6a2/AGENTIC.a2ml` for interaction patterns
-
-## LIFECYCLE HOOKS
-
-### on-enter (Session Start)
-
-When starting a new session:
-
-1. Read and acknowledge this manifest
-2. Log session start (optional but recommended)
-   - Format: `[YYYY-MM-DD HH:MM:SS] Session started: [agent-name]`
-   - Location: `.machine_readable/session-log.txt`
-3. Read `.machine_readable/6a2/STATE.a2ml`
-4. Check for blockers
-5. State understanding of canonical locations
-
-### on-exit (Session End)
-
-When ending a session:
-
-1. Update `.machine_readable/6a2/STATE.a2ml` if changes made
-2. Log session end (optional but recommended)
-   - Format: `[YYYY-MM-DD HH:MM:SS] Session ended: [summary]`
-   - Location: `.machine_readable/session-log.txt`
-3. Document new blockers
-4. Summarize outcomes
-
-## ATTESTATION PROOF
-
-After reading this file, demonstrate understanding by stating:
-
-**"I have read the AI manifest. All machine-readable content (state files, anchors, policies, bot directives, contractiles) is located in `.machine_readable/` ONLY, and I will not create duplicate files in the root directory."**
-
-## META
-
-- **Format Version:** 1.0.0
-- **Created:** 2026-03-02
-- **Maintained By:** hyperpolymath
-- **License:** PMPL-1.0-or-later
-- **Protocol:** https://github.com/hyperpolymath/0-ai-gatekeeper-protocol
+  (format-meta
+    (version "2.1.0")
+    (media-type "application/a2ml")
+    (created "2026-03-02")
+    (last-updated "2026-03-24")
+    (maintained-by "Jonathan D.A. Jewell / hyperpolymath")
+    (protocol "https://github.com/hyperpolymath/0-ai-gatekeeper-protocol")))

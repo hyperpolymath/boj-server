@@ -1,0 +1,196 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+// Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath)
+= Bundle of Joy Server Quickstart
+:author: Jonathan D.A. Jewell
+:toc: macro
+:icons: font
+:source-highlighter: rouge
+
+toc::[]
+
+== What is BoJ Server?
+
+Bundle of Joy (BoJ) Server is a cartridge-based MCP protocol gateway. Each cartridge (database-mcp, fleet-mcp, nesy-mcp, etc.) is a formally verified Idris2 ABI + Zig FFI + V-lang adapter triple. The server exposes REST (port 7700), gRPC (7701), and GraphQL (7702) endpoints. 70+ cartridges cover databases, clouds, messaging, CI/CD, and more.
+
+Three-class architecture: Class 1 (simple CLI), Class 2 (orchestrator with webhooks/MQTT), Class 3 (BEAM multiplier for global scale).
+
+== Prerequisites
+
+[cols="1,2,2"]
+|===
+| Tool | Minimum Version | Install
+
+| Idris2
+| >= 0.7.0
+| `asdf install idris2 latest`
+
+| Zig
+| >= 0.13
+| `asdf install zig latest`
+
+| V (vlang)
+| >= 0.4.4
+| `asdf install vlang latest`
+
+| just
+| >= 1.25
+| `cargo install just`
+
+| Rust / Cargo (optional)
+| >= 1.80
+| For `tools/cartridge-minter` only
+|===
+
+Verify all tools:
+
+[source,bash]
+----
+just doctor
+----
+
+== Clone and First Build
+
+[source,bash]
+----
+cd ~/Documents/hyperpolymath-repos
+git clone https://github.com/hyperpolymath/boj-server.git
+cd boj-server
+----
+
+Check dependencies:
+
+[source,bash]
+----
+just deps
+----
+
+Build all Zig FFI layers (catalogue + cartridges):
+
+[source,bash]
+----
+just build
+----
+
+== First Run
+
+Build the V-lang adapter and start the server:
+
+[source,bash]
+----
+just run
+----
+
+This builds the Zig FFI, then compiles the V-lang adapter, then starts:
+
+- REST API on http://localhost:7700
+- gRPC on port 7701
+- GraphQL on port 7702
+
+Check health:
+
+[source,bash]
+----
+curl http://localhost:7700/status
+----
+
+== Smoke Test
+
+Type-check the core ABI and run one FFI test:
+
+[source,bash]
+----
+just test-smoke
+----
+
+Full test suite (catalogue + 17 cartridge FFIs):
+
+[source,bash]
+----
+just test
+----
+
+== Verification
+
+BoJ requires zero `believe_me` in all Idris2 sources. Run the full verification suite:
+
+[source,bash]
+----
+just verify
+----
+
+This runs: typecheck -> verify-no-believe-me -> build -> test.
+
+== Show Capability Matrix
+
+[source,bash]
+----
+just matrix
+----
+
+Shows ABI/FFI/Adapter/Tests status for each cartridge.
+
+== Optional: Cloudflare Tunnel
+
+Expose your local BoJ server publicly:
+
+[source,bash]
+----
+just serve
+----
+
+Starts the server + Cloudflare Quick Tunnel (requires `cloudflared`).
+
+== Key Ports
+
+[cols="1,1,2"]
+|===
+| Port | Protocol | Notes
+
+| 7700
+| REST (HTTP)
+| Primary API, status endpoint
+
+| 7701
+| gRPC
+| Binary protocol
+
+| 7702
+| GraphQL
+| Query interface
+|===
+
+== Guided Tour
+
+[source,bash]
+----
+just tour
+----
+
+== Troubleshooting
+
+[source,bash]
+----
+just doctor   # Diagnose missing tools
+just heal     # Attempt automatic repair
+----
+
+== Project Structure (Key Paths)
+
+----
+src/abi/               Idris2 ABI (Catalogue.idr, Protocol.idr, etc.)
+ffi/zig/               Zig FFI (catalogue.zig, loader.zig)
+adapter/v/             V-lang triple adapter (REST+gRPC+GraphQL)
+cartridges/            One dir per cartridge (70+ total)
+  database-mcp/        Example: Idris2 ABI + Zig FFI + V adapter
+container/             Stapeln container ecosystem
+tools/cartridge-minter Rust CLI for minting new cartridges
+.machine_readable/     State, policies, contractiles
+----
+
+== Further Reading
+
+- `docs/ARCHITECTURE.md` -- 2D matrix design
+- `docs/FEDERATION.md` -- Distributed hosting model
+- `docs/DEVELOPERS.md` -- Contributing cartridges
+- `docs/CULTURAL-RESPECT.md` -- Teranga/Umoja/Ayo terminology
+- `0-AI-MANIFEST.a2ml` -- Machine-readable project manifest

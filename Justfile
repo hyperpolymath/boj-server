@@ -1062,3 +1062,195 @@ sync-metadata:
 # Run panic-attacker pre-commit scan
 assail:
     @command -v panic-attack >/dev/null 2>&1 && panic-attack assail . || echo "panic-attack not found — install from https://github.com/hyperpolymath/panic-attacker"
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# ONBOARDING & DIAGNOSTICS
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# Check all required toolchain dependencies and report health
+doctor:
+    #!/usr/bin/env bash
+    echo "═══════════════════════════════════════════════════"
+    echo "  BoJ Server Doctor — Toolchain Health Check"
+    echo "═══════════════════════════════════════════════════"
+    echo ""
+    PASS=0; FAIL=0; WARN=0
+    check() {
+        local name="$1" cmd="$2" min="$3"
+        if command -v "$cmd" >/dev/null 2>&1; then
+            VER=$("$cmd" --version 2>&1 | head -1)
+            echo "  [OK]   $name — $VER"
+            PASS=$((PASS + 1))
+        else
+            echo "  [FAIL] $name — not found (need $min+)"
+            FAIL=$((FAIL + 1))
+        fi
+    }
+    check "Idris2"            idris2    "0.7.0"
+    check "Zig"               zig       "0.13"
+    check "V (vlang)"         v         "0.4.4"
+    check "just"              just      "1.25"
+    # Optional tools
+    if command -v cargo >/dev/null 2>&1; then
+        echo "  [OK]   Cargo (optional) — $(cargo --version 2>&1 | head -1)"
+        PASS=$((PASS + 1))
+    else
+        echo "  [WARN] Cargo (optional) — not found (needed for tools/cartridge-minter)"
+        WARN=$((WARN + 1))
+    fi
+    if command -v cloudflared >/dev/null 2>&1; then
+        echo "  [OK]   cloudflared (optional) — available"
+        PASS=$((PASS + 1))
+    else
+        echo "  [WARN] cloudflared (optional) — not found (needed for tunnel)"
+        WARN=$((WARN + 1))
+    fi
+    if command -v panic-attack >/dev/null 2>&1; then
+        echo "  [OK]   panic-attack — available"
+        PASS=$((PASS + 1))
+    else
+        echo "  [WARN] panic-attack — not found (pre-commit scanner)"
+        WARN=$((WARN + 1))
+    fi
+    echo ""
+    echo "  Result: $PASS passed, $FAIL failed, $WARN warnings"
+    if [ "$FAIL" -gt 0 ]; then
+        echo "  Run 'just heal' to attempt automatic repair."
+        exit 1
+    fi
+    echo "  All required tools present."
+
+# Attempt to automatically install missing tools
+heal:
+    #!/usr/bin/env bash
+    echo "═══════════════════════════════════════════════════"
+    echo "  BoJ Server Heal — Automatic Tool Installation"
+    echo "═══════════════════════════════════════════════════"
+    echo ""
+    if ! command -v idris2 >/dev/null 2>&1; then
+        echo "Idris2 not found."
+        if command -v asdf >/dev/null 2>&1; then
+            echo "  Installing via asdf..."
+            asdf install idris2 latest
+        else
+            echo "  Install manually: https://www.idris-lang.org/pages/download.html"
+            echo "  Or via asdf: asdf plugin add idris2 && asdf install idris2 latest"
+        fi
+    fi
+    if ! command -v zig >/dev/null 2>&1; then
+        echo "Zig not found."
+        if command -v asdf >/dev/null 2>&1; then
+            echo "  Installing via asdf..."
+            asdf install zig latest
+        else
+            echo "  Install manually: https://ziglang.org/download/"
+            echo "  Or via asdf: asdf plugin add zig && asdf install zig latest"
+        fi
+    fi
+    if ! command -v v >/dev/null 2>&1; then
+        echo "V (vlang) not found."
+        if command -v asdf >/dev/null 2>&1; then
+            echo "  Installing via asdf..."
+            asdf install vlang latest
+        else
+            echo "  Install manually: https://vlang.io"
+            echo "  Or via asdf: asdf plugin add vlang && asdf install vlang latest"
+        fi
+    fi
+    if ! command -v just >/dev/null 2>&1; then
+        echo "Installing just..."
+        cargo install just 2>/dev/null || echo "  Install cargo first, then: cargo install just"
+    fi
+    echo ""
+    echo "Heal complete. Run 'just doctor' to verify."
+
+# Guided tour of the project structure and key concepts
+tour:
+    #!/usr/bin/env bash
+    echo "═══════════════════════════════════════════════════"
+    echo "  Bundle of Joy Server — Guided Tour"
+    echo "═══════════════════════════════════════════════════"
+    echo ""
+    echo "BoJ is a cartridge-based MCP protocol gateway."
+    echo "Every cartridge is a formally verified triple:"
+    echo ""
+    echo "  1. Idris2 ABI  — Dependent types prove correctness"
+    echo "  2. Zig FFI     — C-compatible native execution"
+    echo "  3. V-lang API  — REST + gRPC + GraphQL adapter"
+    echo ""
+    echo "Three-Class Architecture:"
+    echo "  Class 1: Simple Track    — CLI/curl, self-contained"
+    echo "  Class 2: Orchestrator    — Webhooks, MQTT, WS"
+    echo "  Class 3: Multiplier      — BEAM for global scale"
+    echo ""
+    echo "Core ABI (src/abi/):"
+    echo "  Catalogue.idr   Cartridge registry, IsUnbreakable proof"
+    echo "  Protocol.idr    Protocol types (MCP, LSP, DAP, BSP...)"
+    echo "  Domain.idr      Capability domains (Cloud, DB, K8s...)"
+    echo "  Federation.idr  Umoja gossip protocol"
+    echo ""
+    echo "Key directories:"
+    echo "  cartridges/     70+ cartridge directories"
+    echo "  ffi/zig/        Core catalogue FFI"
+    echo "  adapter/v/      V-lang triple adapter"
+    echo "  container/      Stapeln container ecosystem"
+    echo ""
+    CART_COUNT=$(ls -d cartridges/*-mcp 2>/dev/null | wc -l)
+    echo "Current cartridge count: $CART_COUNT"
+    echo ""
+    echo "Quick commands:"
+    echo "  just run         Start server (REST 7700, gRPC 7701, GraphQL 7702)"
+    echo "  just test        Run all FFI tests"
+    echo "  just verify      Full verification (typecheck + zero believe_me)"
+    echo "  just matrix      Show cartridge capability matrix"
+    echo "  just test-smoke  Quick smoke test"
+    echo ""
+    echo "Cultural terms (permanent, sacred):"
+    echo "  Teranga — hospitality (menu, serving)"
+    echo "  Umoja   — unity (federation, gossip protocol)"
+    echo "  Ayo     — joy (the BoJ philosophy)"
+    echo ""
+    echo "Read more: docs/ARCHITECTURE.md, QUICKSTART-USER.adoc"
+
+# Show help for common workflows
+help-me:
+    #!/usr/bin/env bash
+    echo "═══════════════════════════════════════════════════"
+    echo "  BoJ Server — Common Workflows"
+    echo "═══════════════════════════════════════════════════"
+    echo ""
+    echo "FIRST TIME SETUP:"
+    echo "  just doctor           Check toolchain"
+    echo "  just heal             Fix missing tools"
+    echo "  just deps             Verify dependencies"
+    echo ""
+    echo "BUILD & RUN:"
+    echo "  just build            Build all Zig FFI layers"
+    echo "  just run              Build + start server"
+    echo "  just serve            Server + Cloudflare tunnel"
+    echo ""
+    echo "TEST & VERIFY:"
+    echo "  just test             Run all FFI tests (18 suites)"
+    echo "  just test-smoke       Quick smoke test"
+    echo "  just verify           Full verification suite"
+    echo "  just typecheck        Type-check all Idris2 ABIs"
+    echo "  just verify-no-believe-me  Scan for unsound constructs"
+    echo ""
+    echo "QUALITY:"
+    echo "  just quality          All checks (fmt + lint + test)"
+    echo "  just fmt              Format all Zig source"
+    echo "  just lint             Lint + typecheck"
+    echo "  just matrix           Show cartridge status"
+    echo ""
+    echo "CONTAINERS:"
+    echo "  just container-build  Build OCI image"
+    echo "  just container-up     Start compose stack"
+    echo "  just container-down   Stop compose stack"
+    echo ""
+    echo "PRE-COMMIT:"
+    echo "  just assail           Run panic-attacker scan"
+    echo ""
+    echo "LEARN:"
+    echo "  just tour             Guided project tour"
+    echo "  just info             Project info"
+    echo "  just default          List all recipes"

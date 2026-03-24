@@ -7,11 +7,14 @@
 
 set -euo pipefail
 
+# Derive repo root from script location
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+readonly BOJ_ROOT="$(dirname "$SCRIPT_DIR")"
+
 # SELinux has an equivalency rule: /var/mnt -> /mnt
-# semanage fcontext requires the /mnt/... form for rule paths
-readonly BOJ_ROOT_SEMANAGE="/mnt/eclipse/repos/boj-server"
-# Actual filesystem path for restorecon
-readonly BOJ_ROOT="/var/mnt/eclipse/repos/boj-server"
+# semanage fcontext requires the /mnt/... form for rule paths.
+# Strip /var prefix if present (semanage needs canonical /mnt paths).
+readonly BOJ_ROOT_SEMANAGE="${BOJ_ROOT#/var}"
 
 echo "=== BoJ Server SELinux Context Setup ==="
 
