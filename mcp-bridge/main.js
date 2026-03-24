@@ -252,6 +252,9 @@ let buffer = "";
 const MAX_BUFFER_BYTES = 2 * MAX_INPUT_SIZE_BYTES;
 
 process.stdin.setEncoding("utf8");
+// Track in-flight message handlers so we can drain before exit.
+const pendingMessages = [];
+
 process.stdin.on("data", (chunk) => {
   buffer += chunk;
   // HARDENING: Drop the buffer if it grows beyond the safety limit
@@ -265,12 +268,16 @@ process.stdin.on("data", (chunk) => {
     const line = buffer.slice(0, boundary).trim();
     buffer = buffer.slice(boundary + 1);
     if (line.length > 0) {
-      handleMessage(line);
+      // Queue the async handler and track it so stdin EOF doesn't race.
+      const p = handleMessage(line).catch(() => {});
+      pendingMessages.push(p);
     }
   }
 });
 
-process.stdin.on("end", () => {
+process.stdin.on("end", async () => {
+  // Drain all pending message handlers before exiting.
+  await Promise.allSettled(pendingMessages);
   process.exit(0);
 });
 
