@@ -1,6 +1,6 @@
 <!-- SPDX-License-Identifier: PMPL-1.0-or-later -->
 <!-- Blog post draft for dev.to / Hashnode -->
-<!-- Last updated: 2026-03-10 -->
+<!-- Last updated: 2026-03-24 -->
 
 # Why I Built a Server Catalogue with Three Languages and Zero Python
 
@@ -50,7 +50,7 @@ Feedback   |  ##  |      |      |      |  ##  |  ##  |
            +------+------+------+------+------+------+
 ```
 
-Columns are protocols (how you talk). Rows are domains (what it does). Each filled cell is a **cartridge** -- a formally verified, swappable capability module. One server. One binary. 18 domains. Multiple protocols.
+Columns are protocols (how you talk). Rows are domains (what it does). Each filled cell is a **cartridge** -- a formally verified, swappable capability module. One server. One binary. 53 domains. Multiple protocols.
 
 That's BoJ: the **Bundle of Joy** server.
 
@@ -80,7 +80,7 @@ You literally cannot call `mount` on a cartridge that isn't `Ready`. The type sy
 
 **Why V-lang?** Because one V codebase exposes all three API styles (REST + gRPC + GraphQL) on dedicated ports. One language, three protocols, no code generation step.
 
-The result: an 18MB binary. 307 tests. Thread-safe (every FFI entry point serialises on a per-module mutex). No virtualenvs, no node_modules, no pip install.
+The result: a compact binary. 219 Zig tests + 8 integration tests + 32 seam checks. Thread-safe (every FFI entry point serialises on a per-module mutex). No virtualenvs, no node_modules, no pip install.
 
 ## How it works in practice
 
@@ -128,7 +128,7 @@ Or skip HTTP entirely and use MCP mode for AI tools:
 ./boj-server --mcp
 ```
 
-This gives you a JSON-RPC 2.0 stdio server. All 18 cartridges appear as MCP tools. Add it to your `claude_desktop_config.json` and Claude sees one server with 18 capabilities instead of 18 separate servers.
+This gives you a JSON-RPC 2.0 stdio server. All 53 cartridges appear as MCP tools. Add it to your MCP client config and your AI sees one server with 53 capabilities instead of 53 separate servers.
 
 ## Federation: the community IS the hosting
 
@@ -161,11 +161,11 @@ The community submission system (called "Ayo", meaning "joy" in Yoruba) lets any
 
 BoJ is Alpha. Grade D on most cartridges. Here's what's real:
 
-- 18 cartridges, all with ABI + FFI + adapter layers, all compiling to `.so` files
-- 307 tests passing (178 core, 118 cartridge, 11 multi-node federation)
-- Thread-safety hardening across 9 FFI modules (55 global variables, 120+ exports, all mutex-protected)
-- MCP stdio bridge working (JSON-RPC 2.0, all 18 cartridges as tools)
-- Umoja federation with real QUIC+UDP networking (40 federation tests)
+- 53 cartridges, all with ABI + FFI + adapter layers, all compiling to `.so` files
+- 219 Zig tests, 8 integration tests, 32 seam checks — all passing
+- Thread-safety hardening across all 9 core + 53 cartridge FFI modules (all mutex-protected)
+- MCP stdio bridge working (JSON-RPC 2.0, all 53 cartridges as tools)
+- Umoja federation with real QUIC+UDP networking (22 federation tests)
 - Zero `believe_me` in production code (Idris2's escape hatch -- we don't use it)
 - Security audit by panic-attack scanner: 1 expected weak point (QUIC 0-RTT replay window, mitigated at app layer), 0 critical vulnerabilities
 
@@ -181,7 +181,9 @@ This isn't a product launch. This is a "come look at what I built and tell me wh
 
 ## Try it, host a node, or just tell me what you think
 
-The repo is at [github.com/hyperpolymath/boj-server](https://github.com/hyperpolymath/boj-server). The getting started guide is [docs/GETTING-STARTED.md](https://github.com/hyperpolymath/boj-server/blob/main/docs/GETTING-STARTED.md).
+Install: `npm install -g @hyperpolymath/boj-server` or `nix build github:hyperpolymath/boj-server`
+
+The repo is at [github.com/hyperpolymath/boj-server](https://github.com/hyperpolymath/boj-server). The quickstart guide is [docs/QUICKSTART.md](https://github.com/hyperpolymath/boj-server/blob/main/docs/QUICKSTART.md).
 
 What I'm looking for:
 
