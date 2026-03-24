@@ -1,6 +1,6 @@
 <!-- SPDX-License-Identifier: PMPL-1.0-or-later -->
 <!-- Pre-written descriptions for awesome list submissions -->
-<!-- Last updated: 2026-03-10 -->
+<!-- Last updated: 2026-03-24 -->
 
 # Awesome List Submission Descriptions
 
@@ -16,7 +16,7 @@ Repository: https://github.com/punkpeye/awesome-mcp-servers (or similar)
 ```markdown
 ### BoJ Server
 
-Unified capability catalogue exposing 18 cartridges (database, container,
+Unified capability catalogue exposing 53 cartridges (database, container,
 git, secrets, queues, IaC, observe, SSG, proof, fleet, nesy, agent, cloud,
 k8s, lsp, dap, bsp, feedback) through a single MCP stdio server. Formally
 verified with Idris2 dependent type proofs. Built with Zig + V-lang, zero
@@ -60,7 +60,7 @@ dependent types. Built with Zig and V-lang.
 |---|---|
 | **Repository** | https://github.com/hyperpolymath/boj-server |
 | **Transport** | stdio (JSON-RPC 2.0) |
-| **Tools** | 18 cartridges, each exposing domain-specific operations |
+| **Tools** | 53 cartridges, each exposing domain-specific operations |
 | **Setup** | `boj-server --mcp` |
 ```
 
@@ -71,7 +71,7 @@ dependent types. Built with Zig and V-lang.
 Repository: https://github.com/C-BJ/awesome-zig (or similar)
 
 ```markdown
-- [boj-server](https://github.com/hyperpolymath/boj-server) - Federated developer tool catalogue with 18 capability cartridges. Zig handles the FFI layer (C-ABI exports, thread-safe mutexes, shared library compilation). Paired with Idris2 for formal verification and V-lang for network adapters. 307 tests, zero runtime dependencies.
+- [boj-server](https://github.com/hyperpolymath/boj-server) - Federated developer tool catalogue with 18 capability cartridges. Zig handles the FFI layer (C-ABI exports, thread-safe mutexes, shared library compilation). Paired with Idris2 for formal verification and V-lang for network adapters. 219 Zig tests + 32 seam checks, zero runtime dependencies.
 ```
 
 ---
