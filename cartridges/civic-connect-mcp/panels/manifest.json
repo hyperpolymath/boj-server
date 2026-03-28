@@ -1,0 +1,22 @@
+{
+  "$schema": "https://panll.dev/schemas/panel-manifest/v1.json",
+  "spdx": "PMPL-1.0-or-later",
+  "cartridge": "civic-connect-mcp",
+  "domain": "civic",
+  "version": "0.1.0",
+  "panels": [
+    {
+      "id": "civic-connect-channel-list",
+      "title": "Channel List",
+      "description": "Active civic channels with participant counts and recent activity indicators.",
+      "type": "data-table",
+      "entrypoint": "panels/civic-connect-channel-list.js",
+      "size": { "cols": 3, "rows": 3 },
+      "refresh_interval_ms": 10000,
+      "data_sources": [
+        { "op": "ListChannels", "interval_ms": 10000 },
+        { "op": "GetPoll", "on": "event" }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,23 @@
+{
+  "$schema": "https://panll.dev/schemas/panel-manifest/v1.json",
+  "spdx": "PMPL-1.0-or-later",
+  "cartridge": "panic-attack-mcp",
+  "domain": "security",
+  "version": "0.1.0",
+  "panels": [
+    {
+      "id": "panic-attack-scan-results",
+      "title": "Scan Results",
+      "description": "Security scan findings with severity-level filter and sortable results table.",
+      "type": "data-table",
+      "entrypoint": "panels/panic-attack-scan-results.js",
+      "size": { "cols": 4, "rows": 3 },
+      "refresh_interval_ms": 5000,
+      "data_sources": [
+        { "op": "GetFindings", "interval_ms": 5000 },
+        { "op": "GetSeverity", "interval_ms": 5000 }
+      ],
+      "filters": ["severity"]
+    }
+  ]
+}

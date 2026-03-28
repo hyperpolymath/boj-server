@@ -1,0 +1,22 @@
+{
+  "$schema": "https://panll.dev/schemas/panel-manifest/v1.json",
+  "spdx": "PMPL-1.0-or-later",
+  "cartridge": "verisimdb-mcp",
+  "domain": "provenance",
+  "version": "0.1.0",
+  "panels": [
+    {
+      "id": "verisimdb-drift-dashboard",
+      "title": "Drift Dashboard",
+      "description": "Real-time provenance drift detection with field-level diff and audit timeline.",
+      "type": "dashboard",
+      "entrypoint": "panels/verisimdb-drift-dashboard.js",
+      "size": { "cols": 4, "rows": 3 },
+      "refresh_interval_ms": 10000,
+      "data_sources": [
+        { "op": "DetectDrift", "interval_ms": 10000 },
+        { "op": "QueryAudit", "interval_ms": 30000 }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "$schema": "https://panll.dev/schemas/panel-manifest/v1.json",
+  "spdx": "PMPL-1.0-or-later",
+  "cartridge": "laminar-mcp",
+  "domain": "pipelines",
+  "version": "0.1.0",
+  "panels": [
+    {
+      "id": "laminar-stage-tracker",
+      "title": "Pipeline Stages",
+      "description": "Visual pipeline stage tracker with per-stage status, timing, and cancel controls.",
+      "type": "pipeline",
+      "entrypoint": "panels/laminar-stage-tracker.js",
+      "size": { "cols": 4, "rows": 2 },
+      "refresh_interval_ms": 3000,
+      "data_sources": [
+        { "op": "GetStatus", "interval_ms": 3000 },
+        { "op": "RunStage", "on": "event" }
+      ]
+    }
+  ]
+}

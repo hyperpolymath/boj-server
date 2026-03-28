@@ -1,0 +1,22 @@
+{
+  "$schema": "https://panll.dev/schemas/panel-manifest/v1.json",
+  "spdx": "PMPL-1.0-or-later",
+  "cartridge": "stapeln-mcp",
+  "domain": "containers",
+  "version": "0.1.0",
+  "panels": [
+    {
+      "id": "stapeln-stack-status",
+      "title": "Stack Status",
+      "description": "Table of deployed container stacks with replica counts and health indicators.",
+      "type": "data-table",
+      "entrypoint": "panels/stapeln-stack-status.js",
+      "size": { "cols": 4, "rows": 3 },
+      "refresh_interval_ms": 5000,
+      "data_sources": [
+        { "op": "ListStacks", "interval_ms": 5000 },
+        { "op": "GetHealth", "interval_ms": 5000 }
+      ]
+    }
+  ]
+}

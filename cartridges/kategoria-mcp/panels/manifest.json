@@ -1,0 +1,23 @@
+{
+  "$schema": "https://panll.dev/schemas/panel-manifest/v1.json",
+  "spdx": "PMPL-1.0-or-later",
+  "cartridge": "kategoria-mcp",
+  "domain": "categorization",
+  "version": "0.1.0",
+  "panels": [
+    {
+      "id": "kategoria-classification-results",
+      "title": "Classification Results",
+      "description": "Classification output with confidence scores, taxonomy routes, and challenge evaluations.",
+      "type": "data-table",
+      "entrypoint": "panels/kategoria-classification-results.js",
+      "size": { "cols": 4, "rows": 3 },
+      "refresh_interval_ms": 0,
+      "data_sources": [
+        { "op": "Classify", "on": "event" },
+        { "op": "GetRoutes", "on": "event" },
+        { "op": "GetLevels", "interval_ms": 60000 }
+      ]
+    }
+  ]
+}

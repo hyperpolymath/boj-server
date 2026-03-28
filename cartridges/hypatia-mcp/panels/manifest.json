@@ -1,0 +1,22 @@
+{
+  "$schema": "https://panll.dev/schemas/panel-manifest/v1.json",
+  "spdx": "PMPL-1.0-or-later",
+  "cartridge": "hypatia-mcp",
+  "domain": "ci-cd",
+  "version": "0.1.0",
+  "panels": [
+    {
+      "id": "hypatia-scan-badge",
+      "title": "Scan Score",
+      "description": "Neurosymbolic scan score badge with colour-coded severity and active rule list.",
+      "type": "badge",
+      "entrypoint": "panels/hypatia-scan-badge.js",
+      "size": { "cols": 2, "rows": 2 },
+      "refresh_interval_ms": 10000,
+      "data_sources": [
+        { "op": "GetScore", "interval_ms": 10000 },
+        { "op": "GetRuleSet", "interval_ms": 60000 }
+      ]
+    }
+  ]
+}

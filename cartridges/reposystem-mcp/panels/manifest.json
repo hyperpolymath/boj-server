@@ -1,0 +1,22 @@
+{
+  "$schema": "https://panll.dev/schemas/panel-manifest/v1.json",
+  "spdx": "PMPL-1.0-or-later",
+  "cartridge": "reposystem-mcp",
+  "domain": "repositories",
+  "version": "0.1.0",
+  "panels": [
+    {
+      "id": "reposystem-health-table",
+      "title": "Repo Health",
+      "description": "Repository health overview with mirror sync status and audit pass rates.",
+      "type": "data-table",
+      "entrypoint": "panels/reposystem-health-table.js",
+      "size": { "cols": 4, "rows": 3 },
+      "refresh_interval_ms": 15000,
+      "data_sources": [
+        { "op": "ListRepos", "interval_ms": 15000 },
+        { "op": "CheckHealth", "interval_ms": 15000 }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "$schema": "https://panll.dev/schemas/panel-manifest/v1.json",
+  "spdx": "PMPL-1.0-or-later",
+  "cartridge": "typed-wasm-mcp",
+  "domain": "wasm",
+  "version": "0.1.0",
+  "panels": [
+    {
+      "id": "typed-wasm-validation-status",
+      "title": "Module Validation",
+      "description": "WASM module type safety validation with TypeLL 0-10 level display and error listing.",
+      "type": "status-indicator",
+      "entrypoint": "panels/typed-wasm-validation-status.js",
+      "size": { "cols": 3, "rows": 2 },
+      "refresh_interval_ms": 0,
+      "data_sources": [
+        { "op": "ValidateModule", "on": "event" },
+        { "op": "CheckTypes", "on": "event" }
+      ]
+    }
+  ]
+}

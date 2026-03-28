@@ -1,0 +1,22 @@
+{
+  "$schema": "https://panll.dev/schemas/panel-manifest/v1.json",
+  "spdx": "PMPL-1.0-or-later",
+  "cartridge": "aerie-mcp",
+  "domain": "environments",
+  "version": "0.1.0",
+  "panels": [
+    {
+      "id": "aerie-environment-table",
+      "title": "Environment Table",
+      "description": "Active environments with status, resource usage, and lifecycle controls.",
+      "type": "data-table",
+      "entrypoint": "panels/aerie-environment-table.js",
+      "size": { "cols": 4, "rows": 3 },
+      "refresh_interval_ms": 5000,
+      "data_sources": [
+        { "op": "ListEnvs", "interval_ms": 5000 },
+        { "op": "GetStatus", "interval_ms": 5000 }
+      ]
+    }
+  ]
+}

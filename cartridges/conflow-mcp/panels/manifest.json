@@ -1,0 +1,23 @@
+{
+  "$schema": "https://panll.dev/schemas/panel-manifest/v1.json",
+  "spdx": "PMPL-1.0-or-later",
+  "cartridge": "conflow-mcp",
+  "domain": "configuration",
+  "version": "0.1.0",
+  "panels": [
+    {
+      "id": "conflow-config-editor",
+      "title": "Config Editor",
+      "description": "Interactive configuration editor with validation feedback and diff preview.",
+      "type": "editor",
+      "entrypoint": "panels/conflow-config-editor.js",
+      "size": { "cols": 4, "rows": 4 },
+      "refresh_interval_ms": 0,
+      "data_sources": [
+        { "op": "GetConfig", "on": "load" },
+        { "op": "ValidateConfig", "on": "change" },
+        { "op": "DiffConfig", "on": "change" }
+      ]
+    }
+  ]
+}

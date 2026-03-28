@@ -1,0 +1,22 @@
+{
+  "$schema": "https://panll.dev/schemas/panel-manifest/v1.json",
+  "spdx": "PMPL-1.0-or-later",
+  "cartridge": "vext-mcp",
+  "domain": "verification",
+  "version": "0.1.0",
+  "panels": [
+    {
+      "id": "vext-verification-status",
+      "title": "Verification Status",
+      "description": "Message verification chain with attestation depth and tamper indicators.",
+      "type": "status-indicator",
+      "entrypoint": "panels/vext-verification-status.js",
+      "size": { "cols": 3, "rows": 2 },
+      "refresh_interval_ms": 5000,
+      "data_sources": [
+        { "op": "VerifyMessage", "on": "event" },
+        { "op": "CheckAttestation", "interval_ms": 15000 }
+      ]
+    }
+  ]
+}
