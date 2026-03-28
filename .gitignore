@@ -138,3 +138,6 @@ tools/cartridge-minter/target/
 
 # panic-attack scan reports
 panic-attack-report*.json
+
+# asdf version manager
+.tool-versions
