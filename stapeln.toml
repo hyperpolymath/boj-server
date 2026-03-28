@@ -1,0 +1,87 @@
+# SPDX-License-Identifier: PMPL-1.0-or-later
+# stapeln.toml — Layer-based container build for boj-server
+#
+# stapeln builds containers as composable layers (German: "to stack").
+# Each layer is independently cacheable, verifiable, and signable.
+
+[metadata]
+name = "boj-server"
+version = "0.1.0"
+description = "boj-server container service"
+author = "Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>"
+license = "PMPL-1.0-or-later"
+registry = "ghcr.io/hyperpolymath"
+
+[build]
+containerfile = "Containerfile"
+context = "."
+runtime = "podman"
+
+# ── Layer Definitions ──────────────────────────────────────────
+
+[layers.base]
+description = "Chainguard Wolfi minimal base"
+from = "cgr.dev/chainguard/wolfi-base:latest"
+cache = true
+verify = true
+
+[layers.deno-toolchain]
+description = "Deno runtime"
+extends = "base"
+packages = ["deno"]
+cache = true
+
+[layers.build]
+description = "boj-server Deno build"
+extends = "deno-toolchain"
+commands = ["deno cache src/main.ts || true"]
+
+[layers.runtime]
+description = "Minimal runtime"
+from = "cgr.dev/chainguard/wolfi-base:latest"
+packages = ["ca-certificates", "curl"]
+copy-from = [
+    { layer = "build", src = "/app/", dst = "/app/" },
+]
+entrypoint = ["["node", "mcp-bridge/main.js"]"]
+user = "node"
+
+# ── Security ───────────────────────────────────────────────────
+
+[security]
+non-root = true
+read-only-root = false
+no-new-privileges = true
+cap-drop = ["ALL"]
+seccomp-profile = "default"
+
+[security.signing]
+algorithm = "ML-DSA-87"
+provider = "cerro-torre"
+
+[security.sbom]
+format = "spdx-json"
+output = "sbom.spdx.json"
+include-deps = true
+
+# ── Verification ───────────────────────────────────────────────
+
+[verify]
+vordr = true
+svalinn = true
+scan-on-build = true
+fail-on = ["critical", "high"]
+
+# ── Targets ────────────────────────────────────────────────────
+
+[targets.development]
+layers = ["base", "deno-toolchain", "build"]
+env = { LOG_LEVEL = "debug" }
+
+[targets.production]
+layers = ["runtime"]
+env = { LOG_LEVEL = "info" }
+
+[targets.test]
+layers = ["base", "deno-toolchain", "build"]
+env = { LOG_LEVEL = "debug" }
