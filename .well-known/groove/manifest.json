@@ -1,0 +1,32 @@
+{
+  "groove_version": "1",
+  "service_id": "boj-server",
+  "service_version": "0.1.0",
+  "capabilities": {
+    "bot-orchestration": {
+      "type": "bot-orchestration",
+      "description": "MCP server and cartridge orchestration hub",
+      "protocol": "http",
+      "endpoint": "/api/cartridges",
+      "requires_auth": false,
+      "panel_compatible": true
+    },
+    "workflow": {
+      "type": "workflow",
+      "description": "Automated workflow execution via cartridge runners",
+      "protocol": "http",
+      "endpoint": "/api/run",
+      "requires_auth": false,
+      "panel_compatible": true
+    }
+  },
+  "consumes": ["octad-storage", "scanning", "theorem-proving"],
+  "endpoints": {
+    "health": "/health",
+    "groove": "/.well-known/groove",
+    "mcp": "/mcp",
+    "sse": "/sse"
+  },
+  "health": "/health",
+  "applicability": ["individual", "team"]
+}
