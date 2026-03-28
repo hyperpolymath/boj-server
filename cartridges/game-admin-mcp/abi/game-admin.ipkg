@@ -1,0 +1,6 @@
+-- SPDX-License-Identifier: PMPL-1.0-or-later
+package gameAdmin
+
+modules = GameAdmin.Protocol
+
+sourcedir = "."
