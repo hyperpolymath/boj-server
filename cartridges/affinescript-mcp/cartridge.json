@@ -1,0 +1,103 @@
+{
+  "$schema": "https://boj.dev/schemas/cartridge/v1.json",
+  "spdx": "PMPL-1.0-or-later",
+  "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath)",
+  "name": "affinescript-mcp",
+  "version": "0.1.0",
+  "description": "AffineScript language cartridge -- type checking, parsing, formatting, error explanation, stdlib browsing, and syntax reference for the AffineScript language (substructural type system with affine/linear types, algebraic effects)",
+  "domain": "Languages",
+  "tier": "Ayo",
+  "protocols": ["MCP", "REST"],
+  "auth": {
+    "method": "none",
+    "env_var": null,
+    "credential_source": null
+  },
+  "api": {
+    "base_url": "local://affinescript",
+    "content_type": "application/json"
+  },
+  "tools": [
+    {
+      "name": "affinescript_check",
+      "description": "Type-check AffineScript source code and return diagnostics (errors, warnings, hints). Invokes the compiler's check mode.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "source": { "type": "string", "description": "AffineScript source code to check" },
+          "filename": { "type": "string", "description": "Virtual filename for error reporting (default: input.as)" }
+        },
+        "required": ["source"]
+      }
+    },
+    {
+      "name": "affinescript_parse",
+      "description": "Parse AffineScript source and return a structured AST summary (top-level declarations, types, functions, effects)",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "source": { "type": "string", "description": "AffineScript source code to parse" }
+        },
+        "required": ["source"]
+      }
+    },
+    {
+      "name": "affinescript_format",
+      "description": "Format AffineScript source code according to the standard style",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "source": { "type": "string", "description": "AffineScript source code to format" },
+          "tab_size": { "type": "number", "description": "Indentation width (default: 2)" },
+          "use_tabs": { "type": "boolean", "description": "Use tabs instead of spaces (default: false)" }
+        },
+        "required": ["source"]
+      }
+    },
+    {
+      "name": "affinescript_explain_error",
+      "description": "Explain an AffineScript error code with description, example, and fix suggestions. Error codes: E0xxx (parse), E1xxx (type), E2xxx (borrow), E3xxx (effect), E4xxx (quantity), E5xxx (name), E6xxx (refinement), Wxxx (warning), Lxxx (lint)",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "code": { "type": "string", "description": "Error code (e.g. 'E0301', 'E2001', 'W0001')" }
+        },
+        "required": ["code"]
+      }
+    },
+    {
+      "name": "affinescript_stdlib",
+      "description": "Browse AffineScript standard library types and functions. Search by name or category.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "query": { "type": "string", "description": "Search query (type name, function name, or category like 'collections', 'io', 'effects')" },
+          "category": { "type": "string", "description": "Filter by category: types, functions, effects, traits" }
+        },
+        "required": ["query"]
+      }
+    },
+    {
+      "name": "affinescript_syntax_ref",
+      "description": "Get syntax reference for an AffineScript language construct (keywords, operators, declarations, patterns, effects, quantities)",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "construct": { "type": "string", "description": "Language construct to look up (e.g. 'fn', 'match', 'effect', 'linear', 'borrow', 'handler')" }
+        },
+        "required": ["construct"]
+      }
+    },
+    {
+      "name": "affinescript_snippet",
+      "description": "Evaluate a small AffineScript expression or snippet in the interpreter and return the result",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "source": { "type": "string", "description": "AffineScript expression or snippet to evaluate" }
+        },
+        "required": ["source"]
+      }
+    }
+  ]
+}

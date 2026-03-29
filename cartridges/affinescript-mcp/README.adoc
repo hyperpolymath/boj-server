@@ -1,0 +1,77 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+// Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath)
+= affinescript-mcp
+:toc:
+
+AffineScript language cartridge for the BoJ server.
+
+== Overview
+
+Provides MCP tools for interacting with the AffineScript compiler and language reference:
+
+* *Type checking* — invoke the compiler's check mode on source code
+* *Parsing* — parse source and return structured AST summary
+* *Formatting* — format source according to standard style
+* *Error explanation* — look up error codes with descriptions and fix suggestions
+* *Stdlib browsing* — search standard library types, functions, effects, traits
+* *Syntax reference* — language construct documentation
+* *Snippet evaluation* — evaluate expressions in the interpreter
+
+== Architecture
+
+Three-layer stack following the BoJ cartridge standard:
+
+[cols="1,1,3"]
+|===
+| Layer | Language | Purpose
+
+| ABI | Idris2 | `SafeCompiler` state machine with dependent-type proofs
+| FFI | Zig | C-ABI implementation: session pool, action metrics, thread safety
+| Adapter | V-lang | REST bridge connecting FFI exports to BoJ adapter protocol
+|===
+
+== Tools (7)
+
+[cols="2,4"]
+|===
+| Tool | Description
+
+| `affinescript_check` | Type-check source code, return diagnostics
+| `affinescript_parse` | Parse source, return AST summary
+| `affinescript_format` | Format source code
+| `affinescript_explain_error` | Explain error code (E0-E6, W, L)
+| `affinescript_stdlib` | Browse standard library
+| `affinescript_syntax_ref` | Language construct reference
+| `affinescript_snippet` | Evaluate expression in interpreter
+|===
+
+== Error Code Categories
+
+[cols="1,2"]
+|===
+| Prefix | Category
+
+| E0xxx | Parse errors
+| E1xxx | Type errors
+| E2xxx | Borrow/affine errors
+| E3xxx | Effect errors
+| E4xxx | Quantity errors
+| E5xxx | Name resolution errors
+| E6xxx | Refinement type errors
+| Wxxx | Warnings
+| Lxxx | Lint
+|===
+
+== Building
+
+[source,bash]
+----
+# ABI (Idris2)
+cd abi && idris2 --check AffinescriptMcp/SafeCompiler.idr
+
+# FFI (Zig)
+cd ffi && zig build
+
+# Tests
+bash tests/integration_test.sh
+----

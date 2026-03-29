@@ -1,0 +1,20 @@
+# SPDX-License-Identifier: PMPL-1.0-or-later
+# Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+
+name = "affinescript-mcp"
+description = "AffineScript language cartridge — type checking, parsing, formatting, error explanation, stdlib browsing, syntax reference, snippet evaluation"
+version = "0.1.0"
+domain = "Languages"
+protocols = [
+    "MCP",
+    "REST",
+]
+tier = "Ayo"
+backend = "universal"
+generate_panel = true
+
+[auth]
+method = "none"
+
+[api]
+base_url = "local://affinescript"

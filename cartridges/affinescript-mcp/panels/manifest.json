@@ -1,0 +1,89 @@
+{
+  "$schema": "https://panll.dev/schemas/panel-manifest/v1.json",
+  "spdx": "PMPL-1.0-or-later",
+  "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath)",
+  "cartridge": "affinescript-mcp",
+  "domain": "Languages",
+  "version": "0.1.0",
+  "panels": [
+    {
+      "id": "afs-session-status",
+      "title": "Compiler Status",
+      "description": "AffineScript compiler session state (Ready / Busy / Error)",
+      "type": "status-indicator",
+      "data_source": {
+        "endpoint": "/affinescript/state",
+        "method": "GET",
+        "refresh_interval_ms": 5000
+      },
+      "widgets": [
+        {
+          "type": "state-badge",
+          "field": "state",
+          "states": {
+            "ready": { "color": "#2ecc71", "icon": "check-circle" },
+            "busy": { "color": "#3498db", "icon": "loader" },
+            "error": { "color": "#e74c3c", "icon": "alert-triangle" }
+          }
+        }
+      ]
+    },
+    {
+      "id": "afs-check-count",
+      "title": "Type Checks",
+      "description": "Number of type-check invocations in the current session",
+      "type": "metric",
+      "data_source": {
+        "endpoint": "/affinescript/status",
+        "method": "GET",
+        "refresh_interval_ms": 10000
+      },
+      "widgets": [
+        {
+          "type": "counter",
+          "field": "check_count",
+          "label": "Checks",
+          "icon": "shield-check"
+        }
+      ]
+    },
+    {
+      "id": "afs-parse-count",
+      "title": "Parse Operations",
+      "description": "Number of parse invocations in the current session",
+      "type": "metric",
+      "data_source": {
+        "endpoint": "/affinescript/status",
+        "method": "GET",
+        "refresh_interval_ms": 10000
+      },
+      "widgets": [
+        {
+          "type": "counter",
+          "field": "parse_count",
+          "label": "Parses",
+          "icon": "file-text"
+        }
+      ]
+    },
+    {
+      "id": "afs-format-count",
+      "title": "Format Operations",
+      "description": "Number of format invocations in the current session",
+      "type": "metric",
+      "data_source": {
+        "endpoint": "/affinescript/status",
+        "method": "GET",
+        "refresh_interval_ms": 10000
+      },
+      "widgets": [
+        {
+          "type": "counter",
+          "field": "format_count",
+          "label": "Formats",
+          "icon": "align-left"
+        }
+      ]
+    }
+  ]
+}
