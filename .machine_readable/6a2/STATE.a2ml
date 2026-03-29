@@ -5,8 +5,8 @@
 
 [metadata]
 project = "boj-server"
-version = "0.2.0"
-last-updated = "2026-03-16"
+version = "0.3.1"
+last-updated = "2026-03-29"
 status = "active"
 grade = "D-alpha"
 
@@ -24,7 +24,7 @@ milestones = [
   { name = "Phase 0: Fresh repo from rsr-template-repo", completion = 100 },
   { name = "Phase 1: Core catalogue & menu system (Idris2 ABI)", completion = 100 },
   { name = "Phase 2: Core Zig FFI layer (catalogue + loader)", completion = 100 },
-  { name = "Phase 3: V-lang triple adapter (REST+gRPC+GraphQL)", completion = 100 },
+  { name = "Phase 3: V-lang quad adapter (REST+gRPC+GraphQL+SSE)", completion = 100 },
   { name = "Phase 4: First cartridges — ABI+FFI+Adapter (database, fleet, nesy, agent)", completion = 100 },
   { name = "Phase 5: Umoja federation & PanLL panel", completion = 100 },
   { name = "Phase 6: Remaining cartridges (fill the matrix)", completion = 100 },
@@ -57,8 +57,12 @@ verisimdb-tests = 7
 multinode-tests = 11
 cartridge-shared-libs = 18
 # All 18/18 .so files built.
-cartridges-total = 18
+cartridges-total = 92
 cartridges-with-so = 18
+safety-modules = 7  # Safety, Guardian, SafeHTTP, SafePromptInjection, SafeCORS, SafeAPIKey, SafeWebSocket
+sse-transport = true  # Port 7703 — fixed 2026-03-29
+glama-grade = "AAA"  # Security A, License A, Quality A
+dependabot-alerts = 0
 benchmark = true
 ci-pipeline = "zig-test.yml"
 topology = true
