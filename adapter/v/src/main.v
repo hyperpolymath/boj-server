@@ -29,6 +29,7 @@ import time
 // so we only link loader to avoid duplicate symbol errors.
 // #flag -lboj_catalogue  — included transitively via loader
 #flag -lboj_loader
+#flag -lboj_safety
 #flag -lboj_federation
 #flag -lboj_coprocessor
 #flag -lboj_sla
@@ -103,6 +104,16 @@ fn C.boj_menu_backend(index usize, out_ptr &u8, out_len usize) usize
 fn C.boj_menu_name(index usize, out_ptr &u8, out_len usize) usize
 fn C.boj_menu_json(out_ptr &u8, out_len usize) usize
 fn C.boj_loader_verify(path_ptr &u8, path_len usize, expected_hex_ptr &u8, expected_hex_len usize) int
+
+// Proven Safety FFI declarations (formally verified input validation)
+// Idris2 proofs: src/abi/Boj/Safety.idr
+// Zig implementation: ffi/zig/src/safety.zig
+// Returns: 1 = safe, 0 = empty, negative = specific error code
+fn C.boj_safety_check_shell_arg(ptr &u8, len usize) int
+fn C.boj_safety_check_sql_value(ptr &u8, len usize) int
+fn C.boj_safety_check_path(ptr &u8, len usize) int
+fn C.boj_safety_check_url_scheme(ptr &u8, len usize) int
+fn C.boj_safety_check_json_string(ptr &u8, len usize) int
 
 // Umoja federation C FFI declarations
 fn C.boj_federation_init() int
@@ -843,26 +854,34 @@ fn error_response(status_code int, message string) http.Response {
 	}
 }
 
-// Shell argument sanitizer — strips characters that enable command injection.
-// Rejects input containing shell metacharacters rather than trying to escape them,
-// because escaping is fragile and locale-dependent.
+// Shell argument sanitizer — formally verified via proven library.
+// Delegates to Zig FFI (boj_safety_check_shell_arg) which is proven correct
+// by Idris2 dependent-type proofs in src/abi/Boj/Safety.idr.
+//
+// PROVEN PROPERTIES (see Safety.idr):
+// - ShellSafe: if check passes, no ;|`$()&><'" characters present
+// - shellSafeNoSemicolon, shellSafeNoBacktick, shellSafeNoDollar, shellSafeNoPipe
+// - Safety is compositional (closed under concatenation and substring)
+//
+// Differences from previous V-lang implementation:
+// - Spaces are NO LONGER allowed (prevents word splitting attacks)
+// - Option injection (--flag) is rejected
+// - Validation runs in Zig with bounds-checked array access (no buffer overflow)
 fn sanitize_shell_arg(input string) !string {
-	// Reject empty input
-	if input.trim_space() == '' {
+	if input.len == 0 {
 		return error('empty argument')
 	}
-	// Allow only safe characters: alphanumeric, hyphen, underscore, dot, slash, colon, @, +, =, space
-	// This covers file paths, hostnames, image tags, domain names, and similar
-	for c in input.bytes() {
-		if (c >= `a` && c <= `z`) || (c >= `A` && c <= `Z`) || (c >= `0` && c <= `9`) {
-			continue
-		}
-		if c == `-` || c == `_` || c == `.` || c == `/` || c == `:` || c == `@` || c == `+` || c == `=` || c == ` ` {
-			continue
-		}
-		return error('unsafe character in argument: 0x${c:02x}')
+	result := C.boj_safety_check_shell_arg(input.str, usize(input.len))
+	if result > 0 {
+		return input
 	}
-	return input
+	match result {
+		0 { return error('empty argument') }
+		-1 { return error('shell injection detected (proven safety check)') }
+		-4 { return error('argument too long (max 4096)') }
+		-5 { return error('null byte in argument') }
+		else { return error('safety check failed: code ${result}') }
+	}
 }
 
 // Handler structs (V 0.5.0 uses Handler interface, not function closures)
