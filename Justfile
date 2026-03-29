@@ -467,15 +467,13 @@ matrix:
 # RUN & EXECUTE
 # ═══════════════════════════════════════════════════════════════════════════════
 
-# Run the BoJ server (V-lang triple adapter: REST 7700, gRPC 7701, GraphQL 7702)
+# Run the BoJ server (V-lang adapter: REST 7700, gRPC 7701, GraphQL 7702, SSE 7703)
 run *args: build
     #!/usr/bin/env bash
     set -euo pipefail
     ADAPTER="adapter/v/boj-server"
     if [ ! -f "$ADAPTER" ]; then
-        echo "Building V-lang adapter..."
-        v -cc gcc -cflags "-L$(pwd)/ffi/zig/zig-out/lib -Wl,--allow-multiple-definition" \
-            -o "$ADAPTER" adapter/v/src/main.v
+        just build-adapter
     fi
     echo "Starting BoJ Server..."
     exec "$ADAPTER" {{args}}
@@ -484,13 +482,17 @@ run *args: build
 run-verbose *args: build
     BOJ_VERBOSE=1 just run {{args}}
 
-# Build V-lang adapter binary
+# Build V-lang adapter binary (compiles full directory: REST+gRPC+GraphQL+SSE)
 build-adapter: build
     #!/usr/bin/env bash
     set -euo pipefail
-    echo "Building V-lang adapter..."
-    v -cc gcc -cflags "-L$(pwd)/ffi/zig/zig-out/lib -L$(pwd)/cartridges/container-mcp/ffi/zig-out/lib -L$(pwd)/cartridges/feedback-mcp/ffi/zig-out/lib -Wl,--allow-multiple-definition" \
-        -o adapter/v/boj-server adapter/v/src/main.v
+    echo "Building V-lang adapter (REST+gRPC+GraphQL+SSE)..."
+    LFLAGS="-L$(pwd)/ffi/zig/zig-out/lib"
+    for d in cartridges/*/ffi/zig-out/lib; do
+        [ -d "$d" ] && LFLAGS="${LFLAGS} -L$(pwd)/${d}"
+    done
+    v -cc gcc -cflags "${LFLAGS} -Wl,--allow-multiple-definition" \
+        -o adapter/v/boj-server adapter/v/src/
     echo "Built: adapter/v/boj-server ($(du -h adapter/v/boj-server | cut -f1))"
 
 # Install to user path
@@ -511,12 +513,11 @@ serve: build
     set -euo pipefail
     ADAPTER="adapter/v/boj-server"
     if [ ! -f "$ADAPTER" ]; then
-        echo "Building V-lang adapter..."
-        v -cc gcc -cflags "-L$(pwd)/ffi/zig/zig-out/lib -Wl,--allow-multiple-definition" \
-            -o "$ADAPTER" adapter/v/src/main.v
+        just build-adapter
     fi
     echo "Starting BoJ Server..."
     echo "  Local: http://localhost:7700/status"
+    echo "  SSE:   http://localhost:7703/sse"
     LD_LIBRARY_PATH="$(pwd)/ffi/zig/zig-out/lib" "$ADAPTER" &
     BOJ_PID=$!
     trap "kill $BOJ_PID 2>/dev/null; kill $TUNNEL_PID 2>/dev/null; exit" INT TERM

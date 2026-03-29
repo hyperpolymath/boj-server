@@ -35,6 +35,7 @@ import sync
 
 /// A connected SSE client session. Each GET /sse connection creates one.
 /// Messages are queued and flushed to the client's event stream.
+@[heap]
 struct SseSession {
 	id         string         // Unique session ID (UUID-like)
 	created_at i64            // Unix timestamp
@@ -169,7 +170,7 @@ fn (mut h SseHandler) handle(req http.Request) http.Response {
 	// Preflight
 	if req.method == .options {
 		mut resp := http.Response{
-			status: .ok
+			status_msg: 'OK'
 		}
 		for k, v in cors_headers {
 			resp.header.add_custom(k, v) or {}

@@ -131,8 +131,8 @@ VOLUME ["/data"]
 # Run as non-root
 USER appuser
 
-# Expose all three adapter ports
-EXPOSE 7700 7701 7702
+# Expose all four adapter ports (REST, gRPC, GraphQL, MCP/SSE)
+EXPOSE 7700 7701 7702 7703
 
 # Health check via REST endpoint
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \

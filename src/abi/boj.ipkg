@@ -16,6 +16,13 @@ modules = Boj.Protocol
         , Boj.Catalogue
         , Boj.Menu
         , Boj.Federation
+        , Boj.Guardian
+        , Boj.Safety
+        , Boj.SafeHTTP
+        , Boj.SafePromptInjection
+        , Boj.SafeCORS
+        , Boj.SafeAPIKey
+        , Boj.SafeWebSocket
 
 depends = base
         , contrib

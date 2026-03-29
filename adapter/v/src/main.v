@@ -925,7 +925,7 @@ fn (h RestHandler) handle(req http.Request) http.Response {
 			return error_response(405, 'POST required for webhooks')
 		}
 		// High-Rigor HMAC Security Check
-		signature := req.header.get(.x_hub_signature_256) or { '' }
+		signature := req.header.get_custom('X-Hub-Signature-256') or { '' }
 		if !verify_github_signature(req.data, signature) {
 			return error_response(401, 'unauthorized: invalid signature')
 		}
@@ -1596,7 +1596,7 @@ fn invoke_database(tool string, args string) http.Response {
 		// Execute the SQL query
 		result_json := database_adapter.execute_sql(conn.slot, sql_text) or {
 			// Disconnect on error (error state -> disconnected)
-			database_adapter.disconnect(conn.slot) or {}
+			database_adapter.disconnect(conn.slot)
 			return json_response(json.encode({
 				'tool':   'sql'
 				'status': 'error'
@@ -1605,7 +1605,7 @@ fn invoke_database(tool string, args string) http.Response {
 		}
 
 		// Disconnect after query
-		database_adapter.disconnect(conn.slot) or {}
+		database_adapter.disconnect(conn.slot)
 
 		return json_response(json.encode({
 			'tool':   'sql'
@@ -1639,7 +1639,7 @@ fn invoke_database(tool string, args string) http.Response {
 		// Execute the VQL query through the state machine
 		result_json := database_adapter.execute_vql(conn.slot, vql_body) or {
 			// Disconnect on error (error state -> disconnected)
-			database_adapter.disconnect(conn.slot) or {}
+			database_adapter.disconnect(conn.slot)
 			return json_response(json.encode({
 				'tool':   'vql'
 				'status': 'error'
@@ -1648,7 +1648,7 @@ fn invoke_database(tool string, args string) http.Response {
 		}
 
 		// Disconnect after query
-		database_adapter.disconnect(conn.slot) or {}
+		database_adapter.disconnect(conn.slot)
 
 		return json_response(json.encode({
 			'tool':   'vql'
