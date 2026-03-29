@@ -459,7 +459,7 @@ matrix:
     echo ""
     echo "  Core catalogue:    ffi/zig/src/catalogue.zig"
     echo "  Dynamic loader:    ffi/zig/src/loader.zig"
-    echo "  V-lang adapter:    adapter/v/src/main.v"
+    echo "  V-lang adapter:    adapter/v/src/ (directory)"
     echo "  Menu:              .machine_readable/servers/menu.a2ml"
     echo ""
 
