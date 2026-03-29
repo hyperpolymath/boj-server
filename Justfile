@@ -1067,9 +1067,10 @@ assail:
 # ONBOARDING & DIAGNOSTICS
 # ═══════════════════════════════════════════════════════════════════════════════
 
-# Check all required toolchain dependencies and report health
+# Check all required toolchain dependencies, versions, port, and build state
 doctor:
     #!/usr/bin/env bash
+    set -euo pipefail
     echo "═══════════════════════════════════════════════════"
     echo "  BoJ Server Doctor — Toolchain Health Check"
     echo "═══════════════════════════════════════════════════"
@@ -1086,31 +1087,70 @@ doctor:
             FAIL=$((FAIL + 1))
         fi
     }
-    check "Idris2"            idris2    "0.7.0"
+    check_optional() {
+        local name="$1" cmd="$2" note="$3"
+        if command -v "$cmd" >/dev/null 2>&1; then
+            VER=$("$cmd" --version 2>&1 | head -1 || echo "available")
+            echo "  [OK]   $name — $VER"
+            PASS=$((PASS + 1))
+        else
+            echo "  [WARN] $name — not found ($note)"
+            WARN=$((WARN + 1))
+        fi
+    }
+    echo "Required tools:"
+    check "Deno"              deno      "1.40+"
     check "Zig"               zig       "0.13"
+    check "Idris2"            idris2    "0.7.0"
     check "V (vlang)"         v         "0.4.4"
     check "just"              just      "1.25"
-    # Optional tools
-    if command -v cargo >/dev/null 2>&1; then
-        echo "  [OK]   Cargo (optional) — $(cargo --version 2>&1 | head -1)"
-        PASS=$((PASS + 1))
+    check "git"               git       "2.0+"
+    echo ""
+    echo "Optional tools:"
+    check_optional "Cargo"        cargo        "needed for tools/cartridge-minter"
+    check_optional "cloudflared"  cloudflared  "needed for tunnel"
+    check_optional "panic-attack" panic-attack "pre-commit scanner"
+    check_optional "podman"       podman       "container builds"
+    check_optional "trivy"        trivy        "vulnerability scanning"
+    check_optional "gitleaks"     gitleaks     "secret detection"
+    echo ""
+    echo "Port availability:"
+    if command -v ss >/dev/null 2>&1; then
+        if ss -tlnp 2>/dev/null | grep -q ':7700 '; then
+            echo "  [WARN] Port 7700 is in use (BoJ REST endpoint)"
+            WARN=$((WARN + 1))
+        else
+            echo "  [OK]   Port 7700 is available"
+            PASS=$((PASS + 1))
+        fi
+    elif command -v lsof >/dev/null 2>&1; then
+        if lsof -i :7700 >/dev/null 2>&1; then
+            echo "  [WARN] Port 7700 is in use (BoJ REST endpoint)"
+            WARN=$((WARN + 1))
+        else
+            echo "  [OK]   Port 7700 is available"
+            PASS=$((PASS + 1))
+        fi
     else
-        echo "  [WARN] Cargo (optional) — not found (needed for tools/cartridge-minter)"
+        echo "  [WARN] Cannot check port (no ss or lsof)"
         WARN=$((WARN + 1))
     fi
-    if command -v cloudflared >/dev/null 2>&1; then
-        echo "  [OK]   cloudflared (optional) — available"
-        PASS=$((PASS + 1))
+    echo ""
+    echo "Build artefacts:"
+    if [ -d "ffi/zig/zig-out" ]; then
+        echo "  [OK]   ffi/zig/zig-out/ exists (catalogue FFI built)"
     else
-        echo "  [WARN] cloudflared (optional) — not found (needed for tunnel)"
-        WARN=$((WARN + 1))
+        echo "  [INFO] ffi/zig/zig-out/ not found — run 'just build'"
     fi
-    if command -v panic-attack >/dev/null 2>&1; then
-        echo "  [OK]   panic-attack — available"
-        PASS=$((PASS + 1))
+    if [ -f "adapter/v/boj-server" ]; then
+        echo "  [OK]   adapter/v/boj-server binary exists"
     else
-        echo "  [WARN] panic-attack — not found (pre-commit scanner)"
-        WARN=$((WARN + 1))
+        echo "  [INFO] V-lang adapter not built — run 'just build-adapter'"
+    fi
+    if [ -d "src/abi/build" ]; then
+        echo "  [OK]   src/abi/build/ exists (Idris2 ABI compiled)"
+    else
+        echo "  [INFO] Idris2 ABI not compiled — run 'just typecheck'"
     fi
     echo ""
     echo "  Result: $PASS passed, $FAIL failed, $WARN warnings"
@@ -1120,49 +1160,82 @@ doctor:
     fi
     echo "  All required tools present."
 
-# Attempt to automatically install missing tools
+# Attempt to fix common issues (install deps, clear caches, rebuild FFI)
 heal:
     #!/usr/bin/env bash
+    set -euo pipefail
     echo "═══════════════════════════════════════════════════"
     echo "  BoJ Server Heal — Automatic Tool Installation"
     echo "═══════════════════════════════════════════════════"
     echo ""
+    HEALED=0
+    # --- Missing tool install instructions / attempts ---
+    if ! command -v deno >/dev/null 2>&1; then
+        echo "Deno not found (REQUIRED — runtime & package manager)."
+        echo "  curl -fsSL https://deno.land/install.sh | sh"
+        echo "  Or via asdf: asdf plugin add deno && asdf install deno latest"
+        echo ""
+    fi
     if ! command -v idris2 >/dev/null 2>&1; then
-        echo "Idris2 not found."
+        echo "Idris2 not found (REQUIRED — ABI definitions)."
         if command -v asdf >/dev/null 2>&1; then
             echo "  Installing via asdf..."
-            asdf install idris2 latest
+            asdf install idris2 latest || echo "  asdf install failed — try: https://github.com/stefan-hoeck/idris2-pack"
         else
-            echo "  Install manually: https://www.idris-lang.org/pages/download.html"
+            echo "  Install via pack: https://github.com/stefan-hoeck/idris2-pack"
             echo "  Or via asdf: asdf plugin add idris2 && asdf install idris2 latest"
         fi
+        echo ""
     fi
     if ! command -v zig >/dev/null 2>&1; then
-        echo "Zig not found."
+        echo "Zig not found (REQUIRED — FFI layer)."
         if command -v asdf >/dev/null 2>&1; then
             echo "  Installing via asdf..."
-            asdf install zig latest
+            asdf install zig latest || echo "  asdf install failed — try: https://ziglang.org/download/"
         else
             echo "  Install manually: https://ziglang.org/download/"
             echo "  Or via asdf: asdf plugin add zig && asdf install zig latest"
         fi
+        echo ""
     fi
     if ! command -v v >/dev/null 2>&1; then
-        echo "V (vlang) not found."
+        echo "V (vlang) not found (REQUIRED — API triple adapter)."
         if command -v asdf >/dev/null 2>&1; then
             echo "  Installing via asdf..."
-            asdf install vlang latest
+            asdf install vlang latest || echo "  asdf install failed — try: https://vlang.io"
         else
             echo "  Install manually: https://vlang.io"
             echo "  Or via asdf: asdf plugin add vlang && asdf install vlang latest"
         fi
+        echo ""
     fi
     if ! command -v just >/dev/null 2>&1; then
         echo "Installing just..."
         cargo install just 2>/dev/null || echo "  Install cargo first, then: cargo install just"
+        echo ""
+    fi
+    if ! command -v panic-attack >/dev/null 2>&1; then
+        echo "panic-attack not found (optional — pre-commit scans):"
+        echo "  cargo install --git https://github.com/hyperpolymath/panic-attacker"
+        echo ""
+    fi
+    # --- Clear stale caches ---
+    echo "Clearing stale Zig caches..."
+    rm -rf ffi/zig/.zig-cache cartridges/*/ffi/.zig-cache 2>/dev/null && HEALED=$((HEALED + 1)) || true
+    echo "  Cleared."
+    # --- Rebuild FFI if tools are present ---
+    if command -v zig >/dev/null 2>&1; then
+        echo ""
+        echo "Rebuilding catalogue FFI..."
+        if (cd ffi/zig && zig build 2>/dev/null); then
+            echo "  Catalogue FFI rebuilt successfully."
+            HEALED=$((HEALED + 1))
+        else
+            echo "  Catalogue FFI rebuild failed — check 'just doctor' output."
+        fi
     fi
     echo ""
-    echo "Heal complete. Run 'just doctor' to verify."
+    echo "Healed $HEALED items. Run 'just doctor' to verify."
 
 # Guided tour of the project structure and key concepts
 tour:
@@ -1212,7 +1285,7 @@ tour:
     echo ""
     echo "Read more: docs/ARCHITECTURE.md, QUICKSTART-USER.adoc"
 
-# Show help for common workflows
+# Show help for common workflows, build commands, test commands, and doc links
 help-me:
     #!/usr/bin/env bash
     echo "═══════════════════════════════════════════════════"
@@ -1220,37 +1293,63 @@ help-me:
     echo "═══════════════════════════════════════════════════"
     echo ""
     echo "FIRST TIME SETUP:"
-    echo "  just doctor           Check toolchain"
-    echo "  just heal             Fix missing tools"
+    echo "  just doctor           Check toolchain health + port 7700"
+    echo "  just heal             Fix missing tools, clear caches, rebuild FFI"
     echo "  just deps             Verify dependencies"
+    echo "  just tour             Guided project tour"
     echo ""
     echo "BUILD & RUN:"
-    echo "  just build            Build all Zig FFI layers"
-    echo "  just run              Build + start server"
+    echo "  just build            Build all Zig FFI layers (catalogue + cartridges)"
+    echo "  just build-release    Build with optimizations"
+    echo "  just build-adapter    Build V-lang API triple adapter"
+    echo "  just run              Build + start server (REST 7700, gRPC 7701, GraphQL 7702)"
+    echo "  just run-verbose      Start with verbose output"
     echo "  just serve            Server + Cloudflare tunnel"
+    echo "  just tunnel           Cloudflare quick tunnel only"
     echo ""
     echo "TEST & VERIFY:"
-    echo "  just test             Run all FFI tests (18 suites)"
-    echo "  just test-smoke       Quick smoke test"
-    echo "  just verify           Full verification suite"
+    echo "  just test             Run all FFI tests (catalogue + 17 cartridges)"
+    echo "  just test-verbose     Run tests with verbose output"
+    echo "  just test-smoke       Quick smoke test (ABI check + catalogue test)"
+    echo "  just readiness        Component Readiness Grade tests"
+    echo "  just bench            Run benchmarks"
+    echo "  just integration      End-to-end integration tests"
+    echo "  just verify           Full verification (typecheck + zero believe_me + build + test)"
     echo "  just typecheck        Type-check all Idris2 ABIs"
     echo "  just verify-no-believe-me  Scan for unsound constructs"
     echo ""
     echo "QUALITY:"
     echo "  just quality          All checks (fmt + lint + test)"
     echo "  just fmt              Format all Zig source"
+    echo "  just fmt-check        Check formatting without changes"
     echo "  just lint             Lint + typecheck"
-    echo "  just matrix           Show cartridge status"
+    echo "  just matrix           Show cartridge capability status"
+    echo ""
+    echo "SECURITY:"
+    echo "  just security         Full security audit"
+    echo "  just deps-audit       Audit dependencies for vulnerabilities"
+    echo "  just assail           Run panic-attacker pre-commit scan"
     echo ""
     echo "CONTAINERS:"
     echo "  just container-build  Build OCI image"
     echo "  just container-up     Start compose stack"
     echo "  just container-down   Stop compose stack"
     echo ""
-    echo "PRE-COMMIT:"
-    echo "  just assail           Run panic-attacker scan"
+    echo "VALIDATION:"
+    echo "  just validate         Full RSR + STATE + AI install validation"
+    echo "  just validate-rsr     RSR compliance check"
     echo ""
-    echo "LEARN:"
-    echo "  just tour             Guided project tour"
-    echo "  just info             Project info"
+    echo "HOUSEKEEPING:"
+    echo "  just clean            Remove build artefacts"
+    echo "  just clean-all        Deep clean including caches"
+    echo "  just docs             Generate documentation"
+    echo "  just info             Project metadata"
     echo "  just default          List all recipes"
+    echo ""
+    echo "DOCUMENTATION:"
+    echo "  README.adoc                      Project overview"
+    echo "  EXPLAINME.adoc                   Detailed claims and evidence"
+    echo "  docs/AI_INSTALLATION_GUIDE.adoc  AI-assisted setup guide"
+    echo "  docs/ARCHITECTURE.md             Architecture overview"
+    echo "  QUICKSTART-USER.adoc             Quick start for users"
+    echo "  .machine_readable/STATE.a2ml     Current project state"
