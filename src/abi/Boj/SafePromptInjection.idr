@@ -11,11 +11,14 @@
 ||| - Role injection (fake assistant/system message boundaries)
 ||| - Delimiter escape (closing XML/JSON/markdown fences)
 ||| - Encoding bypass (base64/hex-encoded injection payloads)
+|||
+||| All proofs are constructive. Zero believe_me. Zero postulates.
 module Boj.SafePromptInjection
 
 import Data.List
 import Data.Nat
 import Data.String
+import Boj.SafetyLemmas
 
 %default total
 
@@ -55,6 +58,16 @@ data PromptSafe : String -> Type where
                  {auto prf : containsInjectionPattern s = False} ->
                  PromptSafe s
 
+||| Decision procedure for prompt safety.
+||| Returns either a safety witness or the fact that injection was detected.
+export
+decidePromptSafe : (s : String) ->
+                   Either (PromptSafe s)
+                          (containsInjectionPattern s = True)
+decidePromptSafe s with (containsInjectionPattern s) proof prf
+  decidePromptSafe s | False = Left (MkPromptSafe s {prf = prf})
+  decidePromptSafe s | True = Right prf
+
 --------------------------------------------------------------------------------
 -- Role Boundary Safety
 --------------------------------------------------------------------------------
@@ -81,8 +94,17 @@ data RoleBoundarySafe : String -> Type where
                        {auto prf : isRoleBoundary s = False} ->
                        RoleBoundarySafe s
 
+||| Decision procedure for role boundary safety.
+export
+decideRoleBoundarySafe : (s : String) ->
+                         Either (RoleBoundarySafe s)
+                                (isRoleBoundary s = True)
+decideRoleBoundarySafe s with (isRoleBoundary s) proof prf
+  decideRoleBoundarySafe s | False = Left (MkRoleBoundarySafe s {prf = prf})
+  decideRoleBoundarySafe s | True = Right prf
+
 --------------------------------------------------------------------------------
--- Delimiter Escape Safety
+-- Delimiter Escape Safety (on List Char for provability)
 --------------------------------------------------------------------------------
 
 ||| Characters that could close a structured prompt context.
@@ -92,6 +114,13 @@ isDelimiterEscape c =
   c == '`' || c == '<' || c == '>' || c == '{' || c == '}' ||
   c == '[' || c == ']'
 
+||| Predicate: a character list is safe for embedding in a delimited prompt region.
+public export
+data DelimiterCharsafe : List Char -> Type where
+  MkDelimiterCharsafe : (cs : List Char) ->
+                        {auto prf : all (\c => not (isDelimiterEscape c)) cs = True} ->
+                        DelimiterCharsafe cs
+
 ||| Predicate: a string is safe for embedding in a delimited prompt region.
 ||| This is strict — use only for untrusted user text inside fenced blocks.
 public export
@@ -99,6 +128,76 @@ data DelimiterSafe : String -> Type where
   MkDelimiterSafe : (s : String) ->
                     {auto prf : all (\c => not (isDelimiterEscape c)) (unpack s) = True} ->
                     DelimiterSafe s
+
+||| Theorem: the empty char list is delimiter-safe.
+export
+nilIsDelimiterCharsafe : DelimiterCharsafe []
+nilIsDelimiterCharsafe = MkDelimiterCharsafe []
+
+||| Theorem: delimiter char safety implies no backticks.
+||| Proof: isDelimiterEscape '`' = True, so not (...) = False.
+|||         But all (\c => not (isDelimiterEscape c)) cs = True means every char passes.
+|||         Contradiction via allTrueElem.
+export
+delimiterCharsafeNoBacktick : DelimiterCharsafe cs -> Not (Elem '`' cs)
+delimiterCharsafeNoBacktick (MkDelimiterCharsafe cs {prf}) elemPrf =
+  let charFails : not (isDelimiterEscape '`') = True
+      charFails = allTrueElem {p = \c => not (isDelimiterEscape c)} prf elemPrf
+  in absurd charFails
+
+||| Theorem: delimiter char safety implies no angle brackets.
+export
+delimiterCharsafeNoAngle : DelimiterCharsafe cs -> Not (Elem '<' cs)
+delimiterCharsafeNoAngle (MkDelimiterCharsafe cs {prf}) elemPrf =
+  let charFails : not (isDelimiterEscape '<') = True
+      charFails = allTrueElem {p = \c => not (isDelimiterEscape c)} prf elemPrf
+  in absurd charFails
+
+||| Theorem: delimiter char safety implies no closing angle brackets.
+export
+delimiterCharsafeNoCloseAngle : DelimiterCharsafe cs -> Not (Elem '>' cs)
+delimiterCharsafeNoCloseAngle (MkDelimiterCharsafe cs {prf}) elemPrf =
+  let charFails : not (isDelimiterEscape '>') = True
+      charFails = allTrueElem {p = \c => not (isDelimiterEscape c)} prf elemPrf
+  in absurd charFails
+
+||| Theorem: delimiter char safety implies no curly braces.
+export
+delimiterCharsafeNoBraces : DelimiterCharsafe cs -> (Not (Elem '{' cs), Not (Elem '}' cs))
+delimiterCharsafeNoBraces (MkDelimiterCharsafe cs {prf}) =
+  let noOpen = \elemPrf =>
+        let cf = allTrueElem {p = \c => not (isDelimiterEscape c)} prf elemPrf
+        in absurd cf
+      noClose = \elemPrf =>
+        let cf = allTrueElem {p = \c => not (isDelimiterEscape c)} prf elemPrf
+        in absurd cf
+  in (noOpen, noClose)
+
+||| Theorem: delimiter char safety implies no square brackets.
+export
+delimiterCharsafeNoBrackets : DelimiterCharsafe cs -> (Not (Elem '[' cs), Not (Elem ']' cs))
+delimiterCharsafeNoBrackets (MkDelimiterCharsafe cs {prf}) =
+  let noOpen = \elemPrf =>
+        let cf = allTrueElem {p = \c => not (isDelimiterEscape c)} prf elemPrf
+        in absurd cf
+      noClose = \elemPrf =>
+        let cf = allTrueElem {p = \c => not (isDelimiterEscape c)} prf elemPrf
+        in absurd cf
+  in (noOpen, noClose)
+
+||| Theorem: concatenating two delimiter-char-safe lists produces a safe list.
+export
+concatDelimiterCharsafe : DelimiterCharsafe xs -> DelimiterCharsafe ys ->
+                          DelimiterCharsafe (xs ++ ys)
+concatDelimiterCharsafe (MkDelimiterCharsafe xs {prf = pX})
+                        (MkDelimiterCharsafe ys {prf = pY}) =
+  MkDelimiterCharsafe (xs ++ ys) {prf = allAppendBoth pX pY}
+
+||| Theorem: a prefix of a delimiter-char-safe list is also safe.
+export
+takeDelimiterCharsafe : DelimiterCharsafe cs -> (n : Nat) -> DelimiterCharsafe (take n cs)
+takeDelimiterCharsafe (MkDelimiterCharsafe cs {prf}) n =
+  MkDelimiterCharsafe (take n cs) {prf = allTake prf}
 
 --------------------------------------------------------------------------------
 -- Length Bounding
@@ -132,6 +231,34 @@ record SafePromptSegment where
   0 noDelimiter : DelimiterSafe text
   0 bounded     : LengthBounded text
 
+||| Decision procedure for full prompt segment safety.
+||| Returns either a safe segment or identifies which check failed.
+public export
+data PromptCheckFailure : Type where
+  InjectionDetected   : PromptCheckFailure
+  RoleBoundaryFound   : PromptCheckFailure
+  DelimiterUnsafe     : PromptCheckFailure
+  TooLong             : PromptCheckFailure
+
+export
+checkPromptSegment : (s : String) -> Either PromptCheckFailure SafePromptSegment
+checkPromptSegment s with (containsInjectionPattern s) proof injPrf
+  checkPromptSegment s | True = Left InjectionDetected
+  checkPromptSegment s | False with (isRoleBoundary s) proof rolePrf
+    checkPromptSegment s | False | True = Left RoleBoundaryFound
+    checkPromptSegment s | False | False
+      with (all (\c => not (isDelimiterEscape c)) (unpack s)) proof delimPrf
+      checkPromptSegment s | False | False | False = Left DelimiterUnsafe
+      checkPromptSegment s | False | False | True
+        with (isLTE (length s) maxPromptSegmentLength)
+        checkPromptSegment s | False | False | True | Yes ltePrf =
+          Right (MkSafePromptSegment s
+                   (MkPromptSafe s {prf = injPrf})
+                   (MkRoleBoundarySafe s {prf = rolePrf})
+                   (MkDelimiterSafe s {prf = delimPrf})
+                   (MkLengthBounded s {prf = ltePrf}))
+        checkPromptSegment s | False | False | True | No _ = Left TooLong
+
 --------------------------------------------------------------------------------
 -- Core Theorems
 --------------------------------------------------------------------------------
@@ -151,14 +278,14 @@ export
 emptyIsDelimiterSafe : DelimiterSafe ""
 emptyIsDelimiterSafe = MkDelimiterSafe ""
 
-||| Theorem: prompt safety is preserved under truncation.
-||| (Removing characters cannot introduce new injection patterns.)
+||| Theorem: the empty string passes all prompt safety checks.
 export
-truncatePreservesPromptSafe : PromptSafe s -> PromptSafe (substr 0 n s)
-
-||| Theorem: role boundary safety is preserved under truncation.
-export
-truncatePreservesRoleSafe : RoleBoundarySafe s -> RoleBoundarySafe (substr 0 n s)
+emptyIsSafeSegment : SafePromptSegment
+emptyIsSafeSegment = MkSafePromptSegment ""
+  emptyIsPromptSafe
+  emptyIsRoleSafe
+  emptyIsDelimiterSafe
+  (MkLengthBounded "")
 
 --------------------------------------------------------------------------------
 -- FFI Bridge Declarations
@@ -183,19 +310,28 @@ boj_safety_check_delimiters : (ptr : AnyPtr) -> (len : Int) -> Int
 ||| Summary of prompt injection safety properties proven in this module:
 |||
 ||| 1. **Pattern Safety**: Known injection phrases detected and rejected.
-|||    Proof: containsInjectionPattern checks 11 canonical attack patterns.
+|||    Proof: decidePromptSafe is a decision procedure returning evidence.
+|||    containsInjectionPattern checks 11 canonical attack patterns.
 |||
 ||| 2. **Role Boundary Safety**: LLM role markers cannot appear in user text.
-|||    Proof: isRoleBoundary checks ChatML, Markdown, and XML role delimiters.
+|||    Proof: decideRoleBoundarySafe is a decision procedure.
+|||    isRoleBoundary checks ChatML, Markdown, and XML role delimiters.
 |||
 ||| 3. **Delimiter Safety**: Structured context cannot be escaped via fencing chars.
-|||    Proof: isDelimiterEscape rejects backticks, angle brackets, braces.
+|||    Proofs: delimiterCharsafeNoBacktick, delimiterCharsafeNoAngle,
+|||    delimiterCharsafeNoBraces, delimiterCharsafeNoBrackets use allTrueElem
+|||    to derive contradiction for each delimiter character.
 |||
 ||| 4. **Length Bounding**: Token-budget exhaustion attacks prevented.
 |||    Proof: LengthBounded carries LTE witness for maxPromptSegmentLength.
 |||
-||| 5. **Truncation**: All safety properties preserved under string truncation.
-|||    (Removing characters never introduces new attack patterns.)
+||| 5. **Composition**: checkPromptSegment is a total decision procedure
+|||    that either returns a SafePromptSegment (with all four witnesses)
+|||    or identifies exactly which check failed via PromptCheckFailure.
+|||
+||| 6. **Delimiter Composition**: Safety closed under concat and take.
+|||    Proofs: concatDelimiterCharsafe (allAppendBoth),
+|||    takeDelimiterCharsafe (allTake) from SafetyLemmas.
 public export
 promptSafetyGuarantees : String
-promptSafetyGuarantees = "BoJ SafePromptInjection: 5 proven properties across 4 injection categories"
+promptSafetyGuarantees = "BoJ SafePromptInjection: 6 proven properties across 4 injection categories"

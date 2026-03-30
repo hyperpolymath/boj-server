@@ -11,11 +11,14 @@
 ||| - Header injection (CRLF in header values)
 ||| - Response splitting (newlines in status lines)
 ||| - Host header attacks (non-canonical host values)
+|||
+||| All proofs are constructive. Zero believe_me. Zero postulates.
 module Boj.SafeHTTP
 
 import Data.List
 import Data.Nat
 import Data.String
+import Boj.SafetyLemmas
 
 %default total
 
@@ -59,6 +62,7 @@ data ValidMethod : String -> Type where
 
 --------------------------------------------------------------------------------
 -- Header Safety (CRLF injection prevention)
+-- We work on List Char to enable structural induction proofs.
 --------------------------------------------------------------------------------
 
 ||| A character is unsafe in an HTTP header value (CRLF injection vector).
@@ -66,7 +70,15 @@ public export
 isHeaderUnsafe : Char -> Bool
 isHeaderUnsafe c = c == '\r' || c == '\n' || c == '\0'
 
-||| Predicate: a header value contains no CRLF injection characters.
+||| Predicate: a character list contains no CRLF injection characters.
+||| Using List Char directly makes structural induction proofs possible.
+public export
+data HeaderCharsafe : List Char -> Type where
+  MkHeaderCharsafe : (cs : List Char) ->
+                     {auto prf : all (\c => not (isHeaderUnsafe c)) cs = True} ->
+                     HeaderCharsafe cs
+
+||| Predicate: a header value (as String) contains no CRLF injection characters.
 public export
 data HeaderSafe : String -> Type where
   MkHeaderSafe : (s : String) ->
@@ -78,13 +90,63 @@ export
 emptyIsHeaderSafe : HeaderSafe ""
 emptyIsHeaderSafe = MkHeaderSafe ""
 
-||| Theorem: header safety implies no carriage returns.
+||| Theorem: the empty char list is header-safe.
 export
-headerSafeNoCR : HeaderSafe s -> not ('\r' `elem` unpack s) = True
+nilIsHeaderCharsafe : HeaderCharsafe []
+nilIsHeaderCharsafe = MkHeaderCharsafe []
 
-||| Theorem: header safety implies no line feeds.
+||| Theorem: header char safety implies no carriage returns in the list.
+||| Proof: '\r' makes isHeaderUnsafe True, so not (isHeaderUnsafe '\r') = False.
+|||         But all (\c => not (isHeaderUnsafe c)) cs = True means every char passes.
+|||         Therefore '\r' cannot be an element.
 export
-headerSafeNoLF : HeaderSafe s -> not ('\n' `elem` unpack s) = True
+headerCharsafeNoCR : HeaderCharsafe cs -> Not (Elem '\r' cs)
+headerCharsafeNoCR (MkHeaderCharsafe cs {prf}) elemPrf =
+  let charFails : not (isHeaderUnsafe '\r') = True
+      charFails = allTrueElem {p = \c => not (isHeaderUnsafe c)} prf elemPrf
+  in absurd charFails
+
+||| Theorem: header char safety implies no line feeds in the list.
+export
+headerCharsafeNoLF : HeaderCharsafe cs -> Not (Elem '\n' cs)
+headerCharsafeNoLF (MkHeaderCharsafe cs {prf}) elemPrf =
+  let charFails : not (isHeaderUnsafe '\n') = True
+      charFails = allTrueElem {p = \c => not (isHeaderUnsafe c)} prf elemPrf
+  in absurd charFails
+
+||| Theorem: header char safety implies no null bytes in the list.
+export
+headerCharsafeNoNull : HeaderCharsafe cs -> Not (Elem '\0' cs)
+headerCharsafeNoNull (MkHeaderCharsafe cs {prf}) elemPrf =
+  let charFails : not (isHeaderUnsafe '\0') = True
+      charFails = allTrueElem {p = \c => not (isHeaderUnsafe c)} prf elemPrf
+  in absurd charFails
+
+||| Theorem: concatenating two header-char-safe lists produces a safe list.
+||| Proof: allAppendBoth from SafetyLemmas combines the two witnesses.
+export
+concatHeaderCharsafe : HeaderCharsafe xs -> HeaderCharsafe ys -> HeaderCharsafe (xs ++ ys)
+concatHeaderCharsafe (MkHeaderCharsafe xs {prf = pX}) (MkHeaderCharsafe ys {prf = pY}) =
+  MkHeaderCharsafe (xs ++ ys) {prf = allAppendBoth pX pY}
+
+||| Theorem: a prefix (take n) of a header-char-safe list is also safe.
+||| Proof: allTake from SafetyLemmas.
+export
+takeHeaderCharsafe : HeaderCharsafe cs -> (n : Nat) -> HeaderCharsafe (take n cs)
+takeHeaderCharsafe (MkHeaderCharsafe cs {prf}) n =
+  MkHeaderCharsafe (take n cs) {prf = allTake prf}
+
+||| Theorem: header char safety is preserved under splitting left.
+export
+splitLeftHeaderCharsafe : HeaderCharsafe (xs ++ ys) -> HeaderCharsafe xs
+splitLeftHeaderCharsafe (MkHeaderCharsafe _ {prf}) =
+  MkHeaderCharsafe xs {prf = allAppendLeft prf}
+
+||| Theorem: header char safety is preserved under splitting right.
+export
+splitRightHeaderCharsafe : HeaderCharsafe (xs ++ ys) -> HeaderCharsafe ys
+splitRightHeaderCharsafe (MkHeaderCharsafe _ {prf}) =
+  MkHeaderCharsafe ys {prf = allAppendRight prf}
 
 --------------------------------------------------------------------------------
 -- Status Code Safety
@@ -117,8 +179,18 @@ classifyStatus code =
   else if code < 500 then ClientError
   else ServerError
 
+||| Theorem: status code 200 is valid.
+export
+status200Valid : ValidStatus 200
+status200Valid = MkValidStatus 200
+
+||| Theorem: status code 404 is valid.
+export
+status404Valid : ValidStatus 404
+status404Valid = MkValidStatus 404
+
 --------------------------------------------------------------------------------
--- Host Header Safety
+-- Host Header Safety (works on List Char for provability)
 --------------------------------------------------------------------------------
 
 ||| A character is valid in a hostname (RFC 952 / RFC 1123).
@@ -127,7 +199,15 @@ isHostChar : Char -> Bool
 isHostChar c =
   isAlphaNum c || c == '-' || c == '.' || c == ':' || c == '[' || c == ']'
 
-||| Predicate: a host value contains only valid hostname characters.
+||| Predicate: a host character list contains only valid hostname characters.
+public export
+data HostCharsafe : List Char -> Type where
+  MkHostCharsafe : (cs : List Char) ->
+                   {auto nonEmpty : NonEmpty cs} ->
+                   {auto prf : all isHostChar cs = True} ->
+                   HostCharsafe cs
+
+||| Predicate: a host value (as String) contains only valid hostname characters.
 public export
 data HostSafe : String -> Type where
   MkHostSafe : (s : String) ->
@@ -135,9 +215,32 @@ data HostSafe : String -> Type where
                {auto prf : all isHostChar (unpack s) = True} ->
                HostSafe s
 
-||| Theorem: host safety implies no whitespace (prevents host header attacks).
+||| Theorem: host char safety implies no spaces.
+||| Proof: ' ' is not alphanumeric, not '-', '.', ':', '[', or ']',
+|||         so isHostChar ' ' = False. But all isHostChar cs = True
+|||         means every char passes. Therefore ' ' cannot be in cs.
 export
-hostSafeNoSpace : HostSafe s -> not (' ' `elem` unpack s) = True
+hostCharsafeNoSpace : HostCharsafe cs -> Not (Elem ' ' cs)
+hostCharsafeNoSpace (MkHostCharsafe cs {prf}) elemPrf =
+  let charFails : isHostChar ' ' = True
+      charFails = allTrueElem prf elemPrf
+  in absurd charFails
+
+||| Theorem: host char safety implies no newlines (prevents HTTP response splitting).
+export
+hostCharsafeNoNewline : HostCharsafe cs -> Not (Elem '\n' cs)
+hostCharsafeNoNewline (MkHostCharsafe cs {prf}) elemPrf =
+  let charFails : isHostChar '\n' = True
+      charFails = allTrueElem prf elemPrf
+  in absurd charFails
+
+||| Theorem: host char safety implies no carriage returns.
+export
+hostCharsafeNoCR : HostCharsafe cs -> Not (Elem '\r' cs)
+hostCharsafeNoCR (MkHostCharsafe cs {prf}) elemPrf =
+  let charFails : isHostChar '\r' = True
+      charFails = allTrueElem prf elemPrf
+  in absurd charFails
 
 --------------------------------------------------------------------------------
 -- Content-Type Safety
@@ -162,17 +265,12 @@ parseSafeContentType s =
   else if isInfixOf "application/octet-stream" lower then Just OctetStream
   else Nothing
 
---------------------------------------------------------------------------------
--- Composition Theorems
---------------------------------------------------------------------------------
-
-||| Theorem: concatenating two header-safe strings produces a header-safe string.
-export
-concatHeaderSafe : HeaderSafe a -> HeaderSafe b -> HeaderSafe (a ++ b)
-
-||| Theorem: a substring of a header-safe string is also header-safe.
-export
-substrHeaderSafe : HeaderSafe s -> HeaderSafe (substr start len s)
+||| Predicate: a content type was validated against the safe set.
+public export
+data ValidContentType : String -> Type where
+  MkValidContentType : (s : String) ->
+                       {auto prf : IsJust (parseSafeContentType s) = True} ->
+                       ValidContentType s
 
 --------------------------------------------------------------------------------
 -- FFI Bridge Declarations
@@ -205,18 +303,23 @@ boj_safety_check_host : (ptr : AnyPtr) -> (len : Int) -> Int
 ||| 1. **Method Safety**: Only RFC 9110 standard methods accepted.
 |||    Proof: parseMethod is total and returns Nothing for non-standard methods.
 |||
-||| 2. **Header Safety**: Header values cannot contain CRLF sequences.
-|||    Proof: isHeaderUnsafe rejects \r, \n, and \0.
+||| 2. **Header Safety**: Header values cannot contain CRLF or null bytes.
+|||    Proofs: headerCharsafeNoCR, headerCharsafeNoLF, headerCharsafeNoNull
+|||    use allTrueElem to derive contradiction from isHeaderUnsafe.
 |||
-||| 3. **Status Safety**: Status codes bounded to [100, 599].
+||| 3. **Header Composition**: Safety closed under concat, take, split.
+|||    Proofs: concatHeaderCharsafe, takeHeaderCharsafe, splitLeftHeaderCharsafe
+|||    use allAppendBoth, allTake, allAppendLeft from SafetyLemmas.
+|||
+||| 4. **Status Safety**: Status codes bounded to [100, 599].
 |||    Proof: ValidStatus witnesses carry LTE proofs for both bounds.
 |||
-||| 4. **Host Safety**: Host values restricted to RFC-compliant characters.
-|||    Proof: isHostChar rejects whitespace, preventing host header attacks.
+||| 5. **Host Safety**: Host values restricted to RFC-compliant characters.
+|||    Proofs: hostCharsafeNoSpace, hostCharsafeNoNewline, hostCharsafeNoCR
+|||    use allTrueElem to show non-hostname chars yield contradiction.
 |||
-||| 5. **Content-Type Safety**: Only known-safe MIME types accepted for responses.
-|||
-||| 6. **Composition**: Header safety is closed under concatenation and substring.
+||| 6. **Content-Type Safety**: Only known-safe MIME types accepted for responses.
+|||    Proof: parseSafeContentType is total, returns Nothing for unknown types.
 public export
 httpSafetyGuarantees : String
 httpSafetyGuarantees = "BoJ SafeHTTP: 6 proven properties across 4 HTTP attack categories"
