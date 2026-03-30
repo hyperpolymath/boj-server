@@ -27,7 +27,7 @@
 FROM cgr.dev/chainguard/wolfi-base:latest AS builder
 
 # Install Zig toolchain for FFI compilation
-RUN apk add --no-cache build-base zig
+RUN apk add --no-cache build-base zig sqlite-dev
 
 WORKDIR /build
 
