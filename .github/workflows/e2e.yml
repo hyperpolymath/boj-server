@@ -1,0 +1,103 @@
+# SPDX-License-Identifier: PMPL-1.0-or-later
+# Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+#
+# End-to-end test suite for BoJ Server.
+# Runs e2e_full.sh and order_ticket_e2e.sh after building the adapter and FFI.
+
+name: E2E Tests
+
+on:
+  push:
+    branches: [main, master, develop]
+    paths:
+      - 'adapter/**'
+      - 'cartridges/**'
+      - 'ffi/**'
+      - 'mcp-bridge/**'
+      - 'tests/**'
+      - '.github/workflows/e2e.yml'
+  pull_request:
+    branches: [main, master]
+    paths:
+      - 'adapter/**'
+      - 'cartridges/**'
+      - 'ffi/**'
+      - 'mcp-bridge/**'
+      - 'tests/**'
+  workflow_dispatch:
+
+permissions: read-all
+
+concurrency:
+  group: e2e-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  e2e-full:
+    name: E2E — Full REST + MCP Bridge
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
+
+      - name: Install Zig
+        uses: goto-bus-stop/setup-zig@7ab2955eb728f5440978d7b4f723a50dea1f3608  # v2
+        with:
+          version: 0.15.0
+
+      - name: Install V
+        run: |
+          git clone --depth 1 https://github.com/vlang/v /tmp/vlang
+          cd /tmp/vlang && make && sudo cp v /usr/local/bin/
+
+      - name: Install Deno
+        uses: denoland/setup-deno@5fae568d37c3b73e0e4ca63d4e2c4e324a2b3497  # v2
+        with:
+          deno-version: v2.x
+
+      - name: Install system dependencies
+        run: sudo apt-get update && sudo apt-get install -y curl jq
+
+      - name: Build FFI libraries
+        run: |
+          cd ffi/zig && zig build
+          for cart in cartridges/*/ffi; do
+            [ -f "$cart/build.zig" ] && (cd "$cart" && zig build) || true
+          done
+
+      - name: Build V adapter
+        run: |
+          cd adapter/v && v -o boj-server . || echo "V adapter build attempted"
+
+      - name: Run E2E full test suite
+        run: bash tests/e2e_full.sh
+
+      - name: Upload test logs
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4
+        with:
+          name: e2e-full-logs
+          path: /tmp/boj-e2e-test.*
+          retention-days: 7
+
+  e2e-order-ticket:
+    name: E2E — Order Ticket (FFI layer)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
+
+      - name: Install Zig
+        uses: goto-bus-stop/setup-zig@7ab2955eb728f5440978d7b4f723a50dea1f3608  # v2
+        with:
+          version: 0.15.0
+
+      - name: Build FFI libraries
+        run: cd ffi/zig && zig build
+
+      - name: Run order ticket E2E
+        run: bash tests/order_ticket_e2e.sh
