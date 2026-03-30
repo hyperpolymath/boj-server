@@ -1,10 +1,11 @@
 # SPDX-License-Identifier: PMPL-1.0-or-later
 # Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
 #
-# End-to-end test suite for BoJ Server.
-# Runs e2e_full.sh and order_ticket_e2e.sh after building the adapter and FFI.
+# Full test suite for BoJ Server: E2E, aspect tests, and benchmarks.
+# Covers all merge requirement categories: P2P (zig-test.yml), E2E (here),
+# aspect, execution, lifecycle, and benchmarks.
 
-name: E2E Tests
+name: E2E + Aspect + Bench
 
 on:
   push:
@@ -15,6 +16,7 @@ on:
       - 'ffi/**'
       - 'mcp-bridge/**'
       - 'tests/**'
+      - 'src/**'
       - '.github/workflows/e2e.yml'
   pull_request:
     branches: [main, master]
@@ -24,6 +26,7 @@ on:
       - 'ffi/**'
       - 'mcp-bridge/**'
       - 'tests/**'
+      - 'src/**'
   workflow_dispatch:
 
 permissions: read-all
@@ -33,6 +36,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # ─── End-to-End: Full REST + MCP Bridge ────────────────────────────
   e2e-full:
     name: E2E — Full REST + MCP Bridge
     runs-on: ubuntu-latest
@@ -82,6 +86,7 @@ jobs:
           path: /tmp/boj-e2e-test.*
           retention-days: 7
 
+  # ─── End-to-End: Order Ticket (FFI layer) ──────────────────────────
   e2e-order-ticket:
     name: E2E — Order Ticket (FFI layer)
     runs-on: ubuntu-latest
@@ -101,3 +106,45 @@ jobs:
 
       - name: Run order ticket E2E
         run: bash tests/order_ticket_e2e.sh
+
+  # ─── Aspect Tests: Cross-Cutting Concerns ──────────────────────────
+  aspect-tests:
+    name: Aspect — Thread Safety + ABI Contract + SPDX
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
+
+      - name: Run aspect tests
+        run: bash tests/aspect_tests.sh
+
+  # ─── Benchmarks: Performance Regression Detection ──────────────────
+  benchmarks:
+    name: Bench — FFI Catalogue + Mount/Unmount + Hash
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
+
+      - name: Install Zig
+        uses: goto-bus-stop/setup-zig@7ab2955eb728f5440978d7b4f723a50dea1f3608  # v2
+        with:
+          version: 0.15.0
+
+      - name: Build FFI libraries
+        run: cd ffi/zig && zig build
+
+      - name: Run benchmarks
+        run: cd ffi/zig && zig build bench
+
+      - name: Upload benchmark results
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4
+        with:
+          name: benchmark-results
+          path: ffi/zig/zig-out/bench*
+          retention-days: 30
