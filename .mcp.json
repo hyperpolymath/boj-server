@@ -1,32 +1,11 @@
 {
-  "name": "boj-server",
-  "version": "0.3.1",
-  "description": "Bundle of Joy (BoJ) MCP Server — cartridge-based DevOps toolkit with 18 domain cartridges",
-  "command": "node",
-  "args": ["mcp-bridge/main.js"],
-  "env": {
-    "BOJ_URL": "http://localhost:7700"
-  },
-  "tools": [
-    {
-      "name": "boj_health",
-      "description": "Check BoJ server health status"
-    },
-    {
-      "name": "boj_menu",
-      "description": "List all BoJ cartridges with their domains, protocols, tiers, and availability"
-    },
-    {
-      "name": "boj_cartridges",
-      "description": "Show the BoJ cartridge matrix — protocol x domain grid"
-    },
-    {
-      "name": "boj_cartridge_info",
-      "description": "Get detailed information about a specific BoJ cartridge"
-    },
-    {
-      "name": "boj_cartridge_invoke",
-      "description": "Invoke a BoJ cartridge operation"
+  "mcpServers": {
+    "boj-server": {
+      "command": "node",
+      "args": ["mcp-bridge/main.js"],
+      "env": {
+        "BOJ_URL": "http://localhost:7700"
+      }
     }
-  ]
+  }
 }
