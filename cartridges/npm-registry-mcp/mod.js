@@ -109,7 +109,7 @@ async function downloadsFetch(path) {
 // ---------------------------------------------------------------------------
 
 function encodePkgName(name) {
-  return name.replace("/", "%2f");
+  return name.replaceAll("/", "%2f");
 }
 
 // ---------------------------------------------------------------------------
