@@ -1,0 +1,47 @@
+# SPDX-License-Identifier: PMPL-1.0-or-later
+# Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+#
+# BoJ MCP Bridge — minimal stdio transport image.
+#
+# Runs only the Deno MCP bridge (mcp-bridge/main.js) which bridges
+# the BoJ REST API to the MCP JSON-RPC stdio protocol for Claude Code,
+# Glama, and other MCP clients.
+#
+# For the full production image (Zig FFI + V adapter), use:
+#   podman build -t boj-server:latest -f container/Containerfile .
+#
+# Build:
+#   podman build -t boj-mcp-bridge:latest -f container/Containerfile.mcp-bridge .
+#
+# Run:
+#   podman run -i --rm -e BOJ_URL=http://localhost:7700 boj-mcp-bridge:latest
+
+FROM cgr.dev/chainguard/wolfi-base:latest
+
+# Install Deno runtime (replaces banned Node.js/npm)
+RUN apk add --no-cache deno
+
+LABEL org.opencontainers.image.title="Bundle of Joy Server (MCP Bridge)" \
+      org.opencontainers.image.description="MCP stdio transport for BoJ cartridge toolkit" \
+      org.opencontainers.image.url="https://github.com/hyperpolymath/boj-server" \
+      org.opencontainers.image.source="https://github.com/hyperpolymath/boj-server" \
+      org.opencontainers.image.vendor="hyperpolymath" \
+      org.opencontainers.image.licenses="PMPL-1.0-or-later" \
+      org.opencontainers.image.authors="Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>"
+
+WORKDIR /app
+
+COPY mcp-bridge/ /app/mcp-bridge/
+
+# Create non-root user
+RUN addgroup -S appuser && adduser -S appuser -G appuser
+
+# Cache Deno permissions at build time — no network at runtime
+RUN deno cache --allow-net /app/mcp-bridge/main.js 2>/dev/null || true
+
+USER appuser
+
+# Health: just check process alive (stdin bridge has no HTTP endpoint)
+ENV BOJ_URL=http://localhost:7700
+
+ENTRYPOINT ["deno", "run", "--allow-net", "/app/mcp-bridge/main.js"]

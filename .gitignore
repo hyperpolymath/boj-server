@@ -101,11 +101,9 @@ sync_report*.txt
 # Idris2 build artifacts
 src/abi/build/
 
-# Zig cache
-ffi/zig/.zig-cache/
-ffi/zig/zig-out/
-cartridges/*/ffi/.zig-cache/
-cartridges/*/ffi/zig-out/
+# Zig build artifacts (all locations — matches nested dirs too)
+**/.zig-cache/
+**/zig-out/
 
 # Cartridge Idris2 build artifacts
 cartridges/*/abi/build/
@@ -129,15 +127,12 @@ v.mod.lock
 *.so
 *.dylib
 
-# Zig global cache
-.zig-cache/
-zig-out/
-
 # Cartridge minter build artifacts
 tools/cartridge-minter/target/
 
 # panic-attack scan reports
 panic-attack-report*.json
+/json
 
 # asdf version manager
 .tool-versions

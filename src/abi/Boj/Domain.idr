@@ -29,6 +29,7 @@ data CapabilityDomain
   | Lsp         -- Language Server Protocol domain
   | Dap         -- Debug Adapter Protocol domain
   | Bsp         -- Build Server Protocol domain
+  | CodeIntel   -- Code intelligence (semantic search, knowledge graph, Graph RAG)
 
 ||| Human-readable label for display in the Teranga menu.
 public export
@@ -50,6 +51,7 @@ domainLabel Agent     = "Agent"
 domainLabel Lsp       = "LSP"
 domainLabel Dap       = "DAP"
 domainLabel Bsp       = "BSP"
+domainLabel CodeIntel = "Code Intelligence"
 
 ||| C-ABI encoding: domain to integer.
 public export
@@ -71,6 +73,7 @@ domainToInt Agent     = 14
 domainToInt Lsp       = 15
 domainToInt Dap       = 16
 domainToInt Bsp       = 17
+domainToInt CodeIntel = 18
 
 ||| C-ABI decoding: integer to domain (with safe fallback).
 public export
@@ -92,6 +95,7 @@ intToDomain 14 = Just Agent
 intToDomain 15 = Just Lsp
 intToDomain 16 = Just Dap
 intToDomain 17 = Just Bsp
+intToDomain 18 = Just CodeIntel
 intToDomain _  = Nothing
 
 ||| Equality for capability domains.
@@ -114,5 +118,6 @@ Eq CapabilityDomain where
   Lsp       == Lsp       = True
   Dap       == Dap       = True
   Bsp       == Bsp       = True
+  CodeIntel == CodeIntel = True
   _         == _         = False
 

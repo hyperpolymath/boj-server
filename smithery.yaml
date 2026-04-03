@@ -64,6 +64,8 @@ tools:
     description: "HuggingFace model search and inference"
   - name: boj_research
     description: "Academic paper search and citations"
+  - name: boj_codeseeker
+    description: "CodeSeeker code intelligence — hybrid search (vector + text + path), knowledge graph traversal, coding patterns, Graph RAG"
 
 install:
   npm: "@hyperpolymath/boj-server"

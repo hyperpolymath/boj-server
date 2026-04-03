@@ -18,6 +18,7 @@ mod templates;
 use clap::{Parser, Subcommand};
 use console::style;
 use dialoguer::{Confirm, Input, MultiSelect, Select};
+use std::io;
 use std::path::PathBuf;
 
 use config::{CapabilityDomain, CartridgeConfig, MenuTier, ProtocolType};
@@ -137,7 +138,10 @@ fn cmd_wizard(boj_root: &PathBuf) {
     );
     println!();
 
-    let cfg = wizard_gather_config();
+    let cfg = wizard_gather_config().unwrap_or_else(|e| {
+        eprintln!("{} Terminal error: {e}", style("✗").red());
+        std::process::exit(1);
+    });
     let scaffolder = Scaffolder::new(boj_root.clone());
 
     // Phase 1: Mint
@@ -216,7 +220,10 @@ fn cmd_mint(boj_root: &PathBuf, name: Option<String>, non_interactive: bool) {
         let name = name.expect("--name required in non-interactive mode");
         CartridgeConfig::with_defaults(name)
     } else {
-        wizard_gather_config()
+        wizard_gather_config().unwrap_or_else(|e| {
+            eprintln!("{} Terminal error: {e}", style("✗").red());
+            std::process::exit(1);
+        })
     };
 
     let scaffolder = Scaffolder::new(boj_root.clone());
@@ -372,7 +379,7 @@ fn cmd_status(boj_root: &PathBuf) {
 // ---------------------------------------------------------------------------
 
 /// Gather all configuration from the user interactively.
-fn wizard_gather_config() -> CartridgeConfig {
+fn wizard_gather_config() -> io::Result<CartridgeConfig> {
     let name: String = Input::new()
         .with_prompt("Cartridge name (e.g., browser-mcp)")
         .validate_with(|input: &String| -> Result<(), &str> {
@@ -390,13 +397,11 @@ fn wizard_gather_config() -> CartridgeConfig {
             }
             Ok(())
         })
-        .interact_text()
-        .unwrap();
+        .interact_text()?;
 
     let description: String = Input::new()
         .with_prompt("Short description")
-        .interact_text()
-        .unwrap();
+        .interact_text()?;
 
     let domains = CapabilityDomain::all();
     let domain_labels: Vec<String> = domains.iter().map(|d| d.to_string()).collect();
@@ -404,8 +409,7 @@ fn wizard_gather_config() -> CartridgeConfig {
         .with_prompt("Capability domain")
         .items(&domain_labels)
         .default(0)
-        .interact()
-        .unwrap();
+        .interact()?;
 
     let protocols = ProtocolType::all();
     let proto_labels: Vec<String> = protocols.iter().map(|p| p.to_string()).collect();
@@ -413,8 +417,7 @@ fn wizard_gather_config() -> CartridgeConfig {
         .with_prompt("Supported protocols (space to select, enter to confirm)")
         .items(&proto_labels)
         .defaults(&[true, false, false, false, false, false, false, false, true])
-        .interact()
-        .unwrap();
+        .interact()?;
     let selected_protocols: Vec<ProtocolType> =
         proto_indices.into_iter().map(|i| protocols[i]).collect();
 
@@ -427,22 +430,19 @@ fn wizard_gather_config() -> CartridgeConfig {
         .with_prompt("Tier")
         .items(&tier_labels)
         .default(2) // Ayo by default (community)
-        .interact()
-        .unwrap();
+        .interact()?;
 
     let backend: String = Input::new()
         .with_prompt("Backend identifier (e.g., 'universal', 'sqlite', 'rest-api')")
         .default("universal".to_string())
-        .interact_text()
-        .unwrap();
+        .interact_text()?;
 
     let generate_panel = Confirm::new()
         .with_prompt("Generate PanLL panel harness?")
         .default(true)
-        .interact()
-        .unwrap();
+        .interact()?;
 
-    CartridgeConfig {
+    Ok(CartridgeConfig {
         name,
         description,
         version: "0.1.0".to_string(),
@@ -451,7 +451,7 @@ fn wizard_gather_config() -> CartridgeConfig {
         tier: tiers[tier_idx],
         backend,
         generate_panel,
-    }
+    })
 }
 
 // ---------------------------------------------------------------------------

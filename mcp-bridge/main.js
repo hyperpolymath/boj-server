@@ -320,6 +320,7 @@ const OFFLINE_MENU = {
     { name: "comms-mcp", version: "0.1.0", domain: "Communications", protocols: ["MCP","REST"], status: "Available", available: true },
     { name: "ml-mcp", version: "0.1.0", domain: "ML/AI", protocols: ["MCP","REST"], status: "Available", available: true },
     { name: "research-mcp", version: "0.1.0", domain: "Research", protocols: ["MCP","REST"], status: "Available", available: true },
+    { name: "codeseeker-mcp", version: "0.1.0", domain: "Code Intelligence", protocols: ["MCP","REST"], status: "Available", available: true },
     { name: "lang-mcp", version: "0.1.0", domain: "Languages", protocols: ["MCP","REST"], status: "Available", available: true, languages: ["eclexia","affinescript","betlang","ephapax","mylang","wokelang","anvomidav","phronesis","error-lang","julia-the-viper","me-dialect","oblibeny"] },
   ],
   tier_shield: [
@@ -327,7 +328,7 @@ const OFFLINE_MENU = {
     { name: "proof-mcp", version: "0.1.0", domain: "Proof", protocols: ["MCP","REST"], status: "Available", available: true },
   ],
   tier_ayo: [],
-  summary: { total: 21, ready: 21, mounted: 0 },
+  summary: { total: 22, ready: 22, mounted: 0 },
 };
 
 async function fetchMenu() {
@@ -808,6 +809,31 @@ function cartridgeToTools(cartridges) {
     tools.push({ name: t.name, description: t.desc, inputSchema: { type: "object", properties: t.props, required: t.req || [] } });
   }
 
+  // Code Intelligence (CodeSeeker)
+  tools.push({
+    name: "boj_codeseeker",
+    description: "CodeSeeker code intelligence — hybrid search (vector + text + path with RRF), knowledge graph traversal (imports, calls, extends, implements), auto-detected pattern retrieval, and Graph RAG context. All data stored locally in .codeseeker/",
+    inputSchema: {
+      type: "object",
+      properties: {
+        operation: {
+          type: "string",
+          enum: ["index", "search", "traverse", "patterns", "graph-rag", "status", "close"],
+          description: "Operation: index (build/refresh index), search (hybrid search), traverse (graph traversal from a symbol), patterns (auto-detected conventions), graph-rag (RAG with graph context), status (session state), close (close session)"
+        },
+        codebase_path: { type: "string", description: "Absolute path to the codebase to index or query (required for index)" },
+        slot: { type: "number", description: "Session slot index returned by the index operation (required for search/traverse/patterns/graph-rag/status/close)" },
+        query: { type: "string", description: "Search query or Graph RAG question (required for search and graph-rag)" },
+        mode: { type: "string", enum: ["hybrid", "vector", "text", "path"], description: "Search mode (default: hybrid)" },
+        symbol: { type: "string", description: "Symbol or file path to traverse from (required for traverse)" },
+        relation: { type: "string", enum: ["imports", "calls", "extends", "implements", "uses"], description: "Graph relation type to traverse (required for traverse)" },
+        depth: { type: "number", description: "Traversal depth (default: 2)" },
+        limit: { type: "number", description: "Maximum number of search results (default: 10)" },
+      },
+      required: ["operation"],
+    },
+  });
+
   // Research
   tools.push({
     name: "boj_research",
@@ -944,7 +970,7 @@ async function handleMessage(line) {
           }
         } else if (toolName.startsWith("boj_gitlab_") && toolName !== "boj_gitlab_list_projects") {
           validationError = validateRequiredStrings(args, ["project_id"]);
-        } else if (toolName.startsWith("boj_cloud_") || toolName.startsWith("boj_comms_") || toolName === "boj_ml_huggingface" || toolName === "boj_research") {
+        } else if (toolName.startsWith("boj_cloud_") || toolName.startsWith("boj_comms_") || toolName === "boj_ml_huggingface" || toolName === "boj_research" || toolName === "boj_codeseeker") {
           validationError = validateRequiredStrings(args, ["operation"]);
         } else if (toolName === "boj_browser_tabs") {
           validationError = validateRequiredStrings(args, ["operation"]);
@@ -1063,6 +1089,11 @@ async function handleMessage(line) {
         case "boj_gitlab_list_pipelines":
         case "boj_gitlab_setup_mirror": {
           const result = await handleGitLabTool(toolName, args);
+          sendResult(id, { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] });
+          break;
+        }
+        case "boj_codeseeker": {
+          const result = await invokeCartridge("codeseeker-mcp", args);
           sendResult(id, { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] });
           break;
         }

@@ -646,7 +646,7 @@ pub fn panel_manifest(cfg: &CartridgeConfig) -> String {
         "clade": format!("boj/{}", cfg.domain.to_string().to_lowercase()),
         "integrations": {}
     }))
-    .unwrap()
+    .expect("serde_json::json! macro always produces serialisable values")
 }
 
 /// Generate PanLL panel definition (panels/{name}/panel.json).
@@ -703,7 +703,7 @@ pub fn panel_definition(cfg: &CartridgeConfig) -> String {
             format!("invoke:{}", ffi_name)
         ]
     }))
-    .unwrap()
+    .expect("serde_json::json! macro always produces serialisable values")
 }
 
 /// Generate the minter.toml config file.
