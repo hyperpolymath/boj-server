@@ -208,6 +208,27 @@ pub fn build(b: *std.Build) void {
     const community_step = b.step("community", "Run community cartridge submission tests");
     community_step.dependOn(&run_community_tests.step);
 
+    // --- Safety module (C-ABI input validation for V-lang adapter) ---
+    const safety_mod = b.addModule("boj_safety", .{
+        .root_source_file = b.path("src/safety.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+
+    const safety_lib = b.addLibrary(.{
+        .name = "boj_safety",
+        .root_module = safety_mod,
+    });
+    b.installArtifact(safety_lib);
+
+    const safety_tests = b.addTest(.{
+        .root_module = safety_mod,
+    });
+    const run_safety_tests = b.addRunArtifact(safety_tests);
+
+    const safety_step = b.step("safety", "Run safety input validation tests");
+    safety_step.dependOn(&run_safety_tests.step);
+
     // --- Auto-SDP module ---
     const sdp_mod = b.addModule("boj_sdp", .{
         .root_source_file = b.path("src/sdp.zig"),

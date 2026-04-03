@@ -261,17 +261,25 @@ init:
 # BUILD & COMPILE
 # ═══════════════════════════════════════════════════════════════════════════════
 
-# Build all Zig FFI layers (catalogue + cartridges)
+# Build all Zig FFI layers (catalogue + all cartridges)
 build *args:
-    @echo "Building BoJ catalogue FFI..."
-    cd ffi/zig && zig build {{args}}
-    @echo "Building cartridge FFIs..."
-    cd cartridges/fleet-mcp/ffi && zig build {{args}}
-    cd cartridges/nesy-mcp/ffi && zig build {{args}}
-    cd cartridges/database-mcp/ffi && zig build {{args}}
-    cd cartridges/agent-mcp/ffi && zig build {{args}}
-    cd cartridges/feedback-mcp/ffi && zig build {{args}}
-    @echo "Build complete"
+    #!/usr/bin/env bash
+    set -euo pipefail
+    echo "Building BoJ catalogue FFI..."
+    (cd ffi/zig && zig build {{args}})
+    echo "Building cartridge FFIs..."
+    FAILED=()
+    for d in cartridges/*/ffi; do
+        [ -f "$d/build.zig" ] || continue
+        if ! (cd "$d" && zig build {{args}} 2>&1); then
+            FAILED+=("$d")
+        fi
+    done
+    if [ ${#FAILED[@]} -gt 0 ]; then
+        echo "WARNING: ${#FAILED[@]} cartridge FFI(s) failed to build:"
+        for f in "${FAILED[@]}"; do echo "  $f"; done
+    fi
+    echo "Build complete"
 
 # Build in release mode with optimizations
 build-release *args:
@@ -476,7 +484,9 @@ run *args: build
         just build-adapter
     fi
     echo "Starting BoJ Server..."
-    exec "$ADAPTER" {{args}}
+    LLP="$(pwd)/ffi/zig/zig-out/lib"
+    for d in cartridges/*/ffi/zig-out/lib; do [ -d "$d" ] && LLP="${LLP}:$(pwd)/${d}"; done
+    LD_LIBRARY_PATH="${LLP}${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" exec "$ADAPTER" {{args}}
 
 # Run with verbose output
 run-verbose *args: build
@@ -491,7 +501,7 @@ build-adapter: build
     for d in cartridges/*/ffi/zig-out/lib; do
         [ -d "$d" ] && LFLAGS="${LFLAGS} -L$(pwd)/${d}"
     done
-    v -cc gcc -cflags "${LFLAGS} -Wl,--allow-multiple-definition" \
+    v -cc gcc -cflags "${LFLAGS} -Wl,--allow-multiple-definition -no-pie" \
         -o adapter/v/boj-server adapter/v/src/
     echo "Built: adapter/v/boj-server ($(du -h adapter/v/boj-server | cut -f1))"
 
@@ -1170,73 +1180,102 @@ heal:
     echo "═══════════════════════════════════════════════════"
     echo ""
     HEALED=0
-    # --- Missing tool install instructions / attempts ---
-    if ! command -v deno >/dev/null 2>&1; then
-        echo "Deno not found (REQUIRED — runtime & package manager)."
-        echo "  curl -fsSL https://deno.land/install.sh | sh"
-        echo "  Or via asdf: asdf plugin add deno && asdf install deno latest"
+    # --- Bootstrap asdf if missing ---
+    if ! command -v asdf >/dev/null 2>&1; then
+        if [ ! -f "$HOME/.asdf/asdf.sh" ]; then
+            echo "Installing asdf version manager..."
+            git clone https://github.com/asdf-vm/asdf.git "$HOME/.asdf" --branch v0.14.1
+            HEALED=$((HEALED + 1))
+        fi
+        # shellcheck source=/dev/null
+        source "$HOME/.asdf/asdf.sh"
+        # Persist for future shells
+        if ! grep -q 'asdf.sh' "$HOME/.bashrc" 2>/dev/null; then
+            echo '. "$HOME/.asdf/asdf.sh"' >> "$HOME/.bashrc"
+        fi
+        if ! grep -q 'asdf.sh' "$HOME/.zshrc" 2>/dev/null; then
+            echo '. "$HOME/.asdf/asdf.sh"' >> "$HOME/.zshrc" 2>/dev/null || true
+        fi
+        echo "  asdf ready."
+        echo ""
+    else
+        source "$HOME/.asdf/asdf.sh" 2>/dev/null || true
+    fi
+    # --- Install Zig via asdf ---
+    if ! command -v zig >/dev/null 2>&1; then
+        echo "Installing Zig (FFI layer)..."
+        asdf plugin add zig 2>/dev/null || true
+        asdf install zig latest
+        ZIG_VER=$(asdf list zig 2>/dev/null | tail -1 | tr -d ' ')
+        asdf global zig "$ZIG_VER"
+        echo "  Zig $ZIG_VER installed."
+        HEALED=$((HEALED + 1))
+        echo ""
+    elif ! asdf current zig >/dev/null 2>&1; then
+        # Zig installed but no global version set
+        ZIG_VER=$(asdf list zig 2>/dev/null | tail -1 | tr -d ' ')
+        [ -n "$ZIG_VER" ] && asdf global zig "$ZIG_VER" && echo "  Zig global version set: $ZIG_VER"
+    fi
+    # --- Install V (vlang) ---
+    if ! command -v v >/dev/null 2>&1; then
+        echo "Installing V (API adapter)..."
+        if [ ! -d "$HOME/vlang" ]; then
+            git clone https://github.com/vlang/v "$HOME/vlang"
+        fi
+        (cd "$HOME/vlang" && make)
+        # Symlink without sudo — use ~/.local/bin if writable
+        mkdir -p "$HOME/.local/bin"
+        ln -sf "$HOME/vlang/v" "$HOME/.local/bin/v"
+        export PATH="$HOME/.local/bin:$PATH"
+        if ! grep -q '\.local/bin' "$HOME/.bashrc" 2>/dev/null; then
+            echo 'export PATH="$HOME/.local/bin:$PATH"' >> "$HOME/.bashrc"
+        fi
+        echo "  V installed at ~/.local/bin/v"
+        echo "  (If 'v' is still not found in a new shell, run: sudo ~/vlang/v symlink)"
+        HEALED=$((HEALED + 1))
         echo ""
     fi
+    # --- System library dependencies ---
+    if command -v apt-get >/dev/null 2>&1; then
+        MISSING_PKGS=""
+        dpkg -s libsqlite3-dev >/dev/null 2>&1 || MISSING_PKGS="$MISSING_PKGS libsqlite3-dev"
+        if [ -n "$MISSING_PKGS" ]; then
+            echo "Installing system libraries:$MISSING_PKGS"
+            sudo apt-get install -y $MISSING_PKGS
+            HEALED=$((HEALED + 1))
+            echo ""
+        fi
+    fi
+    # --- Idris2 (ABI definitions — no asdf plugin, manual only) ---
     if ! command -v idris2 >/dev/null 2>&1; then
         echo "Idris2 not found (REQUIRED — ABI definitions)."
-        if command -v asdf >/dev/null 2>&1; then
-            echo "  Installing via asdf..."
-            asdf install idris2 latest || echo "  asdf install failed — try: https://github.com/stefan-hoeck/idris2-pack"
-        else
-            echo "  Install via pack: https://github.com/stefan-hoeck/idris2-pack"
-            echo "  Or via asdf: asdf plugin add idris2 && asdf install idris2 latest"
-        fi
+        echo "  Install via pack: https://github.com/stefan-hoeck/idris2-pack"
         echo ""
     fi
-    if ! command -v zig >/dev/null 2>&1; then
-        echo "Zig not found (REQUIRED — FFI layer)."
-        if command -v asdf >/dev/null 2>&1; then
-            echo "  Installing via asdf..."
-            asdf install zig latest || echo "  asdf install failed — try: https://ziglang.org/download/"
-        else
-            echo "  Install manually: https://ziglang.org/download/"
-            echo "  Or via asdf: asdf plugin add zig && asdf install zig latest"
-        fi
-        echo ""
-    fi
-    if ! command -v v >/dev/null 2>&1; then
-        echo "V (vlang) not found (REQUIRED — API triple adapter)."
-        if command -v asdf >/dev/null 2>&1; then
-            echo "  Installing via asdf..."
-            asdf install vlang latest || echo "  asdf install failed — try: https://vlang.io"
-        else
-            echo "  Install manually: https://vlang.io"
-            echo "  Or via asdf: asdf plugin add vlang && asdf install vlang latest"
-        fi
-        echo ""
-    fi
-    if ! command -v just >/dev/null 2>&1; then
-        echo "Installing just..."
-        cargo install just 2>/dev/null || echo "  Install cargo first, then: cargo install just"
-        echo ""
-    fi
+    # --- panic-attack (optional) ---
     if ! command -v panic-attack >/dev/null 2>&1; then
         echo "panic-attack not found (optional — pre-commit scans):"
         echo "  cargo install --git https://github.com/hyperpolymath/panic-attacker"
         echo ""
     fi
-    # --- Clear stale caches ---
+    # --- Clear stale Zig caches ---
     echo "Clearing stale Zig caches..."
-    rm -rf ffi/zig/.zig-cache cartridges/*/ffi/.zig-cache 2>/dev/null && HEALED=$((HEALED + 1)) || true
+    rm -rf ffi/zig/.zig-cache cartridges/*/ffi/.zig-cache 2>/dev/null || true
+    HEALED=$((HEALED + 1))
     echo "  Cleared."
-    # --- Rebuild FFI if tools are present ---
+    echo ""
+    # --- Rebuild all FFI layers ---
     if command -v zig >/dev/null 2>&1; then
-        echo ""
-        echo "Rebuilding catalogue FFI..."
-        if (cd ffi/zig && zig build 2>/dev/null); then
-            echo "  Catalogue FFI rebuilt successfully."
-            HEALED=$((HEALED + 1))
-        else
-            echo "  Catalogue FFI rebuild failed — check 'just doctor' output."
-        fi
+        echo "Rebuilding all FFI layers..."
+        (cd ffi/zig && zig build) && echo "  Catalogue FFI: OK" || echo "  Catalogue FFI: FAILED"
+        for d in cartridges/*/ffi; do
+            [ -f "$d/build.zig" ] || continue
+            (cd "$d" && zig build 2>/dev/null) && echo "  $d: OK" || echo "  $d: FAILED"
+        done
+        HEALED=$((HEALED + 1))
     fi
     echo ""
-    echo "Healed $HEALED items. Run 'just doctor' to verify."
+    echo "Healed $HEALED items. Run 'just doctor' to verify, then 'just run' to start."
 
 # Guided tour of the project structure and key concepts
 tour:
