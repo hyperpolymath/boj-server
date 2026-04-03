@@ -111,6 +111,7 @@ actions = [
 [session-history]
 entries = [
   { date = "2026-03-16", description = "npm scripts verified and validated for Glama MCP directory submission compatibility." },
+  { date = "2026-04-03", description = "URL encoding fix: replace→replaceAll in npm-registry-mcp to handle all encoded characters. Code scanning alert resolved." },
 ]
 
 [launch-status]
