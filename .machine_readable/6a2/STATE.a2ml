@@ -6,7 +6,7 @@
 [metadata]
 project = "boj-server"
 version = "0.3.1"
-last-updated = "2026-03-29"
+last-updated = "2026-04-04"
 status = "active"
 grade = "D-alpha"
 
@@ -42,7 +42,8 @@ milestones = [
 # - Multi-node tests: 11 (shell tests)
 
 [quality]
-total-tests = 307
+# Added 2026-04-04: Comprehensive MCP test suite (Deno)
+total-tests = 365  # 307 existing + 58 new MCP tests
 core-ffi-tests = 178
 cartridge-ffi-tests = 113
 federation-tests = 40
@@ -50,11 +51,17 @@ coprocessor-tests = 14
 sla-tests = 11
 community-tests = 11
 sdp-tests = 10
-e2e-tests = 3
+e2e-tests = 13  # 3 existing + 10 new MCP E2E
 readiness-tests = 28
 guardian-tests = 12
 verisimdb-tests = 7
 multinode-tests = 11
+# NEW: MCP Bridge Tests (Deno)
+mcp-smoke-tests = 8   # CLI, schema validation, health, cartridge listing
+mcp-e2e-tests = 10    # Lifecycle, tool invocation, error handling, sandboxing
+mcp-p2p-tests = 14    # Property-based: uniqueness, vocabulary, matrix completeness
+mcp-aspect-tests = 17 # Security: injection, sandboxing, credential handling, SSRF
+mcp-benchmark-tests = 10 # Performance baselines: serialization, latency, throughput
 cartridge-shared-libs = 18
 # All 18/18 .so files built.
 cartridges-total = 92
@@ -63,10 +70,11 @@ safety-modules = 7  # Safety, Guardian, SafeHTTP, SafePromptInjection, SafeCORS,
 sse-transport = true  # Port 7703 — fixed 2026-03-29
 glama-grade = "AAA"  # Security A, License A, Quality A
 dependabot-alerts = 0
-benchmark = true
+benchmark = true  # 63 V-lang ecosystem benchmarks + 10 MCP baselines
 ci-pipeline = "zig-test.yml"
 topology = true
 believe-me-count = 0
+fake-fuzz-placeholder = false  # tests/fuzz/placeholder.txt removed 2026-04-04
 
 [maintenance]
 must = [
