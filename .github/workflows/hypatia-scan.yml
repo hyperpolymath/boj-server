@@ -42,11 +42,10 @@ jobs:
       - name: Build Hypatia scanner (if needed)
         run: |
           cd "$HYPATIA_DIR"
-          if [ ! -f hypatia-v2 ]; then
+          if [ ! -f hypatia ] && [ ! -f hypatia-v2 ]; then
             echo "Building hypatia-v2 scanner..."
             mix deps.get --quiet
             mix escript.build
-            mv hypatia hypatia-v2
           fi
 
       - name: Run Hypatia scan
