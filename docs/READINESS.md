@@ -6,6 +6,8 @@
 **Assessed:** 2026-03-09
 **Assessor:** Jonathan D.A. Jewell
 
+**Current Grade:** D
+
 ## Grade Reference
 
 | Grade | Name                  | Release Stage      | Meaning                                              |
