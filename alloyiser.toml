@@ -1,0 +1,29 @@
+# SPDX-License-Identifier: PMPL-1.0-or-later
+# alloyiser manifest for boj-server
+
+[project]
+name = "boj-server"
+
+[[specs]]
+name = "boj-rest-api"
+source = "/var/mnt/eclipse/repos/boj-server/openapi.yaml"
+format = "openapi"
+
+[[assertions]]
+name = "no-orphan-cartridges"
+check = "all c: Cartridge | some c.owner"
+scope = 5
+
+[[assertions]]
+name = "cartridge-invoke-requires-auth"
+check = "all i: Invocation | some i.auth_token"
+scope = 5
+
+[[assertions]]
+name = "no-duplicate-cartridge-ids"
+check = "all disj c1, c2: Cartridge | c1.id != c2.id"
+scope = 6
+
+[alloy]
+solver = "sat4j"
+max-scope = 6
