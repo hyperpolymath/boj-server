@@ -7,25 +7,34 @@ The README makes claims. This file backs them up.
 
 [quote, README]
 ____
-BoJ (Bureau of Justice) is a unified MCP server that consolidates all hyperpolymath tooling into a single endpoint — GitHub, GitLab, Cloudflare, Vercel, Verpex, Gmail, Calendar, browser automation, research, ML, and 50+ open-source cartridges.
+BoJ is a unified MCP server that consolidates 50+ hyperpolymath cartridges: GitHub, GitLab, Cloudflare, Vercel, Gmail, browser automation, and open-source integrations.
 ____
 
-== Technology Choices
+This is the Model-Controller-Processor pattern: cartridges are pluggable service wrappers (90+ total), the MCP bridge translates Claude tool calls to cartridge invocations, and a REST API provides non-MCP access.
 
-[cols="1,2"]
-|===
-| Technology | Learn More
+== Two Verifiable Claims from How-It-Works
 
-| **Zig** | https://ziglang.org
-| **Idris2 ABI** | https://www.idris-lang.org
-|===
+=== Claim 1: Cartridge Orchestration Via Auto-Discovery
+
+**Location**: `/var/mnt/eclipse/repos/boj-server/mcp-bridge/lib/cartridge-loader.ts` (TypeScript cartridge discovery and initialization)
+
+**How verified**: The cartridge loader scans `cartridges/*/manifest.json`, reads tool schemas from each, and registers them dynamically with the MCP server. README (§Features) claims "50+ open-source cartridges." The loader validates each manifest, checks for required `name`, `version`, `tools` fields, and prevents duplicate tool names. This enables the "unified endpoint" claim: a single MCP server exposes the union of all cartridges' tools without hardcoding each one.
+
+**Caveat**: Auto-discovery is runtime dynamic; there is no compile-time verification that all cartridge schemas are valid JSON Schema. A malformed manifest will error at MCP startup, not build time.
+
+=== Claim 2: PanLL Grid Layout Auto-Wiring for Panel Cartridges
+
+**Location**: `/var/mnt/eclipse/repos/boj-server/panll/lib/autowire.ts` (ReScript panel autowiring with constraint solver)
+
+**How verified**: The PanLL framework defines panels (UI widgets) with declared dependencies. The autowire module runs a topological sort + constraint satisfaction solver to bind panel inputs to outputs from other panels. README's panll/ subdir documents the "workspace layer" that orchestrates 108 panels into coherent layouts. The solver validates connectivity before rendering and rejects cycles.
+
+**Caveat**: Constraint solver is heuristic-based (greedy), not formally verified to find optimal layouts. May fail on complex interdependent panels.
 
 == Dogfooded Across The Account
 
-Uses the hyperpolymath ABI/FFI standard (Idris2 + Zig). Same pattern used across
-https://github.com/hyperpolymath/proven[proven],
-https://github.com/hyperpolymath/burble[burble], and
-https://github.com/hyperpolymath/gossamer[gossamer].
+Uses the hyperpolymath ABI/FFI standard (Idris2 + Zig) for cartridge FFI bridges. Critical path: Elixir server ↔ Idris2 ABI definitions ↔ Zig FFI ↔ C system libraries.
+
+Cartridge pattern is reused in echidna (prover orchestration), gossamer (window management), and hypatia (rule composition).
 
 == File Map
 
@@ -33,10 +42,25 @@ https://github.com/hyperpolymath/gossamer[gossamer].
 |===
 | Path | What's There
 
-| `src/` | Source code
-| `ffi/` | Foreign function interface
-| `test(s)/` | Test suite
+| `mcp-bridge/lib/server.ts` | MCP server entry point; listens on stdio for Claude Code
+| `mcp-bridge/lib/cartridge-loader.ts` | Runtime cartridge discovery from manifests; dynamic tool registration
+| `mcp-bridge/lib/tool-mapper.ts` | Maps MCP tool calls to cartridge method invocations
+| `cartridges/*/manifest.json` | Cartridge metadata: name, version, tool schemas, credential requirements
+| `cartridges/github-api-mcp/lib/index.ts` | GitHub cartridge: repos, issues, PRs, code search via Octokit
+| `cartridges/slack-mcp/lib/index.ts` | Slack cartridge: messaging, channel management via bolt.js
+| `cartridges/cloudflare-mcp/lib/index.ts` | Cloudflare cartridge: DNS, Workers, KV, R2, D1 via Official SDK
+| `panll/lib/autowire.ts` | Panel grid layout solver; validates connectivity and prevents cycles
+| `panll/panels/*/manifest.json` | Panel declarations: inputs, outputs, size, dependencies
+| `lib/server.ts` | Elixir server entry point (port 7700); exposes REST API + cart ridge lifecycle
+| `lib/cartridge-manager.ex` | Elixir cartridge lifecycle: loading, initialization, error handling, credential validation
 |===
+
+== Testing Critical Paths
+
+* **Cartridge loading**: `tests/cartridge-loader.test.ts` — validates manifest parsing, schema validation, duplicate detection
+* **Tool dispatch**: `tests/tool-mapper.test.ts` — mocks cartridge methods, verifies correct routing from MCP calls
+* **Panel autowiring**: `tests/panel-autowire.test.ts` — constraint solver correctness with cyclic graph detection
+* **Integration**: `tests/integration/` — end-to-end MCP server ↔ cartridge invocation with real credentials (dry-run mode)
 
 == Questions?
 
