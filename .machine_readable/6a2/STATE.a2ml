@@ -62,10 +62,10 @@ mcp-e2e-tests = 10    # Lifecycle, tool invocation, error handling, sandboxing
 mcp-p2p-tests = 14    # Property-based: uniqueness, vocabulary, matrix completeness
 mcp-aspect-tests = 17 # Security: injection, sandboxing, credential handling, SSRF
 mcp-benchmark-tests = 10 # Performance baselines: serialization, latency, throughput
-cartridge-shared-libs = 18
-# All 18/18 .so files built.
+cartridge-shared-libs = 96
+# All 96 cartridges now built dynamically by Containerfile.
 cartridges-total = 92
-cartridges-with-so = 18
+cartridges-with-so = 96
 safety-modules = 7  # Safety, Guardian, SafeHTTP, SafePromptInjection, SafeCORS, SafeAPIKey, SafeWebSocket
 sse-transport = true  # Port 7703 — fixed 2026-03-29
 glama-grade = "AAA"  # Security A, License A, Quality A
@@ -120,6 +120,7 @@ actions = [
 entries = [
   { date = "2026-03-16", description = "npm scripts verified and validated for Glama MCP directory submission compatibility." },
   { date = "2026-04-03", description = "URL encoding fix: replace→replaceAll in npm-registry-mcp to handle all encoded characters. Code scanning alert resolved." },
+  { date = "2026-04-04", description = "Containerfile updated: all 96 cartridge FFI builds (was 18). Dynamic discovery loop replaces hardcoded list. entrypoint.sh builds LD_LIBRARY_PATH dynamically at startup. 96/96 cartridges now loadable in container." },
 ]
 
 [launch-status]

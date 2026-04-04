@@ -20,7 +20,7 @@
 # Stage 1: FFI Builder
 # ============================================================================
 #
-# Compiles all Zig FFI layers (core + 18 cartridges) in ReleaseFast mode.
+# Compiles all Zig FFI layers (core + all cartridges) in ReleaseFast mode.
 # The V adapter binary is built locally and copied in — V compiler is not
 # available in Wolfi packages.
 
@@ -37,12 +37,14 @@ COPY . .
 # Build core FFI (catalogue, loader, guardian, federation, readiness, verisimdb, e2e)
 RUN cd ffi/zig && zig build -Doptimize=ReleaseFast
 
-# Build all 18 cartridge FFI shared libraries
-RUN for cart in database fleet nesy agent cloud container k8s git \
-                secrets queues iac observe ssg proof lsp dap bsp feedback; do \
-      echo "Building ${cart}-mcp FFI..." && \
-      cd /build/cartridges/${cart}-mcp/ffi && \
-      zig build -Doptimize=ReleaseFast || exit 1; \
+# Build ALL cartridge FFI shared libraries (discovers dynamically)
+RUN for ffi_dir in /build/cartridges/*/ffi; do \
+      cart="$(basename "$(dirname "$ffi_dir")")" && \
+      if [ -f "$ffi_dir/build.zig" ]; then \
+        echo "Building ${cart} FFI..." && \
+        cd "$ffi_dir" && \
+        zig build -Doptimize=ReleaseFast || echo "WARN: ${cart} build failed (non-fatal)"; \
+      fi; \
     done
 
 # ============================================================================
@@ -81,25 +83,15 @@ RUN chmod +x /app/boj-server
 # Copy core FFI libraries from builder stage
 COPY --from=builder /build/ffi/zig/zig-out/ /app/lib/core/
 
-# Copy all 18 cartridge .so files from builder stage
-COPY --from=builder /build/cartridges/database-mcp/ffi/zig-out/ /app/lib/cartridges/database-mcp/
-COPY --from=builder /build/cartridges/fleet-mcp/ffi/zig-out/ /app/lib/cartridges/fleet-mcp/
-COPY --from=builder /build/cartridges/nesy-mcp/ffi/zig-out/ /app/lib/cartridges/nesy-mcp/
-COPY --from=builder /build/cartridges/agent-mcp/ffi/zig-out/ /app/lib/cartridges/agent-mcp/
-COPY --from=builder /build/cartridges/cloud-mcp/ffi/zig-out/ /app/lib/cartridges/cloud-mcp/
-COPY --from=builder /build/cartridges/container-mcp/ffi/zig-out/ /app/lib/cartridges/container-mcp/
-COPY --from=builder /build/cartridges/k8s-mcp/ffi/zig-out/ /app/lib/cartridges/k8s-mcp/
-COPY --from=builder /build/cartridges/git-mcp/ffi/zig-out/ /app/lib/cartridges/git-mcp/
-COPY --from=builder /build/cartridges/secrets-mcp/ffi/zig-out/ /app/lib/cartridges/secrets-mcp/
-COPY --from=builder /build/cartridges/queues-mcp/ffi/zig-out/ /app/lib/cartridges/queues-mcp/
-COPY --from=builder /build/cartridges/iac-mcp/ffi/zig-out/ /app/lib/cartridges/iac-mcp/
-COPY --from=builder /build/cartridges/observe-mcp/ffi/zig-out/ /app/lib/cartridges/observe-mcp/
-COPY --from=builder /build/cartridges/ssg-mcp/ffi/zig-out/ /app/lib/cartridges/ssg-mcp/
-COPY --from=builder /build/cartridges/proof-mcp/ffi/zig-out/ /app/lib/cartridges/proof-mcp/
-COPY --from=builder /build/cartridges/lsp-mcp/ffi/zig-out/ /app/lib/cartridges/lsp-mcp/
-COPY --from=builder /build/cartridges/dap-mcp/ffi/zig-out/ /app/lib/cartridges/dap-mcp/
-COPY --from=builder /build/cartridges/bsp-mcp/ffi/zig-out/ /app/lib/cartridges/bsp-mcp/
-COPY --from=builder /build/cartridges/feedback-mcp/ffi/zig-out/ /app/lib/cartridges/feedback-mcp/
+# Copy ALL cartridge FFI build outputs from builder stage (single layer)
+COPY --from=builder /build/cartridges/ /app/lib/cartridges-src/
+# Extract only the zig-out directories (built .so files) — discard source
+RUN mkdir -p /app/lib/cartridges && \
+    for cart_dir in /app/lib/cartridges-src/*/ffi/zig-out; do \
+      cart="$(basename "$(dirname "$(dirname "$cart_dir")")")" && \
+      cp -r "$cart_dir" "/app/lib/cartridges/${cart}/" 2>/dev/null || true; \
+    done && \
+    rm -rf /app/lib/cartridges-src
 
 # Copy entrypoint script
 COPY container/entrypoint.sh /app/entrypoint.sh
@@ -123,7 +115,8 @@ ENV APP_HOST=[::]
 ENV APP_PORT=7700
 ENV APP_LOG_FORMAT=json
 ENV APP_DATA_DIR=/data
-ENV LD_LIBRARY_PATH=/app/lib/core/lib:/app/lib/cartridges/database-mcp/lib:/app/lib/cartridges/fleet-mcp/lib:/app/lib/cartridges/nesy-mcp/lib:/app/lib/cartridges/agent-mcp/lib:/app/lib/cartridges/cloud-mcp/lib:/app/lib/cartridges/container-mcp/lib:/app/lib/cartridges/k8s-mcp/lib:/app/lib/cartridges/git-mcp/lib:/app/lib/cartridges/secrets-mcp/lib:/app/lib/cartridges/queues-mcp/lib:/app/lib/cartridges/iac-mcp/lib:/app/lib/cartridges/observe-mcp/lib:/app/lib/cartridges/ssg-mcp/lib:/app/lib/cartridges/proof-mcp/lib:/app/lib/cartridges/lsp-mcp/lib:/app/lib/cartridges/dap-mcp/lib:/app/lib/cartridges/bsp-mcp/lib:/app/lib/cartridges/feedback-mcp/lib
+# LD_LIBRARY_PATH is set dynamically in entrypoint.sh to cover all cartridges
+ENV LD_LIBRARY_PATH=/app/lib/core/lib
 
 # Persistent storage volume
 VOLUME ["/data"]

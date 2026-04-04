@@ -27,11 +27,21 @@ trap cleanup TERM INT
 # Startup logging
 # ---------------------------------------------------------------------------
 
+# Build LD_LIBRARY_PATH dynamically from all cartridge lib directories
+CART_LIBS=""
+for lib_dir in /app/lib/cartridges/*/lib; do
+    if [ -d "$lib_dir" ]; then
+        CART_LIBS="${CART_LIBS:+${CART_LIBS}:}${lib_dir}"
+    fi
+done
+export LD_LIBRARY_PATH="${LD_LIBRARY_PATH:+${LD_LIBRARY_PATH}:}${CART_LIBS}"
+
 echo "Starting boj-server..."
 echo "  Host: ${APP_HOST:-[::]}"
 echo "  Port: ${APP_PORT:-7700}"
 echo "  Data: ${APP_DATA_DIR:-/data}"
 echo "  Log:  ${APP_LOG_FORMAT:-json}"
+echo "  Libs: $(echo "$LD_LIBRARY_PATH" | tr ':' '\n' | wc -l) library paths"
 
 # ---------------------------------------------------------------------------
 # Health check preparation
