@@ -1,6 +1,6 @@
 # Show HN: BoJ — 95-cartridge MCP server with formal proofs (Idris2 + Zig + V)
 
-BoJ (Bureau of Justice) is an MCP server that bundles 95 tool cartridges — each with a formally verified ABI (Idris2), a C-compatible FFI (Zig), and an API adapter (V-lang). It speaks REST, gRPC, GraphQL, and SSE on four ports.
+BoJ (Bundle of Joy) is an MCP server that bundles 95 tool cartridges — each with a formally verified ABI (Idris2), a C-compatible FFI (Zig), and an API adapter (V-lang). It speaks REST, gRPC, GraphQL, and SSE on four ports.
 
 What makes it different:
 

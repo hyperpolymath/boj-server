@@ -8,7 +8,7 @@
 
   ; === Purpose (what this repo IS) ===
   (purpose
-    "BoJ (Bureau of Justice) is a unified MCP server that consolidates all hyperpolymath
+    "BoJ (Bundle of Joy) is a unified MCP server that consolidates all hyperpolymath
      tooling into a single endpoint. It provides Claude Code integration for GitHub,
      GitLab, Cloudflare, Vercel, Verpex, Gmail, Calendar, browser automation, research,
      ML, and 50+ open-source cartridges. It implements a three-class architecture:

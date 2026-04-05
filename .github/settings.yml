@@ -11,7 +11,7 @@
 
 repository:
   name: "boj-server"
-  description: "BoJ (Bureau of Justice) — unified MCP server consolidating GitHub, GitLab, Cloudflare, browser automation, and 50+ open-source cartridges"
+  description: "BoJ (Bundle of Joy) — unified MCP server consolidating GitHub, GitLab, Cloudflare, browser automation, and 50+ open-source cartridges"
   homepage: "https://github.com/hyperpolymath/boj-server"
   private: false
   has_issues: true

@@ -7,7 +7,7 @@ The README makes claims. This file backs them up.
 
 [quote, README]
 ____
-BoJ is a unified MCP server that consolidates 50+ hyperpolymath cartridges: GitHub, GitLab, Cloudflare, Vercel, Gmail, browser automation, and open-source integrations.
+BoJ (Bundle of Joy) is a unified MCP server that consolidates all hyperpolymath tooling into a single endpoint — GitHub, GitLab, Cloudflare, Vercel, Verpex, Gmail, Calendar, browser automation, research, ML, and 50+ open-source cartridges.
 ____
 
 This is the Model-Controller-Processor pattern: cartridges are pluggable service wrappers (90+ total), the MCP bridge translates Claude tool calls to cartridge invocations, and a REST API provides non-MCP access.

@@ -14,7 +14,7 @@ info:
   version: 0.3.0
   summary: Formally verified cartridge server for cloud infrastructure, databases, git, containers, and more.
   description: |
-    BoJ (Bureau of Justice) Server is a cartridge-based infrastructure management
+    BoJ (Bundle of Joy) Server is a cartridge-based infrastructure management
     platform. Each cartridge is a formally verified module (Idris2 ABI proofs,
     Zig FFI execution, V-lang network adapter) that exposes tools for managing
     cloud providers, databases, git repositories, containers, Kubernetes clusters,
