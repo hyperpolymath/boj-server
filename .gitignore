@@ -136,3 +136,6 @@ panic-attack-report*.json
 
 # asdf version manager
 .tool-versions
+
+# wokelangiser generated i18n locale files (too large for GitHub)
+generated/wokelangiser/i18n/
