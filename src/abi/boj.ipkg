@@ -11,18 +11,19 @@ readme     = "../../README.adoc"
 
 sourcedir  = "."
 
-modules = Boj.Protocol
-        , Boj.Domain
-        , Boj.Catalogue
-        , Boj.Menu
-        , Boj.Federation
-        , Boj.Guardian
-        , Boj.Safety
-        , Boj.SafeHTTP
-        , Boj.SafePromptInjection
-        , Boj.SafeCORS
-        , Boj.SafeAPIKey
-        , Boj.SafeWebSocket
+modules    = Boj.Protocol
+           , Boj.Domain
+           , Boj.Catalogue
+           , Boj.Menu
+           , Boj.Federation
+           , Boj.Guardian
+           , Boj.Safety
+           , Boj.SafetyLemmas
+           , Boj.SafeHTTP
+           , Boj.SafePromptInjection
+           , Boj.SafeCORS
+           , Boj.SafeAPIKey
+           , Boj.SafeWebSocket
 
-depends = base
-        , contrib
+depends    = base
+           , contrib

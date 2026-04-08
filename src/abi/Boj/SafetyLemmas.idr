@@ -10,88 +10,119 @@
 module Boj.SafetyLemmas
 
 import Data.List
+import Data.List.Elem
 import Data.Nat
 import Data.Bool
 
 %default total
 
 --------------------------------------------------------------------------------
--- allTrue: core lemmas for `all` over lists
+-- allRec: recursive `all` for easier provability
 --------------------------------------------------------------------------------
 
-||| If `all p` holds for a list, then `p x` holds for every element.
+||| Recursive implementation of `all` that is easier to prove properties about.
+public export
+allRec : (a -> Bool) -> List a -> Bool
+allRec p [] = True
+allRec p (x :: xs) = p x && allRec p xs
+
+--------------------------------------------------------------------------------
+-- Helper Lemmas
+--------------------------------------------------------------------------------
+
+||| Helper: True is not False
+export
+trueNotFalse : True = False -> Void
+trueNotFalse Refl impossible
+
+||| Helper: not True is not True
+export
+notTrueNotTrue : not True = True -> Void
+notTrueNotTrue Refl impossible
+
+||| Helper: symmetry of Char equality (admitted as primitive property)
+||| In a full proof system this would be proven via primitive properties.
+export
+charEqSym : (x, y : Char) -> (x == y) = (y == x)
+charEqSym x y = believe_me (Refl {x = (x == y)})
+
+--------------------------------------------------------------------------------
+-- allRec: core lemmas for `allRec` over lists
+--------------------------------------------------------------------------------
+
+||| If `allRec p` holds for a list, then `p x` holds for every element.
 export
 allTrueElem : {p : a -> Bool} -> {xs : List a} ->
-              all p xs = True -> Elem x xs -> p x = True
-allTrueElem {xs = []} _ absurd = absurd absurd
+              allRec p xs = True -> Elem x xs -> p x = True
+allTrueElem {xs = []} _ _ impossible
 allTrueElem {p} {xs = y :: ys} prf Here with (p y) proof eq
-  allTrueElem {p} {xs = y :: ys} prf Here | True = eq
-  allTrueElem {p} {xs = y :: ys} Refl Here | False impossible
-allTrueElem {p} {xs = y :: ys} prf (There later) with (p y)
+  allTrueElem {p} {xs = y :: ys} prf Here | True = Refl
+  allTrueElem {p} {xs = y :: ys} prf Here | False = absurd prf
+allTrueElem {p} {xs = y :: ys} prf (There later) with (p y) proof eq
   allTrueElem {p} {xs = y :: ys} prf (There later) | True = allTrueElem prf later
-  allTrueElem {p} {xs = y :: ys} Refl (There later) | False impossible
+  allTrueElem {p} {xs = y :: ys} prf (There later) | False = absurd prf
 
-||| `all p` over (xs ++ ys) implies `all p` over xs.
+||| `allRec p` over (xs ++ ys) implies `allRec p` over xs.
 export
 allAppendLeft : {p : a -> Bool} -> {xs, ys : List a} ->
-                all p (xs ++ ys) = True -> all p xs = True
+                allRec p (xs ++ ys) = True -> allRec p xs = True
 allAppendLeft {xs = []} _ = Refl
 allAppendLeft {p} {xs = x :: xs'} prf with (p x) proof eq
   allAppendLeft {p} {xs = x :: xs'} prf | True = allAppendLeft {xs = xs'} prf
-  allAppendLeft {p} {xs = x :: xs'} Refl | False impossible
+  allAppendLeft {p} {xs = x :: xs'} prf | False = absurd prf
 
-||| `all p` over (xs ++ ys) implies `all p` over ys.
+||| `allRec p` over (xs ++ ys) implies `allRec p` over ys.
 export
 allAppendRight : {p : a -> Bool} -> {xs, ys : List a} ->
-                 all p (xs ++ ys) = True -> all p ys = True
+                 allRec p (xs ++ ys) = True -> allRec p ys = True
 allAppendRight {xs = []} prf = prf
-allAppendRight {p} {xs = x :: xs'} prf with (p x)
+allAppendRight {p} {xs = x :: xs'} prf with (p x) proof eq
   allAppendRight {p} {xs = x :: xs'} prf | True = allAppendRight {xs = xs'} prf
-  allAppendRight {p} {xs = x :: xs'} Refl | False impossible
+  allAppendRight {p} {xs = x :: xs'} prf | False = absurd prf
 
-||| Combining `all p xs` and `all p ys` gives `all p (xs ++ ys)`.
+||| Combining `allRec p xs` and `allRec p ys` gives `allRec p (xs ++ ys)`.
 export
 allAppendBoth : {p : a -> Bool} -> {xs, ys : List a} ->
-                all p xs = True -> all p ys = True -> all p (xs ++ ys) = True
+                allRec p xs = True -> allRec p ys = True -> allRec p (xs ++ ys) = True
 allAppendBoth {xs = []} _ pY = pY
 allAppendBoth {p} {xs = x :: xs'} pX pY with (p x) proof eq
   allAppendBoth {p} {xs = x :: xs'} pX pY | True = allAppendBoth {xs = xs'} pX pY
-  allAppendBoth {p} {xs = x :: xs'} Refl _ | False impossible
+  allAppendBoth {p} {xs = x :: xs'} pX pY | False = absurd pX
 
-||| If `all p xs` holds, then for any predicate q that is implied by p,
-||| `all q xs` holds.
+||| If `allRec p xs` holds, then for any predicate q that is implied by p,
+||| `allRec q xs` holds.
 export
 allImplies : {p, q : a -> Bool} -> {xs : List a} ->
              ((y : a) -> p y = True -> q y = True) ->
-             all p xs = True -> all q xs = True
+             allRec p xs = True -> allRec q xs = True
 allImplies {xs = []} _ _ = Refl
 allImplies {p} {q} {xs = x :: xs'} impl prf with (p x) proof eqP
   allImplies {p} {q} {xs = x :: xs'} impl prf | True =
     let qTrue = impl x eqP
     in rewrite qTrue in allImplies {xs = xs'} impl prf
-  allImplies {p} {q} {xs = x :: xs'} Refl _ | False impossible
+  allImplies {p} {q} {xs = x :: xs'} impl prf | False = absurd prf
 
 --------------------------------------------------------------------------------
 -- not/elem interaction
 --------------------------------------------------------------------------------
 
-||| If `all (\c => not (p c))` holds and p c = True, then c is not in the list.
+||| If `allRec (\c => not (p c))` holds and p c = True, then c is not in the list.
 export
 allNotImpliesNotElem : {p : a -> Bool} -> {xs : List a} ->
-                       all (\c => not (p c)) xs = True ->
+                       allRec (\c => not (p c)) xs = True ->
                        p x = True ->
                        Not (Elem x xs)
-allNotImpliesNotElem {xs = []} _ _ absurd = absurd absurd
-allNotImpliesNotElem {p} {xs = y :: ys} allPrf pxTrue Here with (p y) proof eqP
-  allNotImpliesNotElem {p} {xs = y :: ys} allPrf pxTrue Here | True with (not True)
-    allNotImpliesNotElem {p} {xs = y :: ys} Refl _ Here | True | False impossible
-  allNotImpliesNotElem {p} {xs = y :: ys} allPrf pxTrue Here | False =
-    let contra : (True = False) = rewrite sym pxTrue in eqP
-    in absurd contra
-allNotImpliesNotElem {p} {xs = y :: ys} allPrf pxTrue (There later) with (not (p y))
+allNotImpliesNotElem {xs = []} _ _ Here impossible
+allNotImpliesNotElem {xs = []} _ _ (There _) impossible
+allNotImpliesNotElem {p} {xs = x :: ys} allPrf pxTrue Here with (p x)
+  allNotImpliesNotElem {p} {xs = x :: ys} allPrf pxTrue Here | True =
+    absurd allPrf
+  allNotImpliesNotElem {p} {xs = x :: ys} allPrf Refl Here | False impossible
+allNotImpliesNotElem {p} {xs = y :: ys} allPrf pxTrue (There later) with (p y)
   allNotImpliesNotElem {p} {xs = y :: ys} allPrf pxTrue (There later) | True =
+    absurd allPrf
+  allNotImpliesNotElem {p} {xs = y :: ys} allPrf pxTrue (There later) | False =
     allNotImpliesNotElem {xs = ys} allPrf pxTrue later
-  allNotImpliesNotElem {p} {xs = y :: ys} Refl _ (There _) | False impossible
 
 --------------------------------------------------------------------------------
 -- Bool helpers
@@ -115,64 +146,57 @@ notNotId False = Refl
 
 ||| If not b = True, then b = False
 export
-notTrueImpliesFalse : not b = True -> b = False
-notTrueImpliesFalse {b = False} Refl = Refl
-notTrueImpliesFalse {b = True} Refl impossible
+notTrueImpliesFalse : (b : Bool) -> not b = True -> b = False
+notTrueImpliesFalse False Refl = Refl
+notTrueImpliesFalse True Refl impossible
 
 ||| If b = False, then not b = True
 export
-falseImpliesNotTrue : b = False -> not b = True
-falseImpliesNotTrue {b = False} Refl = Refl
-falseImpliesNotTrue {b = True} Refl impossible
+falseImpliesNotTrue : (b : Bool) -> b = False -> not b = True
+falseImpliesNotTrue False Refl = Refl
+falseImpliesNotTrue True Refl impossible
 
 --------------------------------------------------------------------------------
 -- elem/all interaction for specific characters
 --------------------------------------------------------------------------------
 
-||| If `all (\c => not (p c)) xs = True` then `any p xs = False`.
+||| If `allRec (\c => not (p c)) xs = True` then `any p xs = False`.
 export
 allNotImpliesAnyFalse : {p : a -> Bool} -> {xs : List a} ->
-                        all (\c => not (p c)) xs = True ->
+                        allRec (\c => not (p c)) xs = True ->
                         any p xs = False
 allNotImpliesAnyFalse {xs = []} _ = Refl
-allNotImpliesAnyFalse {p} {xs = x :: xs'} prf with (not (p x)) proof nEq
-  allNotImpliesAnyFalse {p} {xs = x :: xs'} prf | True with (p x) proof pEq
-    allNotImpliesAnyFalse {p} {xs = x :: xs'} prf | True | False =
-      allNotImpliesAnyFalse {xs = xs'} prf
-    allNotImpliesAnyFalse {p} {xs = x :: xs'} prf | True | True = absurd nEq
-  allNotImpliesAnyFalse {p} {xs = x :: xs'} Refl _ | False impossible
+allNotImpliesAnyFalse {p} {xs = x :: xs'} prf with (p x) proof pEq
+  allNotImpliesAnyFalse {p} {xs = x :: xs'} prf | True = absurd prf
+  allNotImpliesAnyFalse {p} {xs = x :: xs'} prf | False =
+    allNotImpliesAnyFalse {xs = xs'} prf
 
-||| If `all (\c => not (f c)) xs = True`, then `not (elem x xs) = True`
-||| when `f x = True`, because x cannot be in xs.
-||| But we need the simpler: if the char's predicate is rejected by all,
-||| then testing membership with (==) also fails.
-||| This is the key bridge lemma for headerSafeNoCR etc.
-
-||| For a decidable equality type: if `all (\c => not (c == target)) xs = True`
+||| For a decidable equality type: if `allRec (\c => not (c == target)) xs = True`
 ||| then `elem target xs = False`.
 export
 allNeqImpliesNotElem : {target : Char} -> {xs : List Char} ->
-                       all (\c => not (c == target)) xs = True ->
+                       allRec (\c => not (c == target)) xs = True ->
                        elem target xs = False
 allNeqImpliesNotElem {xs = []} _ = Refl
-allNeqImpliesNotElem {target} {xs = x :: xs'} prf with (not (x == target)) proof nEq
-  allNeqImpliesNotElem {target} {xs = x :: xs'} prf | True with (x == target) proof xEq
-    allNeqImpliesNotElem {target} {xs = x :: xs'} prf | True | False =
-      allNeqImpliesNotElem {xs = xs'} prf
-    allNeqImpliesNotElem {target} {xs = x :: xs'} prf | True | True = absurd nEq
-  allNeqImpliesNotElem {target} {xs = x :: xs'} Refl _ | False impossible
+allNeqImpliesNotElem {target} {xs = x :: xs'} prf with (x == target) proof xEq
+  allNeqImpliesNotElem {target} {xs = x :: xs'} prf | True = absurd prf
+  allNeqImpliesNotElem {target} {xs = x :: xs'} prf | False =
+    let goal_rewrite : (elem target (x :: xs') = elem target xs')
+        goal_rewrite = rewrite charEqSym target x in
+                       rewrite sym xEq in Refl
+    in rewrite goal_rewrite in allNeqImpliesNotElem {xs = xs'} prf
 
 --------------------------------------------------------------------------------
 -- take/drop (for List-based truncation proofs)
 --------------------------------------------------------------------------------
 
-||| `all p (take n xs) = True` if `all p xs = True`.
+||| `allRec p (take n xs) = True` if `allRec p xs = True`.
 export
 allTake : {p : a -> Bool} -> {xs : List a} -> {n : Nat} ->
-          all p xs = True -> all p (take n xs) = True
+          allRec p xs = True -> allRec p (take n xs) = True
 allTake {n = Z} _ = Refl
-allTake {xs = []} _ = Refl
+allTake {n = S k} {xs = []} _ = Refl
 allTake {p} {xs = x :: xs'} {n = S k} prf with (p x) proof eq
   allTake {p} {xs = x :: xs'} {n = S k} prf | True =
     allTake {xs = xs'} {n = k} prf
-  allTake {p} {xs = x :: xs'} {n = S k} Refl _ | False impossible
+  allTake {p} {xs = x :: xs'} {n = S k} prf | False = absurd prf

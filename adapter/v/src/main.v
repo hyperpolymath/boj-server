@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: PMPL-1.0-or-later
 // Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
 //
-// BoJ Server — V-lang Triple Adapter
+// BoJ Server — Unified API Gateway
 //
 // The unified console that exposes mounted cartridges as:
 //   - REST    (port 7700)
@@ -10,7 +10,7 @@
 //   - MCP/SSE (port 7703) — remote MCP transport for Glama, Claude Desktop, Cursor
 //
 // Phase 3 of the BoJ pipeline:
-//   Idris2 ABI (proofs) → Zig FFI (execution) → V-lang Adapter (network)
+//   Idris2 ABI (proofs) → Zig FFI (execution) → Unified API (network)
 
 module main
 
@@ -19,6 +19,8 @@ import net
 import net.http
 import os
 import time
+import deprecation  // Legacy adapter deprecation system
+import legacy      // Legacy adapter framework
 
 // ═══════════════════════════════════════════════════════════════════════
 // C FFI declarations (link against libboJ catalogue built from Zig)
