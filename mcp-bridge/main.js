@@ -11,27 +11,9 @@
 // Usage: deno run --allow-net main.js
 //    or: node main.js
 
-import { SERVER_NAME, SERVER_VERSION } from "./lib/version.js";
-import {
-  RATE_LIMIT,
-  isInputSizeOk,
-  isValidToolName,
-  rateLimitAllow,
-  sanitizeErrorMessage,
-  scanObjectForInjection,
-  validateRequiredStrings,
-} from "./lib/security.js";
-import {
-  fetchCartridgeInfo,
-  fetchCartridges,
-  fetchHealth,
-  fetchMenu,
-  handleGitHubTool,
-  handleGitLabTool,
-  invokeCartridge,
-} from "./lib/api-clients.js";
-import { buildToolList } from "./lib/tools.js";
-import { info, warn, error as logError } from "./lib/logger.js";
+const BOJ_BASE = process.env.BOJ_URL || "http://localhost:7700";
+const SERVER_NAME = "boj-server";
+const SERVER_VERSION = "0.3.1";
 
 // ===================================================================
 // JSON-RPC stdio transport
