@@ -1,7 +1,7 @@
 {
   "name": "@hyperpolymath/boj-server",
   "version": "0.3.1",
-  "description": "Bundle of Joy (BoJ) MCP Server — cartridge-based DevOps toolkit with 96 cartridges across database, container, git, k8s, observability, secrets, IaC, and more",
+  "description": "Bundle of Joy (BoJ) MCP Server — cartridge-based DevOps toolkit with 96 domain cartridges (database, container, git, k8s, observability, secrets, IaC, and more)",
   "license": "PMPL-1.0-or-later",
   "author": "Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>",
   "repository": {
@@ -25,8 +25,7 @@
     "boj-server": "./main.js"
   },
   "files": [
-    "main.js",
-    "lib/"
+    "main.js"
   ],
   "engines": {
     "node": ">=18.0.0"
