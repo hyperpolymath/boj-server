@@ -16,7 +16,7 @@ This is the Model-Controller-Processor pattern: cartridges are pluggable service
 
 === Claim 1: Cartridge Orchestration Via Auto-Discovery
 
-**Location**: `/var/mnt/eclipse/repos/boj-server/mcp-bridge/lib/cartridge-loader.ts` (TypeScript cartridge discovery and initialization)
+**Location**: `mcp-bridge/lib/cartridge-loader.ts` (TypeScript cartridge discovery and initialization)
 
 **How verified**: The cartridge loader scans `cartridges/*/manifest.json`, reads tool schemas from each, and registers them dynamically with the MCP server. README (§Features) claims "50+ open-source cartridges." The loader validates each manifest, checks for required `name`, `version`, `tools` fields, and prevents duplicate tool names. This enables the "unified endpoint" claim: a single MCP server exposes the union of all cartridges' tools without hardcoding each one.
 
@@ -24,7 +24,7 @@ This is the Model-Controller-Processor pattern: cartridges are pluggable service
 
 === Claim 2: PanLL Grid Layout Auto-Wiring for Panel Cartridges
 
-**Location**: `/var/mnt/eclipse/repos/boj-server/panll/lib/autowire.ts` (ReScript panel autowiring with constraint solver)
+**Location**: `panll/lib/autowire.ts` (ReScript panel autowiring with constraint solver)
 
 **How verified**: The PanLL framework defines panels (UI widgets) with declared dependencies. The autowire module runs a topological sort + constraint satisfaction solver to bind panel inputs to outputs from other panels. README's panll/ subdir documents the "workspace layer" that orchestrates 108 panels into coherent layouts. The solver validates connectivity before rendering and rejects cycles.
 
@@ -42,25 +42,26 @@ Cartridge pattern is reused in echidna (prover orchestration), gossamer (window 
 |===
 | Path | What's There
 
-| `mcp-bridge/lib/server.ts` | MCP server entry point; listens on stdio for Claude Code
-| `mcp-bridge/lib/cartridge-loader.ts` | Runtime cartridge discovery from manifests; dynamic tool registration
-| `mcp-bridge/lib/tool-mapper.ts` | Maps MCP tool calls to cartridge method invocations
-| `cartridges/*/manifest.json` | Cartridge metadata: name, version, tool schemas, credential requirements
-| `cartridges/github-api-mcp/lib/index.ts` | GitHub cartridge: repos, issues, PRs, code search via Octokit
-| `cartridges/slack-mcp/lib/index.ts` | Slack cartridge: messaging, channel management via bolt.js
-| `cartridges/cloudflare-mcp/lib/index.ts` | Cloudflare cartridge: DNS, Workers, KV, R2, D1 via Official SDK
-| `panll/lib/autowire.ts` | Panel grid layout solver; validates connectivity and prevents cycles
-| `panll/panels/*/manifest.json` | Panel declarations: inputs, outputs, size, dependencies
-| `lib/server.ts` | Elixir server entry point (port 7700); exposes REST API + cart ridge lifecycle
-| `lib/cartridge-manager.ex` | Elixir cartridge lifecycle: loading, initialization, error handling, credential validation
+| `mcp-bridge/main.js` | MCP server entry point; JSON-RPC stdio transport for Claude Code
+| `mcp-bridge/lib/security.js` | Prompt injection detection, rate limiting, input validation, error sanitization
+| `mcp-bridge/lib/api-clients.js` | GitHub, GitLab API passthroughs and BoJ REST API wrappers
+| `mcp-bridge/lib/tools.js` | MCP tool schema definitions for all cartridge tools
+| `mcp-bridge/lib/logger.js` | Structured JSON logging to stderr
+| `mcp-bridge/lib/version.js` | Single source of truth for server name and version
+| `mcp-bridge/lib/offline-menu.js` | Static cartridge manifest for offline/inspection mode
+| `cartridges/*/` | 96 cartridge directories, each with abi/, ffi/, adapter/ structure
+| `src/abi/Boj/` | Idris2 ABI definitions (Protocol, Domain, Catalogue, Safety, etc.)
+| `panll/` | ReScript/TEA panel framework for UI workspace layer
 |===
 
 == Testing Critical Paths
 
-* **Cartridge loading**: `tests/cartridge-loader.test.ts` — validates manifest parsing, schema validation, duplicate detection
-* **Tool dispatch**: `tests/tool-mapper.test.ts` — mocks cartridge methods, verifies correct routing from MCP calls
-* **Panel autowiring**: `tests/panel-autowire.test.ts` — constraint solver correctness with cyclic graph detection
-* **Integration**: `tests/integration/` — end-to-end MCP server ↔ cartridge invocation with real credentials (dry-run mode)
+* **Security module**: `tests/security_test.js` — injection detection, unicode bypass prevention, rate limiting, input validation
+* **Smoke tests**: `tests/smoke_test.ts` — CLI, MCP protocol, health check, cartridge schemas
+* **E2E tests**: `tests/e2e_mcp_test.ts` — MCP server lifecycle, tool invocation, error handling
+* **Property tests**: `tests/p2p_cartridge_properties_test.ts` — cartridge invariants, schema compliance
+* **Aspect security**: `tests/aspect_security_test.ts` — injection, sandboxing, credential handling, SSRF prevention
+* **Integration**: `tests/integration.sh` — end-to-end MCP server ↔ cartridge invocation
 
 == Questions?
 
