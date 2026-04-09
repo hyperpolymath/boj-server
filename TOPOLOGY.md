@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: PMPL-1.0-or-later
 # TOPOLOGY.md — BoJ Server Component Matrix
 #
-# Auto-generated 2026-03-29. 92 cartridges across 6 tiers.
+# Auto-generated 2026-04-09. 96 cartridges across 6 tiers.
 
 ## Ports
 
@@ -12,7 +12,7 @@
 | 7702 | GraphQL | Running |
 | 7703 | SSE (Server-Sent Events) | Running |
 
-## Cartridge Matrix (92 total)
+## Cartridge Matrix (96 total)
 
 ### Tier 1 — High-Value APIs (11)
 | Cartridge | Domain |
