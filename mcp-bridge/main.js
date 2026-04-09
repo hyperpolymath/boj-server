@@ -13,7 +13,7 @@
 
 const BOJ_BASE = process.env.BOJ_URL || "http://localhost:7700";
 const SERVER_NAME = "boj-server";
-const SERVER_VERSION = "0.3.0";
+const SERVER_VERSION = "0.3.1";
 
 // ===================================================================
 // HARDENING: Prompt injection detection
