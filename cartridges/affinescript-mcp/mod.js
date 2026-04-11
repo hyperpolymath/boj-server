@@ -4,12 +4,17 @@
 // affinescript-mcp/mod.js -- AffineScript language cartridge implementation.
 //
 // Provides MCP tool handlers for AffineScript compiler operations:
-//   - Type checking (via local `affinescript check`)
-//   - Parsing (via `affinescript parse`)
-//   - Formatting (built-in indentation formatter)
-//   - Error code explanation (static lookup)
+//   - Type checking    (via `affinescript check --json`)
+//   - Parsing          (via `affinescript parse`)
+//   - Formatting       (built-in indentation formatter)
+//   - Linting          (via `affinescript lint --json`)
+//   - Compilation      (via `affinescript compile --json`)
+//   - Hover            (via `affinescript hover FILE LINE COL`)
+//   - Goto-definition  (via `affinescript goto-def FILE LINE COL`)
+//   - Completion       (via `affinescript complete FILE LINE COL`)
+//   - Error explanation  (static lookup)
 //   - Standard library browsing (static reference)
-//   - Syntax reference (static lookup)
+//   - Syntax reference   (static lookup)
 //   - Snippet evaluation (via `affinescript eval`)
 //
 // Auth: None required — local compiler invocation.
@@ -184,20 +189,24 @@ export async function handleTool(toolName, args) {
     case "affinescript_check": {
       if (!args.source) return { error: "Missing required field: source" };
 
-      const filename = args.filename || "input.as";
       const tmpFile = `/tmp/boj_afs_${crypto.randomUUID()}.as`;
 
       try {
         await Deno.writeTextFile(tmpFile, args.source);
-        const result = await runCompiler(["check", tmpFile], null);
+        // --json emits a structured JSON object on stderr
+        const result = await runCompiler(["check", "--json", tmpFile], null);
+
+        let report;
+        try {
+          report = JSON.parse(result.stderr.trim());
+        } catch {
+          // Fallback: compiler stderr was not JSON (unexpected)
+          report = { success: result.exitCode === 0, diagnostics: [], raw: result.stderr };
+        }
 
         return {
           status: result.exitCode === 0 ? 200 : 422,
-          data: {
-            success: result.exitCode === 0,
-            diagnostics: parseDiagnostics(result.stderr, filename),
-            stdout: result.stdout || undefined,
-          },
+          data: report,
         };
       } finally {
         try { await Deno.remove(tmpFile); } catch { /* ignore */ }
@@ -366,6 +375,167 @@ export async function handleTool(toolName, args) {
       }
     }
 
+    // --- Linting ---
+
+    case "affinescript_lint": {
+      if (!args.source) return { error: "Missing required field: source" };
+
+      const tmpFile = `/tmp/boj_afs_${crypto.randomUUID()}.as`;
+
+      try {
+        await Deno.writeTextFile(tmpFile, args.source);
+        const result = await runCompiler(["lint", "--json", tmpFile], null);
+
+        let report;
+        try {
+          report = JSON.parse(result.stderr.trim());
+        } catch {
+          report = { success: result.exitCode === 0, diagnostics: [], raw: result.stderr };
+        }
+
+        return {
+          status: result.exitCode === 0 ? 200 : 422,
+          data: report,
+        };
+      } finally {
+        try { await Deno.remove(tmpFile); } catch { /* ignore */ }
+      }
+    }
+
+    // --- Compilation ---
+
+    case "affinescript_compile": {
+      if (!args.source) return { error: "Missing required field: source" };
+
+      const target = args.target || "wasm";
+      const tmpSrc = `/tmp/boj_afs_${crypto.randomUUID()}.as`;
+      const ext = target === "julia" ? "jl" : "wasm";
+      const tmpOut = `/tmp/boj_afs_out_${crypto.randomUUID()}.${ext}`;
+
+      const compileArgs = ["compile", "--json"];
+      if (target === "wasm-gc") compileArgs.push("--wasm-gc");
+      compileArgs.push("-o", tmpOut, tmpSrc);
+
+      try {
+        await Deno.writeTextFile(tmpSrc, args.source);
+        const result = await runCompiler(compileArgs, null);
+
+        let report;
+        try {
+          report = JSON.parse(result.stderr.trim());
+        } catch {
+          report = { success: result.exitCode === 0, diagnostics: [], raw: result.stderr };
+        }
+
+        return {
+          status: result.exitCode === 0 ? 200 : 422,
+          data: { ...report, target },
+        };
+      } finally {
+        try { await Deno.remove(tmpSrc); } catch { /* ignore */ }
+        try { await Deno.remove(tmpOut); } catch { /* ignore */ }
+      }
+    }
+
+    // --- Hover ---
+
+    case "affinescript_hover": {
+      if (!args.source) return { error: "Missing required field: source" };
+      if (args.line == null) return { error: "Missing required field: line" };
+      if (args.col == null) return { error: "Missing required field: col" };
+
+      const tmpFile = `/tmp/boj_afs_${crypto.randomUUID()}.as`;
+
+      try {
+        await Deno.writeTextFile(tmpFile, args.source);
+        // hover outputs JSON on stdout; line/col are 1-based
+        const result = await runCompiler(
+          ["hover", tmpFile, String(args.line), String(args.col)],
+          null
+        );
+
+        let info;
+        try {
+          info = JSON.parse(result.stdout.trim());
+        } catch {
+          info = { found: false, raw: result.stdout };
+        }
+
+        return {
+          status: 200,
+          data: info,
+        };
+      } finally {
+        try { await Deno.remove(tmpFile); } catch { /* ignore */ }
+      }
+    }
+
+    // --- Goto-definition ---
+
+    case "affinescript_goto_def": {
+      if (!args.source) return { error: "Missing required field: source" };
+      if (args.line == null) return { error: "Missing required field: line" };
+      if (args.col == null) return { error: "Missing required field: col" };
+
+      const tmpFile = `/tmp/boj_afs_${crypto.randomUUID()}.as`;
+
+      try {
+        await Deno.writeTextFile(tmpFile, args.source);
+        // goto-def outputs JSON on stdout; line/col are 1-based
+        const result = await runCompiler(
+          ["goto-def", tmpFile, String(args.line), String(args.col)],
+          null
+        );
+
+        let info;
+        try {
+          info = JSON.parse(result.stdout.trim());
+        } catch {
+          info = { found: false, raw: result.stdout };
+        }
+
+        return {
+          status: 200,
+          data: info,
+        };
+      } finally {
+        try { await Deno.remove(tmpFile); } catch { /* ignore */ }
+      }
+    }
+
+    // --- Completion ---
+
+    case "affinescript_complete": {
+      if (!args.source) return { error: "Missing required field: source" };
+      if (args.line == null) return { error: "Missing required field: line" };
+      if (args.col == null) return { error: "Missing required field: col" };
+
+      const tmpFile = `/tmp/boj_afs_${crypto.randomUUID()}.as`;
+
+      try {
+        await Deno.writeTextFile(tmpFile, args.source);
+        // complete outputs a JSON array on stdout; line/col are 1-based
+        const result = await runCompiler(
+          ["complete", tmpFile, String(args.line), String(args.col)],
+          null
+        );
+
+        let items;
+        try {
+          items = JSON.parse(result.stdout.trim());
+        } catch {
+          items = [];
+        }
+
+        return {
+          status: 200,
+          data: { items, count: Array.isArray(items) ? items.length : 0 },
+        };
+      } finally {
+        try { await Deno.remove(tmpFile); } catch { /* ignore */ }
+      }
+    }
+
     default:
       return { error: `Unknown affinescript-mcp tool: ${toolName}` };
   }
@@ -407,5 +577,5 @@ export const metadata = {
   domain: "Languages",
   tier: "Ayo",
   protocols: ["MCP", "REST"],
-  toolCount: 7,
+  toolCount: 12,
 };

@@ -4,7 +4,7 @@
   "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath)",
   "name": "affinescript-mcp",
   "version": "0.1.0",
-  "description": "AffineScript language cartridge -- type checking, parsing, formatting, error explanation, stdlib browsing, and syntax reference for the AffineScript language (substructural type system with affine/linear types, algebraic effects)",
+  "description": "AffineScript language cartridge -- type checking, parsing, formatting, linting, compiling, hover/goto-def/completion queries, error explanation, stdlib browsing, and syntax reference for the AffineScript language (substructural type system with affine/linear types, algebraic effects)",
   "domain": "Languages",
   "tier": "Ayo",
   "protocols": ["MCP", "REST"],
@@ -20,7 +20,7 @@
   "tools": [
     {
       "name": "affinescript_check",
-      "description": "Type-check AffineScript source code and return diagnostics (errors, warnings, hints). Invokes the compiler's check mode.",
+      "description": "Type-check AffineScript source code and return structured JSON diagnostics (errors, warnings, hints). Invokes the compiler's check mode with --json output.",
       "inputSchema": {
         "type": "object",
         "properties": {
@@ -97,6 +97,70 @@
           "source": { "type": "string", "description": "AffineScript expression or snippet to evaluate" }
         },
         "required": ["source"]
+      }
+    },
+    {
+      "name": "affinescript_lint",
+      "description": "Lint AffineScript source code for code quality issues (naming conventions, dead code, style). Returns structured JSON diagnostics.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "source": { "type": "string", "description": "AffineScript source code to lint" },
+          "filename": { "type": "string", "description": "Virtual filename for diagnostic reporting (default: input.as)" }
+        },
+        "required": ["source"]
+      }
+    },
+    {
+      "name": "affinescript_compile",
+      "description": "Compile AffineScript source to a target (wasm, wasm-gc, julia). Returns structured JSON diagnostics and reports whether compilation succeeded.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "source": { "type": "string", "description": "AffineScript source code to compile" },
+          "target": { "type": "string", "description": "Compilation target: 'wasm' (default), 'wasm-gc', or 'julia'" },
+          "filename": { "type": "string", "description": "Virtual filename for diagnostic reporting (default: input.as)" }
+        },
+        "required": ["source"]
+      }
+    },
+    {
+      "name": "affinescript_hover",
+      "description": "Return type and symbol information for the symbol at a cursor position in AffineScript source code. Runs the full pipeline (parse → resolve → typecheck) and returns JSON hover info.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "source": { "type": "string", "description": "AffineScript source code" },
+          "line": { "type": "number", "description": "1-based line number" },
+          "col": { "type": "number", "description": "1-based column number" }
+        },
+        "required": ["source", "line", "col"]
+      }
+    },
+    {
+      "name": "affinescript_goto_def",
+      "description": "Return the definition location of the symbol at a cursor position in AffineScript source code. Returns JSON with file, line, and column of the definition site.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "source": { "type": "string", "description": "AffineScript source code" },
+          "line": { "type": "number", "description": "1-based line number" },
+          "col": { "type": "number", "description": "1-based column number" }
+        },
+        "required": ["source", "line", "col"]
+      }
+    },
+    {
+      "name": "affinescript_complete",
+      "description": "Return completion candidates at a cursor position in AffineScript source code. Returns a JSON array of items with name, kind, type, and detail fields.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "source": { "type": "string", "description": "AffineScript source code" },
+          "line": { "type": "number", "description": "1-based line number" },
+          "col": { "type": "number", "description": "1-based column number" }
+        },
+        "required": ["source", "line", "col"]
       }
     }
   ]
