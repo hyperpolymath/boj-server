@@ -1,28 +1,38 @@
-# Proof Requirements
+# PROOF-NEEDS.md — boj-server
 
-## Current state (Updated 2026-04-04)
-- `src/abi/Boj/Protocol.idr` (77 lines) — MCP protocol types
-- `src/abi/Boj/Domain.idr` (118 lines) — Domain types
-- `src/abi/Boj/Catalogue.idr` (220 lines) — Cartridge catalogue types
-- `src/abi/Boj/Menu.idr` (130 lines) — Menu system types
-- `src/abi/Boj/Federation.idr` (164 lines) — Federation types
-- `src/abi/Boj/Guardian.idr` — Guardian safety types
-- `src/abi/Boj/Safety.idr` — General safety types
-- `src/abi/Boj/SafeHTTP.idr`, `SafePromptInjection.idr`, `SafeCORS.idr`, `SafeAPIKey.idr`, `SafeWebSocket.idr` — Security-specific ABI definitions
-- **Prompt injection safety**: Proven in `SafePromptInjection.idr` (6 proven properties preventing LLM escape).
-- **CORS policy correctness**: Proven in `SafeCORS.idr` (mutually exclusive wildcard/credentials, origin char validation).
-- **API key non-leakage**: Proven in `SafeAPIKey.idr` (entropy bounds, format safety, log-masking, timing-safe checks).
-- **WebSocket frame safety**: Proven in `SafeWebSocket.idr` (frame length bounds, opcode validation).
-- **HTTP request validation**: Proven in `SafeHTTP.idr` (path traversal prevention, header sanitisation).
-- **Cartridge isolation**: Proven via dependent types in `Catalogue.idr` and `Guardian.idr`.
-- **Federation trust chain**: Proven in `Federation.idr` (handshake authenticity and non-replayability).
-- No dangerous patterns (`believe_me`, `sorry`, etc.) found in ABI layer.
+## Current State (Updated 2026-04-11)
 
-## What needs proving
-- *All initial high-priority ABI security proofs have been completed.* Future work includes extending these formal models deeper into the Zig FFI layer.
+- **src/abi/Boj/**: 12 Idris2 ABI files (Protocol, Domain, Catalogue, Menu, Federation, Guardian, Safety, SafeHTTP, SafePromptInjection, SafeCORS, SafeAPIKey, SafeWebSocket, CartridgeDispatch)
+- **Dangerous patterns**: 0
+- **LOC**: ~4,200 (Elixir + Idris2)
+- **ABI layer**: Comprehensive dependent-type ABI
 
-## Recommended prover
-- **Idris2** — Already used for ABI definitions; dependent types are ideal for proving security properties over protocol types
+## Completed Proofs
+
+| File | Covers | REQUIREMENTS-MASTER.md |
+|------|--------|------------------------|
+| `src/abi/Boj/SafePromptInjection.idr` | 6 properties preventing LLM prompt escape | — |
+| `src/abi/Boj/SafeCORS.idr` | Mutually exclusive wildcard/credentials; origin char validation | — |
+| `src/abi/Boj/SafeAPIKey.idr` | Entropy bounds, format safety, log-masking, timing-safe checks | BJ2 partial ✅ |
+| `src/abi/Boj/SafeWebSocket.idr` | Frame length bounds, opcode validation | — |
+| `src/abi/Boj/SafeHTTP.idr` | Path traversal prevention, header sanitisation | BJ2 partial ✅ |
+| `src/abi/Boj/Federation.idr` | Handshake authenticity and non-replayability | — |
+| `src/abi/Boj/Catalogue.idr` | IsUnbreakable: only Ready cartridges mountable | — |
+| `src/abi/Boj/CartridgeDispatch.idr` | Dispatch type safety: protocol-match + readiness guard + disjointness | BJ1 ✅ |
+
+## What Still Needs Proving
+
+| # | Component | Prover | Priority |
+|---|-----------|--------|----------|
+| BJ2 | Auth/credential handling (full credential store isolation model) | I2 | P1 |
+| BJ3 | API contract compliance (95 cartridges — protocol/domain coverage) | I2 | P2 |
+
+Note: BJ2 partial coverage via SafeAPIKey.idr + SafeHTTP.idr. Full isolation model (per-cartridge vault partitioning) not yet written.
+
+## Recommended Prover
+
+**Idris2** — Already in use throughout ABI layer.
 
 ## Priority
-- **HIGH** — BoJ is an MCP server that handles API keys, HTTP requests, and WebSocket connections. The `Safe*` ABI files explicitly claim safety properties that should be formally verified. Security-critical code with explicit safety claims demands proofs.
+
+**MEDIUM** (was HIGH) — BJ1 complete 2026-04-11. BJ2 partial; full isolation model is P1. BJ3 is P2 lower priority.
