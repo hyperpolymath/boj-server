@@ -1,0 +1,89 @@
+{
+  "$schema": "https://panll.dev/schemas/panel-manifest/v1.json",
+  "spdx": "PMPL-1.0-or-later",
+  "cartridge": "claude-ai-mcp",
+  "domain": "AI",
+  "version": "0.1.0",
+  "panels": [
+    {
+      "id": "claude-auth-status",
+      "title": "Auth Status",
+      "description": "Whether ANTHROPIC_API_KEY is present and the API is reachable",
+      "type": "status-indicator",
+      "data_source": {
+        "endpoint": "/cartridge/claude-ai-mcp/invoke",
+        "method": "POST",
+        "body": { "tool": "status" },
+        "refresh_interval_ms": 30000
+      },
+      "widgets": [
+        {
+          "type": "state-badge",
+          "field": "state",
+          "states": {
+            "ready":         { "color": "#2ecc71", "icon": "check-circle" },
+            "no_key":        { "color": "#e74c3c", "icon": "key" },
+            "api_error":     { "color": "#e74c3c", "icon": "alert-triangle" },
+            "rate_limited":  { "color": "#f39c12", "icon": "clock" }
+          }
+        }
+      ]
+    },
+    {
+      "id": "claude-active-model",
+      "title": "Active Model",
+      "description": "Default model in use and its tier",
+      "type": "metric",
+      "data_source": {
+        "endpoint": "/cartridge/claude-ai-mcp/invoke",
+        "method": "POST",
+        "body": { "tool": "claude_list_models" },
+        "refresh_interval_ms": 60000
+      },
+      "widgets": [
+        { "type": "text",    "field": "default", "label": "Default Model", "icon": "cpu" },
+        { "type": "counter", "field": "models.length", "label": "Available Models", "icon": "layers" }
+      ]
+    },
+    {
+      "id": "claude-usage",
+      "title": "Token Usage",
+      "description": "Cumulative input and output tokens sent through this cartridge in the current session",
+      "type": "metric",
+      "data_source": {
+        "endpoint": "/cartridge/claude-ai-mcp/usage",
+        "method": "GET",
+        "refresh_interval_ms": 10000
+      },
+      "widgets": [
+        { "type": "counter", "field": "input_tokens",  "label": "Input Tokens",  "icon": "arrow-up" },
+        { "type": "counter", "field": "output_tokens", "label": "Output Tokens", "icon": "arrow-down" },
+        { "type": "counter", "field": "total_requests","label": "Requests",      "icon": "activity" }
+      ]
+    },
+    {
+      "id": "claude-request-log",
+      "title": "Request Log",
+      "description": "Recent messages sent through the cartridge — model, token cost, stop reason",
+      "type": "log-stream",
+      "data_source": {
+        "endpoint": "/cartridge/claude-ai-mcp/audit",
+        "method": "GET",
+        "refresh_interval_ms": 15000,
+        "max_entries": 50
+      },
+      "widgets": [
+        {
+          "type": "log-table",
+          "columns": [
+            { "field": "timestamp",    "label": "Time",         "format": "datetime" },
+            { "field": "model",        "label": "Model" },
+            { "field": "input_tokens", "label": "In Tokens" },
+            { "field": "output_tokens","label": "Out Tokens" },
+            { "field": "stop_reason",  "label": "Stop" }
+          ]
+        }
+      ]
+    }
+  ]
+}

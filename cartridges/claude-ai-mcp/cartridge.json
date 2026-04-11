@@ -1,0 +1,108 @@
+{
+  "$schema": "https://boj.dev/schemas/cartridge/v1.json",
+  "spdx": "PMPL-1.0-or-later",
+  "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath)",
+  "name": "claude-ai-mcp",
+  "version": "0.1.0",
+  "description": "Anthropic Messages API cartridge -- send messages to Claude models, count tokens, manage multi-turn conversations",
+  "domain": "AI",
+  "tier": "Ayo",
+  "protocols": ["MCP", "REST"],
+  "auth": {
+    "method": "api_key_header",
+    "header": "x-api-key",
+    "env_var": "ANTHROPIC_API_KEY",
+    "credential_source": "vault-mcp"
+  },
+  "api": {
+    "base_url": "https://api.anthropic.com/v1",
+    "content_type": "application/json",
+    "extra_headers": {
+      "anthropic-version": "2023-06-01"
+    }
+  },
+  "tools": [
+    {
+      "name": "claude_chat",
+      "description": "Send a message (or multi-turn conversation) to a Claude model and return the text response. Uses the Anthropic Messages API.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "messages": {
+            "type": "array",
+            "description": "Conversation history. Each entry has 'role' (user|assistant) and 'content' (string).",
+            "items": {
+              "type": "object",
+              "properties": {
+                "role": { "type": "string", "enum": ["user", "assistant"] },
+                "content": { "type": "string" }
+              },
+              "required": ["role", "content"]
+            },
+            "minItems": 1
+          },
+          "model": {
+            "type": "string",
+            "description": "Model ID. Defaults to claude-sonnet-4-6. Options: claude-opus-4-6, claude-sonnet-4-6, claude-haiku-4-5-20251001.",
+            "default": "claude-sonnet-4-6"
+          },
+          "system": {
+            "type": "string",
+            "description": "Optional system prompt placed before the conversation."
+          },
+          "max_tokens": {
+            "type": "number",
+            "description": "Maximum tokens in the response (default 4096, max 8192).",
+            "default": 4096
+          },
+          "temperature": {
+            "type": "number",
+            "description": "Sampling temperature 0.0–1.0 (default 1.0 = standard).",
+            "default": 1.0
+          }
+        },
+        "required": ["messages"]
+      }
+    },
+    {
+      "name": "claude_count_tokens",
+      "description": "Count how many tokens a given set of messages would consume without actually sending them. Uses the Anthropic token-counting endpoint.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "messages": {
+            "type": "array",
+            "description": "Messages to count tokens for.",
+            "items": {
+              "type": "object",
+              "properties": {
+                "role": { "type": "string", "enum": ["user", "assistant"] },
+                "content": { "type": "string" }
+              },
+              "required": ["role", "content"]
+            },
+            "minItems": 1
+          },
+          "model": {
+            "type": "string",
+            "description": "Model to count against (affects tokenisation). Defaults to claude-sonnet-4-6.",
+            "default": "claude-sonnet-4-6"
+          },
+          "system": {
+            "type": "string",
+            "description": "System prompt to include in the count."
+          }
+        },
+        "required": ["messages"]
+      }
+    },
+    {
+      "name": "claude_list_models",
+      "description": "Return the known Claude model IDs available through this cartridge, with tier labels.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {}
+      }
+    }
+  ]
+}

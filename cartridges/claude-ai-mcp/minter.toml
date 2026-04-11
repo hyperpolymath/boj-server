@@ -1,0 +1,12 @@
+# SPDX-License-Identifier: PMPL-1.0-or-later
+name = "claude-ai-mcp"
+description = "Anthropic Messages API cartridge — send messages to Claude models, count tokens, manage conversations"
+version = "0.1.0"
+domain = "AI"
+protocols = [
+    "MCP",
+    "REST",
+]
+tier = "Ayo"
+backend = "universal"
+generate_panel = true
