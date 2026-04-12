@@ -1,0 +1,34 @@
+= SIDELINED: buildkite_adapter.v
+:toc:
+:icons: font
+
+== Why this file was removed
+
+V-lang was banned estate-wide on 2026-04-12.
+The V-lang adapter `buildkite_adapter.v` has been replaced by the Zig
+three-protocol adapter `buildkite_adapter.zig`.
+
+== Replacement
+
+`buildkite_adapter.zig` provides identical tool dispatch across three protocols:
+
+* REST (see `build.zig` for port assignment)
+* gRPC-compat (same port + 1)
+* GraphQL (same port + 2)
+
+The FFI contract is unchanged — `buildkite_mcp_ffi.zig` is unmodified.
+
+== Migration notes
+
+* Detection: V-lang is detected via `v.mod` / `vpkg.json`, NOT `.v` extension
+  (`.v` files collide with Verilog — this is a V-lang-specific ban).
+* The original `.v` adapter is preserved in git history under this commit.
+* All tool names and semantics are faithfully preserved in the Zig replacement.
+
+== See also
+
+* `buildkite_adapter.zig` — the replacement
+* `build.zig` — build configuration
+* `../ffi/buildkite_mcp_ffi.zig` — Zig FFI (unchanged)
+* `../cartridge.json` — tool schema (unchanged)
+* `../mod.js` — Deno handler (unchanged)
