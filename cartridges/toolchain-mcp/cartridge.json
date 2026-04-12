@@ -1,0 +1,119 @@
+{
+  "$schema": "https://boj.dev/schemas/cartridge/v1.json",
+  "spdx": "PMPL-1.0-or-later",
+  "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath)",
+  "name": "toolchain-mcp",
+  "version": "0.1.0",
+  "description": "Toolchain orchestrator. Mints, provisions, and configures language toolchains composed from lsp-mcp, dap-mcp, lang-mcp, and bsp-mcp. Integrates with PanLL panels via Groove and supports collaborative Burble sessions for pair-debugging and pair-programming workflows.",
+  "domain": "Language Tools",
+  "tier": "Ayo",
+  "protocols": ["MCP", "REST"],
+  "auth": { "method": "none", "env_var": null, "credential_source": null },
+  "api": { "base_url": "local://toolchain-mcp", "content_type": "application/json" },
+  "tools": [
+    {
+      "name": "toolchain_mint",
+      "description": "Mint a new toolchain configuration for a language workspace. Discovers available servers (LSP/DAP/BSP/lang) and returns a toolchain ID. Does not start any servers — call toolchain_provision to do that.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "language": { "type": "string", "description": "Primary language for the toolchain (e.g. 'affinescript', 'rust', 'ocaml')" },
+          "workspace_root": { "type": "string", "description": "Workspace root directory path" },
+          "servers": {
+            "type": "array",
+            "items": { "type": "string", "enum": ["lsp", "dap", "bsp", "lang"] },
+            "description": "Toolserver types to include (default: all available)"
+          },
+          "name": { "type": "string", "description": "Human-readable toolchain name" }
+        },
+        "required": ["language", "workspace_root"]
+      }
+    },
+    {
+      "name": "toolchain_provision",
+      "description": "Provision a minted toolchain: start all configured servers (LSP, DAP, BSP, lang), run their initialize handshakes, and return the ready state with each server's capabilities.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "toolchain_id": { "type": "string", "description": "Toolchain ID from toolchain_mint" },
+          "lsp_command": { "type": "string", "description": "LSP server command override (default: derived from language)" },
+          "dap_command": { "type": "string", "description": "DAP adapter command override" },
+          "bsp_command": { "type": "string", "description": "BSP server command override" }
+        },
+        "required": ["toolchain_id"]
+      }
+    },
+    {
+      "name": "toolchain_configure",
+      "description": "Apply configuration settings to a provisioned toolchain. Supports per-server options and cross-cutting settings (formatting, diagnostics throttle, telemetry).",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "toolchain_id": { "type": "string", "description": "Toolchain ID" },
+          "settings": {
+            "type": "object",
+            "description": "Configuration map. Keys: lsp, dap, bsp, lang (server-specific sub-objects), plus top-level: format_on_save (bool), diagnostics_debounce_ms (number), telemetry (bool)"
+          }
+        },
+        "required": ["toolchain_id", "settings"]
+      }
+    },
+    {
+      "name": "toolchain_status",
+      "description": "Get the current status of a toolchain or all toolchains. Returns server states, capabilities, and Groove/Burble binding info.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "toolchain_id": { "type": "string", "description": "Toolchain ID (omit to list all)" }
+        },
+        "required": []
+      }
+    },
+    {
+      "name": "toolchain_list",
+      "description": "List all active toolchains with their language, workspace, server states, and any bound Groove endpoints or Burble rooms.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "toolchain_groove_bind",
+      "description": "Bind a provisioned toolchain to a Groove endpoint so PanLL panels can discover and connect to it. Returns the Groove binding descriptor.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "toolchain_id": { "type": "string", "description": "Toolchain ID to bind" },
+          "groove_endpoint": { "type": "string", "description": "Groove endpoint URL (e.g. groove://panel.local/dev/toolchain)" },
+          "panel_id": { "type": "string", "description": "Target PanLL panel ID (optional — omit to broadcast)" }
+        },
+        "required": ["toolchain_id", "groove_endpoint"]
+      }
+    },
+    {
+      "name": "toolchain_burble_session",
+      "description": "Create or join a Burble collaborative session for a toolchain. Enables real-time shared debugging and pair-programming over the toolchain's LSP/DAP/BSP connections.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "toolchain_id": { "type": "string", "description": "Toolchain ID" },
+          "room": { "type": "string", "description": "Burble room name to join (creates a new room if omitted)" },
+          "role": { "type": "string", "enum": ["host", "guest"], "description": "Session role (default: host for new rooms, guest for existing)" }
+        },
+        "required": ["toolchain_id"]
+      }
+    },
+    {
+      "name": "toolchain_stop",
+      "description": "Gracefully stop all servers in a toolchain (LSP shutdown/exit, DAP disconnect, BSP build/shutdown) and release the toolchain ID.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "toolchain_id": { "type": "string", "description": "Toolchain ID to stop" }
+        },
+        "required": ["toolchain_id"]
+      }
+    }
+  ]
+}

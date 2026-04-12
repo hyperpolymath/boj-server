@@ -1,0 +1,129 @@
+{
+  "$schema": "https://boj.dev/schemas/cartridge/v1.json",
+  "spdx": "PMPL-1.0-or-later",
+  "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath)",
+  "name": "bsp-mcp",
+  "version": "0.1.0",
+  "description": "Generic Build Server Protocol (BSP 2.x) gateway. Spawns any BSP server as a persistent subprocess and exposes build lifecycle operations (initialize, targets, compile, test, run, clean, diagnostics) as MCP tools.",
+  "domain": "Language Tools",
+  "tier": "Ayo",
+  "protocols": ["MCP", "REST"],
+  "auth": { "method": "none", "env_var": null, "credential_source": null },
+  "api": { "base_url": "local://bsp-mcp", "content_type": "application/json" },
+  "tools": [
+    {
+      "name": "bsp_start",
+      "description": "Start a BSP server subprocess and return a session ID. The server stays alive until bsp_stop is called.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "command": { "type": "string", "description": "BSP server executable (e.g. 'sbt bspConfig', 'mill mill.bsp.BSP/install', 'cargo-bsp')" },
+          "args": { "type": "array", "items": { "type": "string" }, "description": "Additional command arguments" },
+          "workspace_root": { "type": "string", "description": "Workspace root directory path" }
+        },
+        "required": ["command"]
+      }
+    },
+    {
+      "name": "bsp_initialize",
+      "description": "Send the BSP build/initialize handshake and return the server's capabilities. Must be called once after bsp_start.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "session_id": { "type": "string", "description": "Session ID from bsp_start" },
+          "display_name": { "type": "string", "description": "Client display name (default: boj-bsp-mcp)" },
+          "version": { "type": "string", "description": "Client version (default: 0.1.0)" },
+          "bsp_version": { "type": "string", "description": "BSP protocol version (default: 2.2.0)" }
+        },
+        "required": ["session_id"]
+      }
+    },
+    {
+      "name": "bsp_targets",
+      "description": "List all build targets in the workspace (workspace/buildTargets). Returns targets with their IDs, language IDs, and capabilities.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "session_id": { "type": "string", "description": "Session ID" }
+        },
+        "required": ["session_id"]
+      }
+    },
+    {
+      "name": "bsp_compile",
+      "description": "Compile one or more build targets (buildTarget/compile). Returns a compile result with diagnostics.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "session_id": { "type": "string", "description": "Session ID" },
+          "targets": { "type": "array", "items": { "type": "string" }, "description": "Build target URIs to compile (omit to compile all)" },
+          "origin_id": { "type": "string", "description": "Optional request origin ID for tracking" }
+        },
+        "required": ["session_id"]
+      }
+    },
+    {
+      "name": "bsp_test",
+      "description": "Run tests for one or more build targets (buildTarget/test). Returns test results.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "session_id": { "type": "string", "description": "Session ID" },
+          "targets": { "type": "array", "items": { "type": "string" }, "description": "Build target URIs to test" },
+          "arguments": { "type": "array", "items": { "type": "string" }, "description": "Arguments passed to the test runner" },
+          "origin_id": { "type": "string", "description": "Optional request origin ID for tracking" }
+        },
+        "required": ["session_id"]
+      }
+    },
+    {
+      "name": "bsp_run",
+      "description": "Run a build target (buildTarget/run). Returns the run result and captured output.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "session_id": { "type": "string", "description": "Session ID" },
+          "target": { "type": "string", "description": "Build target URI to run" },
+          "arguments": { "type": "array", "items": { "type": "string" }, "description": "Arguments for the program" },
+          "environment_variables": { "type": "object", "description": "Environment variables (key-value)" }
+        },
+        "required": ["session_id", "target"]
+      }
+    },
+    {
+      "name": "bsp_clean",
+      "description": "Clean the build cache for targets or the entire workspace (workspace/cleanCache). Returns cleanup statistics.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "session_id": { "type": "string", "description": "Session ID" },
+          "targets": { "type": "array", "items": { "type": "string" }, "description": "Build target URIs to clean (omit for full workspace clean)" }
+        },
+        "required": ["session_id"]
+      }
+    },
+    {
+      "name": "bsp_diagnostics",
+      "description": "Return the latest build diagnostics published by the server (from build/publishDiagnostics notifications). Aggregated across all targets.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "session_id": { "type": "string", "description": "Session ID" },
+          "target": { "type": "string", "description": "Filter by build target URI (optional)" }
+        },
+        "required": ["session_id"]
+      }
+    },
+    {
+      "name": "bsp_stop",
+      "description": "Send the BSP build/shutdown + build/exit sequence and terminate the server subprocess. The session ID is invalidated.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "session_id": { "type": "string", "description": "Session ID to stop" }
+        },
+        "required": ["session_id"]
+      }
+    }
+  ]
+}

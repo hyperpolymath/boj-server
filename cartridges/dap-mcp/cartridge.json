@@ -1,0 +1,175 @@
+{
+  "$schema": "https://boj.dev/schemas/cartridge/v1.json",
+  "spdx": "PMPL-1.0-or-later",
+  "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath)",
+  "name": "dap-mcp",
+  "version": "0.1.0",
+  "description": "Generic Debug Adapter Protocol (DAP) gateway. Spawns any DAP adapter as a persistent subprocess and exposes debug lifecycle operations (initialize, launch/attach, breakpoints, stepping, stack inspection, variable evaluation) as MCP tools.",
+  "domain": "Language Tools",
+  "tier": "Ayo",
+  "protocols": ["MCP", "REST"],
+  "auth": { "method": "none", "env_var": null, "credential_source": null },
+  "api": { "base_url": "local://dap-mcp", "content_type": "application/json" },
+  "tools": [
+    {
+      "name": "dap_start",
+      "description": "Start a debug adapter subprocess and return a session ID. The adapter stays alive until dap_stop is called.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "command": { "type": "string", "description": "Debug adapter executable (e.g. 'node path/to/adapter.js', 'lldb-dap')" },
+          "args": { "type": "array", "items": { "type": "string" }, "description": "Additional command arguments" },
+          "cwd": { "type": "string", "description": "Working directory for the adapter process" }
+        },
+        "required": ["command"]
+      }
+    },
+    {
+      "name": "dap_initialize",
+      "description": "Send the DAP initialize request to negotiate adapter capabilities. Must be called once after dap_start.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "session_id": { "type": "string", "description": "Session ID from dap_start" },
+          "adapter_id": { "type": "string", "description": "Adapter identifier (e.g. 'lldb', 'codelldb', 'debugpy')" },
+          "locale": { "type": "string", "description": "Locale string (default: 'en-GB')" }
+        },
+        "required": ["session_id", "adapter_id"]
+      }
+    },
+    {
+      "name": "dap_launch",
+      "description": "Launch a program under the debug adapter. The adapter starts the debuggee and raises a stopped event at entry (if configured).",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "session_id": { "type": "string", "description": "Session ID" },
+          "program": { "type": "string", "description": "Path to the program to debug" },
+          "args": { "type": "array", "items": { "type": "string" }, "description": "Program arguments" },
+          "cwd": { "type": "string", "description": "Program working directory" },
+          "env": { "type": "object", "description": "Environment variables (key-value pairs)" },
+          "stop_on_entry": { "type": "boolean", "description": "Stop at program entry (default: false)" }
+        },
+        "required": ["session_id", "program"]
+      }
+    },
+    {
+      "name": "dap_attach",
+      "description": "Attach the debug adapter to a running process by PID or by a connection (e.g. localhost:port for remote debugging).",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "session_id": { "type": "string", "description": "Session ID" },
+          "pid": { "type": "number", "description": "Process ID to attach to" },
+          "host": { "type": "string", "description": "Remote debug host (for remote attach)" },
+          "port": { "type": "number", "description": "Remote debug port" }
+        },
+        "required": ["session_id"]
+      }
+    },
+    {
+      "name": "dap_set_breakpoints",
+      "description": "Set breakpoints in a source file, replacing any previously set breakpoints for that file. Returns the verified breakpoint list.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "session_id": { "type": "string", "description": "Session ID" },
+          "source_path": { "type": "string", "description": "Absolute path to the source file" },
+          "lines": { "type": "array", "items": { "type": "number" }, "description": "1-based line numbers" },
+          "conditions": { "type": "array", "items": { "type": "string" }, "description": "Optional condition expressions (parallel array with lines)" }
+        },
+        "required": ["session_id", "source_path", "lines"]
+      }
+    },
+    {
+      "name": "dap_continue",
+      "description": "Continue execution for a thread (or all threads) until the next breakpoint or program exit.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "session_id": { "type": "string", "description": "Session ID" },
+          "thread_id": { "type": "number", "description": "Thread to continue (0 or omit for all threads)" }
+        },
+        "required": ["session_id"]
+      }
+    },
+    {
+      "name": "dap_step_over",
+      "description": "Step over (next statement) for a thread. Execution resumes until the next line in the current scope.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "session_id": { "type": "string", "description": "Session ID" },
+          "thread_id": { "type": "number", "description": "Thread to step" },
+          "granularity": { "type": "string", "enum": ["statement", "line", "instruction"], "description": "Step granularity (default: statement)" }
+        },
+        "required": ["session_id", "thread_id"]
+      }
+    },
+    {
+      "name": "dap_step_in",
+      "description": "Step into the next function call for a thread.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "session_id": { "type": "string", "description": "Session ID" },
+          "thread_id": { "type": "number", "description": "Thread to step" }
+        },
+        "required": ["session_id", "thread_id"]
+      }
+    },
+    {
+      "name": "dap_step_out",
+      "description": "Step out of the current function for a thread (run until function return).",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "session_id": { "type": "string", "description": "Session ID" },
+          "thread_id": { "type": "number", "description": "Thread to step out" }
+        },
+        "required": ["session_id", "thread_id"]
+      }
+    },
+    {
+      "name": "dap_stack_trace",
+      "description": "Get the call stack for a stopped thread. Returns an array of stack frames with source locations.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "session_id": { "type": "string", "description": "Session ID" },
+          "thread_id": { "type": "number", "description": "Thread ID" },
+          "start_frame": { "type": "number", "description": "First frame to return (default: 0)" },
+          "levels": { "type": "number", "description": "Max frames to return (default: 20)" }
+        },
+        "required": ["session_id", "thread_id"]
+      }
+    },
+    {
+      "name": "dap_variables",
+      "description": "Get variables for a stack frame scope or an expandable variable. Returns an array of variable objects.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "session_id": { "type": "string", "description": "Session ID" },
+          "variables_reference": { "type": "number", "description": "variablesReference from a stack frame scope or parent variable" },
+          "filter": { "type": "string", "enum": ["indexed", "named"], "description": "Filter for array vs object members (optional)" },
+          "start": { "type": "number", "description": "First variable (for paging)" },
+          "count": { "type": "number", "description": "Max variables to return" }
+        },
+        "required": ["session_id", "variables_reference"]
+      }
+    },
+    {
+      "name": "dap_stop",
+      "description": "Send the DAP disconnect request and terminate the debug adapter subprocess. The session ID is invalidated.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "session_id": { "type": "string", "description": "Session ID to stop" },
+          "terminate_debuggee": { "type": "boolean", "description": "Kill the debugged program (default: true)" }
+        },
+        "required": ["session_id"]
+      }
+    }
+  ]
+}
