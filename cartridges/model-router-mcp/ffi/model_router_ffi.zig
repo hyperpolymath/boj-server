@@ -12,14 +12,14 @@ pub const ModelTier = enum(i32) {
 };
 
 /// Select model based on cost preference (0=cheapest, 100=best quality).
-pub export fn router_select(cost_pref: i32) callconv(.C) i32 {
+pub export fn router_select(cost_pref: i32) i32 {
     if (cost_pref < 30) return 0; // Haiku
     if (cost_pref < 70) return 1; // Sonnet
     return 2; // Opus
 }
 
 /// Fallback: Opus→Sonnet, Sonnet→Haiku, Haiku→-1 (no fallback).
-pub export fn router_fallback(tier: i32) callconv(.C) i32 {
+pub export fn router_fallback(tier: i32) i32 {
     return switch (@as(ModelTier, @enumFromInt(tier))) {
         .opus => 1,
         .sonnet => 0,

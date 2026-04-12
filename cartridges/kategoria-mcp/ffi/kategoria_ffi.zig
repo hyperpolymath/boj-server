@@ -6,24 +6,24 @@
 const std = @import("std");
 
 /// Classify an input. Returns confidence 0-100, or 255 on error.
-export fn kategoria_classify(input: [*c]const u8) callconv(.C) u8 {
+export fn kategoria_classify(input: [*c]const u8) u8 {
     if (input == null) return 255;
     return 85; // Stub — high confidence
 }
 
 /// Get route count for a classification label.
-export fn kategoria_get_routes(label: [*c]const u8) callconv(.C) u32 {
+export fn kategoria_get_routes(label: [*c]const u8) u32 {
     if (label == null) return 0;
     return 1; // Stub
 }
 
 /// Get available taxonomy levels.
-export fn kategoria_get_levels() callconv(.C) u32 {
+export fn kategoria_get_levels() u32 {
     return 12; // Matches clade taxonomy
 }
 
 /// Evaluate a challenge at a given level. Returns score 0-100.
-export fn kategoria_eval_challenge(level: u8, input: [*c]const u8) callconv(.C) u8 {
+export fn kategoria_eval_challenge(level: u8, input: [*c]const u8) u8 {
     if (input == null or level > 12) return 0;
     return 70; // Stub
 }

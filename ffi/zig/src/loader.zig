@@ -25,13 +25,13 @@ pub const HASH_HEX_LEN: usize = 64;
 /// Each cartridge .so/.dylib exports these four C-calling-convention symbols.
 pub const CartridgeInterface = struct {
     /// Initialise the cartridge. Returns 0 on success.
-    init: *const fn () callconv(.C) c_int,
+    init: *const fn () c_int,
     /// Shut down the cartridge.
-    deinit: *const fn () callconv(.C) void,
+    deinit: *const fn () void,
     /// Get the cartridge name (null-terminated).
-    name: *const fn () callconv(.C) [*:0]const u8,
+    name: *const fn () [*:0]const u8,
     /// Get the cartridge version (null-terminated).
-    version: *const fn () callconv(.C) [*:0]const u8,
+    version: *const fn () [*:0]const u8,
     /// Handle to the loaded dynamic library (for cleanup).
     _lib: std.DynLib,
 };
@@ -124,13 +124,13 @@ pub fn loadCartridge(
     errdefer lib.close();
 
     // Look up the four required symbols
-    const init_fn = lib.lookup(*const fn () callconv(.C) c_int, "boj_cartridge_init") orelse
+    const init_fn = lib.lookup(*const fn () c_int, "boj_cartridge_init") orelse
         return LoadError.MissingSymbol;
-    const deinit_fn = lib.lookup(*const fn () callconv(.C) void, "boj_cartridge_deinit") orelse
+    const deinit_fn = lib.lookup(*const fn () void, "boj_cartridge_deinit") orelse
         return LoadError.MissingSymbol;
-    const name_fn = lib.lookup(*const fn () callconv(.C) [*:0]const u8, "boj_cartridge_name") orelse
+    const name_fn = lib.lookup(*const fn () [*:0]const u8, "boj_cartridge_name") orelse
         return LoadError.MissingSymbol;
-    const version_fn = lib.lookup(*const fn () callconv(.C) [*:0]const u8, "boj_cartridge_version") orelse
+    const version_fn = lib.lookup(*const fn () [*:0]const u8, "boj_cartridge_version") orelse
         return LoadError.MissingSymbol;
 
     return CartridgeInterface{

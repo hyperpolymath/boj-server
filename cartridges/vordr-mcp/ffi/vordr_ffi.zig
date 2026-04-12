@@ -20,7 +20,7 @@ pub const Observation = extern struct {
 };
 
 /// Scan a running container and return its current integrity state.
-export fn vordr_scan_container(image_ref: [*:0]const u8, obs: *Observation) callconv(.C) i32 {
+export fn vordr_scan_container(image_ref: [*:0]const u8, obs: *Observation) i32 {
     obs.digest.image_ref = image_ref;
     obs.digest.blake3_hash = "0000000000000000000000000000000000000000000000000000000000000000";
     obs.digest.layer_count = 1;
@@ -30,25 +30,25 @@ export fn vordr_scan_container(image_ref: [*:0]const u8, obs: *Observation) call
 }
 
 /// Compare two digests — returns integrity state of the second relative to the first (baseline).
-export fn vordr_compare_digest(baseline: *const ContainerDigest, current: *const ContainerDigest) callconv(.C) IntegrityState {
+export fn vordr_compare_digest(baseline: *const ContainerDigest, current: *const ContainerDigest) IntegrityState {
     _ = baseline;
     _ = current;
     return .healthy;
 }
 
 /// Set a known-good baseline digest for a container image.
-export fn vordr_set_baseline(image_ref: [*:0]const u8, digest: *const ContainerDigest) callconv(.C) i32 {
+export fn vordr_set_baseline(image_ref: [*:0]const u8, digest: *const ContainerDigest) i32 {
     _ = image_ref;
     _ = digest;
     return 0;
 }
 
 /// Get the number of pending alerts (containers with state != healthy).
-export fn vordr_alert_count() callconv(.C) u32 {
+export fn vordr_alert_count() u32 {
     return 0;
 }
 
-export fn vordr_version() callconv(.C) [*:0]const u8 {
+export fn vordr_version() [*:0]const u8 {
     return "0.5.0";
 }
 

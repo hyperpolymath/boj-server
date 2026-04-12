@@ -22,7 +22,7 @@ pub const PermLevel = enum(i32) {
     admin = 2,
 };
 
-pub export fn game_admin_min_perm(op: i32) callconv(.C) i32 {
+pub export fn game_admin_min_perm(op: i32) i32 {
     return switch (@as(Operation, @enumFromInt(op))) {
         .list_servers => 0,
         .get_server_status => 0,
@@ -35,12 +35,12 @@ pub export fn game_admin_min_perm(op: i32) callconv(.C) i32 {
     };
 }
 
-pub export fn game_admin_check_perm(op: i32, user_perm: i32) callconv(.C) i32 {
+pub export fn game_admin_check_perm(op: i32, user_perm: i32) i32 {
     const required = game_admin_min_perm(op);
     return if (user_perm >= required) 1 else 0;
 }
 
-pub export fn game_admin_is_readonly(op: i32) callconv(.C) i32 {
+pub export fn game_admin_is_readonly(op: i32) i32 {
     return switch (@as(Operation, @enumFromInt(op))) {
         .list_servers, .get_server_status, .get_logs, .probe_health => 1,
         else => 0,

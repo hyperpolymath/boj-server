@@ -252,15 +252,15 @@ fn doJiraApiCall(slot: *SessionSlot, endpoint: []const u8, http_method: []const 
     // Fetch the request (Zig 0.15 API — replaces open/send/wait)
     const body = params_json orelse "";
     const payload: ?[]const u8 = if (body.len > 0 and (method == .POST or method == .PUT)) body else null;
-    var response_storage = std.ArrayList(u8).init(allocator);
-    defer response_storage.deinit();
+    var aw: std.Io.Writer.Allocating = .init(allocator);
+    defer aw.deinit();
 
     const fetch_result = client.fetch(.{
         .method = method,
         .location = .{ .uri = uri },
         .extra_headers = &headers_buf,
         .payload = payload,
-        .response_storage = .{ .dynamic = &response_storage },
+        .response_writer = &aw.writer,
     }) catch return 0;
 
     // Check for rate limiting (HTTP 429)
@@ -271,8 +271,9 @@ fn doJiraApiCall(slot: *SessionSlot, endpoint: []const u8, http_method: []const 
     }
 
     // Copy response body into the caller's output buffer
-    const to_copy = @min(response_storage.items.len, out_buf.len);
-    @memcpy(out_buf[0..to_copy], response_storage.items[0..to_copy]);
+    const response_bytes = aw.writer.buffered();
+    const to_copy = @min(response_bytes.len, out_buf.len);
+    @memcpy(out_buf[0..to_copy], response_bytes[0..to_copy]);
     return to_copy;
 }
 

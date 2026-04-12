@@ -6,18 +6,18 @@
 const std = @import("std");
 
 /// List active channel count.
-export fn civic_connect_list_channels_count() callconv(.C) u32 {
+export fn civic_connect_list_channels_count() u32 {
     return 0; // Stub
 }
 
 /// Send a message to a channel. Returns 0 on success, -1 on error.
-export fn civic_connect_send_message(channel_id: u32, body: [*c]const u8) callconv(.C) i32 {
+export fn civic_connect_send_message(channel_id: u32, body: [*c]const u8) i32 {
     if (channel_id == 0 or body == null) return -1;
     return 0; // Stub
 }
 
 /// Get poll results. Returns total vote count, or 0 if poll not found.
-export fn civic_connect_get_poll(poll_id: u32) callconv(.C) u32 {
+export fn civic_connect_get_poll(poll_id: u32) u32 {
     if (poll_id == 0) return 0;
     return 0; // Stub
 }

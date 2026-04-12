@@ -377,15 +377,15 @@ fn doHttpRequest(
     const http_method = parseHttpMethod(method);
 
     // Fetch the request (Zig 0.15 API — replaces open/send/wait)
-    var response_storage = std.ArrayList(u8).init(allocator);
-    defer response_storage.deinit();
+    var aw: std.Io.Writer.Allocating = .init(allocator);
+    defer aw.deinit();
 
     const fetch_result = client.fetch(.{
         .method = http_method,
         .location = .{ .uri = uri },
         .extra_headers = &headers_buf,
         .payload = body,
-        .response_storage = .{ .dynamic = &response_storage },
+        .response_writer = &aw.writer,
     }) catch return -5;
 
     // Handle rate limiting (HTTP 429 or 403 with depleted budget)
@@ -402,8 +402,9 @@ fn doHttpRequest(
     }
 
     // Copy response body into the caller's output buffer
-    const to_copy = @min(response_storage.items.len, out_cap);
-    @memcpy(out_buf[0..to_copy], response_storage.items[0..to_copy]);
+    const response_bytes = aw.writer.buffered();
+    const to_copy = @min(response_bytes.len, out_cap);
+    @memcpy(out_buf[0..to_copy], response_bytes[0..to_copy]);
     return @intCast(to_copy);
 }
 

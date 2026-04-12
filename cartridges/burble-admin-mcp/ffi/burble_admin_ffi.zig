@@ -32,7 +32,7 @@ pub const PermLevel = enum(i32) {
 
 /// Returns the minimum permission level for an operation.
 /// Matches burble_min_perm in Protocol.idr exactly.
-pub export fn burble_admin_min_perm(op: i32) callconv(.C) i32 {
+pub export fn burble_admin_min_perm(op: i32) i32 {
     return switch (@as(Operation, @enumFromInt(op))) {
         .list_rooms => 0,
         .create_room => 1,
@@ -46,7 +46,7 @@ pub export fn burble_admin_min_perm(op: i32) callconv(.C) i32 {
 
 /// Check if a user with the given permission level can perform the operation.
 /// Returns 1 if allowed, 0 if denied.
-pub export fn burble_admin_check_perm(op: i32, user_perm: i32) callconv(.C) i32 {
+pub export fn burble_admin_check_perm(op: i32, user_perm: i32) i32 {
     const required = burble_admin_min_perm(op);
     return if (user_perm >= required) 1 else 0;
 }
@@ -56,7 +56,7 @@ pub export fn burble_admin_check_perm(op: i32, user_perm: i32) callconv(.C) i32 
 // ═══════════════════════════════════════════════════════════════════════
 
 /// Validate room capacity (1-500). Returns clamped value.
-pub export fn burble_admin_clamp_capacity(requested: i32) callconv(.C) i32 {
+pub export fn burble_admin_clamp_capacity(requested: i32) i32 {
     if (requested < 1) return 1;
     if (requested > 500) return 500;
     return requested;

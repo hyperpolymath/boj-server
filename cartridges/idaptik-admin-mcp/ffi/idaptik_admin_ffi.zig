@@ -21,7 +21,7 @@ pub const PermLevel = enum(i32) {
     game_admin = 2,
 };
 
-pub export fn idaptik_admin_min_perm(op: i32) callconv(.C) i32 {
+pub export fn idaptik_admin_min_perm(op: i32) i32 {
     return switch (@as(Operation, @enumFromInt(op))) {
         .list_levels => 0,
         .get_level_state => 0,
@@ -33,7 +33,7 @@ pub export fn idaptik_admin_min_perm(op: i32) callconv(.C) i32 {
     };
 }
 
-pub export fn idaptik_admin_check_perm(op: i32, user_perm: i32) callconv(.C) i32 {
+pub export fn idaptik_admin_check_perm(op: i32, user_perm: i32) i32 {
     const required = idaptik_admin_min_perm(op);
     return if (user_perm >= required) 1 else 0;
 }

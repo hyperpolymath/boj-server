@@ -330,15 +330,15 @@ pub export fn gitlab_api_mcp_request(
     } else null;
 
     // Fetch the request (Zig 0.15 API — replaces open/send/wait)
-    var response_storage = std.ArrayList(u8).init(allocator);
-    defer response_storage.deinit();
+    var aw: std.Io.Writer.Allocating = .init(allocator);
+    defer aw.deinit();
 
     const fetch_result = client.fetch(.{
         .method = http_method,
         .location = .{ .uri = uri },
         .extra_headers = &headers_buf,
         .payload = body_slice,
-        .response_storage = .{ .dynamic = &response_storage },
+        .response_writer = &aw.writer,
     }) catch return -4;
 
     // Handle rate limiting (HTTP 429)
@@ -350,8 +350,9 @@ pub export fn gitlab_api_mcp_request(
     }
 
     // Handle server errors
-    const bytes_read = @min(response_storage.items.len, cap);
-    @memcpy(out_buf[0..bytes_read], response_storage.items[0..bytes_read]);
+    const response_bytes = aw.writer.buffered();
+    const bytes_read = @min(response_bytes.len, cap);
+    @memcpy(out_buf[0..bytes_read], response_bytes[0..bytes_read]);
     out_len.* = @intCast(bytes_read);
 
     if (status_code >= 500) {
@@ -436,15 +437,15 @@ pub export fn gitlab_api_mcp_graphql(
     };
 
     // Fetch the request (Zig 0.15 API — replaces open/send/wait)
-    var response_storage = std.ArrayList(u8).init(allocator);
-    defer response_storage.deinit();
+    var aw: std.Io.Writer.Allocating = .init(allocator);
+    defer aw.deinit();
 
     const fetch_result = client.fetch(.{
         .method = .POST,
         .location = .{ .uri = uri },
         .extra_headers = &headers_buf,
         .payload = gql_body,
-        .response_storage = .{ .dynamic = &response_storage },
+        .response_writer = &aw.writer,
     }) catch return -4;
 
     const status_code = @intFromEnum(fetch_result.status);
@@ -454,8 +455,9 @@ pub export fn gitlab_api_mcp_graphql(
         return -3;
     }
 
-    const bytes_read = @min(response_storage.items.len, cap);
-    @memcpy(out_buf[0..bytes_read], response_storage.items[0..bytes_read]);
+    const response_bytes = aw.writer.buffered();
+    const bytes_read = @min(response_bytes.len, cap);
+    @memcpy(out_buf[0..bytes_read], response_bytes[0..bytes_read]);
     out_len.* = @intCast(bytes_read);
     return 0;
 }
@@ -528,15 +530,15 @@ pub export fn gitlab_api_mcp_setup_mirror(
     };
 
     // Fetch the request (Zig 0.15 API — replaces open/send/wait)
-    var response_storage = std.ArrayList(u8).init(allocator);
-    defer response_storage.deinit();
+    var aw: std.Io.Writer.Allocating = .init(allocator);
+    defer aw.deinit();
 
     const fetch_result = client.fetch(.{
         .method = .POST,
         .location = .{ .uri = uri },
         .extra_headers = &headers_buf_mirror,
         .payload = mirror_body,
-        .response_storage = .{ .dynamic = &response_storage },
+        .response_writer = &aw.writer,
     }) catch return -4;
 
     const status_code = @intFromEnum(fetch_result.status);
@@ -546,8 +548,9 @@ pub export fn gitlab_api_mcp_setup_mirror(
         return -3;
     }
 
-    const bytes_read = @min(response_storage.items.len, cap);
-    @memcpy(out_buf[0..bytes_read], response_storage.items[0..bytes_read]);
+    const response_bytes = aw.writer.buffered();
+    const bytes_read = @min(response_bytes.len, cap);
+    @memcpy(out_buf[0..bytes_read], response_bytes[0..bytes_read]);
     out_len.* = @intCast(bytes_read);
     return 0;
 }

@@ -254,15 +254,15 @@ fn doSlackApiCall(slot: *SessionSlot, method_name: []const u8, params_json: ?[]c
 
     // Fetch the request (Zig 0.15 API — replaces open/send/wait)
     const body = params_json orelse "{}";
-    var response_storage = std.ArrayList(u8).init(allocator);
-    defer response_storage.deinit();
+    var aw: std.Io.Writer.Allocating = .init(allocator);
+    defer aw.deinit();
 
     const fetch_result = client.fetch(.{
         .method = .POST,
         .location = .{ .uri = uri },
         .extra_headers = &headers_buf,
         .payload = body,
-        .response_storage = .{ .dynamic = &response_storage },
+        .response_writer = &aw.writer,
     }) catch return 0;
 
     // Check for rate limiting (HTTP 429)
@@ -273,8 +273,9 @@ fn doSlackApiCall(slot: *SessionSlot, method_name: []const u8, params_json: ?[]c
     }
 
     // Copy response body into the caller's output buffer
-    const to_copy = @min(response_storage.items.len, out_buf.len);
-    @memcpy(out_buf[0..to_copy], response_storage.items[0..to_copy]);
+    const response_bytes = aw.writer.buffered();
+    const to_copy = @min(response_bytes.len, out_buf.len);
+    @memcpy(out_buf[0..to_copy], response_bytes[0..to_copy]);
     return to_copy;
 }
 

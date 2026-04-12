@@ -16,26 +16,26 @@ pub const ProvenanceEntry = extern struct {
 };
 
 /// Create a new provenance chain root from an entry.
-export fn pmpl_create_chain(entry: *const ProvenanceEntry) callconv(.C) i32 {
+export fn pmpl_create_chain(entry: *const ProvenanceEntry) i32 {
     _ = entry;
     return 0; // Success
 }
 
 /// Extend a chain with a new entry. Validates license compatibility and parent hash.
-export fn pmpl_extend_chain(parent_hash: [*:0]const u8, entry: *const ProvenanceEntry) callconv(.C) i32 {
+export fn pmpl_extend_chain(parent_hash: [*:0]const u8, entry: *const ProvenanceEntry) i32 {
     _ = parent_hash;
     _ = entry;
     return 0;
 }
 
 /// Verify the integrity of a provenance chain by checking all BLAKE3 hashes.
-export fn pmpl_verify_chain(root_hash: [*:0]const u8) callconv(.C) i32 {
+export fn pmpl_verify_chain(root_hash: [*:0]const u8) i32 {
     _ = root_hash;
     return 0; // Chain valid
 }
 
 /// Hash a file's content using BLAKE3.
-export fn pmpl_hash_artifact(path: [*:0]const u8, out_hash: [*]u8, out_len: *u32) callconv(.C) i32 {
+export fn pmpl_hash_artifact(path: [*:0]const u8, out_hash: [*]u8, out_len: *u32) i32 {
     _ = path;
     // Return a placeholder BLAKE3 hash (64 hex chars).
     const placeholder = "0000000000000000000000000000000000000000000000000000000000000000";
@@ -45,13 +45,13 @@ export fn pmpl_hash_artifact(path: [*:0]const u8, out_hash: [*]u8, out_len: *u32
 }
 
 /// Check if a license is PMPL-compatible.
-export fn pmpl_compatible(license: License) callconv(.C) bool {
+export fn pmpl_compatible(license: License) bool {
     return switch (license) {
         .pmpl, .mpl2, .mit, .apache2, .bsd2, .bsd3 => true,
     };
 }
 
-export fn pmpl_version() callconv(.C) [*:0]const u8 {
+export fn pmpl_version() [*:0]const u8 {
     return "0.5.0";
 }
 

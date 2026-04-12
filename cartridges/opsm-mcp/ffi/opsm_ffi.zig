@@ -48,7 +48,7 @@ var slots: [MAX_REGISTRIES]RegistrySlot = [_]RegistrySlot{.{}} ** MAX_REGISTRIES
 // ========================================================================
 
 /// Connect to a registry. Slot must be in Disconnected state.
-export fn opsm_connect(slot_idx: u32) callconv(.C) i32 {
+export fn opsm_connect(slot_idx: u32) i32 {
     if (slot_idx >= MAX_REGISTRIES) return @intFromEnum(OpsmError.invalid_slot);
     const slot = &slots[slot_idx];
     if (slot.state != .disconnected) return @intFromEnum(OpsmError.already_connected);
@@ -57,7 +57,7 @@ export fn opsm_connect(slot_idx: u32) callconv(.C) i32 {
 }
 
 /// Begin a query on a connected registry.
-export fn opsm_start_query(slot_idx: u32) callconv(.C) i32 {
+export fn opsm_start_query(slot_idx: u32) i32 {
     if (slot_idx >= MAX_REGISTRIES) return @intFromEnum(OpsmError.invalid_slot);
     const slot = &slots[slot_idx];
     if (slot.state != .connected) return @intFromEnum(OpsmError.not_connected);
@@ -66,7 +66,7 @@ export fn opsm_start_query(slot_idx: u32) callconv(.C) i32 {
 }
 
 /// End a query, transitioning to idle.
-export fn opsm_end_query(slot_idx: u32) callconv(.C) i32 {
+export fn opsm_end_query(slot_idx: u32) i32 {
     if (slot_idx >= MAX_REGISTRIES) return @intFromEnum(OpsmError.invalid_slot);
     const slot = &slots[slot_idx];
     if (slot.state != .querying) return @intFromEnum(OpsmError.invalid_transition);
@@ -75,7 +75,7 @@ export fn opsm_end_query(slot_idx: u32) callconv(.C) i32 {
 }
 
 /// Reset an idle registry back to connected.
-export fn opsm_reset(slot_idx: u32) callconv(.C) i32 {
+export fn opsm_reset(slot_idx: u32) i32 {
     if (slot_idx >= MAX_REGISTRIES) return @intFromEnum(OpsmError.invalid_slot);
     const slot = &slots[slot_idx];
     if (slot.state != .idle) return @intFromEnum(OpsmError.invalid_transition);
@@ -84,7 +84,7 @@ export fn opsm_reset(slot_idx: u32) callconv(.C) i32 {
 }
 
 /// Disconnect a registry (from connected or idle state).
-export fn opsm_disconnect(slot_idx: u32) callconv(.C) i32 {
+export fn opsm_disconnect(slot_idx: u32) i32 {
     if (slot_idx >= MAX_REGISTRIES) return @intFromEnum(OpsmError.invalid_slot);
     const slot = &slots[slot_idx];
     if (slot.state != .connected and slot.state != .idle) {
@@ -95,13 +95,13 @@ export fn opsm_disconnect(slot_idx: u32) callconv(.C) i32 {
 }
 
 /// Get the current state of a registry slot.
-export fn opsm_state(slot_idx: u32) callconv(.C) i32 {
+export fn opsm_state(slot_idx: u32) i32 {
     if (slot_idx >= MAX_REGISTRIES) return @intFromEnum(OpsmError.invalid_slot);
     return @intCast(@intFromEnum(slots[slot_idx].state));
 }
 
 /// Check if a state transition is valid.
-export fn opsm_can_transition(from: u8, to: u8) callconv(.C) i32 {
+export fn opsm_can_transition(from: u8, to: u8) i32 {
     const from_state = std.meta.intToEnum(RegState, from) catch return 0;
     const to_state = std.meta.intToEnum(RegState, to) catch return 0;
 
@@ -116,7 +116,7 @@ export fn opsm_can_transition(from: u8, to: u8) callconv(.C) i32 {
 }
 
 /// Reset all registry slots to disconnected.
-export fn opsm_reset_all() callconv(.C) void {
+export fn opsm_reset_all() void {
     for (&slots) |*slot| {
         slot.state = .disconnected;
         slot.name_len = 0;
@@ -124,7 +124,7 @@ export fn opsm_reset_all() callconv(.C) void {
 }
 
 /// Set the name of a registry slot.
-export fn opsm_set_name(slot_idx: u32, name_ptr: [*]const u8, name_len: u32) callconv(.C) i32 {
+export fn opsm_set_name(slot_idx: u32, name_ptr: [*]const u8, name_len: u32) i32 {
     if (slot_idx >= MAX_REGISTRIES) return @intFromEnum(OpsmError.invalid_slot);
     const len = @min(name_len, 128);
     const slot = &slots[slot_idx];

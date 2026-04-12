@@ -57,7 +57,7 @@ export fn dns_shield_resolve_doq(
     domain: [*:0]const u8,
     record_type: RecordType,
     result: *DnsResult,
-) callconv(.C) i32 {
+) i32 {
     return resolve_encrypted(domain, record_type, .doq, result);
 }
 
@@ -66,7 +66,7 @@ export fn dns_shield_resolve_doh(
     domain: [*:0]const u8,
     record_type: RecordType,
     result: *DnsResult,
-) callconv(.C) i32 {
+) i32 {
     return resolve_encrypted(domain, record_type, .doh, result);
 }
 
@@ -75,7 +75,7 @@ export fn dns_shield_resolve_doh(
 export fn dns_shield_validate_dnssec(
     domain: [*:0]const u8,
     record_type: RecordType,
-) callconv(.C) DnssecState {
+) DnssecState {
     // DNSSEC validation requires checking RRSIG + DNSKEY chain.
     // For now, delegate to the system resolver's DNSSEC support
     // (most modern resolvers like systemd-resolved, Unbound, or
@@ -90,7 +90,7 @@ export fn dns_shield_validate_dnssec(
 export fn dns_shield_check_caa(
     domain: [*:0]const u8,
     ca_domain: [*:0]const u8,
-) callconv(.C) i32 {
+) i32 {
     _ = domain;
     _ = ca_domain;
     // CAA check: resolve CAA records, compare with ca_domain.
@@ -99,12 +99,12 @@ export fn dns_shield_check_caa(
 }
 
 /// Flush the DNS cache for all encrypted resolvers.
-export fn dns_shield_flush_cache() callconv(.C) void {
+export fn dns_shield_flush_cache() void {
     // Clear any cached DoQ/DoH responses.
 }
 
 /// Get the DNS Shield cartridge version.
-export fn dns_shield_version() callconv(.C) [*:0]const u8 {
+export fn dns_shield_version() [*:0]const u8 {
     return "0.5.0";
 }
 
