@@ -354,8 +354,40 @@ function handleToolCall(msg) {
       }
     })
     .catch((err) => {
-      sendError(msg.id, -32603, err.message);
+      const errMsg = err instanceof Error ? err.message : String(err);
+      sendError(msg.id, -32603, errMsg);
     });
 }
+
+// ---------------------------------------------------------------------------
+// Crash resilience — keep the server alive when a single request fails
+// ---------------------------------------------------------------------------
+
+process.on("uncaughtException", (err) => {
+  process.stderr.write(`[${SERVER_NAME}] uncaughtException: ${err.message}\n`);
+  process.stderr.write(`${err.stack}\n`);
+});
+
+process.on("unhandledRejection", (reason) => {
+  const msg = reason instanceof Error ? reason.message : String(reason);
+  process.stderr.write(`[${SERVER_NAME}] unhandledRejection: ${msg}\n`);
+});
+
+process.stdin.on("end", () => {
+  process.stderr.write(`[${SERVER_NAME}] stdin closed — exiting cleanly\n`);
+  process.exit(0);
+});
+
+process.stdin.on("error", (err) => {
+  process.stderr.write(`[${SERVER_NAME}] stdin error: ${err.message}\n`);
+});
+
+process.stdout.on("error", (err) => {
+  // EPIPE — Claude Code closed its end; exit cleanly instead of crashing
+  if (err.code === "EPIPE") {
+    process.exit(0);
+  }
+  process.stderr.write(`[${SERVER_NAME}] stdout error: ${err.message}\n`);
+});
 
 process.stderr.write(`[${SERVER_NAME}] MCP server running on stdio\n`);
