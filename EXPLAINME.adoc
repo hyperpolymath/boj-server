@@ -32,9 +32,30 @@ This is the Model-Controller-Processor pattern: cartridges are pluggable service
 
 == Dogfooded Across The Account
 
-Uses the hyperpolymath ABI/FFI standard (Idris2 + Zig) for cartridge FFI bridges. Critical path: Elixir server ↔ Idris2 ABI definitions ↔ Zig FFI ↔ C system libraries.
+[cols="1,2,2", options="header"]
+|===
+| Technology / Pattern | Role in boj-server | Also Used In
 
-Cartridge pattern is reused in echidna (prover orchestration), gossamer (window management), and hypatia (rule composition).
+| *Idris2 ABI + Zig FFI standard*
+| `src/abi/Boj/` — Idris2 ABI definitions (Protocol, Domain, Catalogue, Safety); Zig FFI layer for cartridge C bridges
+| gossamer, burble, ephapax, hypatia, verisimdb, typed-wasm — universal ABI/FFI pattern across the estate
+
+| *Pluggable cartridge architecture*
+| 96 cartridge directories (`cartridges/*/`), each with `abi/`, `ffi/`, `adapter/` structure; auto-discovered at startup via manifest scan
+| echidna (prover orchestration as cartridges), hypatia (rule composition), gitbot-fleet (bot cartridges per service)
+
+| *PanLL ReScript workspace layer*
+| `panll/` — ReScript/TEA panel framework, autowiring constraint solver, 108 panels for UI
+| idaptik (game UI panels), gossamer-powered SPAs, PanLL monorepo panels estate-wide
+
+| *panic-attack security gate*
+| Pre-commit `panic-attack assail` enforces PA001-PA025 across all 96 cartridges; security module (`lib/security.js`) tests cover injection, unicode bypass, SSRF
+| Every RSR repo in the estate; panicbot wraps it in CI
+
+| *Deno runtime*
+| MCP bridge (`mcp-bridge/`) uses Deno-compatible patterns; cartridge test harness (`tests/*.ts`) runs under Deno
+| nextgen-languages (Deno test runner), standards (Deno axel-protocol tests), 0-ai-gatekeeper-protocol (Deno 36 tests)
+|===
 
 == File Map
 
