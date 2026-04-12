@@ -1,16 +1,16 @@
-# Show HN: BoJ — 95-cartridge MCP server with formal proofs (Idris2 + Zig + V)
+# Show HN: BoJ — 96-cartridge MCP server with formal proofs (Idris2 + Zig)
 
-BoJ (Bundle of Joy) is an MCP server that bundles 95 tool cartridges — each with a formally verified ABI (Idris2), a C-compatible FFI (Zig), and an API adapter (V-lang). It speaks REST, gRPC, GraphQL, and SSE on four ports.
+BoJ (Bundle of Joy) is an MCP server that bundles 96 tool cartridges — each with a formally verified ABI (Idris2), a C-compatible FFI (Zig), and a unified adapter exposing REST, gRPC, GraphQL, and SSE on four ports.
 
 What makes it different:
 
-- **95 cartridges** covering cloud (Cloudflare, Vercel, Verpex), comms (Gmail, calendar), GitHub/GitLab, databases, containers, security (DNS Shield, container hash monitoring, PMPL provenance), browsers, and more
+- **96 cartridges** covering cloud (Cloudflare, Vercel), comms (Gmail, calendar), GitHub/GitLab, databases, containers, security (DNS Shield, container hash monitoring, PMPL provenance), browsers, and more
 - **Formal safety proofs** — every cartridge has an Idris2 ABI module with dependent types and zero `believe_me` postulates. The type system prevents entire classes of runtime errors
-- **Zero Python, zero TypeScript** — built in V-lang (server), Zig (FFI), Idris2 (proofs), with a ReScript UI. No npm, no pip, no node_modules
+- **Zero Python, zero TypeScript** — built with Zig (FFI), Idris2 (proofs), and a ReScript UI. No npm, no pip, no node_modules
 - **Glama AAA grade** — Security A, License A, Quality A
 - **Federation-ready** — Umoja gossip protocol with QUIC transport, hash attestation, 4 seed node configs
 
-The architecture follows the "ABI/FFI/API triple" pattern: Idris2 proves the interface correct at compile time, Zig implements it with C ABI compatibility, V provides the user-facing API. Adding a new cartridge means writing ~600 lines across 3 files.
+The architecture follows the "ABI/FFI/API triple" pattern: Idris2 proves the interface correct at compile time, Zig implements it with C ABI compatibility, and the adapter provides the user-facing API. Adding a new cartridge means writing ~600 lines across 3 files.
 
 Running locally:
 
@@ -20,6 +20,8 @@ cd boj-server && just build && just serve
 # REST :7700 | gRPC :7701 | GraphQL :7702 | SSE :7703
 ```
 
-307 tests, 0 failures. PMPL-1.0-or-later license (copyleft, OSI submission pending).
+Quickstart: https://github.com/hyperpolymath/boj-server/blob/main/QUICKSTART-USER.adoc
+
+PMPL-1.0-or-later license (MPL-2.0 legal fallback; OSI submission pending).
 
 GitHub: https://github.com/hyperpolymath/boj-server
