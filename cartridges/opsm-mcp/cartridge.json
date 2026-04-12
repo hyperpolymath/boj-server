@@ -1,0 +1,99 @@
+{
+  "$schema": "https://boj.dev/schemas/cartridge/v1.json",
+  "spdx": "PMPL-1.0-or-later",
+  "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath)",
+  "name": "opsm-mcp",
+  "version": "0.1.0",
+  "description": "Odds-and-Sods Package Manager (OPSM) gateway. Routes package search, install, dependency resolution (PubGrub), and registry management across 103 registry adapters (npm, cargo, hex, pypi, affinescript, rattlescript, eclexia, guix, nix, and more). State machine enforces valid registry slot lifecycle via Zig FFI.",
+  "domain": "Package Management",
+  "tier": "Ayo",
+  "protocols": ["MCP", "REST"],
+  "auth": { "method": "none", "env_var": null, "credential_source": null },
+  "api": { "base_url": "local://opsm-mcp", "content_type": "application/json" },
+  "tools": [
+    {
+      "name": "opsm_search",
+      "description": "Search for packages across all configured registries. Returns matching packages with name, version, description, and registry source.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "query": { "type": "string", "description": "Package name or keyword to search for" },
+          "registry": { "type": "string", "description": "Limit search to a specific registry (e.g. 'affinescript', 'cargo', 'npm'). Omit to search all." },
+          "limit": { "type": "number", "description": "Maximum results to return (default: 20)" }
+        },
+        "required": ["query"]
+      }
+    },
+    {
+      "name": "opsm_install",
+      "description": "Install a package from any registry. Resolves the package, downloads it, verifies checksums, and installs into the workspace.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "package_name": { "type": "string", "description": "Package name to install (e.g. 'affine-json', 'serde', 'phoenix')" },
+          "registry": { "type": "string", "description": "Target registry (e.g. 'affinescript', 'cargo', 'hex'). Auto-detected if omitted." },
+          "version": { "type": "string", "description": "Package version or version constraint (default: latest)" },
+          "workspace_root": { "type": "string", "description": "Workspace directory to install into" }
+        },
+        "required": ["package_name"]
+      }
+    },
+    {
+      "name": "opsm_resolve",
+      "description": "Resolve the full dependency tree for a manifest using the PubGrub algorithm. Returns the resolved set of packages and versions, or a conflict explanation if resolution fails.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "manifest": { "type": "string", "description": "Manifest file content (affine.toml, Cargo.toml, mix.exs, etc.)" },
+          "manifest_format": { "type": "string", "description": "Manifest format hint (e.g. 'affine', 'cargo', 'hex'). Auto-detected if omitted." }
+        },
+        "required": ["manifest"]
+      }
+    },
+    {
+      "name": "opsm_info",
+      "description": "Fetch metadata for a package: description, versions, authors, license, dependencies, and attestations.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "package_name": { "type": "string", "description": "Package name" },
+          "registry": { "type": "string", "description": "Registry to query (auto-detected if omitted)" },
+          "version": { "type": "string", "description": "Specific version to look up (default: latest)" }
+        },
+        "required": ["package_name"]
+      }
+    },
+    {
+      "name": "opsm_list",
+      "description": "List installed packages in a workspace. Returns name, version, registry, and direct/transitive classification for each installed package.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "workspace_root": { "type": "string", "description": "Workspace root directory (uses current directory if omitted)" },
+          "include_transitive": { "type": "boolean", "description": "Include transitive dependencies (default: false)" }
+        },
+        "required": []
+      }
+    },
+    {
+      "name": "opsm_registries",
+      "description": "List all 103 registry adapters with their names, slot indices, current state (disconnected/connected/querying/idle), and supported operations.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "filter_state": { "type": "string", "enum": ["disconnected", "connected", "querying", "idle"], "description": "Filter to only registries in this state (optional)" }
+        },
+        "required": []
+      }
+    },
+    {
+      "name": "opsm_status",
+      "description": "Return the OPSM service health status, version, registry count, resolver algorithm, and security configuration.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    }
+  ]
+}
