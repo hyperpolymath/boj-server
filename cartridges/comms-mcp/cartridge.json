@@ -1,0 +1,104 @@
+{
+  "$schema": "https://boj.dev/schemas/cartridge/v1.json",
+  "spdx": "PMPL-1.0-or-later",
+  "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>",
+  "name": "comms-mcp",
+  "version": "0.1.0",
+  "description": "Multi-provider communications (Gmail, Google Calendar)",
+  "domain": "communications",
+  "tier": "Ayo",
+  "protocols": [
+    "MCP",
+    "REST"
+  ],
+  "auth": {
+    "method": "none",
+    "env_var": null,
+    "credential_source": null
+  },
+  "api": {
+    "base_url": "local://comms-mcp",
+    "content_type": "application/json"
+  },
+  "tools": [
+    {
+      "name": "comms_authenticate",
+      "description": "Authenticate with a comms provider",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "provider": {
+            "type": "string",
+            "description": "Provider: gmail|google_calendar"
+          },
+          "credentials": {
+            "type": "object",
+            "description": "OAuth credentials"
+          }
+        },
+        "required": [
+          "provider",
+          "credentials"
+        ]
+      }
+    },
+    {
+      "name": "comms_logout",
+      "description": "End a comms session",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "session_id": {
+            "type": "integer",
+            "description": "Session index"
+          }
+        },
+        "required": [
+          "session_id"
+        ]
+      }
+    },
+    {
+      "name": "comms_execute",
+      "description": "Execute a comms operation",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "session_id": {
+            "type": "integer",
+            "description": "Session index"
+          },
+          "operation": {
+            "type": "string",
+            "description": "Operation name"
+          },
+          "params": {
+            "type": "object",
+            "description": "Operation parameters"
+          }
+        },
+        "required": [
+          "session_id",
+          "operation",
+          "params"
+        ]
+      }
+    },
+    {
+      "name": "comms_state",
+      "description": "Get comms session state",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "session_id": {
+            "type": "integer",
+            "description": "Session index"
+          }
+        },
+        "required": [
+          "session_id"
+        ]
+      }
+    }
+  ]
+}

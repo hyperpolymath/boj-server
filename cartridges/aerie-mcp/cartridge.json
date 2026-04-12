@@ -1,0 +1,85 @@
+{
+  "$schema": "https://boj.dev/schemas/cartridge/v1.json",
+  "spdx": "PMPL-1.0-or-later",
+  "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>",
+  "name": "aerie-mcp",
+  "version": "0.1.0",
+  "description": "Aerie environment lifecycle manager",
+  "domain": "infrastructure",
+  "tier": "Ayo",
+  "protocols": [
+    "MCP",
+    "REST"
+  ],
+  "auth": {
+    "method": "none",
+    "env_var": null,
+    "credential_source": null
+  },
+  "api": {
+    "base_url": "local://aerie-mcp",
+    "content_type": "application/json"
+  },
+  "tools": [
+    {
+      "name": "aerie_list_envs",
+      "description": "List all Aerie environments",
+      "inputSchema": {
+        "type": "object",
+        "properties": {}
+      }
+    },
+    {
+      "name": "aerie_create_env",
+      "description": "Create a new Aerie environment",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "env_name": {
+            "type": "string",
+            "description": "Name for the new environment"
+          },
+          "mem_mb": {
+            "type": "integer",
+            "description": "Memory in MB"
+          }
+        },
+        "required": [
+          "env_name"
+        ]
+      }
+    },
+    {
+      "name": "aerie_destroy_env",
+      "description": "Destroy an Aerie environment",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "env_id": {
+            "type": "integer",
+            "description": "Environment ID"
+          }
+        },
+        "required": [
+          "env_id"
+        ]
+      }
+    },
+    {
+      "name": "aerie_get_status",
+      "description": "Get status of an Aerie environment",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "env_id": {
+            "type": "integer",
+            "description": "Environment ID"
+          }
+        },
+        "required": [
+          "env_id"
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,74 @@
+{
+  "$schema": "https://boj.dev/schemas/cartridge/v1.json",
+  "spdx": "PMPL-1.0-or-later",
+  "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>",
+  "name": "rokur-mcp",
+  "version": "0.1.0",
+  "description": "Rokur \u2014 Svalinn secrets GUI authorisation layer",
+  "domain": "security",
+  "tier": "Ayo",
+  "protocols": [
+    "MCP",
+    "REST"
+  ],
+  "auth": {
+    "method": "none",
+    "env_var": null,
+    "credential_source": null
+  },
+  "api": {
+    "base_url": "local://rokur-mcp",
+    "content_type": "application/json"
+  },
+  "tools": [
+    {
+      "name": "rokur_authorize",
+      "description": "Authorise a secrets access request",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "requester": {
+            "type": "string",
+            "description": "Requester identity"
+          },
+          "secret_path": {
+            "type": "string",
+            "description": "Secret path to authorise"
+          },
+          "operation": {
+            "type": "string",
+            "description": "Operation: read|write|list"
+          }
+        },
+        "required": [
+          "requester",
+          "secret_path"
+        ]
+      }
+    },
+    {
+      "name": "rokur_health",
+      "description": "Check Rokur/Svalinn health",
+      "inputSchema": {
+        "type": "object",
+        "properties": {}
+      }
+    },
+    {
+      "name": "rokur_secrets_status",
+      "description": "Get secrets backend status",
+      "inputSchema": {
+        "type": "object",
+        "properties": {}
+      }
+    },
+    {
+      "name": "rokur_reload",
+      "description": "Reload secrets configuration",
+      "inputSchema": {
+        "type": "object",
+        "properties": {}
+      }
+    }
+  ]
+}

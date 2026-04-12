@@ -1,0 +1,129 @@
+{
+  "$schema": "https://boj.dev/schemas/cartridge/v1.json",
+  "spdx": "PMPL-1.0-or-later",
+  "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>",
+  "name": "pmpl-mcp",
+  "version": "0.1.0",
+  "description": "PMPL licence chain verification and artefact hashing",
+  "domain": "legal",
+  "tier": "Ayo",
+  "protocols": [
+    "MCP",
+    "REST"
+  ],
+  "auth": {
+    "method": "none",
+    "env_var": null,
+    "credential_source": null
+  },
+  "api": {
+    "base_url": "local://pmpl-mcp",
+    "content_type": "application/json"
+  },
+  "tools": [
+    {
+      "name": "pmpl_create_chain",
+      "description": "Create a new PMPL provenance chain",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "artefact_id": {
+            "type": "string",
+            "description": "Artefact identifier"
+          },
+          "origin": {
+            "type": "string",
+            "description": "Origin description"
+          }
+        },
+        "required": [
+          "artefact_id",
+          "origin"
+        ]
+      }
+    },
+    {
+      "name": "pmpl_extend_chain",
+      "description": "Extend a provenance chain with a new link",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "chain_id": {
+            "type": "string",
+            "description": "Chain ID"
+          },
+          "event": {
+            "type": "string",
+            "description": "Event description"
+          },
+          "actor": {
+            "type": "string",
+            "description": "Actor identifier"
+          }
+        },
+        "required": [
+          "chain_id",
+          "event",
+          "actor"
+        ]
+      }
+    },
+    {
+      "name": "pmpl_verify_chain",
+      "description": "Verify integrity of a provenance chain",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "chain_id": {
+            "type": "string",
+            "description": "Chain ID"
+          }
+        },
+        "required": [
+          "chain_id"
+        ]
+      }
+    },
+    {
+      "name": "pmpl_hash_artefact",
+      "description": "Hash an artefact for provenance anchoring",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "Artefact file path"
+          },
+          "algorithm": {
+            "type": "string",
+            "description": "Hash algorithm: sha256|sha512|blake3"
+          }
+        },
+        "required": [
+          "path"
+        ]
+      }
+    },
+    {
+      "name": "pmpl_check_compatible",
+      "description": "Check SPDX licence compatibility",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "licence_a": {
+            "type": "string",
+            "description": "First SPDX expression"
+          },
+          "licence_b": {
+            "type": "string",
+            "description": "Second SPDX expression"
+          }
+        },
+        "required": [
+          "licence_a",
+          "licence_b"
+        ]
+      }
+    }
+  ]
+}

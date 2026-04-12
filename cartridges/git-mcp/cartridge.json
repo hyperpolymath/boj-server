@@ -1,0 +1,173 @@
+{
+  "$schema": "https://boj.dev/schemas/cartridge/v1.json",
+  "spdx": "PMPL-1.0-or-later",
+  "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>",
+  "name": "git-mcp",
+  "version": "0.1.0",
+  "description": "Multi-forge git operations (GitHub, GitLab, Gitea, Bitbucket)",
+  "domain": "development",
+  "tier": "Ayo",
+  "protocols": [
+    "MCP",
+    "REST"
+  ],
+  "auth": {
+    "method": "none",
+    "env_var": null,
+    "credential_source": null
+  },
+  "api": {
+    "base_url": "local://git-mcp",
+    "content_type": "application/json"
+  },
+  "tools": [
+    {
+      "name": "git_authenticate",
+      "description": "Authenticate with a git forge",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "forge": {
+            "type": "string",
+            "description": "Forge: github|gitlab|gitea|bitbucket"
+          },
+          "token": {
+            "type": "string",
+            "description": "Personal access token"
+          }
+        },
+        "required": [
+          "forge",
+          "token"
+        ]
+      }
+    },
+    {
+      "name": "git_select_repo",
+      "description": "Select a repository to work with",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "session_id": {
+            "type": "integer",
+            "description": "Session index"
+          },
+          "owner": {
+            "type": "string",
+            "description": "Repo owner"
+          },
+          "repo": {
+            "type": "string",
+            "description": "Repo name"
+          }
+        },
+        "required": [
+          "session_id",
+          "owner",
+          "repo"
+        ]
+      }
+    },
+    {
+      "name": "git_status",
+      "description": "Get git status of selected repo",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "session_id": {
+            "type": "integer",
+            "description": "Session index"
+          }
+        },
+        "required": [
+          "session_id"
+        ]
+      }
+    },
+    {
+      "name": "git_log",
+      "description": "Get git log",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "session_id": {
+            "type": "integer",
+            "description": "Session index"
+          },
+          "limit": {
+            "type": "integer",
+            "description": "Max entries"
+          }
+        },
+        "required": [
+          "session_id"
+        ]
+      }
+    },
+    {
+      "name": "git_diff",
+      "description": "Get git diff",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "session_id": {
+            "type": "integer",
+            "description": "Session index"
+          },
+          "ref_a": {
+            "type": "string",
+            "description": "Base ref"
+          },
+          "ref_b": {
+            "type": "string",
+            "description": "Compare ref"
+          }
+        },
+        "required": [
+          "session_id"
+        ]
+      }
+    },
+    {
+      "name": "git_create_branch",
+      "description": "Create a new branch",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "session_id": {
+            "type": "integer",
+            "description": "Session index"
+          },
+          "branch_name": {
+            "type": "string",
+            "description": "Branch name"
+          }
+        },
+        "required": [
+          "session_id",
+          "branch_name"
+        ]
+      }
+    },
+    {
+      "name": "git_push",
+      "description": "Push to remote",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "session_id": {
+            "type": "integer",
+            "description": "Session index"
+          },
+          "branch": {
+            "type": "string",
+            "description": "Branch to push"
+          }
+        },
+        "required": [
+          "session_id"
+        ]
+      }
+    }
+  ]
+}

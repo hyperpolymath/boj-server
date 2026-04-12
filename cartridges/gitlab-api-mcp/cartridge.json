@@ -1,0 +1,203 @@
+{
+  "$schema": "https://boj.dev/schemas/cartridge/v1.json",
+  "spdx": "PMPL-1.0-or-later",
+  "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>",
+  "name": "gitlab-api-mcp",
+  "version": "0.1.0",
+  "description": "GitLab REST API \u2014 projects, issues, MRs",
+  "domain": "development",
+  "tier": "Ayo",
+  "protocols": [
+    "MCP",
+    "REST"
+  ],
+  "auth": {
+    "method": "none",
+    "env_var": null,
+    "credential_source": null
+  },
+  "api": {
+    "base_url": "local://gitlab-api-mcp",
+    "content_type": "application/json"
+  },
+  "tools": [
+    {
+      "name": "gitlab_authenticate",
+      "description": "Authenticate with GitLab PAT",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": "string",
+            "description": "GitLab personal access token"
+          },
+          "base_url": {
+            "type": "string",
+            "description": "GitLab instance URL"
+          }
+        },
+        "required": [
+          "token"
+        ]
+      }
+    },
+    {
+      "name": "gitlab_list_projects",
+      "description": "List accessible projects",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "session_id": {
+            "type": "integer",
+            "description": "Session index"
+          },
+          "search": {
+            "type": "string",
+            "description": "Search term"
+          }
+        },
+        "required": [
+          "session_id"
+        ]
+      }
+    },
+    {
+      "name": "gitlab_get_project",
+      "description": "Get project details",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "session_id": {
+            "type": "integer",
+            "description": "Session index"
+          },
+          "project_id": {
+            "type": "string",
+            "description": "Project ID or namespace/name"
+          }
+        },
+        "required": [
+          "session_id",
+          "project_id"
+        ]
+      }
+    },
+    {
+      "name": "gitlab_list_issues",
+      "description": "List project issues",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "session_id": {
+            "type": "integer",
+            "description": "Session index"
+          },
+          "project_id": {
+            "type": "string",
+            "description": "Project ID"
+          },
+          "state": {
+            "type": "string",
+            "description": "Filter: opened|closed|all"
+          }
+        },
+        "required": [
+          "session_id",
+          "project_id"
+        ]
+      }
+    },
+    {
+      "name": "gitlab_create_issue",
+      "description": "Create a project issue",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "session_id": {
+            "type": "integer",
+            "description": "Session index"
+          },
+          "project_id": {
+            "type": "string",
+            "description": "Project ID"
+          },
+          "title": {
+            "type": "string",
+            "description": "Issue title"
+          },
+          "description": {
+            "type": "string",
+            "description": "Issue description"
+          }
+        },
+        "required": [
+          "session_id",
+          "project_id",
+          "title"
+        ]
+      }
+    },
+    {
+      "name": "gitlab_create_mr",
+      "description": "Create a merge request",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "session_id": {
+            "type": "integer",
+            "description": "Session index"
+          },
+          "project_id": {
+            "type": "string",
+            "description": "Project ID"
+          },
+          "title": {
+            "type": "string",
+            "description": "MR title"
+          },
+          "source_branch": {
+            "type": "string",
+            "description": "Source branch"
+          },
+          "target_branch": {
+            "type": "string",
+            "description": "Target branch"
+          }
+        },
+        "required": [
+          "session_id",
+          "project_id",
+          "title",
+          "source_branch",
+          "target_branch"
+        ]
+      }
+    },
+    {
+      "name": "gitlab_setup_mirror",
+      "description": "Configure downstream mirror from GitHub",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "session_id": {
+            "type": "integer",
+            "description": "Session index"
+          },
+          "project_id": {
+            "type": "string",
+            "description": "Project ID"
+          },
+          "remote_url": {
+            "type": "string",
+            "description": "GitHub remote URL"
+          }
+        },
+        "required": [
+          "session_id",
+          "project_id",
+          "remote_url"
+        ]
+      }
+    }
+  ]
+}

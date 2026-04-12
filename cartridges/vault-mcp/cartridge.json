@@ -1,0 +1,103 @@
+{
+  "$schema": "https://boj.dev/schemas/cartridge/v1.json",
+  "spdx": "PMPL-1.0-or-later",
+  "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>",
+  "name": "vault-mcp",
+  "version": "0.1.0",
+  "description": "Vault CLI credential broker (execute, list, verify, rotate)",
+  "domain": "security",
+  "tier": "Ayo",
+  "protocols": [
+    "MCP",
+    "REST"
+  ],
+  "auth": {
+    "method": "none",
+    "env_var": null,
+    "credential_source": null
+  },
+  "api": {
+    "base_url": "local://vault-mcp",
+    "content_type": "application/json"
+  },
+  "tools": [
+    {
+      "name": "vault_execute",
+      "description": "Execute a vault credential operation",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "credential_hint": {
+            "type": "string",
+            "description": "Credential identifier hint"
+          },
+          "operation": {
+            "type": "string",
+            "description": "Operation to execute"
+          },
+          "agent": {
+            "type": "string",
+            "description": "Executing agent identity"
+          }
+        },
+        "required": [
+          "credential_hint",
+          "operation"
+        ]
+      }
+    },
+    {
+      "name": "vault_list",
+      "description": "List vault credentials or paths",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "Vault path to list"
+          }
+        }
+      }
+    },
+    {
+      "name": "vault_status",
+      "description": "Get vault status",
+      "inputSchema": {
+        "type": "object",
+        "properties": {}
+      }
+    },
+    {
+      "name": "vault_verify",
+      "description": "Verify a vault credential",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "credential_hint": {
+            "type": "string",
+            "description": "Credential identifier hint"
+          }
+        },
+        "required": [
+          "credential_hint"
+        ]
+      }
+    },
+    {
+      "name": "vault_rotate",
+      "description": "Rotate a vault credential",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "credential_hint": {
+            "type": "string",
+            "description": "Credential identifier hint"
+          }
+        },
+        "required": [
+          "credential_hint"
+        ]
+      }
+    }
+  ]
+}

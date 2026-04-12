@@ -1,0 +1,118 @@
+{
+  "$schema": "https://boj.dev/schemas/cartridge/v1.json",
+  "spdx": "PMPL-1.0-or-later",
+  "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>",
+  "name": "codeseeker-mcp",
+  "version": "0.1.0",
+  "description": "CodeSeeker hybrid code search and graph RAG",
+  "domain": "development",
+  "tier": "Ayo",
+  "protocols": [
+    "MCP",
+    "REST"
+  ],
+  "auth": {
+    "method": "none",
+    "env_var": null,
+    "credential_source": null
+  },
+  "api": {
+    "base_url": "local://codeseeker-mcp",
+    "content_type": "application/json"
+  },
+  "tools": [
+    {
+      "name": "codeseeker_open",
+      "description": "Open a CodeSeeker session on a project path",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "Project root path"
+          }
+        },
+        "required": [
+          "path"
+        ]
+      }
+    },
+    {
+      "name": "codeseeker_close",
+      "description": "Close a CodeSeeker session",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "session_id": {
+            "type": "integer",
+            "description": "Session index"
+          }
+        },
+        "required": [
+          "session_id"
+        ]
+      }
+    },
+    {
+      "name": "codeseeker_index",
+      "description": "Index a project for search",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "session_id": {
+            "type": "integer",
+            "description": "Session index"
+          }
+        },
+        "required": [
+          "session_id"
+        ]
+      }
+    },
+    {
+      "name": "codeseeker_query",
+      "description": "Search code with hybrid text+vector+graph",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "session_id": {
+            "type": "integer",
+            "description": "Session index"
+          },
+          "query": {
+            "type": "string",
+            "description": "Search query"
+          },
+          "mode": {
+            "type": "string",
+            "description": "Search mode: vector|text|path|hybrid"
+          },
+          "limit": {
+            "type": "integer",
+            "description": "Max results"
+          }
+        },
+        "required": [
+          "session_id",
+          "query"
+        ]
+      }
+    },
+    {
+      "name": "codeseeker_state",
+      "description": "Get session state",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "session_id": {
+            "type": "integer",
+            "description": "Session index"
+          }
+        },
+        "required": [
+          "session_id"
+        ]
+      }
+    }
+  ]
+}

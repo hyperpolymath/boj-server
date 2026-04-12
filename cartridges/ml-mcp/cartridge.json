@@ -1,0 +1,120 @@
+{
+  "$schema": "https://boj.dev/schemas/cartridge/v1.json",
+  "spdx": "PMPL-1.0-or-later",
+  "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>",
+  "name": "ml-mcp",
+  "version": "0.1.0",
+  "description": "Machine learning inference (HuggingFace and others)",
+  "domain": "ai",
+  "tier": "Ayo",
+  "protocols": [
+    "MCP",
+    "REST"
+  ],
+  "auth": {
+    "method": "none",
+    "env_var": null,
+    "credential_source": null
+  },
+  "api": {
+    "base_url": "local://ml-mcp",
+    "content_type": "application/json"
+  },
+  "tools": [
+    {
+      "name": "ml_authenticate",
+      "description": "Authenticate with an ML provider",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "provider": {
+            "type": "string",
+            "description": "Provider: huggingface|openai|anthropic|ollama"
+          },
+          "api_key": {
+            "type": "string",
+            "description": "API key"
+          },
+          "endpoint": {
+            "type": "string",
+            "description": "Custom endpoint URL"
+          }
+        },
+        "required": [
+          "provider"
+        ]
+      }
+    },
+    {
+      "name": "ml_inference",
+      "description": "Run model inference",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "session_id": {
+            "type": "integer",
+            "description": "Session index"
+          },
+          "model": {
+            "type": "string",
+            "description": "Model name or path"
+          },
+          "inputs": {
+            "type": "string",
+            "description": "Input text or JSON payload"
+          },
+          "task": {
+            "type": "string",
+            "description": "Task type: text-generation|classification|embedding"
+          }
+        },
+        "required": [
+          "session_id",
+          "model",
+          "inputs"
+        ]
+      }
+    },
+    {
+      "name": "ml_list_models",
+      "description": "List available models",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "session_id": {
+            "type": "integer",
+            "description": "Session index"
+          },
+          "filter": {
+            "type": "string",
+            "description": "Filter by task or name"
+          }
+        },
+        "required": [
+          "session_id"
+        ]
+      }
+    },
+    {
+      "name": "ml_get_model_info",
+      "description": "Get model metadata",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "session_id": {
+            "type": "integer",
+            "description": "Session index"
+          },
+          "model": {
+            "type": "string",
+            "description": "Model name"
+          }
+        },
+        "required": [
+          "session_id",
+          "model"
+        ]
+      }
+    }
+  ]
+}

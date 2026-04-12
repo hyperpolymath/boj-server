@@ -1,0 +1,104 @@
+{
+  "$schema": "https://boj.dev/schemas/cartridge/v1.json",
+  "spdx": "PMPL-1.0-or-later",
+  "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>",
+  "name": "cloud-mcp",
+  "version": "0.1.0",
+  "description": "Multi-cloud provider session manager (AWS/GCP/Azure/DO/Vercel)",
+  "domain": "cloud",
+  "tier": "Ayo",
+  "protocols": [
+    "MCP",
+    "REST"
+  ],
+  "auth": {
+    "method": "none",
+    "env_var": null,
+    "credential_source": null
+  },
+  "api": {
+    "base_url": "local://cloud-mcp",
+    "content_type": "application/json"
+  },
+  "tools": [
+    {
+      "name": "cloud_authenticate",
+      "description": "Authenticate with a cloud provider",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "provider": {
+            "type": "string",
+            "description": "Provider: aws|gcloud|azure|digital_ocean|verpex|cloudflare|vercel"
+          },
+          "credentials": {
+            "type": "object",
+            "description": "Provider-specific credentials"
+          }
+        },
+        "required": [
+          "provider",
+          "credentials"
+        ]
+      }
+    },
+    {
+      "name": "cloud_logout",
+      "description": "End a cloud session",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "session_id": {
+            "type": "integer",
+            "description": "Session index"
+          }
+        },
+        "required": [
+          "session_id"
+        ]
+      }
+    },
+    {
+      "name": "cloud_state",
+      "description": "Get cloud session state",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "session_id": {
+            "type": "integer",
+            "description": "Session index"
+          }
+        },
+        "required": [
+          "session_id"
+        ]
+      }
+    },
+    {
+      "name": "cloud_execute",
+      "description": "Execute a cloud operation via the provider API",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "session_id": {
+            "type": "integer",
+            "description": "Session index"
+          },
+          "operation": {
+            "type": "string",
+            "description": "Operation name"
+          },
+          "params": {
+            "type": "object",
+            "description": "Operation parameters"
+          }
+        },
+        "required": [
+          "session_id",
+          "operation",
+          "params"
+        ]
+      }
+    }
+  ]
+}

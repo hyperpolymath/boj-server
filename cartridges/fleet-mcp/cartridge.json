@@ -1,0 +1,107 @@
+{
+  "$schema": "https://boj.dev/schemas/cartridge/v1.json",
+  "spdx": "PMPL-1.0-or-later",
+  "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>",
+  "name": "fleet-mcp",
+  "version": "0.1.0",
+  "description": "gitbot-fleet gate compliance tracker",
+  "domain": "ci",
+  "tier": "Ayo",
+  "protocols": [
+    "MCP",
+    "REST"
+  ],
+  "auth": {
+    "method": "none",
+    "env_var": null,
+    "credential_source": null
+  },
+  "api": {
+    "base_url": "local://fleet-mcp",
+    "content_type": "application/json"
+  },
+  "tools": [
+    {
+      "name": "fleet_record_gate",
+      "description": "Record a gate result for a bot",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "bot_name": {
+            "type": "string",
+            "description": "Bot: rhodibot|echidnabot|sustainabot|panicbot|glambot|seambot"
+          },
+          "gate": {
+            "type": "string",
+            "description": "Gate name"
+          },
+          "passed": {
+            "type": "boolean",
+            "description": "Gate passed"
+          }
+        },
+        "required": [
+          "bot_name",
+          "gate",
+          "passed"
+        ]
+      }
+    },
+    {
+      "name": "fleet_bot_status",
+      "description": "Get status of a bot",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "bot_name": {
+            "type": "string",
+            "description": "Bot name"
+          }
+        },
+        "required": [
+          "bot_name"
+        ]
+      }
+    },
+    {
+      "name": "fleet_gate_score",
+      "description": "Get gate compliance score for a bot",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "bot_name": {
+            "type": "string",
+            "description": "Bot name"
+          }
+        },
+        "required": [
+          "bot_name"
+        ]
+      }
+    },
+    {
+      "name": "fleet_has_mandatory",
+      "description": "Check all mandatory gates passed",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "bot_name": {
+            "type": "string",
+            "description": "Bot name"
+          }
+        },
+        "required": [
+          "bot_name"
+        ]
+      }
+    },
+    {
+      "name": "fleet_fleet_status",
+      "description": "Get status of all bots in the fleet",
+      "inputSchema": {
+        "type": "object",
+        "properties": {}
+      }
+    }
+  ]
+}

@@ -1,0 +1,140 @@
+{
+  "$schema": "https://boj.dev/schemas/cartridge/v1.json",
+  "spdx": "PMPL-1.0-or-later",
+  "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>",
+  "name": "secrets-mcp",
+  "version": "0.1.0",
+  "description": "Secrets management (Vault, SOPS, env-vault)",
+  "domain": "security",
+  "tier": "Ayo",
+  "protocols": [
+    "MCP",
+    "REST"
+  ],
+  "auth": {
+    "method": "none",
+    "env_var": null,
+    "credential_source": null
+  },
+  "api": {
+    "base_url": "local://secrets-mcp",
+    "content_type": "application/json"
+  },
+  "tools": [
+    {
+      "name": "secrets_unseal",
+      "description": "Unseal the secrets backend",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "backend": {
+            "type": "string",
+            "description": "Backend: vault|sops|env_vault"
+          },
+          "unseal_key": {
+            "type": "string",
+            "description": "Unseal key or passphrase"
+          }
+        },
+        "required": [
+          "backend",
+          "unseal_key"
+        ]
+      }
+    },
+    {
+      "name": "secrets_authenticate",
+      "description": "Authenticate with secrets backend",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "session_id": {
+            "type": "integer",
+            "description": "Session index"
+          },
+          "token": {
+            "type": "string",
+            "description": "Auth token"
+          }
+        },
+        "required": [
+          "session_id",
+          "token"
+        ]
+      }
+    },
+    {
+      "name": "secrets_get",
+      "description": "Retrieve a secret",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "session_id": {
+            "type": "integer",
+            "description": "Session index"
+          },
+          "path": {
+            "type": "string",
+            "description": "Secret path"
+          },
+          "key": {
+            "type": "string",
+            "description": "Secret key within path"
+          }
+        },
+        "required": [
+          "session_id",
+          "path",
+          "key"
+        ]
+      }
+    },
+    {
+      "name": "secrets_set",
+      "description": "Write a secret",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "session_id": {
+            "type": "integer",
+            "description": "Session index"
+          },
+          "path": {
+            "type": "string",
+            "description": "Secret path"
+          },
+          "key": {
+            "type": "string",
+            "description": "Secret key"
+          },
+          "value": {
+            "type": "string",
+            "description": "Secret value"
+          }
+        },
+        "required": [
+          "session_id",
+          "path",
+          "key",
+          "value"
+        ]
+      }
+    },
+    {
+      "name": "secrets_seal",
+      "description": "Seal the secrets backend",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "session_id": {
+            "type": "integer",
+            "description": "Session index"
+          }
+        },
+        "required": [
+          "session_id"
+        ]
+      }
+    }
+  ]
+}

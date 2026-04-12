@@ -6,9 +6,14 @@
 
 A distributed, formally verified catalogue of developer server capabilities. AI goes to ONE place instead of hunting across dozens of MCP/LSP/etc servers. Community-hosted nodes share the load.
 
-== Current Status: All Phases Complete (Grade D Alpha)
+== Current Status: v1.0.1 Recovery (Grade D Alpha)
 
-All phases through v1.0.0 are architecturally complete at Grade D (Alpha). 18 cartridges built with .so shared libraries, 307 tests passing, Umoja federation with real UDP gossip, PanLL panel implemented. Remaining work: external dogfooding to reach Grade C, seed node deployment, and domain registration.
+Core architecture through v1.0.0 is in place (18 cartridges with shared-library
+loading, 307 tests passing, Umoja federation, PanLL panel), but a migration
+inventory gap remains. As of 2026-04-12 there are 56 V-lang adapter files still
+present under `cartridges/` (excluding sidelined notes), with metadata coverage at
+65 `cartridge.json` files and 64 `mod.js` files. Priority is adapter retirement +
+metadata parity before Grade C dogfooding.
 
 == Milestones
 
@@ -64,6 +69,14 @@ All phases through v1.0.0 are architecturally complete at Grade D (Alpha). 18 ca
 * [x] LSP cartridges for key domains
 * [x] DAP cartridges where relevant
 * [x] polystack deprecation (Phase 7)
+
+=== v1.0.1 — Adapter Migration Recovery (P0, In Progress)
+
+* [ ] Remove remaining V-lang adapters across `cartridges/` (56 `.v` files as of 2026-04-12)
+* [ ] Ensure every cartridge has `cartridge.json` metadata (currently 65 files)
+* [ ] Ensure every cartridge has `mod.js` tool handlers (currently 64 files)
+* [ ] Re-run cartridge matrix build/tests and update `TEST-NEEDS.md` with current evidence
+* [ ] Refresh repo documentation claims after migration closure (counts, completion text, handover docs)
 
 == Future Directions
 

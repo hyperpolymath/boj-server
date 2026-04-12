@@ -1,0 +1,122 @@
+{
+  "$schema": "https://boj.dev/schemas/cartridge/v1.json",
+  "spdx": "PMPL-1.0-or-later",
+  "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>",
+  "name": "ssg-mcp",
+  "version": "0.1.0",
+  "description": "Static site generator (Hugo, Zola, Astro, Casket)",
+  "domain": "web",
+  "tier": "Ayo",
+  "protocols": [
+    "MCP",
+    "REST"
+  ],
+  "auth": {
+    "method": "none",
+    "env_var": null,
+    "credential_source": null
+  },
+  "api": {
+    "base_url": "local://ssg-mcp",
+    "content_type": "application/json"
+  },
+  "tools": [
+    {
+      "name": "ssg_load_content",
+      "description": "Load content from a source directory",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "Content directory path"
+          },
+          "engine": {
+            "type": "string",
+            "description": "SSG engine: hugo|zola|astro|casket"
+          }
+        },
+        "required": [
+          "path"
+        ]
+      }
+    },
+    {
+      "name": "ssg_build",
+      "description": "Build the static site",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "session_id": {
+            "type": "integer",
+            "description": "Session index"
+          },
+          "output_dir": {
+            "type": "string",
+            "description": "Output directory"
+          }
+        },
+        "required": [
+          "session_id"
+        ]
+      }
+    },
+    {
+      "name": "ssg_preview",
+      "description": "Start development preview server",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "session_id": {
+            "type": "integer",
+            "description": "Session index"
+          },
+          "port": {
+            "type": "integer",
+            "description": "Preview server port"
+          }
+        },
+        "required": [
+          "session_id"
+        ]
+      }
+    },
+    {
+      "name": "ssg_deploy",
+      "description": "Deploy the built site",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "session_id": {
+            "type": "integer",
+            "description": "Session index"
+          },
+          "target": {
+            "type": "string",
+            "description": "Deploy target: netlify|cloudflare|github-pages|custom"
+          }
+        },
+        "required": [
+          "session_id",
+          "target"
+        ]
+      }
+    },
+    {
+      "name": "ssg_clean",
+      "description": "Clean build artifacts",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "session_id": {
+            "type": "integer",
+            "description": "Session index"
+          }
+        },
+        "required": [
+          "session_id"
+        ]
+      }
+    }
+  ]
+}

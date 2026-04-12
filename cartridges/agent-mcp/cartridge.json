@@ -1,0 +1,131 @@
+{
+  "$schema": "https://boj.dev/schemas/cartridge/v1.json",
+  "spdx": "PMPL-1.0-or-later",
+  "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>",
+  "name": "agent-mcp",
+  "version": "0.1.0",
+  "description": "OODA loop agent session enforcer",
+  "domain": "ai",
+  "tier": "Ayo",
+  "protocols": [
+    "MCP",
+    "REST"
+  ],
+  "auth": {
+    "method": "none",
+    "env_var": null,
+    "credential_source": null
+  },
+  "api": {
+    "base_url": "local://agent-mcp",
+    "content_type": "application/json"
+  },
+  "tools": [
+    {
+      "name": "agent_new_session",
+      "description": "Open a new OODA agent session",
+      "inputSchema": {
+        "type": "object",
+        "properties": {}
+      }
+    },
+    {
+      "name": "agent_end_session",
+      "description": "End an agent session",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "session_id": {
+            "type": "integer",
+            "description": "Session index"
+          }
+        },
+        "required": [
+          "session_id"
+        ]
+      }
+    },
+    {
+      "name": "agent_transition",
+      "description": "Transition agent OODA state",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "session_id": {
+            "type": "integer",
+            "description": "Session index"
+          },
+          "to_state": {
+            "type": "string",
+            "description": "Target state: observe|orient|decide|act|halted"
+          }
+        },
+        "required": [
+          "session_id",
+          "to_state"
+        ]
+      }
+    },
+    {
+      "name": "agent_state",
+      "description": "Get current OODA state of a session",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "session_id": {
+            "type": "integer",
+            "description": "Session index"
+          }
+        },
+        "required": [
+          "session_id"
+        ]
+      }
+    },
+    {
+      "name": "agent_loop_count",
+      "description": "Get OODA loop iteration count",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "session_id": {
+            "type": "integer",
+            "description": "Session index"
+          }
+        },
+        "required": [
+          "session_id"
+        ]
+      }
+    },
+    {
+      "name": "agent_validate_ooda",
+      "description": "Validate an OODA state transition",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "from_state": {
+            "type": "string",
+            "description": "Source state"
+          },
+          "to_state": {
+            "type": "string",
+            "description": "Target state"
+          }
+        },
+        "required": [
+          "from_state",
+          "to_state"
+        ]
+      }
+    },
+    {
+      "name": "agent_reset",
+      "description": "Reset all agent sessions",
+      "inputSchema": {
+        "type": "object",
+        "properties": {}
+      }
+    }
+  ]
+}

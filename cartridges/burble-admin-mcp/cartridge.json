@@ -1,0 +1,159 @@
+{
+  "$schema": "https://boj.dev/schemas/cartridge/v1.json",
+  "spdx": "PMPL-1.0-or-later",
+  "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>",
+  "name": "burble-admin-mcp",
+  "version": "0.1.0",
+  "description": "Burble WebRTC server administration",
+  "domain": "communications",
+  "tier": "Ayo",
+  "protocols": [
+    "MCP",
+    "REST"
+  ],
+  "auth": {
+    "method": "none",
+    "env_var": null,
+    "credential_source": null
+  },
+  "api": {
+    "base_url": "local://burble-admin-mcp",
+    "content_type": "application/json"
+  },
+  "tools": [
+    {
+      "name": "burble_check_health",
+      "description": "Check Burble server health",
+      "inputSchema": {
+        "type": "object",
+        "properties": {}
+      }
+    },
+    {
+      "name": "burble_list_rooms",
+      "description": "List active rooms",
+      "inputSchema": {
+        "type": "object",
+        "properties": {}
+      }
+    },
+    {
+      "name": "burble_create_room",
+      "description": "Create a new room",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "room_name": {
+            "type": "string",
+            "description": "Room name"
+          },
+          "max_participants": {
+            "type": "integer",
+            "description": "Max participants"
+          }
+        },
+        "required": [
+          "room_name"
+        ]
+      }
+    },
+    {
+      "name": "burble_close_room",
+      "description": "Close a room",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "room_id": {
+            "type": "string",
+            "description": "Room ID"
+          }
+        },
+        "required": [
+          "room_id"
+        ]
+      }
+    },
+    {
+      "name": "burble_kick_user",
+      "description": "Kick a user from a room",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "room_id": {
+            "type": "string",
+            "description": "Room ID"
+          },
+          "user_id": {
+            "type": "string",
+            "description": "User ID"
+          }
+        },
+        "required": [
+          "room_id",
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "burble_get_config",
+      "description": "Get server configuration",
+      "inputSchema": {
+        "type": "object",
+        "properties": {}
+      }
+    },
+    {
+      "name": "burble_update_config",
+      "description": "Update server configuration",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "config": {
+            "type": "object",
+            "description": "Configuration object"
+          }
+        },
+        "required": [
+          "config"
+        ]
+      }
+    },
+    {
+      "name": "burble_voice_stats",
+      "description": "Get voice/media statistics",
+      "inputSchema": {
+        "type": "object",
+        "properties": {}
+      }
+    },
+    {
+      "name": "burble_toggle_recording",
+      "description": "Toggle room recording",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "room_id": {
+            "type": "string",
+            "description": "Room ID"
+          },
+          "enabled": {
+            "type": "boolean",
+            "description": "Enable or disable recording"
+          }
+        },
+        "required": [
+          "room_id",
+          "enabled"
+        ]
+      }
+    },
+    {
+      "name": "burble_node_status",
+      "description": "Get media node status",
+      "inputSchema": {
+        "type": "object",
+        "properties": {}
+      }
+    }
+  ]
+}

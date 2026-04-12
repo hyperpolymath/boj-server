@@ -1,0 +1,98 @@
+{
+  "$schema": "https://boj.dev/schemas/cartridge/v1.json",
+  "spdx": "PMPL-1.0-or-later",
+  "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>",
+  "name": "echidna-llm-mcp",
+  "version": "0.1.0",
+  "description": "ECHIDNA LLM proof-tactic neurosymbolic interface",
+  "domain": "ai",
+  "tier": "Ayo",
+  "protocols": [
+    "MCP",
+    "REST"
+  ],
+  "auth": {
+    "method": "none",
+    "env_var": null,
+    "credential_source": null
+  },
+  "api": {
+    "base_url": "local://echidna-llm-mcp",
+    "content_type": "application/json"
+  },
+  "tools": [
+    {
+      "name": "echidna_init",
+      "description": "Initialise ECHIDNA LLM endpoint",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "endpoint": {
+            "type": "string",
+            "description": "ECHIDNA backend endpoint URL"
+          }
+        }
+      }
+    },
+    {
+      "name": "echidna_authenticate",
+      "description": "Authenticate with ECHIDNA token",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": "string",
+            "description": "API token"
+          },
+          "max_calls": {
+            "type": "integer",
+            "description": "Max calls per session"
+          }
+        },
+        "required": [
+          "token"
+        ]
+      }
+    },
+    {
+      "name": "echidna_suggest_tactics",
+      "description": "Get proof tactic suggestions for a goal",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "goal": {
+            "type": "string",
+            "description": "Proof goal (Lean/Idris2/Coq syntax)"
+          },
+          "prover": {
+            "type": "string",
+            "description": "Target prover: lean4|idris2|coq"
+          }
+        },
+        "required": [
+          "goal"
+        ]
+      }
+    },
+    {
+      "name": "echidna_rank_provers",
+      "description": "Rank proof strategies by expected success",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "theorem": {
+            "type": "string",
+            "description": "Theorem statement"
+          },
+          "context": {
+            "type": "string",
+            "description": "Proof context"
+          }
+        },
+        "required": [
+          "theorem"
+        ]
+      }
+    }
+  ]
+}

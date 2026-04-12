@@ -1,0 +1,138 @@
+{
+  "$schema": "https://boj.dev/schemas/cartridge/v1.json",
+  "spdx": "PMPL-1.0-or-later",
+  "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>",
+  "name": "ums-mcp",
+  "version": "0.1.0",
+  "description": "Universal Map Specification \u2014 level editor and validator",
+  "domain": "gaming",
+  "tier": "Ayo",
+  "protocols": [
+    "MCP",
+    "REST"
+  ],
+  "auth": {
+    "method": "none",
+    "env_var": null,
+    "credential_source": null
+  },
+  "api": {
+    "base_url": "local://ums-mcp",
+    "content_type": "application/json"
+  },
+  "tools": [
+    {
+      "name": "ums_create_project",
+      "description": "Create a new UMS project",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Project name"
+          },
+          "profile": {
+            "type": "string",
+            "description": "Game profile"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      }
+    },
+    {
+      "name": "ums_open_project",
+      "description": "Open an existing UMS project",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "Project directory path"
+          }
+        },
+        "required": [
+          "path"
+        ]
+      }
+    },
+    {
+      "name": "ums_close_project",
+      "description": "Close the current project",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "session_id": {
+            "type": "integer",
+            "description": "Session index"
+          }
+        },
+        "required": [
+          "session_id"
+        ]
+      }
+    },
+    {
+      "name": "ums_load_level",
+      "description": "Load a level into the editor",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "session_id": {
+            "type": "integer",
+            "description": "Session index"
+          },
+          "level_name": {
+            "type": "string",
+            "description": "Level name"
+          }
+        },
+        "required": [
+          "session_id",
+          "level_name"
+        ]
+      }
+    },
+    {
+      "name": "ums_save_level",
+      "description": "Save the current level",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "session_id": {
+            "type": "integer",
+            "description": "Session index"
+          }
+        },
+        "required": [
+          "session_id"
+        ]
+      }
+    },
+    {
+      "name": "ums_validate_level",
+      "description": "Validate level against UMS schema",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "session_id": {
+            "type": "integer",
+            "description": "Session index"
+          }
+        },
+        "required": [
+          "session_id"
+        ]
+      }
+    },
+    {
+      "name": "ums_list_profiles",
+      "description": "List available game profiles",
+      "inputSchema": {
+        "type": "object",
+        "properties": {}
+      }
+    }
+  ]
+}

@@ -1,0 +1,102 @@
+{
+  "$schema": "https://boj.dev/schemas/cartridge/v1.json",
+  "spdx": "PMPL-1.0-or-later",
+  "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>",
+  "name": "feedback-mcp",
+  "version": "0.1.0",
+  "description": "Feedback collection and sentiment analysis",
+  "domain": "community",
+  "tier": "Ayo",
+  "protocols": [
+    "MCP",
+    "REST"
+  ],
+  "auth": {
+    "method": "none",
+    "env_var": null,
+    "credential_source": null
+  },
+  "api": {
+    "base_url": "local://feedback-mcp",
+    "content_type": "application/json"
+  },
+  "tools": [
+    {
+      "name": "feedback_register_channel",
+      "description": "Register a feedback channel",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "channel_type": {
+            "type": "string",
+            "description": "Channel: web_form|api|email|irc|mastodon|gitea"
+          },
+          "endpoint": {
+            "type": "string",
+            "description": "Channel endpoint URL or address"
+          }
+        },
+        "required": [
+          "channel_type"
+        ]
+      }
+    },
+    {
+      "name": "feedback_start_collecting",
+      "description": "Start collecting feedback on a channel",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "session_id": {
+            "type": "integer",
+            "description": "Session index"
+          }
+        },
+        "required": [
+          "session_id"
+        ]
+      }
+    },
+    {
+      "name": "feedback_submit",
+      "description": "Submit a feedback entry",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "session_id": {
+            "type": "integer",
+            "description": "Session index"
+          },
+          "text": {
+            "type": "string",
+            "description": "Feedback text"
+          },
+          "sentiment": {
+            "type": "string",
+            "description": "Explicit sentiment: positive|negative|neutral"
+          }
+        },
+        "required": [
+          "session_id",
+          "text"
+        ]
+      }
+    },
+    {
+      "name": "feedback_get_stats",
+      "description": "Get feedback statistics",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "session_id": {
+            "type": "integer",
+            "description": "Session index"
+          }
+        },
+        "required": [
+          "session_id"
+        ]
+      }
+    }
+  ]
+}
