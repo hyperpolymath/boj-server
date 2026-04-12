@@ -73,7 +73,7 @@ dependabot-alerts = 0
 benchmark = true  # 63 V-lang ecosystem benchmarks + 10 MCP baselines
 ci-pipeline = "zig-test.yml"
 topology = true
-believe-me-count = 0
+believe-me-count = 4  # 3 axiomatic primitives (charEqSound, charEqSym, unpackLength) + 1 logSafeBounded — reduced from 31 on 2026-04-12
 fake-fuzz-placeholder = false  # tests/fuzz/placeholder.txt removed 2026-04-04
 
 [maintenance]
@@ -121,6 +121,7 @@ entries = [
   { date = "2026-03-16", description = "npm scripts verified and validated for Glama MCP directory submission compatibility." },
   { date = "2026-04-03", description = "URL encoding fix: replace→replaceAll in npm-registry-mcp to handle all encoded characters. Code scanning alert resolved." },
   { date = "2026-04-04", description = "Containerfile updated: all 96 cartridge FFI builds (was 18). Dynamic discovery loop replaces hardcoded list. entrypoint.sh builds LD_LIBRARY_PATH dynamically at startup. 96/96 cartridges now loadable in container." },
+  { date = "2026-04-12", description = "V-lang sweep complete (commits c4674f8/cb00882/325b42e/9186016): 0 .v adapter files remain, all 90 cartridges have cartridge.json + mod.js + Zig three-protocol adapter. CI fixes: lcb-website (SHA updates, RSR path migration 6scm→6a2, peter-evans→gh workflow run) + nafa-app (Deno SHA pin, TS exclusion for Deno test files). believe_me sweep: 31→4 across 6 ABI safety modules (commit d262256) — added fromLteTrue (constructive), charEqSound/unpackLength (axiomatic primitives), eliminated all Safety/SafeWebSocket/SafePromptInjection/SafeCORS/SafeAPIKey non-axiomatic instances." },
 ]
 
 [launch-status]
