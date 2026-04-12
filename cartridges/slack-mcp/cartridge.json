@@ -1,0 +1,179 @@
+{
+  "$schema": "https://boj.dev/schemas/cartridge/v1.json",
+  "spdx": "PMPL-1.0-or-later",
+  "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath)",
+  "name": "slack-mcp",
+  "version": "0.1.0",
+  "description": "Slack workspace gateway. Send messages, list channels, read threads, search messages, and manage users.",
+  "domain": "Communications",
+  "tier": "Ayo",
+  "protocols": [
+    "MCP",
+    "REST"
+  ],
+  "auth": {
+    "method": "none",
+    "env_var": null,
+    "credential_source": null
+  },
+  "api": {
+    "base_url": "local://slack-mcp",
+    "content_type": "application/json"
+  },
+  "tools": [
+    {
+      "name": "slack_authenticate",
+      "description": "Authenticate with a Slack workspace using a bot token.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": "string",
+            "description": "Slack bot token (xoxb-...)"
+          }
+        },
+        "required": [
+          "token"
+        ]
+      }
+    },
+    {
+      "name": "slack_send_message",
+      "description": "Send a message to a channel or thread.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "slot": {
+            "type": "integer",
+            "description": "Session slot from slack_authenticate"
+          },
+          "channel": {
+            "type": "string",
+            "description": "Channel ID or name (e.g. '#general')"
+          },
+          "text": {
+            "type": "string",
+            "description": "Message text (supports mrkdwn)"
+          },
+          "thread_ts": {
+            "type": "string",
+            "description": "Thread timestamp to reply to (optional)"
+          }
+        },
+        "required": [
+          "slot",
+          "channel",
+          "text"
+        ]
+      }
+    },
+    {
+      "name": "slack_list_channels",
+      "description": "List channels in the workspace.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "slot": {
+            "type": "integer",
+            "description": "Session slot"
+          },
+          "types": {
+            "type": "string",
+            "description": "Channel types: public_channel / private_channel / mpim / im (default: public_channel)"
+          }
+        },
+        "required": [
+          "slot"
+        ]
+      }
+    },
+    {
+      "name": "slack_read_thread",
+      "description": "Read messages in a thread.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "slot": {
+            "type": "integer",
+            "description": "Session slot"
+          },
+          "channel": {
+            "type": "string",
+            "description": "Channel ID"
+          },
+          "thread_ts": {
+            "type": "string",
+            "description": "Thread timestamp"
+          }
+        },
+        "required": [
+          "slot",
+          "channel",
+          "thread_ts"
+        ]
+      }
+    },
+    {
+      "name": "slack_search",
+      "description": "Search messages in the workspace.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "slot": {
+            "type": "integer",
+            "description": "Session slot"
+          },
+          "query": {
+            "type": "string",
+            "description": "Search query"
+          },
+          "count": {
+            "type": "integer",
+            "description": "Max results (default: 20)"
+          }
+        },
+        "required": [
+          "slot",
+          "query"
+        ]
+      }
+    },
+    {
+      "name": "slack_get_user",
+      "description": "Get user profile information.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "slot": {
+            "type": "integer",
+            "description": "Session slot"
+          },
+          "user_id": {
+            "type": "string",
+            "description": "Slack user ID"
+          }
+        },
+        "required": [
+          "slot",
+          "user_id"
+        ]
+      }
+    },
+    {
+      "name": "slack_deauthenticate",
+      "description": "Release a Slack session slot.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "slot": {
+            "type": "integer",
+            "description": "Session slot to release"
+          }
+        },
+        "required": [
+          "slot"
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,153 @@
+{
+  "$schema": "https://boj.dev/schemas/cartridge/v1.json",
+  "spdx": "PMPL-1.0-or-later",
+  "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath)",
+  "name": "database-mcp",
+  "version": "0.1.0",
+  "description": "Universal database gateway. Connects to PostgreSQL, SQLite, VeriSimDB, QuandleDB, MongoDB, and other backends with unified query interface.",
+  "domain": "Database",
+  "tier": "Ayo",
+  "protocols": [
+    "MCP",
+    "REST"
+  ],
+  "auth": {
+    "method": "none",
+    "env_var": null,
+    "credential_source": null
+  },
+  "api": {
+    "base_url": "local://database-mcp",
+    "content_type": "application/json"
+  },
+  "tools": [
+    {
+      "name": "database_connect",
+      "description": "Connect to a database backend. Returns a session slot index.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "backend": {
+            "type": "string",
+            "description": "Backend: postgresql / sqlite / verisimdb / quandledb / mongodb / clickhouse"
+          },
+          "connection_string": {
+            "type": "string",
+            "description": "Connection string or file path"
+          }
+        },
+        "required": [
+          "backend",
+          "connection_string"
+        ]
+      }
+    },
+    {
+      "name": "database_query",
+      "description": "Execute a SQL or VQL query.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "slot": {
+            "type": "integer",
+            "description": "Session slot from database_connect"
+          },
+          "query": {
+            "type": "string",
+            "description": "SQL or VQL query string"
+          },
+          "params": {
+            "type": "string",
+            "description": "Query parameters as JSON array (optional)"
+          }
+        },
+        "required": [
+          "slot",
+          "query"
+        ]
+      }
+    },
+    {
+      "name": "database_execute",
+      "description": "Execute a non-returning SQL statement (INSERT/UPDATE/DELETE/DDL).",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "slot": {
+            "type": "integer",
+            "description": "Session slot"
+          },
+          "statement": {
+            "type": "string",
+            "description": "SQL statement"
+          },
+          "params": {
+            "type": "string",
+            "description": "Parameters as JSON array (optional)"
+          }
+        },
+        "required": [
+          "slot",
+          "statement"
+        ]
+      }
+    },
+    {
+      "name": "database_list_tables",
+      "description": "List tables/collections in the connected database.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "slot": {
+            "type": "integer",
+            "description": "Session slot"
+          },
+          "schema": {
+            "type": "string",
+            "description": "Schema name (default: public for PostgreSQL)"
+          }
+        },
+        "required": [
+          "slot"
+        ]
+      }
+    },
+    {
+      "name": "database_describe",
+      "description": "Describe a table or collection schema.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "slot": {
+            "type": "integer",
+            "description": "Session slot"
+          },
+          "table": {
+            "type": "string",
+            "description": "Table or collection name"
+          }
+        },
+        "required": [
+          "slot",
+          "table"
+        ]
+      }
+    },
+    {
+      "name": "database_disconnect",
+      "description": "Disconnect and release a session slot.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "slot": {
+            "type": "integer",
+            "description": "Session slot to release"
+          }
+        },
+        "required": [
+          "slot"
+        ]
+      }
+    }
+  ]
+}

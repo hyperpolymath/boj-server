@@ -1,0 +1,5 @@
+= SIDELINED: container_adapter.v
+
+V-lang banned 2026-04-12. Replaced by `container_adapter.zig`.
+
+Ports: REST 9148 / gRPC 9149 / GraphQL 9150. FFI unchanged: `container_ffi.zig`.

@@ -1,0 +1,5 @@
+= SIDELINED: arango_mcp_adapter.v
+
+V-lang banned 2026-04-12. Replaced by `arango_mcp_adapter.zig`.
+
+Ports: REST 9181 / gRPC 9182 / GraphQL 9183. FFI unchanged: `arango_mcp_ffi.zig`.

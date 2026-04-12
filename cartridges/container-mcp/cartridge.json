@@ -1,0 +1,184 @@
+{
+  "$schema": "https://boj.dev/schemas/cartridge/v1.json",
+  "spdx": "PMPL-1.0-or-later",
+  "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath)",
+  "name": "container-mcp",
+  "version": "0.1.0",
+  "description": "Container lifecycle manager. Build, create, start, stop, and remove containers via Podman/Docker with state machine enforcement.",
+  "domain": "Container Orchestration",
+  "tier": "Ayo",
+  "protocols": [
+    "MCP",
+    "REST"
+  ],
+  "auth": {
+    "method": "none",
+    "env_var": null,
+    "credential_source": null
+  },
+  "api": {
+    "base_url": "local://container-mcp",
+    "content_type": "application/json"
+  },
+  "tools": [
+    {
+      "name": "container_build",
+      "description": "Build a container image from a Containerfile.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "context_path": {
+            "type": "string",
+            "description": "Build context directory"
+          },
+          "image_name": {
+            "type": "string",
+            "description": "Image name and tag (e.g. 'myapp:v1.0')"
+          },
+          "containerfile": {
+            "type": "string",
+            "description": "Path to Containerfile (default: context_path/Containerfile)"
+          }
+        },
+        "required": [
+          "context_path",
+          "image_name"
+        ]
+      }
+    },
+    {
+      "name": "container_create",
+      "description": "Create a container from an image.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "image": {
+            "type": "string",
+            "description": "Image name or digest"
+          },
+          "name": {
+            "type": "string",
+            "description": "Container name"
+          },
+          "env": {
+            "type": "string",
+            "description": "Environment variables as JSON object"
+          },
+          "ports": {
+            "type": "string",
+            "description": "Port mappings as JSON array"
+          }
+        },
+        "required": [
+          "image"
+        ]
+      }
+    },
+    {
+      "name": "container_start",
+      "description": "Start a created or stopped container.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "container_id": {
+            "type": "string",
+            "description": "Container ID or name"
+          }
+        },
+        "required": [
+          "container_id"
+        ]
+      }
+    },
+    {
+      "name": "container_stop",
+      "description": "Stop a running container.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "container_id": {
+            "type": "string",
+            "description": "Container ID or name"
+          },
+          "timeout": {
+            "type": "integer",
+            "description": "Stop timeout in seconds (default: 10)"
+          }
+        },
+        "required": [
+          "container_id"
+        ]
+      }
+    },
+    {
+      "name": "container_remove",
+      "description": "Remove a stopped container.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "container_id": {
+            "type": "string",
+            "description": "Container ID or name"
+          },
+          "force": {
+            "type": "boolean",
+            "description": "Force remove even if running (default: false)"
+          }
+        },
+        "required": [
+          "container_id"
+        ]
+      }
+    },
+    {
+      "name": "container_list",
+      "description": "List containers.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "all": {
+            "type": "boolean",
+            "description": "Include stopped containers (default: false)"
+          }
+        },
+        "required": []
+      }
+    },
+    {
+      "name": "container_logs",
+      "description": "Get logs from a container.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "container_id": {
+            "type": "string",
+            "description": "Container ID or name"
+          },
+          "tail": {
+            "type": "integer",
+            "description": "Number of log lines (default: 100)"
+          }
+        },
+        "required": [
+          "container_id"
+        ]
+      }
+    },
+    {
+      "name": "container_inspect",
+      "description": "Inspect a container's full configuration and state.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "container_id": {
+            "type": "string",
+            "description": "Container ID or name"
+          }
+        },
+        "required": [
+          "container_id"
+        ]
+      }
+    }
+  ]
+}

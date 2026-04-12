@@ -1,0 +1,157 @@
+{
+  "$schema": "https://boj.dev/schemas/cartridge/v1.json",
+  "spdx": "PMPL-1.0-or-later",
+  "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath)",
+  "name": "iac-mcp",
+  "version": "0.1.0",
+  "description": "Infrastructure-as-Code gateway. Manages Terraform/OpenTofu plan\u2192apply\u2192destroy lifecycle with state machine enforcement.",
+  "domain": "Infrastructure",
+  "tier": "Ayo",
+  "protocols": [
+    "MCP",
+    "REST"
+  ],
+  "auth": {
+    "method": "none",
+    "env_var": null,
+    "credential_source": null
+  },
+  "api": {
+    "base_url": "local://iac-mcp",
+    "content_type": "application/json"
+  },
+  "tools": [
+    {
+      "name": "iac_init",
+      "description": "Initialise an IaC session for a working directory.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "tool": {
+            "type": "string",
+            "description": "IaC tool: terraform / opentofu / pulumi (default: opentofu)"
+          },
+          "working_dir": {
+            "type": "string",
+            "description": "Working directory containing IaC configuration"
+          }
+        },
+        "required": [
+          "working_dir"
+        ]
+      }
+    },
+    {
+      "name": "iac_plan",
+      "description": "Generate an execution plan. Returns a plan summary.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "slot": {
+            "type": "integer",
+            "description": "Session slot from iac_init"
+          },
+          "target": {
+            "type": "string",
+            "description": "Limit plan to a specific resource (optional)"
+          }
+        },
+        "required": [
+          "slot"
+        ]
+      }
+    },
+    {
+      "name": "iac_apply",
+      "description": "Apply the most recent plan.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "slot": {
+            "type": "integer",
+            "description": "Session slot"
+          },
+          "auto_approve": {
+            "type": "boolean",
+            "description": "Skip interactive approval (default: false)"
+          }
+        },
+        "required": [
+          "slot"
+        ]
+      }
+    },
+    {
+      "name": "iac_destroy",
+      "description": "Destroy all managed infrastructure.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "slot": {
+            "type": "integer",
+            "description": "Session slot"
+          },
+          "auto_approve": {
+            "type": "boolean",
+            "description": "Skip interactive approval (default: false)"
+          }
+        },
+        "required": [
+          "slot"
+        ]
+      }
+    },
+    {
+      "name": "iac_state",
+      "description": "Get the current state machine state for a session slot.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "slot": {
+            "type": "integer",
+            "description": "Session slot"
+          }
+        },
+        "required": [
+          "slot"
+        ]
+      }
+    },
+    {
+      "name": "iac_output",
+      "description": "Get output values from the current state.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "slot": {
+            "type": "integer",
+            "description": "Session slot"
+          },
+          "name": {
+            "type": "string",
+            "description": "Specific output name (all outputs if omitted)"
+          }
+        },
+        "required": [
+          "slot"
+        ]
+      }
+    },
+    {
+      "name": "iac_release",
+      "description": "Release a session slot.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "slot": {
+            "type": "integer",
+            "description": "Session slot to release"
+          }
+        },
+        "required": [
+          "slot"
+        ]
+      }
+    }
+  ]
+}

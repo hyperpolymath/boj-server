@@ -1,0 +1,5 @@
+= SIDELINED: slack_mcp_adapter.v
+
+V-lang banned 2026-04-12. Replaced by `slack_mcp_adapter.zig`.
+
+Ports: REST 9184 / gRPC 9185 / GraphQL 9186. FFI unchanged: `slack_mcp_ffi.zig`.

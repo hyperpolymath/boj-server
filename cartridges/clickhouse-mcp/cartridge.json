@@ -1,0 +1,184 @@
+{
+  "$schema": "https://boj.dev/schemas/cartridge/v1.json",
+  "spdx": "PMPL-1.0-or-later",
+  "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath)",
+  "name": "clickhouse-mcp",
+  "version": "0.1.0",
+  "description": "ClickHouse analytics database gateway. Columnar queries, bulk inserts, and real-time analytics via session management.",
+  "domain": "Database",
+  "tier": "Ayo",
+  "protocols": [
+    "MCP",
+    "REST"
+  ],
+  "auth": {
+    "method": "none",
+    "env_var": null,
+    "credential_source": null
+  },
+  "api": {
+    "base_url": "local://clickhouse-mcp",
+    "content_type": "application/json"
+  },
+  "tools": [
+    {
+      "name": "clickhouse_connect",
+      "description": "Connect to a ClickHouse server. Returns a session slot.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "host": {
+            "type": "string",
+            "description": "ClickHouse host (default: 127.0.0.1)"
+          },
+          "port": {
+            "type": "integer",
+            "description": "HTTP port (default: 8123)"
+          },
+          "database": {
+            "type": "string",
+            "description": "Default database (default: default)"
+          },
+          "user": {
+            "type": "string",
+            "description": "Username (default: default)"
+          },
+          "password": {
+            "type": "string",
+            "description": "Password"
+          }
+        },
+        "required": []
+      }
+    },
+    {
+      "name": "clickhouse_query",
+      "description": "Execute a SELECT query and return results.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "slot": {
+            "type": "integer",
+            "description": "Session slot from clickhouse_connect"
+          },
+          "sql": {
+            "type": "string",
+            "description": "SQL SELECT query"
+          },
+          "format": {
+            "type": "string",
+            "description": "Output format: JSON (default) or CSV"
+          }
+        },
+        "required": [
+          "slot",
+          "sql"
+        ]
+      }
+    },
+    {
+      "name": "clickhouse_insert",
+      "description": "Insert rows into a table.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "slot": {
+            "type": "integer",
+            "description": "Session slot"
+          },
+          "table": {
+            "type": "string",
+            "description": "Table name"
+          },
+          "data": {
+            "type": "string",
+            "description": "Row data as JSON array of objects"
+          }
+        },
+        "required": [
+          "slot",
+          "table",
+          "data"
+        ]
+      }
+    },
+    {
+      "name": "clickhouse_ddl",
+      "description": "Execute a DDL statement (CREATE/ALTER/DROP).",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "slot": {
+            "type": "integer",
+            "description": "Session slot"
+          },
+          "sql": {
+            "type": "string",
+            "description": "DDL statement"
+          }
+        },
+        "required": [
+          "slot",
+          "sql"
+        ]
+      }
+    },
+    {
+      "name": "clickhouse_list_tables",
+      "description": "List tables in the current database.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "slot": {
+            "type": "integer",
+            "description": "Session slot"
+          },
+          "database": {
+            "type": "string",
+            "description": "Database name (uses connected database if omitted)"
+          }
+        },
+        "required": [
+          "slot"
+        ]
+      }
+    },
+    {
+      "name": "clickhouse_describe",
+      "description": "Describe a table's column schema.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "slot": {
+            "type": "integer",
+            "description": "Session slot"
+          },
+          "table": {
+            "type": "string",
+            "description": "Table name"
+          }
+        },
+        "required": [
+          "slot",
+          "table"
+        ]
+      }
+    },
+    {
+      "name": "clickhouse_disconnect",
+      "description": "Disconnect and release a session slot.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "slot": {
+            "type": "integer",
+            "description": "Session slot to release"
+          }
+        },
+        "required": [
+          "slot"
+        ]
+      }
+    }
+  ]
+}

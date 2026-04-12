@@ -1,0 +1,199 @@
+{
+  "$schema": "https://boj.dev/schemas/cartridge/v1.json",
+  "spdx": "PMPL-1.0-or-later",
+  "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath)",
+  "name": "supabase-mcp",
+  "version": "0.1.0",
+  "description": "Supabase gateway. PostgreSQL queries, Auth user management, Storage file operations, and Edge Functions.",
+  "domain": "Database",
+  "tier": "Ayo",
+  "protocols": [
+    "MCP",
+    "REST"
+  ],
+  "auth": {
+    "method": "none",
+    "env_var": null,
+    "credential_source": null
+  },
+  "api": {
+    "base_url": "local://supabase-mcp",
+    "content_type": "application/json"
+  },
+  "tools": [
+    {
+      "name": "supabase_connect",
+      "description": "Connect to a Supabase project. Returns a session slot.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "project_url": {
+            "type": "string",
+            "description": "Supabase project URL (https://xxx.supabase.co)"
+          },
+          "anon_key": {
+            "type": "string",
+            "description": "Supabase anon key"
+          }
+        },
+        "required": [
+          "project_url",
+          "anon_key"
+        ]
+      }
+    },
+    {
+      "name": "supabase_query",
+      "description": "Execute a SQL query via Supabase's REST endpoint.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "slot": {
+            "type": "integer",
+            "description": "Session slot from supabase_connect"
+          },
+          "table": {
+            "type": "string",
+            "description": "Table name"
+          },
+          "filter": {
+            "type": "string",
+            "description": "PostgREST filter string (optional)"
+          },
+          "select": {
+            "type": "string",
+            "description": "Columns to return (default: *)"
+          }
+        },
+        "required": [
+          "slot",
+          "table"
+        ]
+      }
+    },
+    {
+      "name": "supabase_insert",
+      "description": "Insert rows into a Supabase table.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "slot": {
+            "type": "integer",
+            "description": "Session slot"
+          },
+          "table": {
+            "type": "string",
+            "description": "Table name"
+          },
+          "data": {
+            "type": "string",
+            "description": "Row data as JSON object or array"
+          }
+        },
+        "required": [
+          "slot",
+          "table",
+          "data"
+        ]
+      }
+    },
+    {
+      "name": "supabase_update",
+      "description": "Update rows in a Supabase table.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "slot": {
+            "type": "integer",
+            "description": "Session slot"
+          },
+          "table": {
+            "type": "string",
+            "description": "Table name"
+          },
+          "filter": {
+            "type": "string",
+            "description": "PostgREST filter string"
+          },
+          "data": {
+            "type": "string",
+            "description": "Updated fields as JSON object"
+          }
+        },
+        "required": [
+          "slot",
+          "table",
+          "filter",
+          "data"
+        ]
+      }
+    },
+    {
+      "name": "supabase_delete",
+      "description": "Delete rows from a Supabase table.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "slot": {
+            "type": "integer",
+            "description": "Session slot"
+          },
+          "table": {
+            "type": "string",
+            "description": "Table name"
+          },
+          "filter": {
+            "type": "string",
+            "description": "PostgREST filter string"
+          }
+        },
+        "required": [
+          "slot",
+          "table",
+          "filter"
+        ]
+      }
+    },
+    {
+      "name": "supabase_storage_list",
+      "description": "List files in a Supabase Storage bucket.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "slot": {
+            "type": "integer",
+            "description": "Session slot"
+          },
+          "bucket": {
+            "type": "string",
+            "description": "Storage bucket name"
+          },
+          "path": {
+            "type": "string",
+            "description": "Folder path prefix (optional)"
+          }
+        },
+        "required": [
+          "slot",
+          "bucket"
+        ]
+      }
+    },
+    {
+      "name": "supabase_disconnect",
+      "description": "Disconnect and release a session slot.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "slot": {
+            "type": "integer",
+            "description": "Session slot to release"
+          }
+        },
+        "required": [
+          "slot"
+        ]
+      }
+    }
+  ]
+}

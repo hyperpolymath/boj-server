@@ -1,0 +1,176 @@
+{
+  "$schema": "https://boj.dev/schemas/cartridge/v1.json",
+  "spdx": "PMPL-1.0-or-later",
+  "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath)",
+  "name": "discord-mcp",
+  "version": "0.1.0",
+  "description": "Discord bot gateway. Send messages, read channel history, manage guilds, and react to messages.",
+  "domain": "Communications",
+  "tier": "Ayo",
+  "protocols": [
+    "MCP",
+    "REST"
+  ],
+  "auth": {
+    "method": "none",
+    "env_var": null,
+    "credential_source": null
+  },
+  "api": {
+    "base_url": "local://discord-mcp",
+    "content_type": "application/json"
+  },
+  "tools": [
+    {
+      "name": "discord_authenticate",
+      "description": "Authenticate with Discord using a bot token.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": "string",
+            "description": "Discord bot token"
+          }
+        },
+        "required": [
+          "token"
+        ]
+      }
+    },
+    {
+      "name": "discord_send_message",
+      "description": "Send a message to a Discord channel.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "slot": {
+            "type": "integer",
+            "description": "Session slot from discord_authenticate"
+          },
+          "channel_id": {
+            "type": "string",
+            "description": "Discord channel ID"
+          },
+          "content": {
+            "type": "string",
+            "description": "Message content"
+          }
+        },
+        "required": [
+          "slot",
+          "channel_id",
+          "content"
+        ]
+      }
+    },
+    {
+      "name": "discord_list_guilds",
+      "description": "List guilds (servers) the bot is a member of.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "slot": {
+            "type": "integer",
+            "description": "Session slot"
+          }
+        },
+        "required": [
+          "slot"
+        ]
+      }
+    },
+    {
+      "name": "discord_list_channels",
+      "description": "List channels in a guild.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "slot": {
+            "type": "integer",
+            "description": "Session slot"
+          },
+          "guild_id": {
+            "type": "string",
+            "description": "Guild ID"
+          }
+        },
+        "required": [
+          "slot",
+          "guild_id"
+        ]
+      }
+    },
+    {
+      "name": "discord_read_messages",
+      "description": "Read recent messages from a channel.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "slot": {
+            "type": "integer",
+            "description": "Session slot"
+          },
+          "channel_id": {
+            "type": "string",
+            "description": "Channel ID"
+          },
+          "limit": {
+            "type": "integer",
+            "description": "Number of messages (default: 50)"
+          }
+        },
+        "required": [
+          "slot",
+          "channel_id"
+        ]
+      }
+    },
+    {
+      "name": "discord_add_reaction",
+      "description": "Add a reaction emoji to a message.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "slot": {
+            "type": "integer",
+            "description": "Session slot"
+          },
+          "channel_id": {
+            "type": "string",
+            "description": "Channel ID"
+          },
+          "message_id": {
+            "type": "string",
+            "description": "Message ID"
+          },
+          "emoji": {
+            "type": "string",
+            "description": "Emoji (unicode or :name:)"
+          }
+        },
+        "required": [
+          "slot",
+          "channel_id",
+          "message_id",
+          "emoji"
+        ]
+      }
+    },
+    {
+      "name": "discord_deauthenticate",
+      "description": "Release a Discord session slot.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "slot": {
+            "type": "integer",
+            "description": "Session slot to release"
+          }
+        },
+        "required": [
+          "slot"
+        ]
+      }
+    }
+  ]
+}

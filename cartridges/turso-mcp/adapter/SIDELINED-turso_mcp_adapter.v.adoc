@@ -1,0 +1,5 @@
+= SIDELINED: turso_mcp_adapter.v
+
+V-lang banned 2026-04-12. Replaced by `turso_mcp_adapter.zig`.
+
+Ports: REST 9178 / gRPC 9179 / GraphQL 9180. FFI unchanged: `turso_mcp_ffi.zig`.

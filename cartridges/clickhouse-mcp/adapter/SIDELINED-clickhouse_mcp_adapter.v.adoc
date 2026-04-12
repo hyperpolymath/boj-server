@@ -1,0 +1,5 @@
+= SIDELINED: clickhouse_mcp_adapter.v
+
+V-lang banned 2026-04-12. Replaced by `clickhouse_mcp_adapter.zig`.
+
+Ports: REST 9166 / gRPC 9167 / GraphQL 9168. FFI unchanged: `clickhouse_mcp_ffi.zig`.

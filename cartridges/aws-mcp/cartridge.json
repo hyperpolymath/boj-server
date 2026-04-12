@@ -1,0 +1,180 @@
+{
+  "$schema": "https://boj.dev/schemas/cartridge/v1.json",
+  "spdx": "PMPL-1.0-or-later",
+  "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath)",
+  "name": "aws-mcp",
+  "version": "0.1.0",
+  "description": "AWS cloud gateway. Session-based authentication with per-region slots, throttle management, and multi-service action routing.",
+  "domain": "Cloud",
+  "tier": "Ayo",
+  "protocols": [
+    "MCP",
+    "REST"
+  ],
+  "auth": {
+    "method": "none",
+    "env_var": null,
+    "credential_source": null
+  },
+  "api": {
+    "base_url": "local://aws-mcp",
+    "content_type": "application/json"
+  },
+  "tools": [
+    {
+      "name": "aws_authenticate",
+      "description": "Authenticate with AWS for a region. Returns a session slot index.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "region": {
+            "type": "string",
+            "description": "AWS region (e.g. 'us-east-1')"
+          },
+          "profile": {
+            "type": "string",
+            "description": "AWS profile name (default: 'default')"
+          }
+        },
+        "required": [
+          "region"
+        ]
+      }
+    },
+    {
+      "name": "aws_s3_list",
+      "description": "List S3 buckets or objects in a bucket.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "bucket": {
+            "type": "string",
+            "description": "Bucket name (omit to list all buckets)"
+          },
+          "prefix": {
+            "type": "string",
+            "description": "Key prefix filter"
+          }
+        },
+        "required": []
+      }
+    },
+    {
+      "name": "aws_s3_get",
+      "description": "Get an S3 object's content or metadata.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "bucket": {
+            "type": "string",
+            "description": "Bucket name"
+          },
+          "key": {
+            "type": "string",
+            "description": "Object key"
+          }
+        },
+        "required": [
+          "bucket",
+          "key"
+        ]
+      }
+    },
+    {
+      "name": "aws_s3_put",
+      "description": "Upload content to an S3 object.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "bucket": {
+            "type": "string",
+            "description": "Bucket name"
+          },
+          "key": {
+            "type": "string",
+            "description": "Object key"
+          },
+          "body": {
+            "type": "string",
+            "description": "Object content"
+          }
+        },
+        "required": [
+          "bucket",
+          "key",
+          "body"
+        ]
+      }
+    },
+    {
+      "name": "aws_ec2_list",
+      "description": "List EC2 instances with optional filters.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "region": {
+            "type": "string",
+            "description": "AWS region"
+          },
+          "state": {
+            "type": "string",
+            "description": "Filter by state: running / stopped / terminated"
+          }
+        },
+        "required": []
+      }
+    },
+    {
+      "name": "aws_lambda_invoke",
+      "description": "Invoke a Lambda function.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "function_name": {
+            "type": "string",
+            "description": "Lambda function name or ARN"
+          },
+          "payload": {
+            "type": "string",
+            "description": "JSON payload to send to the function"
+          }
+        },
+        "required": [
+          "function_name"
+        ]
+      }
+    },
+    {
+      "name": "aws_session_state",
+      "description": "Get the state of an AWS session slot.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "slot": {
+            "type": "integer",
+            "description": "Session slot from aws_authenticate"
+          }
+        },
+        "required": [
+          "slot"
+        ]
+      }
+    },
+    {
+      "name": "aws_deauthenticate",
+      "description": "Release an AWS session slot.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "slot": {
+            "type": "integer",
+            "description": "Session slot to release"
+          }
+        },
+        "required": [
+          "slot"
+        ]
+      }
+    }
+  ]
+}

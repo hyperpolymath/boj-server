@@ -1,0 +1,5 @@
+= SIDELINED: gcp_mcp_adapter.v
+
+V-lang banned 2026-04-12. Replaced by `gcp_mcp_adapter.zig`.
+
+Ports: REST 9142 / gRPC 9143 / GraphQL 9144. FFI unchanged: `gcp_mcp_ffi.zig`.

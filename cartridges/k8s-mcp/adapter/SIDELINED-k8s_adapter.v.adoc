@@ -1,0 +1,5 @@
+= SIDELINED: k8s_adapter.v
+
+V-lang banned 2026-04-12. Replaced by `k8s_adapter.zig`.
+
+Ports: REST 9145 / gRPC 9146 / GraphQL 9147. FFI unchanged: `k8s_ffi.zig`.

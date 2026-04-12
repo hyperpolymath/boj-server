@@ -1,0 +1,5 @@
+= SIDELINED: matrix_mcp_adapter.v
+
+V-lang banned 2026-04-12. Replaced by `matrix_mcp_adapter.zig`.
+
+Ports: REST 9193 / gRPC 9194 / GraphQL 9195. FFI unchanged: `matrix_mcp_ffi.zig`.

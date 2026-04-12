@@ -1,0 +1,249 @@
+{
+  "$schema": "https://boj.dev/schemas/cartridge/v1.json",
+  "spdx": "PMPL-1.0-or-later",
+  "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath)",
+  "name": "arango-mcp",
+  "version": "0.1.0",
+  "description": "ArangoDB multi-model database gateway. AQL queries, document operations, graph traversals, and collection management.",
+  "domain": "Database",
+  "tier": "Ayo",
+  "protocols": [
+    "MCP",
+    "REST"
+  ],
+  "auth": {
+    "method": "none",
+    "env_var": null,
+    "credential_source": null
+  },
+  "api": {
+    "base_url": "local://arango-mcp",
+    "content_type": "application/json"
+  },
+  "tools": [
+    {
+      "name": "arango_connect",
+      "description": "Connect to an ArangoDB instance. Returns a session slot.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string",
+            "description": "ArangoDB URL (http://localhost:8529)"
+          },
+          "database": {
+            "type": "string",
+            "description": "Database name (default: _system)"
+          },
+          "username": {
+            "type": "string",
+            "description": "Username (default: root)"
+          },
+          "password": {
+            "type": "string",
+            "description": "Password"
+          }
+        },
+        "required": [
+          "url"
+        ]
+      }
+    },
+    {
+      "name": "arango_aql",
+      "description": "Execute an AQL query.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "slot": {
+            "type": "integer",
+            "description": "Session slot from arango_connect"
+          },
+          "query": {
+            "type": "string",
+            "description": "AQL query string"
+          },
+          "bind_vars": {
+            "type": "string",
+            "description": "Bind variables as JSON object (optional)"
+          }
+        },
+        "required": [
+          "slot",
+          "query"
+        ]
+      }
+    },
+    {
+      "name": "arango_insert",
+      "description": "Insert a document into a collection.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "slot": {
+            "type": "integer",
+            "description": "Session slot"
+          },
+          "collection": {
+            "type": "string",
+            "description": "Collection name"
+          },
+          "document": {
+            "type": "string",
+            "description": "Document as JSON object"
+          }
+        },
+        "required": [
+          "slot",
+          "collection",
+          "document"
+        ]
+      }
+    },
+    {
+      "name": "arango_get",
+      "description": "Get a document by key.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "slot": {
+            "type": "integer",
+            "description": "Session slot"
+          },
+          "collection": {
+            "type": "string",
+            "description": "Collection name"
+          },
+          "key": {
+            "type": "string",
+            "description": "Document key"
+          }
+        },
+        "required": [
+          "slot",
+          "collection",
+          "key"
+        ]
+      }
+    },
+    {
+      "name": "arango_update",
+      "description": "Update a document.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "slot": {
+            "type": "integer",
+            "description": "Session slot"
+          },
+          "collection": {
+            "type": "string",
+            "description": "Collection name"
+          },
+          "key": {
+            "type": "string",
+            "description": "Document key"
+          },
+          "update": {
+            "type": "string",
+            "description": "Partial update as JSON object"
+          }
+        },
+        "required": [
+          "slot",
+          "collection",
+          "key",
+          "update"
+        ]
+      }
+    },
+    {
+      "name": "arango_delete",
+      "description": "Delete a document.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "slot": {
+            "type": "integer",
+            "description": "Session slot"
+          },
+          "collection": {
+            "type": "string",
+            "description": "Collection name"
+          },
+          "key": {
+            "type": "string",
+            "description": "Document key"
+          }
+        },
+        "required": [
+          "slot",
+          "collection",
+          "key"
+        ]
+      }
+    },
+    {
+      "name": "arango_graph_traversal",
+      "description": "Traverse a named graph from a start vertex.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "slot": {
+            "type": "integer",
+            "description": "Session slot"
+          },
+          "graph": {
+            "type": "string",
+            "description": "Graph name"
+          },
+          "start_vertex": {
+            "type": "string",
+            "description": "Start vertex ID (collection/key)"
+          },
+          "depth": {
+            "type": "integer",
+            "description": "Traversal depth (default: 1)"
+          }
+        },
+        "required": [
+          "slot",
+          "graph",
+          "start_vertex"
+        ]
+      }
+    },
+    {
+      "name": "arango_list_collections",
+      "description": "List collections in the connected database.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "slot": {
+            "type": "integer",
+            "description": "Session slot"
+          }
+        },
+        "required": [
+          "slot"
+        ]
+      }
+    },
+    {
+      "name": "arango_disconnect",
+      "description": "Disconnect and release a session slot.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "slot": {
+            "type": "integer",
+            "description": "Session slot to release"
+          }
+        },
+        "required": [
+          "slot"
+        ]
+      }
+    }
+  ]
+}

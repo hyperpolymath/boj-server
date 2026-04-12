@@ -1,0 +1,162 @@
+{
+  "$schema": "https://boj.dev/schemas/cartridge/v1.json",
+  "spdx": "PMPL-1.0-or-later",
+  "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath)",
+  "name": "telegram-mcp",
+  "version": "0.1.0",
+  "description": "Telegram Bot API gateway. Send messages, manage chats, handle inline queries, and read updates.",
+  "domain": "Communications",
+  "tier": "Ayo",
+  "protocols": [
+    "MCP",
+    "REST"
+  ],
+  "auth": {
+    "method": "none",
+    "env_var": null,
+    "credential_source": null
+  },
+  "api": {
+    "base_url": "local://telegram-mcp",
+    "content_type": "application/json"
+  },
+  "tools": [
+    {
+      "name": "telegram_authenticate",
+      "description": "Authenticate with Telegram using a bot token.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": "string",
+            "description": "Telegram bot token (from @BotFather)"
+          }
+        },
+        "required": [
+          "token"
+        ]
+      }
+    },
+    {
+      "name": "telegram_send_message",
+      "description": "Send a message to a chat.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "slot": {
+            "type": "integer",
+            "description": "Session slot from telegram_authenticate"
+          },
+          "chat_id": {
+            "type": "string",
+            "description": "Chat ID or @username"
+          },
+          "text": {
+            "type": "string",
+            "description": "Message text (supports HTML and Markdown)"
+          },
+          "parse_mode": {
+            "type": "string",
+            "description": "Parse mode: HTML or Markdown (default: HTML)"
+          }
+        },
+        "required": [
+          "slot",
+          "chat_id",
+          "text"
+        ]
+      }
+    },
+    {
+      "name": "telegram_get_updates",
+      "description": "Poll for new updates.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "slot": {
+            "type": "integer",
+            "description": "Session slot"
+          },
+          "offset": {
+            "type": "integer",
+            "description": "Update offset for pagination"
+          },
+          "limit": {
+            "type": "integer",
+            "description": "Max updates to return (default: 100)"
+          }
+        },
+        "required": [
+          "slot"
+        ]
+      }
+    },
+    {
+      "name": "telegram_get_chat",
+      "description": "Get information about a chat.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "slot": {
+            "type": "integer",
+            "description": "Session slot"
+          },
+          "chat_id": {
+            "type": "string",
+            "description": "Chat ID or @username"
+          }
+        },
+        "required": [
+          "slot",
+          "chat_id"
+        ]
+      }
+    },
+    {
+      "name": "telegram_send_photo",
+      "description": "Send a photo to a chat.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "slot": {
+            "type": "integer",
+            "description": "Session slot"
+          },
+          "chat_id": {
+            "type": "string",
+            "description": "Chat ID"
+          },
+          "photo": {
+            "type": "string",
+            "description": "Photo URL or file_id"
+          },
+          "caption": {
+            "type": "string",
+            "description": "Photo caption (optional)"
+          }
+        },
+        "required": [
+          "slot",
+          "chat_id",
+          "photo"
+        ]
+      }
+    },
+    {
+      "name": "telegram_deauthenticate",
+      "description": "Release a Telegram session slot.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "slot": {
+            "type": "integer",
+            "description": "Session slot to release"
+          }
+        },
+        "required": [
+          "slot"
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,5 @@
+= SIDELINED: discord_mcp_adapter.v
+
+V-lang banned 2026-04-12. Replaced by `discord_mcp_adapter.zig`.
+
+Ports: REST 9187 / gRPC 9188 / GraphQL 9189. FFI unchanged: `discord_mcp_ffi.zig`.

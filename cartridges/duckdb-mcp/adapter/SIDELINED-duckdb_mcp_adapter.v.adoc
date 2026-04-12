@@ -1,0 +1,5 @@
+= SIDELINED: duckdb_mcp_adapter.v
+
+V-lang banned 2026-04-12. Replaced by `duckdb_mcp_adapter.zig`.
+
+Ports: REST 9169 / gRPC 9170 / GraphQL 9171. FFI unchanged: `duckdb_mcp_ffi.zig`.

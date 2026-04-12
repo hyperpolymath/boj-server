@@ -1,0 +1,215 @@
+{
+  "$schema": "https://boj.dev/schemas/cartridge/v1.json",
+  "spdx": "PMPL-1.0-or-later",
+  "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath)",
+  "name": "k8s-mcp",
+  "version": "0.1.0",
+  "description": "Kubernetes cluster management. Namespace-scoped operations with connection lifecycle and resource CRUD.",
+  "domain": "Container Orchestration",
+  "tier": "Ayo",
+  "protocols": [
+    "MCP",
+    "REST"
+  ],
+  "auth": {
+    "method": "none",
+    "env_var": null,
+    "credential_source": null
+  },
+  "api": {
+    "base_url": "local://k8s-mcp",
+    "content_type": "application/json"
+  },
+  "tools": [
+    {
+      "name": "k8s_connect",
+      "description": "Connect to a Kubernetes cluster. Returns a session slot index.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "kubeconfig": {
+            "type": "string",
+            "description": "Path to kubeconfig file (uses default if omitted)"
+          },
+          "context": {
+            "type": "string",
+            "description": "kubeconfig context name"
+          }
+        },
+        "required": []
+      }
+    },
+    {
+      "name": "k8s_list_pods",
+      "description": "List pods in a namespace.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "slot": {
+            "type": "integer",
+            "description": "Session slot from k8s_connect"
+          },
+          "namespace": {
+            "type": "string",
+            "description": "Namespace (default: all namespaces)"
+          },
+          "label_selector": {
+            "type": "string",
+            "description": "Label selector filter"
+          }
+        },
+        "required": [
+          "slot"
+        ]
+      }
+    },
+    {
+      "name": "k8s_get_pod",
+      "description": "Get details for a specific pod.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "slot": {
+            "type": "integer",
+            "description": "Session slot"
+          },
+          "namespace": {
+            "type": "string",
+            "description": "Namespace"
+          },
+          "name": {
+            "type": "string",
+            "description": "Pod name"
+          }
+        },
+        "required": [
+          "slot",
+          "namespace",
+          "name"
+        ]
+      }
+    },
+    {
+      "name": "k8s_list_deployments",
+      "description": "List deployments in a namespace.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "slot": {
+            "type": "integer",
+            "description": "Session slot"
+          },
+          "namespace": {
+            "type": "string",
+            "description": "Namespace (default: all namespaces)"
+          }
+        },
+        "required": [
+          "slot"
+        ]
+      }
+    },
+    {
+      "name": "k8s_apply",
+      "description": "Apply a YAML/JSON manifest to the cluster.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "slot": {
+            "type": "integer",
+            "description": "Session slot"
+          },
+          "manifest": {
+            "type": "string",
+            "description": "YAML or JSON manifest content"
+          }
+        },
+        "required": [
+          "slot",
+          "manifest"
+        ]
+      }
+    },
+    {
+      "name": "k8s_delete",
+      "description": "Delete a Kubernetes resource.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "slot": {
+            "type": "integer",
+            "description": "Session slot"
+          },
+          "kind": {
+            "type": "string",
+            "description": "Resource kind (e.g. Pod, Deployment)"
+          },
+          "namespace": {
+            "type": "string",
+            "description": "Namespace"
+          },
+          "name": {
+            "type": "string",
+            "description": "Resource name"
+          }
+        },
+        "required": [
+          "slot",
+          "kind",
+          "namespace",
+          "name"
+        ]
+      }
+    },
+    {
+      "name": "k8s_logs",
+      "description": "Get logs from a pod container.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "slot": {
+            "type": "integer",
+            "description": "Session slot"
+          },
+          "namespace": {
+            "type": "string",
+            "description": "Namespace"
+          },
+          "pod": {
+            "type": "string",
+            "description": "Pod name"
+          },
+          "container": {
+            "type": "string",
+            "description": "Container name (first container if omitted)"
+          },
+          "tail": {
+            "type": "integer",
+            "description": "Number of log lines to return (default: 100)"
+          }
+        },
+        "required": [
+          "slot",
+          "namespace",
+          "pod"
+        ]
+      }
+    },
+    {
+      "name": "k8s_disconnect",
+      "description": "Disconnect and release a session slot.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "slot": {
+            "type": "integer",
+            "description": "Session slot to release"
+          }
+        },
+        "required": [
+          "slot"
+        ]
+      }
+    }
+  ]
+}

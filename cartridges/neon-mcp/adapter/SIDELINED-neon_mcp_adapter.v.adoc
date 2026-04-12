@@ -1,0 +1,5 @@
+= SIDELINED: neon_mcp_adapter.v
+
+V-lang banned 2026-04-12. Replaced by `neon_mcp_adapter.zig`.
+
+Ports: REST 9172 / gRPC 9173 / GraphQL 9174. FFI unchanged: `neon_mcp_ffi.zig`.
