@@ -966,6 +966,7 @@ struct PortInfo {
 	rest    int = 7700
 	grpc    int = 7701
 	graphql int = 7702
+	sse     int = 7703
 }
 
 struct MenuResponse {
@@ -1016,7 +1017,7 @@ struct EndpointInfo {
 
 fn (app &BojApp) build_status() StatusResponse {
 	return StatusResponse{
-		version: 'BoJ Server v0.1.0'
+		version: 'BoJ Server v0.4.3'
 		total_cartridges: int(C.boj_catalogue_count())
 		ready_cartridges: int(C.boj_catalogue_count_ready())
 		mounted_cartridges: int(C.boj_catalogue_count_mounted())
