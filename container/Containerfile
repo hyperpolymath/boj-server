@@ -8,10 +8,10 @@
 #   podman build -t boj-server:latest -f container/Containerfile .
 #
 # Run:
-#   podman run -p 7700:7700 -p 7701:7701 -p 7702:7702 boj-server:latest
+#   podman run -p 7700:7700 -p 7701:7701 -p 7702:7702 -p 7703:7703 boj-server:latest
 #
 # Run with persistent volume:
-#   podman run -p 7700:7700 -p 7701:7701 -p 7702:7702 \
+#   podman run -p 7700:7700 -p 7701:7701 -p 7702:7702 -p 7703:7703 \
 #     -v boj-server-data:/data boj-server:latest
 
 # ============================================================================

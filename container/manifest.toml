@@ -32,7 +32,7 @@ system = "podman"
 
 [build.environment]
 APP_HOST = "[::]"
-APP_PORT = "9000"
+APP_PORT = "7700"
 
 [outputs]
 primary = "boj-server"
@@ -54,7 +54,7 @@ drop = ["ALL"]
 add = ["NET_BIND_SERVICE"]
 
 [security.network]
-listen_tcp = [9000]
+listen_tcp = [7700, 7701, 7702, 7703]
 
 [security.filesystem]
 read = ["/app/", "/data/"]
