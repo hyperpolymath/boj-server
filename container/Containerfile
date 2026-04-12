@@ -47,12 +47,11 @@ RUN for ffi_dir in /build/cartridges/*/ffi; do \
     done
 
 # Build V compiler from source (no Wolfi package available).
-# V bootstraps via a small vendored C file — gcc compiles it in seconds,
-# then V uses itself to finish the full build (~2 min).
-RUN git clone --depth 1 https://github.com/vlang/v /tmp/vlang && \
-    cd /tmp/vlang && make && \
-    cp v /usr/local/bin/v && \
-    rm -rf /tmp/vlang
+# V is installed to /opt/vlang so vlib stays co-located with the binary
+# (V resolves VROOT relative to the real executable path).
+RUN git clone --depth 1 https://github.com/vlang/v /opt/vlang && \
+    cd /opt/vlang && make && \
+    ln -sf /opt/vlang/v /usr/local/bin/v
 
 # Compile V adapter binary, linking against all Zig FFI shared libs.
 RUN LFLAGS="-L/build/ffi/zig/zig-out/lib" && \

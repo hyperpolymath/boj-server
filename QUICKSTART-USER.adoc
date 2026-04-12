@@ -10,7 +10,7 @@ toc::[]
 
 == What is BoJ Server?
 
-Bundle of Joy (BoJ) Server is a cartridge-based MCP protocol gateway. Each cartridge (database-mcp, fleet-mcp, nesy-mcp, etc.) is a formally verified Idris2 ABI + Zig FFI + V-lang adapter triple. The server exposes REST (port 7700), gRPC (7701), and GraphQL (7702) endpoints. 70+ cartridges cover databases, clouds, messaging, CI/CD, and more.
+Bundle of Joy (BoJ) Server is a cartridge-based MCP protocol gateway. Each cartridge (database-mcp, fleet-mcp, nesy-mcp, etc.) is a formally verified Idris2 ABI + Zig FFI + unified adapter triple. The server exposes REST (port 7700), gRPC (7701), GraphQL (7702), and SSE (7703) endpoints. 96 cartridges cover databases, clouds, messaging, CI/CD, git forges, secrets, queues, proofs, and more.
 
 Three-class architecture: Class 1 (simple CLI), Class 2 (orchestrator with webhooks/MQTT), Class 3 (BEAM multiplier for global scale).
 
@@ -25,12 +25,8 @@ Three-class architecture: Class 1 (simple CLI), Class 2 (orchestrator with webho
 | `asdf install idris2 latest`
 
 | Zig
-| >= 0.13
+| >= 0.15
 | `asdf install zig latest`
-
-| V (vlang)
-| >= 0.4.4
-| `asdf install vlang latest`
 
 | just
 | >= 1.25
