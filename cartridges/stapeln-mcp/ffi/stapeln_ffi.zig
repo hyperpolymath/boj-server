@@ -18,6 +18,7 @@ export fn stapeln_deploy(name: [*c]const u8, replicas: u32) i32 {
 
 /// Scale a stack. Returns 0 on success.
 export fn stapeln_scale(name: [*c]const u8, replicas: u32) i32 {
+    _ = replicas; // stub — parameter reserved for real implementation
     if (name == null) return -1;
     return 0; // Stub
 }

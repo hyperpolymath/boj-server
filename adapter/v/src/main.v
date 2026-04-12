@@ -19,8 +19,6 @@ import net
 import net.http
 import os
 import time
-import deprecation  // Legacy adapter deprecation system
-import legacy      // Legacy adapter framework
 
 // ═══════════════════════════════════════════════════════════════════════
 // C FFI declarations (link against libboJ catalogue built from Zig)
