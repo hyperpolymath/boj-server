@@ -1,0 +1,154 @@
+{
+  "$schema": "https://boj.dev/schemas/cartridge/v1.json",
+  "api": {
+    "base_url": "local://local-coord-mcp",
+    "content_type": "application/json"
+  },
+  "auth": {
+    "credential_source": null,
+    "description": "Per-instance session token issued on coord_register. All subsequent calls require this token.",
+    "env_var": null,
+    "method": "session-token"
+  },
+  "bind": {
+    "address": "127.0.0.1",
+    "loopback_only": true,
+    "port": 7745
+  },
+  "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>",
+  "description": "Localhost multi-instance coordination — peer discovery, message passing, and task claiming for parallel AI sessions on the same machine",
+  "domain": "ai",
+  "federation": "none",
+  "name": "local-coord-mcp",
+  "protocols": [
+    "MCP",
+    "Agentic"
+  ],
+  "spdx": "PMPL-1.0-or-later",
+  "tier": "Ayo",
+  "tools": [
+    {
+      "description": "Register this instance as a coordination peer. Returns a hybrid peer ID (e.g. claude-7f3a) and a session token for all subsequent calls.",
+      "inputSchema": {
+        "properties": {
+          "client_kind": {
+            "description": "Client type: claude, gemini, copilot, or custom",
+            "enum": [
+              "claude",
+              "gemini",
+              "copilot",
+              "custom"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "client_kind"
+        ],
+        "type": "object"
+      },
+      "name": "coord_register"
+    },
+    {
+      "description": "List all active coordination peers on this machine. Returns peer IDs, client kinds, and states.",
+      "inputSchema": {
+        "properties": {
+          "token": {
+            "description": "Session token from coord_register",
+            "type": "string"
+          }
+        },
+        "required": [
+          "token"
+        ],
+        "type": "object"
+      },
+      "name": "coord_list_peers"
+    },
+    {
+      "description": "Send a message to a specific peer (by peer ID) or broadcast to all peers (target '*'). Messages are queued in recipient inboxes.",
+      "inputSchema": {
+        "properties": {
+          "message": {
+            "description": "Message content",
+            "type": "string"
+          },
+          "target": {
+            "description": "Peer ID to send to, or '*' for broadcast",
+            "type": "string"
+          },
+          "token": {
+            "description": "Session token from coord_register",
+            "type": "string"
+          }
+        },
+        "required": [
+          "token",
+          "target",
+          "message"
+        ],
+        "type": "object"
+      },
+      "name": "coord_send"
+    },
+    {
+      "description": "Receive the next message from this peer's inbox. Returns the message content, or empty if no messages pending.",
+      "inputSchema": {
+        "properties": {
+          "token": {
+            "description": "Session token from coord_register",
+            "type": "string"
+          }
+        },
+        "required": [
+          "token"
+        ],
+        "type": "object"
+      },
+      "name": "coord_receive"
+    },
+    {
+      "description": "Attempt to claim a task (mutex-style). If the task is unclaimed, this peer becomes the holder. If another peer holds it, the claim is denied. Idempotent if already held by caller.",
+      "inputSchema": {
+        "properties": {
+          "task": {
+            "description": "Task identifier to claim (e.g. 'audit-boj-server')",
+            "type": "string"
+          },
+          "token": {
+            "description": "Session token from coord_register",
+            "type": "string"
+          }
+        },
+        "required": [
+          "token",
+          "task"
+        ],
+        "type": "object"
+      },
+      "name": "coord_claim_task"
+    },
+    {
+      "description": "Set or broadcast this peer's current work status. Other peers can see it via coord_list_peers.",
+      "inputSchema": {
+        "properties": {
+          "status": {
+            "description": "Current work status description",
+            "type": "string"
+          },
+          "token": {
+            "description": "Session token from coord_register",
+            "type": "string"
+          }
+        },
+        "required": [
+          "token",
+          "status"
+        ],
+        "type": "object"
+      },
+      "name": "coord_status"
+    }
+  ],
+  "version": "0.1.0"
+}

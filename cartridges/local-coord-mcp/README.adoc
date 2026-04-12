@@ -1,0 +1,190 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+// Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+= local-coord-mcp
+:toc:
+:toc-placement: preamble
+
+Localhost multi-instance coordination cartridge for BoJ Server.
+
+== Purpose
+
+Enables multiple AI instances (Claude Code windows, Gemini, Copilot, etc.)
+running on the same machine to discover each other, exchange messages, and
+coordinate work — preventing duplicated effort and enabling intentional
+multi-window workflows.
+
+== Security Model
+
+=== Loopback-Only Binding (Compile-Time Guaranteed)
+
+The Idris2 ABI (`SafeLocalCoord.idr`) provides an `IsLoopback` dependent type
+with exactly two inhabitants: `IsIPv4Loop` ("127.0.0.1") and `IsIPv6Loop`
+("::1"). The `BindConfig` record requires this proof — there is no code path
+that can construct a bind configuration for `0.0.0.0` or any LAN/external
+address. This is a **compile-time guarantee**, not a runtime check.
+
+The Zig FFI and adapter honour this by hardcoding `127.0.0.1:7745`.
+
+=== Session Tokens
+
+Every peer receives a 128-bit CSPRNG token on registration. All subsequent
+calls must carry this token. A message from an unregistered process is rejected
+before dispatch.
+
+=== No Federation
+
+This cartridge explicitly does NOT participate in the Umoja federation network.
+The `FederationPolicy` type has a single constructor (`LocalOnly`) and the
+`IsFederated` type is uninhabited for `LocalOnly` — federation is impossible,
+not just disabled.
+
+== Tools
+
+[cols="1,3"]
+|===
+| Tool | Description
+
+| `coord_register`
+| Register this instance. Returns a hybrid peer ID (e.g. `claude-7f3a`) and a session token.
+
+| `coord_list_peers`
+| List all active peers on this machine with their IDs, kinds, and states.
+
+| `coord_send`
+| Send a direct message to a peer or broadcast to all (`target: "*"`).
+
+| `coord_receive`
+| Poll this peer's inbox for the next message.
+
+| `coord_claim_task`
+| Mutex-style task claiming. First peer to claim wins; others are told who holds it.
+
+| `coord_status`
+| Set this peer's current work status, visible to other peers.
+|===
+
+== Architecture
+
+----
+┌──────────────┐  ┌──────────────┐  ┌──────────────┐
+│ Claude Code  │  │ Claude Code  │  │ Gemini       │
+│ Window 1     │  │ Window 2     │  │ Window 3     │
+└──────┬───────┘  └──────┬───────┘  └──────┬───────┘
+       │ MCP             │ MCP             │ MCP
+       └────────┬────────┴────────┬────────┘
+                │                 │
+       ┌────────▼─────────────────▼────────┐
+       │  MCP Bridge (main.js)             │
+       │  tools/call → local-coord-mcp     │
+       └────────────────┬──────────────────┘
+                        │
+       ┌────────────────▼──────────────────┐
+       │  mod.js (Deno adapter)            │
+       │  POST http://127.0.0.1:7745/...   │
+       └────────────────┬──────────────────┘
+                        │
+       ┌────────────────▼──────────────────┐
+       │  local_coord_adapter.zig          │
+       │  REST on 127.0.0.1:7745           │
+       │  ↓ calls ↓                        │
+       │  local_coord_ffi.zig              │
+       │  Peer registry, message fan-out,  │
+       │  task claim mutex                 │
+       └──────────────────────────────────┘
+                 Idris2 ABI proofs:
+                 IsLoopback, ValidPort,
+                 PeerState transitions,
+                 ClaimResult semantics
+----
+
+== Peer Identity (Hybrid Model)
+
+Peers are identified by a human-readable prefix + 4-char hex suffix:
+
+- `claude-7f3a` — Claude Code instance
+- `gemini-b2c1` — Gemini instance
+- `copilot-4e9d` — Copilot instance
+- `custom-a1b2` — Other tool
+
+== Port Assignment
+
+| Port | Service |
+|------|---------|
+| 7745 | local-coord-mcp REST |
+
+== Files
+
+[cols="1,2"]
+|===
+| Path | Purpose
+
+| `abi/LocalCoord/SafeLocalCoord.idr`
+| Loopback proof, port safety, session tokens, peer identity, federation opt-out
+
+| `abi/LocalCoord/Protocol.idr`
+| Message types, task claiming, peer lifecycle, authenticated message wrapper
+
+| `abi/local-coord-mcp.ipkg`
+| Idris2 package definition
+
+| `ffi/local_coord_ffi.zig`
+| Peer registry, message fan-out, claim mutex, CSPRNG tokens
+
+| `adapter/local_coord_adapter.zig`
+| REST server on 127.0.0.1:7745
+
+| `cartridge.ncl`
+| Nickel source-of-truth manifest
+
+| `cartridge.json`
+| Generated from Nickel — consumed by MCP bridge
+
+| `mod.js`
+| Deno adapter for MCP tool dispatch
+|===
+
+== Build
+
+[source,bash]
+----
+# FFI tests
+cd ffi && zig build test
+
+# Shared library
+cd ffi && zig build lib
+
+# Adapter binary
+cd adapter && zig build
+
+# Regenerate JSON manifest from Nickel
+nickel export --format json < cartridge.ncl > cartridge.json
+----
+
+== Usage Example
+
+[source]
+----
+# Window 1 (Claude Code)
+> coord_register(client_kind: "claude")
+  → { peer_id: "claude-7f3a", token: "abc123..." }
+
+> coord_list_peers(token: "abc123...")
+  → [{ id: "claude-7f3a", kind: "claude", state: "active" },
+     { id: "gemini-b2c1", kind: "gemini", state: "active" }]
+
+> coord_claim_task(token: "abc123...", task: "audit-boj-server")
+  → { result: "granted" }
+
+> coord_send(token: "abc123...", target: "*", message: "I'm auditing boj-server, take something else")
+  → { sent: 1 }
+
+# Window 2 (Gemini)
+> coord_receive(token: "def456...")
+  → { from: "claude-7f3a", message: "I'm auditing boj-server, take something else" }
+
+> coord_claim_task(token: "def456...", task: "audit-boj-server")
+  → { result: "held", holder: "claude-7f3a" }
+
+> coord_claim_task(token: "def456...", task: "audit-hypatia")
+  → { result: "granted" }
+----
