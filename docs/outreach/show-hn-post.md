@@ -4,7 +4,7 @@
 
 # Show HN Draft
 
-**Title:** Show HN: BoJ – One MCP server, 96 capability cartridges, zero Python
+**Title:** Show HN: BoJ – One MCP server, 99 capability cartridges, zero Python
 
 ---
 
@@ -12,7 +12,7 @@
 
 I had three Claude instances, a Cursor session, and about twenty MCP/LSP/DAP servers running. My desktop froze. That was the moment I realised the problem wasn't any individual server — it was the combinatoric explosion of them.
 
-BoJ (Bundle of Joy) is a single MCP server that covers 96 capability domains through swappable cartridges. Database, containers, git, secrets, queues, IaC, observability, static sites, proofs, fleet management, neurosymbolic AI, agent orchestration, cloud, Kubernetes, LSP, DAP, BSP, feedback, and more. Each cartridge has a formally verified interface (Idris2 dependent types prove the safety gate at compile time), a Zig FFI layer for native execution, and a unified adapter that exposes REST + gRPC + GraphQL + SSE on four ports. Five safety modules (SafeHTTP, SafePromptInjection, SafeCORS, SafeAPIKey, SafeWebSocket) guard the boundary.
+BoJ (Bundle of Joy) is a single MCP server that covers 99 capability domains through swappable cartridges. Database, containers, git, secrets, queues, IaC, observability, static sites, proofs, fleet management, neurosymbolic AI, agent orchestration, cloud, Kubernetes, LSP, DAP, BSP, feedback, and more. Each cartridge has a formally verified interface (Idris2 dependent types prove the safety gate at compile time), a Zig FFI layer for native execution, and a unified adapter that exposes REST + gRPC + GraphQL + SSE on four ports. Five safety modules (SafeHTTP, SafePromptInjection, SafeCORS, SafeAPIKey, SafeWebSocket) guard the boundary.
 
 The architecture is a 2D matrix: protocols on one axis, domains on the other. Instead of N separate servers, you get one catalogue where AI agents read a menu and mount what they need. Federation is built in — community nodes discover each other via gossip with hash attestation, so you can self-host a node and join the network without any central coordination.
 

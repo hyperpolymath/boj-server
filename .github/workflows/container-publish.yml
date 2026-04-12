@@ -59,6 +59,6 @@ jobs:
             ${{ secrets.DOCKERHUB_USERNAME && format('docker.io/{0}/boj-server:latest', secrets.DOCKERHUB_USERNAME) || '' }}
           labels: |
             org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
-            org.opencontainers.image.description=Bundle of Joy MCP Server — 96 formally verified cartridges
+            org.opencontainers.image.description=Bundle of Joy MCP Server — 99 formally verified cartridges
             org.opencontainers.image.licenses=PMPL-1.0-or-later
             org.opencontainers.image.version=${{ steps.meta.outputs.version }}
