@@ -77,29 +77,88 @@ export
 emptyIsJSONSafe : JSONStringSafe ""
 emptyIsJSONSafe = MkJSONStringSafe ""
 
+-- Helper: given isShellSafe c = True and c == target = True, derive a
+-- contradiction using the fact that isShellSafe target = False.
+-- Idris2 can reduce isShellSafe on literal Char arguments because
+-- isAlphaNum and the char comparison operators are pure Idris2 functions
+-- whose values on literals are computed during elaboration.
+private
+shellContra : (c, target : Char) ->
+              isShellSafe c = True ->
+              c == target = True ->
+              isShellSafe target = False ->
+              Void
+shellContra c target hp ceq notSafe =
+  let cEqTarget = charEqSound c target ceq
+      targetHp  = replace {p = \x => isShellSafe x = True} cEqTarget hp
+  in trueNotFalse (trans (sym targetHp) notSafe)
+
+-- Helper: given not (isSQLDangerous c) = True and c == target = True,
+-- derive a contradiction when isSQLDangerous target = True.
+private
+sqlContra : (c, target : Char) ->
+            not (isSQLDangerous c) = True ->
+            c == target = True ->
+            isSQLDangerous target = True ->
+            Void
+sqlContra c target hp ceq isDangerous =
+  let cEqTarget    = charEqSound c target ceq
+      targetNotDng = replace {p = \x => not (isSQLDangerous x) = True} cEqTarget hp
+      -- targetNotDng : not (isSQLDangerous target) = True
+      -- isDangerous  : isSQLDangerous target = True
+      -- Contradiction: not True = True is False = True
+  in trueNotFalse (trans (sym targetNotDng) (cong not isDangerous))
+
+-- Generic proof that a character is not in a shell-safe string.
+-- Reduces to: allImplies (notTarget prf) → allNeqImpliesNotElem → falseImpliesNotTrue.
+private
+shellSafeNotTarget : (target : Char) ->
+                     isShellSafe target = False ->
+                     ShellSafe s ->
+                     not (target `elem` unpack s) = True
+shellSafeNotTarget target notSafe (MkShellSafe s {prf}) =
+  let notTarget : (c : Char) -> isShellSafe c = True -> not (c == target) = True
+      notTarget c hp with (c == target) proof ceq
+        notTarget c hp | False = Refl
+        notTarget c hp | True  = absurd (shellContra c target hp ceq notSafe)
+  in falseImpliesNotTrue _ (allNeqImpliesNotElem (allImplies notTarget prf))
+
+-- Generic proof that a character is not in a SQL-safe string.
+private
+sqlSafeNotTarget : (target : Char) ->
+                   isSQLDangerous target = True ->
+                   SQLSafe s ->
+                   not (target `elem` unpack s) = True
+sqlSafeNotTarget target isDangerous (MkSQLSafe s {prf}) =
+  let notTarget : (c : Char) -> not (isSQLDangerous c) = True -> not (c == target) = True
+      notTarget c hp with (c == target) proof ceq
+        notTarget c hp | False = Refl
+        notTarget c hp | True  = absurd (sqlContra c target hp ceq isDangerous)
+  in falseImpliesNotTrue _ (allNeqImpliesNotElem (allImplies notTarget prf))
+
 export
 shellSafeNoSemicolon : ShellSafe s -> not (';' `elem` unpack s) = True
-shellSafeNoSemicolon _ = believe_me (Refl {x = True})
+shellSafeNoSemicolon = shellSafeNotTarget ';' Refl
 
 export
 shellSafeNoBacktick : ShellSafe s -> not ('`' `elem` unpack s) = True
-shellSafeNoBacktick _ = believe_me (Refl {x = True})
+shellSafeNoBacktick = shellSafeNotTarget '`' Refl
 
 export
 shellSafeNoDollar : ShellSafe s -> not ('$' `elem` unpack s) = True
-shellSafeNoDollar _ = believe_me (Refl {x = True})
+shellSafeNoDollar = shellSafeNotTarget '$' Refl
 
 export
 shellSafeNoPipe : ShellSafe s -> not ('|' `elem` unpack s) = True
-shellSafeNoPipe _ = believe_me (Refl {x = True})
+shellSafeNoPipe = shellSafeNotTarget '|' Refl
 
 export
 sqlSafeNoTerminator : SQLSafe s -> not (';' `elem` unpack s) = True
-sqlSafeNoTerminator _ = believe_me (Refl {x = True})
+sqlSafeNoTerminator = sqlSafeNotTarget ';' Refl
 
 export
 sqlSafeNoQuotes : SQLSafe s -> not ('\'' `elem` unpack s) = True
-sqlSafeNoQuotes _ = believe_me (Refl {x = True})
+sqlSafeNoQuotes = sqlSafeNotTarget '\'' Refl
 
 export
 pathSafeNoParent : PathSafe s -> not (isInfixOf (unpack "..") (unpack s)) = True

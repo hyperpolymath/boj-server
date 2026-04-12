@@ -2,11 +2,16 @@
 -- Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
 ||| BoJ SafetyLemmas — Foundational lemmas for safety proofs
 |||
-||| Reusable lemmas over List Char that underpin the safety proofs in
-||| SafeHTTP, SafeCORS, SafeWebSocket, SafePromptInjection, SafeAPIKey,
-||| and Safety modules.
+||| Reusable lemmas over List Char, Nat, and String that underpin the safety
+||| proofs in SafeHTTP, SafeCORS, SafeWebSocket, SafePromptInjection,
+||| SafeAPIKey, and Safety modules.
 |||
-||| All proofs are structural inductions over List Char. No believe_me.
+||| Three axiomatic believe_me primitives are declared here:
+|||   charEqSound  — soundness of prim__eqChar (c1 == c2 = True → c1 = c2)
+|||   charEqSym    — symmetry of prim__eqChar (x == y = y == x)
+|||   unpackLength — prim__strToCharList preserves length
+|||
+||| All other proofs are constructive.
 module Boj.SafetyLemmas
 
 import Data.List
@@ -40,8 +45,14 @@ export
 notTrueNotTrue : not True = True -> Void
 notTrueNotTrue Refl impossible
 
-||| Helper: symmetry of Char equality (admitted as primitive property)
-||| In a full proof system this would be proven via primitive properties.
+||| Primitive char equality soundness: c1 == c2 = True implies c1 = c2.
+||| Axiomatic: correctness of Idris2's prim__eqChar backend primitive.
+export
+charEqSound : (c1, c2 : Char) -> c1 == c2 = True -> c1 = c2
+charEqSound c1 c2 _ = believe_me Refl
+
+||| Helper: symmetry of Char equality.
+||| Axiomatic: symmetry of prim__eqChar on the BEAM/Chez backend.
 export
 charEqSym : (x, y : Char) -> (x == y) = (y == x)
 charEqSym x y = believe_me (Refl {x = (x == y)})
@@ -185,6 +196,28 @@ allNeqImpliesNotElem {target} {xs = x :: xs'} prf with (x == target) proof xEq
         goal_rewrite = rewrite charEqSym target x in
                        rewrite sym xEq in Refl
     in rewrite goal_rewrite in allNeqImpliesNotElem {xs = xs'} prf
+
+--------------------------------------------------------------------------------
+-- String / Nat helpers
+--------------------------------------------------------------------------------
+
+||| `unpack s` has the same length as `s`.
+||| Axiomatic: prim__strToCharList preserves length (backend primitive guarantee).
+export
+unpackLength : (s : String) -> length (unpack s) = length s
+unpackLength _ = believe_me Refl
+
+||| Convert a Bool-valued `lte` test to a proof term.
+|||
+||| Enables large-Nat range proofs (e.g. LTE 3600 86400) without building
+||| depth-n proof trees. With `%builtin NaturalNumber Nat` the elaborator
+||| evaluates `lte m n` efficiently on literal arguments, so `Refl` is accepted
+||| as the evidence argument when both m and n are compile-time constants.
+export
+fromLteTrue : (m, n : Nat) -> lte m n = True -> LTE m n
+fromLteTrue Z     _     _   = LTEZero
+fromLteTrue (S _) Z     prf = absurd prf
+fromLteTrue (S m) (S n) prf = LTESucc (fromLteTrue m n prf)
 
 --------------------------------------------------------------------------------
 -- take/drop (for List-based truncation proofs)

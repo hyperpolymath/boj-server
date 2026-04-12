@@ -140,9 +140,9 @@ decideCredentialSafe p with (p.allowCredentials) proof credPrf
   decideCredentialSafe p | False = Left (NoCredentials p {prf = credPrf})
   decideCredentialSafe p | True with (elem Boj.SafeCORS.wildcardOrigin p.allowedOrigins) proof elemPrf
     decideCredentialSafe p | True | False =
-      Left (NoWildcard p {prf = (believe_me (Refl {x = True}))})
+      Left (NoWildcard p {prf = falseImpliesNotTrue _ elemPrf})
     decideCredentialSafe p | True | True =
-      Right (believe_me (Refl {x = (True, True)}))
+      Right (credPrf, elemPrf)
 
 export
 consOriginsValid : OriginValid o -> AllOriginsValid os -> AllOriginsValid (o :: os)
@@ -154,7 +154,7 @@ zeroMaxAgeReasonable = MkReasonableMaxAge 0 {prf = LTEZero}
 
 export
 oneHourMaxAgeReasonable : ReasonableMaxAge 3600
-oneHourMaxAgeReasonable = MkReasonableMaxAge 3600 {prf = (believe_me (Refl {x = True}))}
+oneHourMaxAgeReasonable = MkReasonableMaxAge 3600 {prf = fromLteTrue 3600 86400 Refl}
 
 --------------------------------------------------------------------------------
 -- Default Policies

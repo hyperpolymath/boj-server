@@ -126,11 +126,23 @@ toLogSafe s =
 export
 sufficientEntropyNonEmpty : SufficientEntropy s -> NonEmpty (unpack s)
 sufficientEntropyNonEmpty (MkSufficientEntropy s {prf}) =
-  believe_me (IsNonEmpty {x = 'a', xs = []})
+  let -- Recast prf against the unpacked list length
+      len_eq  = unpackLength s              -- length (unpack s) = length s
+      len_ge  = replace {p = \n => LTE Boj.SafeAPIKey.minKeyLength n}
+                        (sym len_eq) prf   -- LTE 22 (length (unpack s))
+  in case unpack s of
+       []       => absurd len_ge            -- Uninhabited (LTE 22 0)
+       (_ :: _) => IsNonEmpty
 
+||| The redacted key from `toLogSafe` is always at most 11 characters long.
+||| Axiomatic: length arithmetic over `substr` and `++` is not reducible at the
+||| Idris2 type level (prim__strAppend and prim__strSubstr are backend
+||| primitives). Proven by inspection of the two branches of `toLogSafe`:
+|||   - short path (length s ≤ 8): output is "***" (length 3 ≤ 11)
+|||   - long path: 4 + 3 + 4 = 11 characters exactly
 export
 logSafeBounded : (s : String) -> LTE (length (toLogSafe s)) 11
-logSafeBounded s = believe_me (LTEZero {right = 11})
+logSafeBounded _ = believe_me (LTEZero {right = 11})
 
 --------------------------------------------------------------------------------
 -- FFI Bridge Declarations

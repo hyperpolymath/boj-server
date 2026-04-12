@@ -135,8 +135,12 @@ data ControlFrameSizeSafe : Nat -> Type where
 
 export
 controlImpliesFrameSafe : ControlFrameSizeSafe n -> FrameSizeSafe n
+||| maxControlFrameSize (125) ≤ maxFrameSize (16 777 216).
+maxControlLeqMaxFrame : LTE Boj.SafeWebSocket.maxControlFrameSize Boj.SafeWebSocket.maxFrameSize
+maxControlLeqMaxFrame = fromLteTrue 125 16777216 Refl
+
 controlImpliesFrameSafe (MkControlFrameSizeSafe n {prf}) =
-  MkFrameSizeSafe n {prf = transitive prf (believe_me (LTESucc LTEZero))}
+  MkFrameSizeSafe n {prf = transitive prf maxControlLeqMaxFrame}
 
 export
 emptyFrameSafe : FrameSizeSafe 0
@@ -216,16 +220,18 @@ parseRoundtrips PolicyViolation = Refl
 parseRoundtrips MessageTooBig   = Refl
 parseRoundtrips InternalError   = Refl
 
+||| Every RFC 6455 close code lies in the range [1000, 1011].
+||| Proofs constructed via fromLteTrue on the closed-form values.
 export
 closeCodeInRange : (c : WSCloseCode) -> (LTE 1000 (closeCodeToNat c), LTE (closeCodeToNat c) 1011)
-closeCodeInRange NormalClosure   = (believe_me (Refl {x = True}), believe_me (Refl {x = True}))
-closeCodeInRange GoingAway       = (believe_me (Refl {x = True}), believe_me (Refl {x = True}))
-closeCodeInRange ProtocolError   = (believe_me (Refl {x = True}), believe_me (Refl {x = True}))
-closeCodeInRange UnsupportedData = (believe_me (Refl {x = True}), believe_me (Refl {x = True}))
-closeCodeInRange InvalidPayload  = (believe_me (Refl {x = True}), believe_me (Refl {x = True}))
-closeCodeInRange PolicyViolation = (believe_me (Refl {x = True}), believe_me (Refl {x = True}))
-closeCodeInRange MessageTooBig   = (believe_me (Refl {x = True}), believe_me (Refl {x = True}))
-closeCodeInRange InternalError   = (believe_me (Refl {x = True}), believe_me (Refl {x = True}))
+closeCodeInRange NormalClosure   = (fromLteTrue 1000 1000 Refl, fromLteTrue 1000 1011 Refl)
+closeCodeInRange GoingAway       = (fromLteTrue 1000 1001 Refl, fromLteTrue 1001 1011 Refl)
+closeCodeInRange ProtocolError   = (fromLteTrue 1000 1002 Refl, fromLteTrue 1002 1011 Refl)
+closeCodeInRange UnsupportedData = (fromLteTrue 1000 1003 Refl, fromLteTrue 1003 1011 Refl)
+closeCodeInRange InvalidPayload  = (fromLteTrue 1000 1007 Refl, fromLteTrue 1007 1011 Refl)
+closeCodeInRange PolicyViolation = (fromLteTrue 1000 1008 Refl, fromLteTrue 1008 1011 Refl)
+closeCodeInRange MessageTooBig   = (fromLteTrue 1000 1009 Refl, fromLteTrue 1009 1011 Refl)
+closeCodeInRange InternalError   = (fromLteTrue 1000 1011 Refl, fromLteTrue 1011 1011 Refl)
 
 --------------------------------------------------------------------------------
 -- Message Ordering
