@@ -15,12 +15,16 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
 
-    const adapter = b.addExecutable(.{
-        .name = "local_coord_adapter",
+    const adapter_mod = b.createModule(.{
         .root_source_file = b.path("local_coord_adapter.zig"),
         .target = target,
         .optimize = optimize,
     });
-    adapter.root_module.addImport("local_coord_ffi", ffi_mod);
+    adapter_mod.addImport("local_coord_ffi", ffi_mod);
+
+    const adapter = b.addExecutable(.{
+        .name = "local_coord_adapter",
+        .root_module = adapter_mod,
+    });
     b.installArtifact(adapter);
 }

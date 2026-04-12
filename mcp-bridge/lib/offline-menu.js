@@ -35,6 +35,8 @@ export const OFFLINE_MENU = {
     { name: "secrets-mcp", version: "0.1.0", domain: "Secrets", protocols: ["MCP","REST"], status: "Available", available: true },
     { name: "proof-mcp", version: "0.1.0", domain: "Proof", protocols: ["MCP","REST"], status: "Available", available: true },
   ],
-  tier_ayo: [],
-  summary: { total: 23, ready: 23, mounted: 0 },
+  tier_ayo: [
+    { name: "local-coord-mcp", version: "0.1.0", domain: "Agent", protocols: ["MCP","Agentic"], status: "Available", available: true, notes: "Localhost-only (127.0.0.1:7745) multi-instance AI coordination — peer discovery, message passing, task claiming" },
+  ],
+  summary: { total: 24, ready: 24, mounted: 0 },
 };

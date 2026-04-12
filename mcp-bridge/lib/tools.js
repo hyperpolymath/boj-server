@@ -264,6 +264,83 @@ function buildToolList() {
     },
   });
 
+  // Local coordination (localhost multi-instance AI coordination — local-coord-mcp cartridge)
+  tools.push({
+    name: "coord_register",
+    description: "Register this AI instance as a coordination peer on localhost. Returns a hybrid peer ID (e.g. claude-7f3a) and a session token for all subsequent calls. Loopback-only, never exposed beyond 127.0.0.1.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        client_kind: { type: "string", enum: ["claude", "gemini", "copilot", "custom"], description: "Client type prefix for the peer ID" },
+      },
+      required: ["client_kind"],
+    },
+  });
+
+  tools.push({
+    name: "coord_list_peers",
+    description: "List all active AI instances registered on this machine — their peer IDs, client kinds, states, and current status.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        token: { type: "string", description: "Session token from coord_register" },
+      },
+      required: ["token"],
+    },
+  });
+
+  tools.push({
+    name: "coord_send",
+    description: "Send a message to a specific peer (by peer ID) or broadcast to all peers (target '*'). Messages are queued in recipient inboxes.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        token: { type: "string", description: "Session token from coord_register" },
+        target: { type: "string", description: "Peer ID to send to, or '*' for broadcast" },
+        message: { type: "string", description: "Message content" },
+      },
+      required: ["token", "target", "message"],
+    },
+  });
+
+  tools.push({
+    name: "coord_receive",
+    description: "Receive the next message from this peer's inbox. Returns the message content and sender, or indicates empty inbox.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        token: { type: "string", description: "Session token from coord_register" },
+      },
+      required: ["token"],
+    },
+  });
+
+  tools.push({
+    name: "coord_claim_task",
+    description: "Attempt to claim a task (mutex-style). If the task is unclaimed, this peer becomes the holder. If another peer holds it, returns the holder's peer ID. Idempotent if already held by caller. Use this to prevent two AI instances from duplicating work.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        token: { type: "string", description: "Session token from coord_register" },
+        task: { type: "string", description: "Task identifier to claim (e.g. 'audit-boj-server')" },
+      },
+      required: ["token", "task"],
+    },
+  });
+
+  tools.push({
+    name: "coord_status",
+    description: "Set this peer's current work status, visible to other peers via coord_list_peers.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        token: { type: "string", description: "Session token from coord_register" },
+        status: { type: "string", description: "Current work status description" },
+      },
+      required: ["token", "status"],
+    },
+  });
+
   return tools;
 }
 

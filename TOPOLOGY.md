@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: PMPL-1.0-or-later
 # TOPOLOGY.md — BoJ Server Component Matrix
 #
-# Auto-generated 2026-04-09. 96 cartridges across 6 tiers.
+# Auto-generated 2026-04-09. 97 cartridges across 6 tiers.
 
 ## Ports
 
@@ -11,8 +11,9 @@
 | 7701 | gRPC | Running |
 | 7702 | GraphQL | Running |
 | 7703 | SSE (Server-Sent Events) | Running |
+| 7745 | local-coord-mcp (loopback only) | Running |
 
-## Cartridge Matrix (96 total)
+## Cartridge Matrix (97 total)
 
 ### Tier 1 — High-Value APIs (11)
 | Cartridge | Domain |
@@ -94,10 +95,11 @@
 | laminar-mcp | Flow monitoring |
 | ums-mcp | Unified monitoring |
 
-### Hyperpolymath Ecosystem (26)
+### Hyperpolymath Ecosystem (27)
 | Cartridge | Domain |
 |-----------|--------|
 | agent-mcp | Agent orchestration |
+| local-coord-mcp | Localhost multi-instance coordination (loopback only, port 7745) |
 | affinescript-mcp | Language tooling |
 | aerie-mcp | Deployment |
 | bsp-mcp | Build Server Protocol |

@@ -11,6 +11,27 @@
 // Usage: deno run --allow-net main.js
 //    or: node main.js
 
+import {
+  RATE_LIMIT,
+  isInputSizeOk,
+  isValidToolName,
+  rateLimitAllow,
+  sanitizeErrorMessage,
+  scanObjectForInjection,
+  validateRequiredStrings,
+} from "./lib/security.js";
+import {
+  fetchCartridgeInfo,
+  fetchCartridges,
+  fetchHealth,
+  fetchMenu,
+  handleGitHubTool,
+  handleGitLabTool,
+  invokeCartridge,
+} from "./lib/api-clients.js";
+import { buildToolList } from "./lib/tools.js";
+import { info, warn, error as logError } from "./lib/logger.js";
+
 const BOJ_BASE = process.env.BOJ_URL || "http://localhost:7700";
 const SERVER_NAME = "boj-server";
 const SERVER_VERSION = "0.3.1";
@@ -206,8 +227,44 @@ async function dispatchTool(toolName, args) {
     case "boj_research":
       return invokeCartridge("research-mcp", args);
 
+    // Local coordination — direct to loopback backend on port 7745
+    case "coord_register":
+    case "coord_list_peers":
+    case "coord_send":
+    case "coord_receive":
+    case "coord_claim_task":
+    case "coord_status":
+      return dispatchLocalCoord(toolName, args);
+
     default:
       return null; // unknown tool
+  }
+}
+
+// ===================================================================
+// local-coord-mcp direct dispatch (loopback only, port 7745)
+// ===================================================================
+
+const LOCAL_COORD_URL = process.env.COORD_BACKEND_URL || "http://127.0.0.1:7745";
+
+async function dispatchLocalCoord(toolName, args) {
+  try {
+    const res = await fetch(`${LOCAL_COORD_URL}/tools/${toolName}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(args || {}),
+    });
+    try {
+      return await res.json();
+    } catch {
+      return { success: false, error: "local-coord-mcp backend returned non-JSON" };
+    }
+  } catch (e) {
+    return {
+      success: false,
+      error: `local-coord-mcp backend unavailable at ${LOCAL_COORD_URL}: ${e.message}`,
+      hint: "Start the adapter: cd cartridges/local-coord-mcp/adapter && zig build run",
+    };
   }
 }
 

@@ -87,7 +87,7 @@ fn handleConnection(stream: std.net.Stream) void {
 }
 
 pub fn main() !void {
-    ffi.boj_cartridge_init();
+    _ = ffi.boj_cartridge_init();
 
     // CRITICAL: Bind to loopback ONLY.
     const addr = std.net.Address.initIp4(BIND_ADDR, REST_PORT);
