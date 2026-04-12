@@ -2920,7 +2920,7 @@ test "umoja discover_udp validates inputs" {
 test "quic keypair generation" {
     _ = boj_federation_init();
 
-    generateQuicKeypair();
+    _ = generateQuicKeypair();
     try std.testing.expect(quic_keypair_valid);
 
     // Public key should not be all zeros.
@@ -3159,7 +3159,7 @@ test "quic federation init resets sessions" {
     _ = boj_federation_init();
 
     // Set up some QUIC state.
-    generateQuicKeypair();
+    _ = generateQuicKeypair();
     transport_mode = .quic;
     quic_sessions[0].established = true;
 
