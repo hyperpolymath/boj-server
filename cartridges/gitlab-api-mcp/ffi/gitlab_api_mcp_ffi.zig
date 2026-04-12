@@ -329,6 +329,8 @@ pub export fn gitlab_api_mcp_request(
         break :blk body[0..blen];
     } else null;
 
+    const cap: usize = std.math.cast(usize, out_cap) orelse return -4;
+
     // Fetch the request (Zig 0.15 API — replaces open/send/wait)
     var aw: std.Io.Writer.Allocating = .init(allocator);
     defer aw.deinit();
@@ -349,7 +351,7 @@ pub export fn gitlab_api_mcp_request(
         return -3;
     }
 
-    // Handle server errors
+    // Copy response body into caller's buffer
     const response_bytes = aw.writer.buffered();
     const bytes_read = @min(response_bytes.len, cap);
     @memcpy(out_buf[0..bytes_read], response_bytes[0..bytes_read]);
