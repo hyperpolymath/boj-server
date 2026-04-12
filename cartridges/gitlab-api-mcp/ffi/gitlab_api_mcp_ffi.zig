@@ -329,46 +329,36 @@ pub export fn gitlab_api_mcp_request(
         break :blk body[0..blen];
     } else null;
 
-    // Open request
-    var server_header_buffer: [16384]u8 = undefined;
-    var req = client.open(http_method, uri, .{
-        .server_header_buffer = &server_header_buffer,
+    // Fetch the request (Zig 0.15 API — replaces open/send/wait)
+    var response_storage = std.ArrayList(u8).init(allocator);
+    defer response_storage.deinit();
+
+    const fetch_result = client.fetch(.{
+        .method = http_method,
+        .location = .{ .uri = uri },
         .extra_headers = &headers_buf,
+        .payload = body_slice,
+        .response_storage = .{ .dynamic = &response_storage },
     }) catch return -4;
-    defer req.deinit();
-
-    if (body_slice) |b| {
-        req.transfer_encoding = .{ .content_length = b.len };
-    }
-
-    req.send() catch return -4;
-
-    if (body_slice) |b| {
-        req.writer().writeAll(b) catch return -4;
-    }
-
-    req.finish() catch return -4;
-    req.wait() catch return -4;
 
     // Handle rate limiting (HTTP 429)
-    const status_code = @intFromEnum(req.response.status);
+    const status_code = @intFromEnum(fetch_result.status);
     if (status_code == 429) {
         slot.state = .rate_limited;
         slot.rate_limit_remaining = 0;
         return -3;
     }
 
-    // Read response body
-    const bytes_read = req.reader().readAll(out_buf[0..cap]) catch return -4;
-
     // Handle server errors
+    const bytes_read = @min(response_storage.items.len, cap);
+    @memcpy(out_buf[0..bytes_read], response_storage.items[0..bytes_read]);
+    out_len.* = @intCast(bytes_read);
+
     if (status_code >= 500) {
         slot.state = .err;
-        out_len.* = @intCast(bytes_read);
         return -4;
     }
 
-    out_len.* = @intCast(bytes_read);
     return 0;
 }
 
@@ -445,27 +435,27 @@ pub export fn gitlab_api_mcp_graphql(
         .{ .name = "User-Agent", .value = "boj-server/1.0 (gitlab-api-mcp cartridge)" },
     };
 
-    var server_header_buffer: [16384]u8 = undefined;
-    var req = client.open(.POST, uri, .{
-        .server_header_buffer = &server_header_buffer,
+    // Fetch the request (Zig 0.15 API — replaces open/send/wait)
+    var response_storage = std.ArrayList(u8).init(allocator);
+    defer response_storage.deinit();
+
+    const fetch_result = client.fetch(.{
+        .method = .POST,
+        .location = .{ .uri = uri },
         .extra_headers = &headers_buf,
+        .payload = gql_body,
+        .response_storage = .{ .dynamic = &response_storage },
     }) catch return -4;
-    defer req.deinit();
 
-    req.transfer_encoding = .{ .content_length = gql_body.len };
-    req.send() catch return -4;
-    req.writer().writeAll(gql_body) catch return -4;
-    req.finish() catch return -4;
-    req.wait() catch return -4;
-
-    const status_code = @intFromEnum(req.response.status);
+    const status_code = @intFromEnum(fetch_result.status);
     if (status_code == 429) {
         slot.state = .rate_limited;
         slot.rate_limit_remaining = 0;
         return -3;
     }
 
-    const bytes_read = req.reader().readAll(out_buf[0..cap]) catch return -5;
+    const bytes_read = @min(response_storage.items.len, cap);
+    @memcpy(out_buf[0..bytes_read], response_storage.items[0..bytes_read]);
     out_len.* = @intCast(bytes_read);
     return 0;
 }
@@ -537,27 +527,27 @@ pub export fn gitlab_api_mcp_setup_mirror(
         .{ .name = "User-Agent", .value = "boj-server/1.0 (gitlab-api-mcp cartridge)" },
     };
 
-    var server_header_buffer: [16384]u8 = undefined;
-    var req = client.open(.POST, uri, .{
-        .server_header_buffer = &server_header_buffer,
+    // Fetch the request (Zig 0.15 API — replaces open/send/wait)
+    var response_storage = std.ArrayList(u8).init(allocator);
+    defer response_storage.deinit();
+
+    const fetch_result = client.fetch(.{
+        .method = .POST,
+        .location = .{ .uri = uri },
         .extra_headers = &headers_buf_mirror,
+        .payload = mirror_body,
+        .response_storage = .{ .dynamic = &response_storage },
     }) catch return -4;
-    defer req.deinit();
 
-    req.transfer_encoding = .{ .content_length = mirror_body.len };
-    req.send() catch return -4;
-    req.writer().writeAll(mirror_body) catch return -4;
-    req.finish() catch return -4;
-    req.wait() catch return -4;
-
-    const status_code = @intFromEnum(req.response.status);
+    const status_code = @intFromEnum(fetch_result.status);
     if (status_code == 429) {
         slot.state = .rate_limited;
         slot.rate_limit_remaining = 0;
         return -3;
     }
 
-    const bytes_read = req.reader().readAll(out_buf[0..cap]) catch return -5;
+    const bytes_read = @min(response_storage.items.len, cap);
+    @memcpy(out_buf[0..bytes_read], response_storage.items[0..bytes_read]);
     out_len.* = @intCast(bytes_read);
     return 0;
 }

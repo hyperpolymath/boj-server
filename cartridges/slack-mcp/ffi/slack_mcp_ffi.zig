@@ -252,32 +252,30 @@ fn doSlackApiCall(slot: *SessionSlot, method_name: []const u8, params_json: ?[]c
         .{ .name = "User-Agent", .value = "boj-server/1.0 (slack-mcp cartridge)" },
     };
 
-    var server_header_buffer: [16384]u8 = undefined;
-    var req = client.open(.POST, uri, .{
-        .server_header_buffer = &server_header_buffer,
-        .extra_headers = &headers_buf,
-    }) catch return 0;
-    defer req.deinit();
-
-    // Set body if we have params
+    // Fetch the request (Zig 0.15 API — replaces open/send/wait)
     const body = params_json orelse "{}";
-    req.transfer_encoding = .{ .content_length = body.len };
+    var response_storage = std.ArrayList(u8).init(allocator);
+    defer response_storage.deinit();
 
-    req.send() catch return 0;
-    req.writer().writeAll(body) catch return 0;
-    req.finish() catch return 0;
-    req.wait() catch return 0;
+    const fetch_result = client.fetch(.{
+        .method = .POST,
+        .location = .{ .uri = uri },
+        .extra_headers = &headers_buf,
+        .payload = body,
+        .response_storage = .{ .dynamic = &response_storage },
+    }) catch return 0;
 
     // Check for rate limiting (HTTP 429)
-    const status_code = @intFromEnum(req.response.status);
+    const status_code = @intFromEnum(fetch_result.status);
     if (status_code == 429) {
         slot.state = .rate_limited;
         return 0;
     }
 
-    // Read response body
-    const bytes_read = req.reader().readAll(out_buf) catch return 0;
-    return bytes_read;
+    // Copy response body into the caller's output buffer
+    const to_copy = @min(response_storage.items.len, out_buf.len);
+    @memcpy(out_buf[0..to_copy], response_storage.items[0..to_copy]);
+    return to_copy;
 }
 
 // ---------------------------------------------------------------------------

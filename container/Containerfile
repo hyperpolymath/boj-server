@@ -1,10 +1,8 @@
 # SPDX-License-Identifier: PMPL-1.0-or-later
 # Bundle of Joy Server Container Image
 #
-# Multi-stage build: Zig FFI compilation + pre-built V adapter binary.
-#
-# Prerequisites:
-#   just build-adapter   # Build the V binary locally first
+# Multi-stage build: Zig FFI compilation + V adapter binary (both built
+# inside Stage 1 — no local pre-build required).
 #
 # Build with Podman:
 #   podman build -t boj-server:latest -f container/Containerfile .
@@ -20,14 +18,15 @@
 # Stage 1: FFI Builder
 # ============================================================================
 #
-# Compiles all Zig FFI layers (core + all cartridges) in ReleaseFast mode.
-# The V adapter binary is built locally and copied in — V compiler is not
-# available in Wolfi packages.
+# Compiles all Zig FFI layers (core + all cartridges) in ReleaseFast mode,
+# then compiles the V adapter binary against those FFI libs — fully
+# self-contained, no local pre-build required.
 
 FROM cgr.dev/chainguard/wolfi-base:latest AS builder
 
-# Install Zig toolchain for FFI compilation
-RUN apk add --no-cache build-base zig sqlite-dev
+# Install Zig toolchain, C toolchain, Git (needed to bootstrap V compiler),
+# and sqlite dev headers (linked by some cartridge FFIs).
+RUN apk add --no-cache build-base zig sqlite-dev git
 
 WORKDIR /build
 
@@ -46,6 +45,22 @@ RUN for ffi_dir in /build/cartridges/*/ffi; do \
         zig build -Doptimize=ReleaseFast || echo "WARN: ${cart} build failed (non-fatal)"; \
       fi; \
     done
+
+# Build V compiler from source (no Wolfi package available).
+# V bootstraps via a small vendored C file — gcc compiles it in seconds,
+# then V uses itself to finish the full build (~2 min).
+RUN git clone --depth 1 https://github.com/vlang/v /tmp/vlang && \
+    cd /tmp/vlang && make && \
+    cp v /usr/local/bin/v && \
+    rm -rf /tmp/vlang
+
+# Compile V adapter binary, linking against all Zig FFI shared libs.
+RUN LFLAGS="-L/build/ffi/zig/zig-out/lib" && \
+    for d in /build/cartridges/*/ffi/zig-out/lib; do \
+      [ -d "$d" ] && LFLAGS="${LFLAGS} -L${d}"; \
+    done && \
+    v -cc gcc -cflags "${LFLAGS} -Wl,--allow-multiple-definition -no-pie" \
+      -o /build/adapter/v/boj-server /build/adapter/v/src/
 
 # ============================================================================
 # Stage 2: Runtime
@@ -76,8 +91,8 @@ RUN addgroup -S appuser && adduser -S appuser -G appuser
 
 WORKDIR /app
 
-# Copy pre-built V adapter binary (built locally via just build-adapter)
-COPY adapter/v/boj-server /app/boj-server
+# Copy V adapter binary compiled in Stage 1
+COPY --from=builder /build/adapter/v/boj-server /app/boj-server
 RUN chmod +x /app/boj-server
 
 # Copy core FFI libraries from builder stage

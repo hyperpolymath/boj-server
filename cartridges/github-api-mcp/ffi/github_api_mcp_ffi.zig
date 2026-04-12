@@ -376,44 +376,24 @@ fn doHttpRequest(
 
     const http_method = parseHttpMethod(method);
 
-    // Open the request
-    var server_header_buffer: [16384]u8 = undefined;
-    var req = client.open(http_method, uri, .{
-        .server_header_buffer = &server_header_buffer,
+    // Fetch the request (Zig 0.15 API — replaces open/send/wait)
+    var response_storage = std.ArrayList(u8).init(allocator);
+    defer response_storage.deinit();
+
+    const fetch_result = client.fetch(.{
+        .method = http_method,
+        .location = .{ .uri = uri },
         .extra_headers = &headers_buf,
+        .payload = body,
+        .response_storage = .{ .dynamic = &response_storage },
     }) catch return -5;
-    defer req.deinit();
-
-    // Set Content-Type and body for methods that have a body
-    if (body) |b| {
-        if (b.len > 0) {
-            req.transfer_encoding = .{ .content_length = b.len };
-        }
-    }
-
-    // Send the request
-    req.send() catch return -5;
-
-    // Write body if present
-    if (body) |b| {
-        if (b.len > 0) {
-            req.writer().writeAll(b) catch return -5;
-        }
-    }
-
-    // Finish sending and wait for response
-    req.finish() catch return -5;
-    req.wait() catch return -5;
 
     // Handle rate limiting (HTTP 429 or 403 with depleted budget)
-    const status_code = @intFromEnum(req.response.status);
+    const status_code = @intFromEnum(fetch_result.status);
     if (status_code == 429 or (status_code == 403 and slot.rate_limit.remaining == 0)) {
         slot.state = .rate_limited;
         return -3;
     }
-
-    // Read the response body into the caller's output buffer
-    const response_body = req.reader().readAll(out_buf[0..out_cap]) catch return -5;
 
     // Transition to error on server errors (5xx)
     if (status_code >= 500) {
@@ -421,7 +401,10 @@ fn doHttpRequest(
         return -5;
     }
 
-    return @intCast(response_body);
+    // Copy response body into the caller's output buffer
+    const to_copy = @min(response_storage.items.len, out_cap);
+    @memcpy(out_buf[0..to_copy], response_storage.items[0..to_copy]);
+    return @intCast(to_copy);
 }
 
 // ---------------------------------------------------------------------------
