@@ -1,0 +1,78 @@
+{
+  "$schema": "https://boj.dev/schemas/cartridge/v1.json",
+  "spdx": "PMPL-1.0-or-later",
+  "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath)",
+  "name": "nesy-mcp",
+  "version": "0.1.0",
+  "description": "Neural-symbolic (NeSy) harmonization engine. Symbolic truth always overrides neural probability.",
+  "domain": "AI/NeSy",
+  "tier": "Ayo",
+  "protocols": [
+    "MCP",
+    "REST"
+  ],
+  "auth": {
+    "method": "none",
+    "env_var": null,
+    "credential_source": null
+  },
+  "api": {
+    "base_url": "local://nesy-mcp",
+    "content_type": "application/json"
+  },
+  "tools": [
+    {
+      "name": "nesy_harmonize",
+      "description": "Harmonize a neural probability with a symbolic verdict. Returns harmonized verdict and confidence.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "neural": {
+            "type": "string",
+            "description": "Neural verdict: probable_safe / unsure / probable_unsafe"
+          },
+          "symbolic": {
+            "type": "string",
+            "description": "Symbolic verdict: proven_safe / no_proof / proven_unsafe"
+          }
+        },
+        "required": [
+          "neural",
+          "symbolic"
+        ]
+      }
+    },
+    {
+      "name": "nesy_analyze_drift",
+      "description": "Analyze a drift kind and return severity, urgency, and recommended action.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "description": "Drift kind: no_drift / semantic / confidence / factual / temporal / catastrophic"
+          }
+        },
+        "required": [
+          "kind"
+        ]
+      }
+    },
+    {
+      "name": "nesy_reasoning_mode_info",
+      "description": "Get metadata about a reasoning mode: symbolic, neural, or hybrid.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "mode": {
+            "type": "string",
+            "description": "Mode: Symbolic / Neural / SymToNeural / NeuralToSym / Ensemble / Cascade"
+          }
+        },
+        "required": [
+          "mode"
+        ]
+      }
+    }
+  ]
+}

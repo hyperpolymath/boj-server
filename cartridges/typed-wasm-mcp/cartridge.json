@@ -1,0 +1,77 @@
+{
+  "$schema": "https://boj.dev/schemas/cartridge/v1.json",
+  "spdx": "PMPL-1.0-or-later",
+  "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath)",
+  "name": "typed-wasm-mcp",
+  "version": "0.1.0",
+  "description": "Typed WASM module verifier and compiler. Validates WebAssembly type safety and compiles with type-level guarantees.",
+  "domain": "Compiler",
+  "tier": "Ayo",
+  "protocols": [
+    "MCP",
+    "REST"
+  ],
+  "auth": {
+    "method": "none",
+    "env_var": null,
+    "credential_source": null
+  },
+  "api": {
+    "base_url": "local://typed-wasm-mcp",
+    "content_type": "application/json"
+  },
+  "tools": [
+    {
+      "name": "typed_wasm_validate_module",
+      "description": "Validate a WASM module file for structural correctness and type safety.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "module_path": {
+            "type": "string",
+            "description": "Absolute path to the .wasm file"
+          }
+        },
+        "required": [
+          "module_path"
+        ]
+      }
+    },
+    {
+      "name": "typed_wasm_check_types",
+      "description": "Run the typed-WASM type checker on a module.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "module_path": {
+            "type": "string",
+            "description": "Absolute path to the .wasm or source file"
+          }
+        },
+        "required": [
+          "module_path"
+        ]
+      }
+    },
+    {
+      "name": "typed_wasm_compile_module",
+      "description": "Compile a source file to WASM with typed-WASM guarantees.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "module_path": {
+            "type": "string",
+            "description": "Absolute path to the source file"
+          },
+          "target": {
+            "type": "string",
+            "description": "Compilation target: wasm32 (default) or wasm64"
+          }
+        },
+        "required": [
+          "module_path"
+        ]
+      }
+    }
+  ]
+}

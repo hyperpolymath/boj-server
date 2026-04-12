@@ -1,0 +1,98 @@
+{
+  "$schema": "https://boj.dev/schemas/cartridge/v1.json",
+  "spdx": "PMPL-1.0-or-later",
+  "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath)",
+  "name": "gossamer-mcp",
+  "version": "0.1.0",
+  "description": "Gossamer webview window manager. Creates and manages native desktop windows with panel loading and JavaScript evaluation.",
+  "domain": "Desktop/UI",
+  "tier": "Ayo",
+  "protocols": [
+    "MCP",
+    "REST"
+  ],
+  "auth": {
+    "method": "none",
+    "env_var": null,
+    "credential_source": null
+  },
+  "api": {
+    "base_url": "local://gossamer-mcp",
+    "content_type": "application/json"
+  },
+  "tools": [
+    {
+      "name": "gossamer_create_window",
+      "description": "Create a new native desktop window. Returns a handle.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "width": {
+            "type": "integer",
+            "description": "Window width in pixels (default: 1280)"
+          },
+          "height": {
+            "type": "integer",
+            "description": "Window height in pixels (default: 720)"
+          },
+          "title": {
+            "type": "string",
+            "description": "Window title"
+          }
+        },
+        "required": []
+      }
+    },
+    {
+      "name": "gossamer_load_panel",
+      "description": "Load a panel URI into an existing window handle.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "handle": {
+            "type": "integer",
+            "description": "Window handle from gossamer_create_window"
+          },
+          "uri": {
+            "type": "string",
+            "description": "Panel URI (panel://my-panel or https://...)"
+          }
+        },
+        "required": [
+          "handle",
+          "uri"
+        ]
+      }
+    },
+    {
+      "name": "gossamer_eval_js",
+      "description": "Evaluate a JavaScript snippet in the loaded panel context.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "handle": {
+            "type": "integer",
+            "description": "Window handle"
+          },
+          "script": {
+            "type": "string",
+            "description": "JavaScript source to evaluate"
+          }
+        },
+        "required": [
+          "handle",
+          "script"
+        ]
+      }
+    },
+    {
+      "name": "gossamer_get_version",
+      "description": "Get the Gossamer runtime version string.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    }
+  ]
+}

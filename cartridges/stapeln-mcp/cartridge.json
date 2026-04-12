@@ -1,0 +1,91 @@
+{
+  "$schema": "https://boj.dev/schemas/cartridge/v1.json",
+  "spdx": "PMPL-1.0-or-later",
+  "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath)",
+  "name": "stapeln-mcp",
+  "version": "0.1.0",
+  "description": "Stapeln container stack manager. Deploy, scale, and monitor container stacks using Chainguard base images.",
+  "domain": "Container Orchestration",
+  "tier": "Ayo",
+  "protocols": [
+    "MCP",
+    "REST"
+  ],
+  "auth": {
+    "method": "none",
+    "env_var": null,
+    "credential_source": null
+  },
+  "api": {
+    "base_url": "local://stapeln-mcp",
+    "content_type": "application/json"
+  },
+  "tools": [
+    {
+      "name": "stapeln_list_stacks",
+      "description": "List all deployed container stacks with names, replica counts, and health.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "stapeln_deploy",
+      "description": "Deploy a named stack with a specified replica count.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Stack name"
+          },
+          "replicas": {
+            "type": "integer",
+            "description": "Number of replicas (default: 1)"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      }
+    },
+    {
+      "name": "stapeln_scale",
+      "description": "Scale an existing stack to a new replica count.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Stack name"
+          },
+          "replicas": {
+            "type": "integer",
+            "description": "Target replica count"
+          }
+        },
+        "required": [
+          "name",
+          "replicas"
+        ]
+      }
+    },
+    {
+      "name": "stapeln_get_health",
+      "description": "Get health status of a named stack: healthy / degraded / unhealthy / unknown.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Stack name"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      }
+    }
+  ]
+}

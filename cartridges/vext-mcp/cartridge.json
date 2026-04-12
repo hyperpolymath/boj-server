@@ -1,0 +1,78 @@
+{
+  "$schema": "https://boj.dev/schemas/cartridge/v1.json",
+  "spdx": "PMPL-1.0-or-later",
+  "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath)",
+  "name": "vext-mcp",
+  "version": "0.1.0",
+  "description": "Vext message verification and attestation chain. Verifies signed messages, checks attestation chains, and appends verified payloads.",
+  "domain": "Security",
+  "tier": "Ayo",
+  "protocols": [
+    "MCP",
+    "REST"
+  ],
+  "auth": {
+    "method": "none",
+    "env_var": null,
+    "credential_source": null
+  },
+  "api": {
+    "base_url": "local://vext-mcp",
+    "content_type": "application/json"
+  },
+  "tools": [
+    {
+      "name": "vext_verify_message",
+      "description": "Verify a message signature. Returns: verified / unverified / tampered / expired.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "msg": {
+            "type": "string",
+            "description": "Message content to verify"
+          },
+          "sig": {
+            "type": "string",
+            "description": "Signature (hex or base64)"
+          }
+        },
+        "required": [
+          "msg",
+          "sig"
+        ]
+      }
+    },
+    {
+      "name": "vext_check_attestation",
+      "description": "Check attestation chain for an issuer. Returns chain depth (0 if not found).",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "issuer": {
+            "type": "string",
+            "description": "Issuer identifier"
+          }
+        },
+        "required": [
+          "issuer"
+        ]
+      }
+    },
+    {
+      "name": "vext_append_chain",
+      "description": "Append a verified payload to the attestation chain.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "payload": {
+            "type": "string",
+            "description": "Payload to append (JSON string)"
+          }
+        },
+        "required": [
+          "payload"
+        ]
+      }
+    }
+  ]
+}

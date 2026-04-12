@@ -1,0 +1,163 @@
+{
+  "$schema": "https://boj.dev/schemas/cartridge/v1.json",
+  "spdx": "PMPL-1.0-or-later",
+  "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath)",
+  "name": "proof-mcp",
+  "version": "0.1.0",
+  "description": "Proof verification lifecycle manager. Manages sessions across Lean, Coq, Agda, Isabelle, Idris2, Z3, CVC5. State machine: idle -> loading -> verifying -> verified/failed.",
+  "domain": "Formal Verification",
+  "tier": "Ayo",
+  "protocols": [
+    "MCP",
+    "REST"
+  ],
+  "auth": {
+    "method": "none",
+    "env_var": null,
+    "credential_source": null
+  },
+  "api": {
+    "base_url": "local://proof-mcp",
+    "content_type": "application/json"
+  },
+  "tools": [
+    {
+      "name": "proof_init_session",
+      "description": "Initialise a proof session for a backend. Returns a slot index.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "backend": {
+            "type": "string",
+            "description": "Backend: lean / coq / agda / isabelle / idris2 / z3 / cvc5"
+          }
+        },
+        "required": [
+          "backend"
+        ]
+      }
+    },
+    {
+      "name": "proof_load_obligation",
+      "description": "Load a proof obligation into an active session slot.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "slot": {
+            "type": "integer",
+            "description": "Session slot"
+          },
+          "backend": {
+            "type": "string",
+            "description": "Backend"
+          }
+        },
+        "required": [
+          "slot",
+          "backend"
+        ]
+      }
+    },
+    {
+      "name": "proof_verify",
+      "description": "Start verification on a loaded session slot.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "slot": {
+            "type": "integer",
+            "description": "Session slot"
+          }
+        },
+        "required": [
+          "slot"
+        ]
+      }
+    },
+    {
+      "name": "proof_get_result",
+      "description": "Poll the verification result for a slot.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "slot": {
+            "type": "integer",
+            "description": "Session slot"
+          }
+        },
+        "required": [
+          "slot"
+        ]
+      }
+    },
+    {
+      "name": "proof_get_state",
+      "description": "Get current state: idle / loading / verifying / verified / failed.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "slot": {
+            "type": "integer",
+            "description": "Session slot"
+          }
+        },
+        "required": [
+          "slot"
+        ]
+      }
+    },
+    {
+      "name": "proof_reset_session",
+      "description": "Reset a session slot back to idle.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "slot": {
+            "type": "integer",
+            "description": "Session slot"
+          }
+        },
+        "required": [
+          "slot"
+        ]
+      }
+    },
+    {
+      "name": "proof_release_session",
+      "description": "Release a session slot for reuse.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "slot": {
+            "type": "integer",
+            "description": "Session slot"
+          }
+        },
+        "required": [
+          "slot"
+        ]
+      }
+    },
+    {
+      "name": "proof_can_transition",
+      "description": "Check whether a state machine transition is valid.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "from": {
+            "type": "integer",
+            "description": "Source state (0=idle,1=loading,2=verifying,3=verified,4=failed)"
+          },
+          "to": {
+            "type": "integer",
+            "description": "Target state"
+          }
+        },
+        "required": [
+          "from",
+          "to"
+        ]
+      }
+    }
+  ]
+}

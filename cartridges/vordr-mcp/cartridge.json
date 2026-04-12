@@ -1,0 +1,87 @@
+{
+  "$schema": "https://boj.dev/schemas/cartridge/v1.json",
+  "spdx": "PMPL-1.0-or-later",
+  "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath)",
+  "name": "vordr-mcp",
+  "version": "0.1.0",
+  "description": "Vordr container integrity monitor. BLAKE3 hashing to detect tampering and drift in container images.",
+  "domain": "Security",
+  "tier": "Ayo",
+  "protocols": [
+    "MCP",
+    "REST"
+  ],
+  "auth": {
+    "method": "none",
+    "env_var": null,
+    "credential_source": null
+  },
+  "api": {
+    "base_url": "local://vordr-mcp",
+    "content_type": "application/json"
+  },
+  "tools": [
+    {
+      "name": "vordr_scan",
+      "description": "Scan a container image for integrity (BLAKE3 hash comparison against baseline).",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "image_ref": {
+            "type": "string",
+            "description": "Container image reference"
+          }
+        },
+        "required": [
+          "image_ref"
+        ]
+      }
+    },
+    {
+      "name": "vordr_set_baseline",
+      "description": "Set the known-good BLAKE3 baseline for a container image.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "image_ref": {
+            "type": "string",
+            "description": "Container image reference to baseline"
+          }
+        },
+        "required": [
+          "image_ref"
+        ]
+      }
+    },
+    {
+      "name": "vordr_alerts",
+      "description": "List containers with integrity drift or suspected tampering.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "vordr_compare",
+      "description": "Compare two container image digests directly.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "image_a": {
+            "type": "string",
+            "description": "First container image reference"
+          },
+          "image_b": {
+            "type": "string",
+            "description": "Second container image reference"
+          }
+        },
+        "required": [
+          "image_a",
+          "image_b"
+        ]
+      }
+    }
+  ]
+}
