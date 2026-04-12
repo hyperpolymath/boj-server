@@ -1,0 +1,82 @@
+{
+  "$schema": "https://panll.dev/schemas/panel-manifest/v1.json",
+  "spdx": "PMPL-1.0-or-later",
+  "cartridge": "local-coord-mcp",
+  "domain": "Local Coordination",
+  "version": "0.1.0",
+  "panels": [
+    {
+      "id": "coord-peers",
+      "title": "Active Peers",
+      "description": "AI instances registered on this machine — their IDs, kinds, and states",
+      "type": "metric",
+      "data_source": {
+        "endpoint": "/cartridge/local-coord-mcp/invoke",
+        "method": "POST",
+        "body": { "tool": "coord_list_peers" },
+        "refresh_interval_ms": 3000
+      },
+      "widgets": [
+        { "type": "counter", "field": "active_peers", "label": "Active Peers", "icon": "users" },
+        {
+          "type": "table",
+          "field": "peers",
+          "columns": [
+            { "key": "id", "label": "Peer ID" },
+            { "key": "kind", "label": "Client" },
+            { "key": "state", "label": "State" },
+            { "key": "status", "label": "Current Work" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "coord-claims",
+      "title": "Task Claims",
+      "description": "Mutex-style task assignments — which peer holds which task",
+      "type": "metric",
+      "data_source": {
+        "endpoint": "/cartridge/local-coord-mcp/invoke",
+        "method": "POST",
+        "body": { "tool": "coord_list_claims" },
+        "refresh_interval_ms": 5000
+      },
+      "widgets": [
+        { "type": "counter", "field": "active_claims", "label": "Active Claims", "icon": "lock" },
+        {
+          "type": "table",
+          "field": "claims",
+          "columns": [
+            { "key": "task", "label": "Task" },
+            { "key": "holder", "label": "Held By" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "coord-status",
+      "title": "Coordination Status",
+      "description": "Service health and bind configuration",
+      "type": "status-indicator",
+      "data_source": {
+        "endpoint": "/cartridge/local-coord-mcp/invoke",
+        "method": "POST",
+        "body": { "tool": "status" },
+        "refresh_interval_ms": 10000
+      },
+      "widgets": [
+        {
+          "type": "state-badge",
+          "field": "state",
+          "states": {
+            "ready": { "color": "#2ecc71", "icon": "shield" },
+            "degraded": { "color": "#f39c12", "icon": "alert-circle" },
+            "error": { "color": "#e74c3c", "icon": "alert-triangle" }
+          }
+        },
+        { "type": "text", "field": "bind_address", "label": "Bind" },
+        { "type": "text", "field": "federation", "label": "Federation" }
+      ]
+    }
+  ]
+}

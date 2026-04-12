@@ -1,0 +1,281 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+// Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+= LOCAL-COORD-MCP Technical Report
+Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+v0.1.0, 2026-04-12
+:toc:
+:toc-placement: preamble
+:sectnums:
+
+Technical report for the `local-coord-mcp` cartridge — BoJ Server cartridge
+#97 (numbered at design time; registered count is 99+ after recent additions).
+
+== Overview
+
+[cols="1,3"]
+|===
+| *Cartridge* | `local-coord-mcp`
+| *Version* | 0.1.0
+| *Domain* | Agent (ai)
+| *Tier* | Ayo
+| *Protocols* | MCP, Agentic
+| *Port* | 7745 (REST, loopback only)
+| *Federation* | Disabled (LocalOnly — uninhabited IsFederated type)
+| *Max peers* | 16 concurrent instances
+| *Max claims* | 64 concurrent task locks
+| *Manifest format* | Nickel (.ncl) source-of-truth → JSON export (first BoJ cartridge to use this)
+|===
+
+== Problem Statement
+
+When running multiple AI instances on one machine (e.g. three Claude Code
+windows splitting a repo audit), there is no mechanism for the instances to:
+
+1. Know each other exist
+2. Avoid duplicating work
+3. Share findings or coordinate strategy
+
+This leads to wasted tokens, conflicting edits, and redundant effort. The
+user must manually orchestrate by switching windows and copy-pasting context.
+
+== Design Decisions
+
+=== DD-1: Manifest Format (CLOSED 2026-04-12)
+
+*Decision:* Nickel.
+
+`cartridge.ncl` is the source-of-truth. `nickel export --format json`
+produces `cartridge.json` for the MCP bridge. This aligns with the estate
+rule "tools emit A2ML (data) or Nickel (schemas), not JSON" — manifests are
+config/schema (Nickel), not data (A2ML).
+
+=== DD-2: Port (CLOSED 2026-04-12)
+
+*Decision:* 7745.
+
+Ports 7700–7744 are allocated. 7745 is the next sequential assignment.
+
+=== DD-3: Client Identity (CLOSED 2026-04-12)
+
+*Decision:* Hybrid — human-readable prefix + 4-char hex suffix.
+
+Examples: `claude-7f3a`, `gemini-b2c1`, `copilot-4e9d`. Readable in logs
+and tool output, unique enough to prevent collisions on a single machine.
+Supports the 4-LLM workflow split (Claude, Gemini, Copilot, custom).
+
+== Security Architecture
+
+=== Loopback-Only Binding (Compile-Time)
+
+The Idris2 ABI defines `IsLoopback` as a dependent type with exactly two
+constructors:
+
+[source,idris]
+----
+data IsLoopback : String -> Type where
+  IsIPv4Loop : IsLoopback "127.0.0.1"
+  IsIPv6Loop : IsLoopback "::1"
+----
+
+The `BindConfig` record requires an `IsLoopback` proof. The type
+`IsLoopback "0.0.0.0"` is uninhabited — `wildcardNotLoopback` proves this.
+No code path exists that can bind to a non-loopback address.
+
+The Zig FFI and adapter hardcode `127.0.0.1` as a defence-in-depth measure,
+but the primary guarantee is the Idris2 proof.
+
+=== Session Tokens
+
+Each peer receives a 128-bit CSPRNG token (from `std.crypto.random`) on
+registration. All 6 tool calls require this token. Invalid tokens are
+rejected before dispatch. Tokens are not stored on disk — they exist only in
+the Zig FFI's in-memory peer registry.
+
+=== Federation Opt-Out
+
+[source,idris]
+----
+data FederationPolicy : Type where
+  LocalOnly : FederationPolicy
+
+data IsFederated : FederationPolicy -> Type where
+  -- Intentionally empty
+
+localOnlyNotFederated : IsFederated LocalOnly -> Void
+localOnlyNotFederated _ impossible
+----
+
+The `IsFederated` type has zero constructors for `LocalOnly`. Any code
+requiring federation participation would need to construct this proof, which
+is impossible. This is not a feature flag — it is a type-level impossibility.
+
+=== Attack Surface
+
+[cols="1,2,2"]
+|===
+| Vector | Mitigation | Proof level
+
+| Network exposure
+| Loopback-only bind
+| Compile-time (Idris2 `IsLoopback`)
+
+| Rogue local processes
+| Per-session CSPRNG token
+| Runtime (Zig FFI)
+
+| Federation leak
+| Uninhabited `IsFederated` type
+| Compile-time (Idris2)
+
+| Inbox flood
+| 256-message ring buffer per peer
+| Runtime (Zig constant)
+
+| Peer exhaustion
+| 16-peer hard cap
+| Runtime (Zig constant)
+
+| CRLF / null-byte injection
+| Inherited from BoJ SafeHTTP/SafeWebSocket
+| Compile-time (Idris2)
+|===
+
+== Formal Verification Summary
+
+[cols="1,1,2"]
+|===
+| Module | Proofs | Status
+
+| SafeLocalCoord.idr
+| `IsLoopback`, `wildcardNotLoopback`, `emptyNotLoopback`, `loopbackRoundtrip`, `ValidPort`, `coordPortValid`, `localOnlyNotFederated`
+| 0 believe_me, 0 postulates
+
+| Protocol.idr
+| `grantedAllows`, `heldDenies`, `ValidPeerTransition` (5 constructors), `canTransitionPeer`
+| 0 believe_me, 0 postulates
+|===
+
+Total: *0 believe_me*, *0 postulates* in the local-coord-mcp ABI.
+
+(The shared `SafetyLemmas.idr` has 3 axiomatic believe_me for Char/String
+primitives — these are not introduced by this cartridge.)
+
+== Tool Reference
+
+=== coord_register
+
+Register this instance. Returns a hybrid peer ID and a session token.
+
+*Input:* `{ client_kind: "claude" | "gemini" | "copilot" | "custom" }`
+
+*Output:* `{ peer_id: "claude-7f3a", token: "abc123..." }`
+
+*Side effects:* Allocates a peer slot (1 of 16).
+
+=== coord_list_peers
+
+List all active peers.
+
+*Input:* `{ token: "..." }`
+
+*Output:* `[{ id: "claude-7f3a", kind: "claude", state: "active", status: "auditing boj-server" }, ...]`
+
+*Side effects:* None (read-only).
+
+=== coord_send
+
+Send a message to a specific peer or broadcast to all.
+
+*Input:* `{ token: "...", target: "gemini-b2c1" | "*", message: "..." }`
+
+*Output:* `{ sent: 1 }`
+
+*Side effects:* Enqueues message(s) in recipient inbox(es).
+
+=== coord_receive
+
+Poll for the next inbound message.
+
+*Input:* `{ token: "..." }`
+
+*Output:* `{ from: "claude-7f3a", message: "..." }` or `{ empty: true }`
+
+*Side effects:* Dequeues one message from this peer's inbox.
+
+=== coord_claim_task
+
+Attempt to claim a task (mutex acquisition).
+
+*Input:* `{ token: "...", task: "audit-boj-server" }`
+
+*Output:* `{ result: "granted" }` or `{ result: "held", holder: "claude-7f3a" }`
+
+*Side effects:* Acquires or rejects a claim slot. Idempotent if already held
+by the same peer.
+
+=== coord_status
+
+Set this peer's current work status.
+
+*Input:* `{ token: "...", status: "auditing boj-server — src/abi/" }`
+
+*Output:* `{ success: true }`
+
+*Side effects:* Updates the peer's status field, visible via coord_list_peers.
+
+== Test Coverage
+
+=== Zig FFI Tests (8 tests, all passing)
+
+[cols="1,2"]
+|===
+| Test | Validates
+
+| register and deregister peer | Basic lifecycle
+| register fills up | MAX_PEERS=16 hard cap
+| bad token rejected | Token validation gate
+| claim mutex semantics | Grant → deny → release → re-grant
+| idempotent claim | Same peer re-claims without error
+| send and receive direct message | Point-to-point messaging
+| broadcast message | Fan-out to all except sender
+| deregister releases claims | Auto-cleanup on disconnect
+|===
+
+== Integration Roadmap
+
+[cols="1,2,1"]
+|===
+| Phase | Work | Status
+
+| 1. ABI
+| SafeLocalCoord.idr, Protocol.idr, ipkg
+| DONE
+
+| 2. FFI
+| local_coord_ffi.zig (peer registry, claims, messages)
+| DONE
+
+| 3. Manifest + handler
+| cartridge.ncl → cartridge.json, mod.js
+| DONE
+
+| 4. Integration
+| Register in Catalogue.idr, TOPOLOGY.md port map, MCP bridge wiring, PanLL panels
+| Panels DONE, catalogue/topology PENDING
+
+| 5. End-to-end test
+| Two Claude Code instances register, message, and claim
+| PENDING
+|===
+
+== Dependencies
+
+This cartridge depends on:
+
+- Idris2 (ABI compilation)
+- Zig 0.15+ (FFI and adapter)
+- Deno (mod.js runtime)
+- Nickel CLI (manifest generation)
+- BoJ MCP bridge (tool discovery and dispatch)
+
+No external network dependencies. No database. No federation.
