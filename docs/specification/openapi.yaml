@@ -4,7 +4,7 @@
 # BoJ Server — OpenAPI 3.1 Specification
 #
 # Describes the REST API surface of the BoJ cartridge server (port 7700).
-# The V-lang adapter (adapter/v/src/main.v) implements these routes, backed
+# The Zig adapter (replacing the V-lang adapter) implements these routes, backed
 # by Idris2 ABI proofs and Zig FFI execution layers.
 
 openapi: 3.1.0
@@ -16,15 +16,20 @@ info:
   description: |
     BoJ (Bundle of Joy) Server is a cartridge-based infrastructure management
     platform. Each cartridge is a formally verified module (Idris2 ABI proofs,
-    Zig FFI execution, V-lang network adapter) that exposes tools for managing
+    Zig FFI execution, Zig network adapter) that exposes tools for managing
     cloud providers, databases, git repositories, containers, Kubernetes clusters,
     observability, secrets, IaC, and more.
 
     The server exposes four protocol surfaces:
     - **REST** (port 7700) — described by this specification
-    - **gRPC** (port 7701)
-    - **GraphQL** (port 7702)
-    - **MCP/SSE** (port 7703) — remote MCP transport
+    - **gRPC** (port 7701) — uses Protocol Buffers (protobuf) for serialization
+    - **GraphQL** (port 7702) — uses JSON for queries and responses
+    - **MCP/SSE** (port 7703) — remote MCP transport using NDJSON for event streaming
+
+    Internal communication between Idris2 proofs and Zig FFI uses:
+    - **Cap'n Proto** for high-performance, schema-based serialization
+    - **Bebop3** for lightweight, schema-based serialization
+    - **AVOW Protocol** for safety-critical operations and verification
 
     Cartridges are organised into three tiers:
     - **Teranga** — general-purpose cartridges (database, cloud, git, etc.)
@@ -70,6 +75,57 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  # ─────────────────────────────────────────────────────────────────────
+  # GraphQL endpoints
+  # ─────────────────────────────────────────────────────────────────────
+
+  /graphql:
+    post:
+      operationId: graphqlQuery
+      summary: GraphQL query endpoint
+      description: |
+        GraphQL endpoint for querying cartridge data, status, and events.
+        Supports subscriptions for real-time updates (e.g., cartridge mount/unmount events).
+        Input is validated according to OWASP guidelines to prevent injection attacks.
+        Uses JSON for serialization.
+      tags: [Core]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                query:
+                  type: string
+                  description: GraphQL query string. Validated to prevent injection.
+                variables:
+                  type: object
+                  description: Query variables (optional). Validated for safety.
+              required: [query]
+      responses:
+        "200":
+          description: GraphQL response.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    description: Query results.
+                  errors:
+                    type: array
+                    items:
+                      type: object
+                    description: Error details (if any).
+        "400":
+          description: Invalid GraphQL query or unsafe input.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
 
   /status:
     get:
@@ -381,6 +437,95 @@ paths:
                 $ref: "#/components/schemas/Error"
         "500":
           description: Reload failed (binary not found, or mount error).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  # ─────────────────────────────────────────────────────────────────────
+  # gRPC endpoints
+  # ─────────────────────────────────────────────────────────────────────
+
+  /grpc/{service}/{method}:
+    post:
+      operationId: grpcMethod
+      summary: gRPC method endpoint
+      description: |
+        JSON-over-HTTP gRPC compatibility endpoint. Maps to gRPC service/method
+        paths (e.g., `/grpc/CartridgeService/Invoke`).
+        Service and method names are validated to prevent path traversal.
+        Uses Protocol Buffers (protobuf) for serialization.
+      tags: [Core]
+      parameters:
+        - name: service
+          in: path
+          description: gRPC service name. Validated to prevent path traversal.
+          required: true
+          schema:
+            type: string
+        - name: method
+          in: path
+          description: gRPC method name. Validated to prevent path traversal.
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              description: gRPC request payload. Validated for safety.
+      responses:
+        "200":
+          description: gRPC response.
+          content:
+            application/json:
+              schema:
+                type: object
+                description: gRPC response payload.
+        "400":
+          description: Invalid gRPC request or unsafe input.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Service or method not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  # ─────────────────────────────────────────────────────────────────────
+  # MCP/SSE endpoints
+  # ─────────────────────────────────────────────────────────────────────
+
+  /sse:
+    get:
+      operationId: sseStream
+      summary: MCP/SSE event stream
+      description: |
+        Server-Sent Events (SSE) stream for remote MCP clients (Glama, Claude Desktop, Cursor).
+        Streams real-time events such as cartridge mount/unmount, federation updates, and tool invocations.
+        Access is rate-limited to prevent abuse. Uses NDJSON for event serialization.
+      tags: [Core]
+      responses:
+        "200":
+          description: SSE stream.
+          content:
+            text/event-stream:
+              schema:
+                type: string
+                description: SSE event stream in NDJSON format.
+        "400":
+          description: Invalid SSE request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "429":
+          description: Too many requests. Rate limit exceeded.
           content:
             application/json:
               schema:

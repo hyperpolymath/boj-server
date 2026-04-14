@@ -49,13 +49,13 @@ notTrueNotTrue Refl impossible
 ||| Axiomatic: correctness of Idris2's prim__eqChar backend primitive.
 export
 charEqSound : (c1, c2 : Char) -> c1 == c2 = True -> c1 = c2
-charEqSound c1 c2 _ = believe_me Refl
+charEqSound _ _ _ = believe_me ()
 
 ||| Helper: symmetry of Char equality.
 ||| Axiomatic: symmetry of prim__eqChar on the BEAM/Chez backend.
 export
 charEqSym : (x, y : Char) -> (x == y) = (y == x)
-charEqSym x y = believe_me (Refl {x = (x == y)})
+charEqSym _ _ = believe_me ()
 
 --------------------------------------------------------------------------------
 -- allRec: core lemmas for `allRec` over lists
@@ -205,7 +205,7 @@ allNeqImpliesNotElem {target} {xs = x :: xs'} prf with (x == target) proof xEq
 ||| Axiomatic: prim__strToCharList preserves length (backend primitive guarantee).
 export
 unpackLength : (s : String) -> length (unpack s) = length s
-unpackLength _ = believe_me Refl
+unpackLength _ = believe_me ()
 
 ||| Convert a Bool-valued `lte` test to a proof term.
 |||

@@ -1,7 +1,14 @@
+# Stage 1: FFI Builder
+# ============================================================================
+#
+# Compiles all Zig FFI layers (core + all cartridges) in ReleaseFast mode,
+# then compiles the V adapter binary against those FFI libs — fully
+# self-contained, no local pre-build required.
+=======
 # SPDX-License-Identifier: PMPL-1.0-or-later
 # Bundle of Joy Server Container Image
 #
-# Multi-stage build: Zig FFI compilation + V adapter binary (both built
+# Multi-stage build: Zig FFI compilation + Zig adapter binary (both built
 # inside Stage 1 — no local pre-build required).
 #
 # Build with Podman:
@@ -19,14 +26,19 @@
 # ============================================================================
 #
 # Compiles all Zig FFI layers (core + all cartridges) in ReleaseFast mode,
+# then compiles the Zig adapter binary against those FFI libs — fully
+# self-contained, no local pre-build required.============================================================================
+# Stage 1: FFI Builder
+# ============================================================================
+#
+# Compiles all Zig FFI layers (core + all cartridges) in ReleaseFast mode,
 # then compiles the V adapter binary against those FFI libs — fully
 # self-contained, no local pre-build required.
 
 FROM cgr.dev/chainguard/wolfi-base:latest AS builder
 
-# Install Zig toolchain, C toolchain, Git (needed to bootstrap V compiler),
-# and sqlite dev headers (linked by some cartridge FFIs).
-RUN apk add --no-cache build-base zig sqlite-dev git
+# Install Zig toolchain, C toolchain, and sqlite dev headers (linked by some cartridge FFIs).
+RUN apk add --no-cache build-base zig sqlite-dev
 
 WORKDIR /build
 
@@ -46,20 +58,19 @@ RUN for ffi_dir in /build/cartridges/*/ffi; do \
       fi; \
     done
 
-# Build V compiler from source (no Wolfi package available).
-# V is installed to /opt/vlang so vlib stays co-located with the binary
-# (V resolves VROOT relative to the real executable path).
-RUN git clone --depth 1 https://github.com/vlang/v /opt/vlang && \
-    cd /opt/vlang && make && \
-    ln -sf /opt/vlang/v /usr/local/bin/v
-
-# Compile V adapter binary, linking against all Zig FFI shared libs.
+# Compile Zig adapter binary, linking against all Zig FFI shared libs.
 RUN LFLAGS="-L/build/ffi/zig/zig-out/lib" && \
     for d in /build/cartridges/*/ffi/zig-out/lib; do \
       [ -d "$d" ] && LFLAGS="${LFLAGS} -L${d}"; \
     done && \
-    v -cc gcc -cflags "${LFLAGS} -Wl,--allow-multiple-definition -no-pie" \
-      -o /build/adapter/v/boj-server /build/adapter/v/src/
+    zig build-exe -O ReleaseFast -lc \
+      -fno-omit-frame-pointer \
+      -fPIE -pie \
+      --name boj-server \
+      --pkg-begin boj_adapter /build/adapter/zig/src \
+      -I/build/ffi/zig/zig-out/include \
+      ${LFLAGS} \
+      -o /build/adapter/zig/boj-server
 
 # ============================================================================
 # Stage 2: Runtime
@@ -90,8 +101,8 @@ RUN addgroup -S appuser && adduser -S appuser -G appuser
 
 WORKDIR /app
 
-# Copy V adapter binary compiled in Stage 1
-COPY --from=builder /build/adapter/v/boj-server /app/boj-server
+# Copy Zig adapter binary compiled in Stage 1
+COPY --from=builder /build/adapter/zig/boj-server /app/boj-server
 RUN chmod +x /app/boj-server
 
 # Copy core FFI libraries from builder stage
