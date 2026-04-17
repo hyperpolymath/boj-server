@@ -602,7 +602,7 @@ theorems:
 compiler:
   idris2_version: "0.8.0"
   zig_version: "0.15.2"
-  last_check: "{{LAST_PROOF_CHECK_DATE}}"
+  last_check: "2026-04-17"
 axioms:
   declared: []
   notes: "No axioms may be added without explicit justification and entry here."
@@ -904,7 +904,7 @@ rate_limiting:
     - "shadow-ban for persistent offenders"
   cost_ceiling:
     policy: "operator-managed emergency brake above tier 1"
-    note: "{{COST_CEILING_POLICY}}"
+    note: "operator-managed; emergency brake above edge-tier rate limits; specific cap TBD"
   security:
     proof: "RateLimiting.Policy.idr"
 
@@ -1159,7 +1159,7 @@ idris2:
   mechanism: ".ipkg with dep version pinning"
   adoption_status: "PENDING — estate-wide pinning in CRG contractile"
 proven_library:
-  hash_attestation: "{{PROVEN_HASH}}"
+  hash_attestation: "2acda528b5cea54bff3a8353298579c5b31fdf238c56879ce34f2e2365fdbd79"
   source: "verification-ecosystem/proven"
   verification: "libproven_ffi.a rebuilt on source change; downstream relink verified"
 crg_contractile: "tracked under CRG grade requirements — see CRG-SELF-ASSESSMENT.adoc"

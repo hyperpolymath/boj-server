@@ -381,6 +381,16 @@ A `TransportEntry` has the following shape:
     }
   ],
 
+  # Proposed HAT block shape — no Nickel HAT schema is yet implemented.
+  # Fields: enabled (Bool), bridge_type (one of: "cli-wrapper" | "json-rpc-stdio" |
+  # "http-api" | "library-ffi" per §5.3), target (external tool name), plus one of:
+  #   bridge_type = "cli-wrapper"   → bridge_script (path to shell wrapper)
+  #   bridge_type = "library-ffi"   → library_path (path to .so)
+  #   bridge_type = "http-api"      → base_url (string)
+  #   bridge_type = "json-rpc-stdio"→ command (array of argv)
+  # isolation_mechanism and trust_tier fields are OPTIONAL; if omitted, defaults
+  # are "circuit-breaker" and "external-trust" respectively.
+  # This shape is subject to change on first real deployment with a Nickel HAT schema.
   hat = {
     enabled = true,
     bridge_type = "cli-wrapper",
@@ -544,6 +554,13 @@ Grade `D` transports MUST only be declared for localhost (`127.0.0.1` / `::1`)
 endpoints. A grade `D` transport MUST NOT be opened on a network-reachable
 address.
 
+> **Footnote (2026-04-17):** Security grades are derived from 2026 TLS/transport-security
+> consensus (RFC 8446 TLS 1.3, RFC 7540 HTTP/2, mTLS best practices). They are not formally
+> standardised by any SDO. The grade ladder is internally consistent: mutual authentication
+> + forward secrecy = A; server-auth TLS + app-layer client auth = B; auth without encryption
+> or encryption without auth = C; no transport security at all = D. Grades may be revised
+> as transport security standards evolve.
+
 ### 9.2 Preference Ordering
 
 `preferred_transports` ranks entries from most preferred (highest security,
@@ -664,17 +681,31 @@ record ZoneConfig where
 The Zig FFI mirror exposes only the boolean results; the proofs themselves are
 compile-time artefacts.
 
-### 11.4 Canonical Reference File
+### 11.4 Canonical Reference Pattern
 
-The canonical reference for the Rust Tauri command pattern is:
+The IDApTIK UMS cartridge (`idaptik/idaptik-ums`) is the canonical reference
+for the Rust Tauri command pattern. The pattern is:
 
-```
-IDApTIK/src-tauri/src/commands.rs
-```
+- **Idris2 ABI** (`src/abi/`) declares the interface with dependent-type proofs.
+- **Zig FFI** (`ffi/zig/src/`) mirrors every Idris2 type as a C-compatible
+  boolean struct and exports it via `extern "C"`.
+- **Rust Tauri commands** (`src-tauri/src/commands.rs` within the Tauri app)
+  wrap the Zig `extern "C"` symbols as `#[tauri::command]` functions named
+  `<cartridge>_cartridge_<op>`.
+- **Bridge directory** (`/tmp/panll/<name>-bridge/`) is the shared filesystem
+  exchange point between the Tauri backend and the BoJ cartridge.
 
-Do not reproduce the full file here; read it directly. The naming convention,
-bridge directory structure, and extern declarations in that file are normative
-for all cartridges following this pattern.
+The naming convention, bridge directory structure, and extern declarations in
+`idaptik/idaptik-ums/src-tauri/src/commands.rs` are normative for all cartridges
+following this pattern. Read that file directly when implementing a new cartridge
+of this type; do not reproduce it here.
+
+> **Note (2026-04-17):** The specific file path `IDApTIK/src-tauri/src/commands.rs`
+> cited in earlier drafts refers to the monorepo-root Tauri app path within the
+> IDApTIK monorepo (`/var/mnt/eclipse/repos/idaptik/`). Navigate to
+> `idaptik/idaptik-ums/` and check `src-tauri/src/commands.rs`. If that path does
+> not yet exist, the UMS cartridge is still in Development status and the pattern
+> described above is the authoritative description until the file lands.
 
 ---
 
