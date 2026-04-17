@@ -524,6 +524,8 @@ that cannot be formally verified.
 
 ### 6.2 Hardware Attached on Top
 
+(The HAT model is also specified normatively in `docs/specification/cartridges/README.md` §5.)
+
 We resolve this tension with the HAT (Hardware Attached on Top) model, named by
 analogy with the Raspberry Pi and BeagleBone hardware extension ecosystem. A HAT is
 a bridge script that translates a BoJ cartridge invocation into a real-world tool

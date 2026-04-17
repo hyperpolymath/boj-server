@@ -10,6 +10,11 @@ project itself.
 
 ## The Capability Matrix
 
+> The capability matrix, lifecycle, proof requirements, HAT model, and cartridge
+> manifest schema are specified normatively in
+> [`docs/specification/cartridges/README.md`](specification/cartridges/README.md).
+> This document covers the optional **backend (third axis)** extension mechanism only.
+
 BoJ organises server capabilities as a sparse matrix:
 
 ```

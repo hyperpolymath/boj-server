@@ -5,6 +5,8 @@
 
 For BoJ Server, BoJ Server + Elixir Multiplier, and panll Integration
 
+> For the cartridge specification itself (what a cartridge IS — the 2D matrix, lifecycle, HAT model, manifest schema, and ephemerality model), see [../cartridges/README.md](../cartridges/README.md).
+
 ## 1. Core Philosophy & Design Tenets
 
 ### Purpose
