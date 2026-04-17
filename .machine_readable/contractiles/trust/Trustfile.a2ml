@@ -9,8 +9,8 @@
 id: "did:web:github.com:hyperpolymath:boj-server"
 version: "2026.2.5-final"
 context:
-  - "https://a2ml.org/ns/v2"
-  - "https://leanprover-community.github.io/lean4"
+  - "https://a2ml.org/ns/v3"
+  - "https://idris-lang.org/ns/v2"  # TODO: replace with canonical URL once published
   - "https://hypatia.scans/ns/v1"
   - "https://w3id.org/security/v4"
   - "https://w3id.org/transparency/v1"
@@ -24,7 +24,7 @@ meta:
       BASE64_Ed448+Dilithium5_SIGNATURE_OF_THIS_FILE
       -----END HYBRID SIGNATURE-----
     signedBy: "did:web:github.com:hyperpolymath:boj-server#primary-sig"
-    proof: "https://github.com/hyperpolymath/boj-server/proofs/meta.lean"
+    proof: "https://github.com/hyperpolymath/boj-server/proofs/meta.idr"
   fallbackSignature:
     algorithm: "SPHINCS+"
     value: |
@@ -42,7 +42,14 @@ meta:
   automation:
     hashing: ["SHA3-512", "SHAKE256", "BLAKE3"]
     diffing: "alert-on-unexpected-changes"
-    integrity: ["zonemd-consistency", "transparency-log-continuity", "lean-proof-validity"]
+    integrity: ["zonemd-consistency", "transparency-log-continuity", "idris2-proof-validity"]
+
+---
+### [CARTRIDGE_SPEC_REF]
+spec: "docs/specification/cartridges/README.md"
+tools_spec: "docs/specification/cartridge-tools/README.md"
+abi_core: "src/abi/Boj/Catalogue.idr"
+note: "cartridge-level claims in this Trustfile defer to the cartridge spec for normative shape"
 
 ---
 ### [THREAT_MODEL]
@@ -50,7 +57,7 @@ adversaries:
   - type: "APT"
     mitigations:
       - "Capability-based auth → No lateral movement."
-      - "LEAN4 proofs → No exploit primitives."
+      - "Idris2 proofs → No exploit primitives."
       - "Transparency logs → Immediate detection."
   - type: "Ransomware"
     mitigations:
@@ -98,7 +105,7 @@ dnssec:
   digest_type: "SHA-256"
   policy: "DNSSEC MUST be enabled on all zones. DS records propagated to registrar."
   security:
-    proof: "DNS.DNSSEC.lean"
+    proof: "DNS.DNSSEC.idr"
     ci_cd: "verify-dnssec-propagation"
 soa:
   mname: "ns1.cloudflare.com."
@@ -117,7 +124,7 @@ records:
     proxied: true
     security:
       zonemd: "2026021601;SHA512;BASE64_SHA512;SHAKE256;BASE32_SHAKE256"
-      proof: "DNS.Core.A_Record.lean"
+      proof: "DNS.Core.A_Record.idr"
       hypatia: "scan-dns-record"
       ci_cd: "auto-hash-on-push"
   - type: "AAAA"
@@ -126,25 +133,25 @@ records:
     ttl: 3600
     proxied: true
     security:
-      proof: "DNS.Core.AAAA_Record.lean"
+      proof: "DNS.Core.AAAA_Record.idr"
   - type: "HTTPS"
     name: "@"
     value: '1 . alpn="h3,h2" ipv4hint=192.0.2.1 ipv6hint=2001:db8::1'
     ttl: 3600
     security:
-      proof: "DNS.HTTPS.lean"
+      proof: "DNS.HTTPS.idr"
   - type: "SVCB"
     name: "@"
     value: '1 . alpn="h3,h2" port=443 ipv4hint=192.0.2.1 ipv6hint=2001:db8::1'
     ttl: 3600
     security:
-      proof: "DNS.SVCB.lean"
+      proof: "DNS.SVCB.idr"
   - type: "TXT"
     name: "@"
     value: '"v=DMARC1; p=reject; rua=mailto:j.d.a.jewell@open.ac.uk; ruf=mailto:j.d.a.jewell@open.ac.uk"'
     ttl: 3600
     security:
-      proof: "Email.DMARC.lean"
+      proof: "Email.DMARC.idr"
   - type: "CAA"
     name: "@"
     value: '0 issue "letsencrypt.org"'
@@ -171,19 +178,19 @@ records:
     ttl: 3600
     security:
       hypatia: "scan-for-apt-activity"
-      proof: "Psychological.Warfare.lean"
+      proof: "Psychological.Warfare.idr"
   - type: "TXT"
     name: "_capabilities"
     value: '"v=OCAP1; endpoint=https://github.com/hyperpolymath/boj-server/cap"'
     ttl: 3600
     security:
-      proof: "HTTP.Capabilities.lean"
+      proof: "HTTP.Capabilities.idr"
   - type: "TXT"
     name: "_consent"
     value: '"v=CAdRE1; endpoint=https://github.com/hyperpolymath/boj-server/.well-known/consent"'
     ttl: 3600
     security:
-      proof: "HTTP.Consent.lean"
+      proof: "HTTP.Consent.idr"
       gitbot: "validate-consent-endpoint"
   # Email Security Records
   - type: "TXT"
@@ -192,14 +199,14 @@ records:
     ttl: 3600
     notes: "Hard fail. No servers authorized to send. Override per-domain if email is used."
     security:
-      proof: "Email.SPF.lean"
+      proof: "Email.SPF.idr"
   - type: "TXT"
     name: "_dmarc"
     value: '"v=DMARC1; p=reject; sp=reject; adkim=s; aspf=s; rua=mailto:j.d.a.jewell@open.ac.uk; ruf=mailto:j.d.a.jewell@open.ac.uk; fo=1"'
     ttl: 3600
     notes: "Strict alignment. Reject all unauthenticated. Forensic reports on any failure."
     security:
-      proof: "Email.DMARC.lean"
+      proof: "Email.DMARC.idr"
       ci_cd: "validate-dmarc-alignment"
   - type: "TXT"
     name: "*._domainkey"
@@ -207,7 +214,7 @@ records:
     ttl: 3600
     notes: "Empty public key = revoked. Prevents DKIM pass on spoofed mail for non-sending domains."
     security:
-      proof: "Email.DKIM.lean"
+      proof: "Email.DKIM.idr"
   - type: "TXT"
     name: "_mta-sts"
     value: '"v=STSv1; id=20260302"'
@@ -245,9 +252,9 @@ email_routing:
     - "IPv6 support"
     - "Automatic MX/SPF/DKIM record creation"
   security:
-    proof: "Email.Routing.lean"
+    proof: "Email.Routing.idr"
 security:
-  proof: "Email.Policy.lean"
+  proof: "Email.Policy.idr"
   ci_cd: "validate-email-records-on-push"
 
 ---
@@ -276,7 +283,7 @@ keys:
         x: "BASE64URL_SPHINCS+_PUBLIC_KEY"
     usage: ["authentication", "assertion"]
     security:
-      proof: "Crypto.HybridKey.lean"
+      proof: "Crypto.HybridKey.idr"
       hypatia: "scan-keys"
       ci_cd: "rotate-keys-on-compromise"
 algorithms:
@@ -285,7 +292,7 @@ algorithms:
   rng: "ChaCha20-DRBG"
   passwordHashing: "Argon2id (512 MiB, 8 iter, 4 lanes)"
   security:
-    proof: "Crypto.Algorithms.lean"
+    proof: "Crypto.Algorithms.idr"
 policies:
   dns:
     rego: |
@@ -295,7 +302,7 @@ policies:
         input.record.security.proof != ""
         input.record.security.zonemd != ""
       }
-    lean: "Policies.DNS.lean"
+    idris2: "Policies.DNS.idr"
     ci_cd: "validate-dns-policies-on-push"
   http:
     rego: |
@@ -305,7 +312,7 @@ policies:
         input.consent.granted
         valid_capability(input.capability)
       }
-    lean: "Policies.HTTP.lean"
+    idris2: "Policies.HTTP.idr"
   php:
     rego: |
       package trustfile.php
@@ -314,10 +321,179 @@ policies:
         input.php.aegis_enabled
         input.php.sanctify_enabled
       }
-    lean: "Policies.PHP.lean"
+    idris2: "Policies.PHP.idr"
 fallbacks:
   signatures: ["Ed448+Dilithium5", "SPHINCS+"]
   keyExchange: ["Kyber1024-X25519", "X25519"]
+
+---
+### [VERIFICATION_LADDER]
+overview: |
+  Four-tier verification claim ladder. Each capability in this Trustfile
+  MUST declare which tier it sits at. Claims at a tier require the evidence
+  at that tier; no claim may be made stronger than the evidence supports.
+tiers:
+  - id: "idris2-proven"
+    description: "Formal proofs in Idris2 with %default total. IsUnbreakable or equivalent proof required before activation."
+    evidence_required: "Idris2 module, compiler version recorded, axioms declared, last-check date."
+  - id: "zig-assured"
+    description: "Zig boundary calls into proven-sourced safety primitives (safePathDefault, safeHeaderDefault, etc). Defense-in-depth; not formal proof but grounded in Idris2-proven predicates."
+    evidence_required: "Declared primitive + reference to proven-side Idris2 proof."
+  - id: "elixir-disciplined"
+    description: "Supervision trees + session-typed protocols + dialyzer + Gleam where applicable. Pattern-conforming, not proven."
+    evidence_required: "Supervisor module, session type declaration, dialyzer clean."
+  - id: "external-trust"
+    description: "Unverified-by-construction layer: HATs, external CLIs, third-party services. Acknowledged trust, isolated via circuit breakers."
+    evidence_required: "Documented trust boundary + isolation mechanism."
+
+---
+### [HAT_PERIMETER]
+overview: |
+  HATs (Hardware Attached on Top — per docs/papers/boj-architecture-paper.md §6
+  and docs/specification/cartridges/README.md §5) sit OUTSIDE the safety
+  perimeter. HATs are unverified-by-construction. IsUnbreakable proof
+  for a cartridge still holds regardless of HAT presence.
+policy:
+  per_hat_attestation: "each HAT declared here with its external-tool + isolation mechanism"
+  circuit_breaker: "every HAT isolated by per-cartridge circuit breaker; HAT failure trips breaker, not core"
+  threat_model: "HAT compromise = bounded blast radius (one cartridge affected)"
+hats: []
+security:
+  tier: "external-trust"
+  proof: "HATPerimeter.Policy.idr"
+
+---
+### [SURFACE_EPHEMERALITY]
+overview: |
+  Three-axis transport model per docs/specification/cartridges/README.md §6
+  and §7. Unused transports are default-locked: not listening, not registered,
+  not reachable. On-demand spin-up when a legitimate caller uses one.
+axes:
+  possible_transports:
+    description: "Declared in cartridge Nickel manifest (supported_transports)"
+    enforcement: "manifest validation at cartridge mount"
+  preferred_transports:
+    description: "Ordered preference list per cartridge (security_grade + provenance)"
+    enforcement: "gateway honours ordering when multiple transports active"
+  active_transports:
+    description: "Runtime set — currently in use by callers"
+    enforcement: "default-locked; spin up on valid capability+manifest match; drain-down when unused"
+transaction_ephemerality:
+  capability_tokens: "per-transaction, destroyed at end of transaction"
+  session_state: "NONE spanning requests"
+  long_lived_streams: "WebSocket/SSE framed with per-message capability gates"
+security:
+  tier: "zig-assured"
+  proof: "SurfaceEphemerality.Policy.idr"
+
+---
+### [BEAM_SUPERVISION]
+overview: |
+  All-Elixir architecture. No scalable/individual bifurcation — BEAM scales
+  down (Nerves) so one architecture covers single-user through enterprise.
+  BEAM provides: lightweight process-per-cartridge-invocation, supervisor
+  trees for fault isolation, mailbox back-pressure, hot code swap.
+declared_2026_04_17: true
+supervision:
+  shape: "OTP supervision tree"
+  policy: "one_for_one or rest_for_one per subtree; cartridge-subtree isolation"
+  crash_containment: "individual cartridge crash does not affect others; supervisor restarts"
+session_types:
+  policy: "inter-cartridge messaging uses session-typed protocols where feasible"
+  status: "progressive adoption; dialyzer-clean baseline"
+runtime_isolation:
+  per_cartridge: "BEAM process (not OS process, not thread)"
+  blast_radius: "one cartridge crash → supervisor restart; no cascade"
+back_pressure:
+  preferred: "fail fast with clear 'try later' over unbounded queuing"
+  mailbox_limits: "declared per cartridge"
+security:
+  tier: "elixir-disciplined"
+  proof: "BEAMSupervision.Policy.idr"
+
+---
+### [SEAMS]
+overview: |
+  A seam is an integration boundary between two components that can be
+  independently versioned, built, or deployed. Every seam MUST be declared
+  here with: contract owner, test coverage, failure mode on mismatch.
+  See docs/SEAMS-SPEC.adoc for the full spec.
+seams:
+  - id: "proven-zig-api"
+    description: "Idris2 proven library ↔ Zig FFI boundary"
+    from: "verification-ecosystem/proven"
+    to: "src/abi/Boj/Catalogue.idr + ffi/zig/"
+    contract: "src/abi/Boj/Catalogue.idr"
+    test_ref: "tests/seam/proven-zig-api.test"
+    failure_mode: "fail-closed"
+    tier: "zig-assured"
+    notes: ""
+  - id: "zig-api-boj"
+    description: "Zig FFI boundary ↔ BoJ Elixir core"
+    from: "ffi/zig/"
+    to: "lib/boj/"
+    contract: "src/abi/Boj/Catalogue.idr"
+    test_ref: "tests/seam/zig-api-boj.test"
+    failure_mode: "fail-closed"
+    tier: "zig-assured"
+    notes: ""
+  - id: "cartridge-hat"
+    description: "Cartridge core ↔ HAT (external tool)"
+    from: "lib/boj/cartridge/"
+    to: "external HAT"
+    contract: "docs/specification/cartridges/README.md §5"
+    test_ref: "tests/seam/cartridge-hat.test"
+    failure_mode: "fail-closed (circuit breaker)"
+    tier: "external-trust"
+    notes: "HAT failure trips circuit breaker; core unaffected"
+  - id: "cartridge-beam-supervisor"
+    description: "Cartridge process ↔ BEAM OTP supervisor"
+    from: "lib/boj/cartridge/"
+    to: "lib/boj/supervisor/"
+    contract: "OTP supervisor protocol"
+    test_ref: "tests/seam/cartridge-supervisor.test"
+    failure_mode: "fail-closed (supervisor restart)"
+    tier: "elixir-disciplined"
+    notes: ""
+policy:
+  seam_check: "every PR that touches either side of a declared seam MUST exercise the P2P test for that seam before merge"
+security:
+  proof: "Seams.Policy.idr"
+
+---
+### [SECRETS_HYGIENE]
+at_rest:
+  pattern: "SOPS+age"
+  template_location: "web-ecosystem/lcb-website/"
+  adoption_status: "template + estate intent — per-repo adoption tracked below"
+  per_repo_adoption:
+    - repo: "lcb-website"
+      status: "DEPLOYED"
+    - repo: "boj-server"
+      status: "PENDING / runtime-only via Rokur"
+  pre_commit_hooks:
+    - "gitleaks"
+    - "plaintext detector"
+delivery:
+  mechanism: "environment variable injection at container start"
+  scope: "SOPS-decrypted secrets → ROKUR_SECRET_<NAME> env vars; containers never read plaintext from disk"
+gate:
+  tool: "Rokur"
+  role: "policy engine — validates required secrets present, audits, rate-limits, fail-closed"
+  features:
+    - "per-IP sliding window rate limiting (60/min general, 5/min auth-fail)"
+    - "structured JSONL audit logging"
+    - "X-Request-Id tracing"
+    - "policy backends: builtin or external (Ephapax adapter)"
+    - "SIGHUP hot-reload"
+llm_agents:
+  tool: "RGTV"
+  status: "ALPHA — NOT production-ready, see RGTV/README.adoc known-unsafe list"
+  scope: "LLM-agent credential brokering only — opaque one-use grants"
+  enabled_here: "false — RGTV not wired into BoJ; BoJ itself doesn't broker LLM-agent credentials"
+security:
+  proof: "Secrets.Hygiene.idr"
+  ci_cd: "validate-secrets-flow-on-push"
 
 ---
 ### [CI_CD]
@@ -331,8 +507,8 @@ github_actions:
         - uses: "actions/checkout@v4"
         - name: "Validate A2ML"
           run: "a2ml validate Trustfile.a2ml"
-        - name: "Run LEAN4 Proofs"
-          run: "lake build && lake exectest"
+        - name: "Run Idris2 Proofs"
+          run: "idris2 --build trust.ipkg"
         - name: "Hypatia Scan"
           run: "hypatia scan --config hypatia.yml"
         - name: "GitBot-Fleet Passover"
@@ -370,56 +546,69 @@ hypatia:
       frequency: "on-push"
 
 ---
-### [LEAN4_PROOFS]
+### [IDRIS2_PROOFS]
 theorems:
   - name: "dns_correctness"
-    file: "DNS.Core.lean"
+    file: "DNS.Core.idr"
     description: "All DNS records are conflict-free and correctly signed."
     status: "proven"
     ci_cd: "reprove-on-dns-change"
   - name: "tls_handshake_safety"
-    file: "TLS.Handshake.lean"
+    file: "TLS.Handshake.idr"
     description: "TLS 1.3 + Kyber1024 handshake resists downgrade attacks."
     status: "proven"
   - name: "consent_aware_http_soundness"
-    file: "HTTP.Consent.lean"
+    file: "HTTP.Consent.idr"
     description: "Consent-Aware HTTP (CAdRE) enforces user intent."
     status: "proven"
   - name: "capability_gateway_correctness"
-    file: "HTTP.Capabilities.lean"
+    file: "HTTP.Capabilities.idr"
     description: "OCAP-style capability gateway is safe."
     status: "proven"
   - name: "php_hardening_no_bypasses"
-    file: "PHP.Hardening.lean"
+    file: "PHP.Hardening.idr"
     description: "PHP-Aegis + Sanctify-PHP blocks all unsafe functions."
     status: "proven"
   - name: "edge_ssl_no_downgrade"
-    file: "Cloudflare.SSL.lean"
+    file: "Cloudflare.SSL.idr"
     description: "TLS 1.3 + HSTS preload prevents protocol downgrade at edge."
     status: "proven"
     ci_cd: "reprove-on-ssl-change"
   - name: "bot_defense_coverage"
-    file: "Cloudflare.Bots.lean"
+    file: "Cloudflare.Bots.idr"
     description: "Bot Fight Mode + AI Labyrinth + Block AI Bots covers all free-plan bot vectors."
     status: "proven"
   - name: "email_anti_spoofing"
-    file: "Email.Policy.lean"
+    file: "Email.Policy.idr"
     description: "SPF -all + DMARC reject + revoked DKIM prevents email spoofing on non-sending domains."
     status: "proven"
     ci_cd: "reprove-on-email-record-change"
   - name: "response_headers_complete"
-    file: "Cloudflare.ResponseHeaders.lean"
+    file: "Cloudflare.ResponseHeaders.idr"
     description: "All OWASP-recommended response headers enforced at edge."
     status: "proven"
   - name: "dnssec_chain_valid"
-    file: "DNS.DNSSEC.lean"
+    file: "DNS.DNSSEC.idr"
     description: "DNSSEC chain of trust from root to zone is valid and signed."
     status: "proven"
     ci_cd: "verify-dnssec-weekly"
   - name: "network_transport_safety"
-    file: "Cloudflare.Network.lean"
+    file: "Cloudflare.Network.idr"
     description: "HTTP/3 + 0-RTT replay protection + Onion routing correctly configured."
     status: "proven"
+
+---
+### [PROOF_METADATA]
+compiler:
+  idris2_version: "0.8.0"
+  zig_version: "0.15.2"
+  last_check: "{{LAST_PROOF_CHECK_DATE}}"
+axioms:
+  declared: []
+  notes: "No axioms may be added without explicit justification and entry here."
+drift_alert:
+  ci_cd: "rebuild-all-proofs-on-compiler-upgrade"
+  policy: "any compiler upgrade triggers full proof rebuild + signed attestation of re-check"
 
 ---
 ### [AUTOMATION]
@@ -433,21 +622,48 @@ diffing:
     - "alert-on-unexpected-changes"
     - "require-proof-updates-for-crypto-changes"
 integrity:
-  tool: "Hypatia + LEAN4"
+  tool: "Hypatia + Idris2"
   checks:
     - "zonemd-consistency"
     - "transparency-log-continuity"
-    - "lean-proof-validity"
+    - "idris2-proof-validity"
 
 ---
 ### [CAPABILITY_GATEWAY]
 rules:
   - resource: "/api/data"
     policy: "require Ed448+Dilithium5-signed capability token"
-    proof: "HTTP.Capabilities.Data.lean"
+    proof: "HTTP.Capabilities.Data.idr"
   - resource: "/admin"
     policy: "require TPM 2.0 + YubiKey device attestation"
-    proof: "HTTP.Capabilities.Admin.lean"
+    proof: "HTTP.Capabilities.Admin.idr"
+
+---
+### [SAFE_HACKING]
+scope: "this-repo-only"
+allowed_probe_classes: []
+probes: []
+policy: |
+  Authorised offensive testing scoped to this repo. Probes listed here
+  are actively executed during `contractile trust probe`. NEVER touches
+  external systems. See trust.ncl for schema; this section is the data.
+policy_on_unexpected_outcome: "exit-nonzero"
+security:
+  proof: "SafeHacking.Policy.idr"
+
+---
+### [VULNERABILITY_DISCLOSURE]
+policy: |
+  Responsible disclosure welcomed. Researchers reporting real vulnerabilities
+  in good faith receive acknowledgement in SECURITY.adoc and in
+  /.well-known/security-acknowledgments. See security.txt for contact path.
+contact: "j.d.a.jewell@open.ac.uk"
+recognition:
+  mechanism: "security-acknowledgments list"
+  url: "https://github.com/hyperpolymath/boj-server/.well-known/security-acknowledgments"
+contractile_ref: "tracked in `contractile trust probe` — see trust.ncl safe_hacking"
+security:
+  proof: "VulnDisclosure.Policy.idr"
 
 ---
 ### [SDP_RULES]
@@ -458,12 +674,12 @@ services:
         policy: "require Ed448+Dilithium5 + device-attestation + cadre-consent"
       - group: "bots"
         policy: "require JWT (Kyber1024) + IP in CI_NETWORK"
-    proof: "SDP.Dashboard.lean"
+    proof: "SDP.Dashboard.idr"
   - name: "db.internal"
     access:
       - group: "apps"
         policy: "require mutual TLS (Kyber1024-X25519) + client cert"
-    proof: "SDP.Database.lean"
+    proof: "SDP.Database.idr"
 
 ---
 ### [TRANSPARENCY_LOG]
@@ -473,7 +689,7 @@ rfc9162:
     - timestamp: "2026-02-16T00:00:00Z"
       data: "BASE64_ENCODED_THIS_FILE"
       signature: "BASE64_Ed448+Dilithium5_SIGNATURE"
-      lean_proof: "Transparency.Log.lean"
+      idris2_proof: "Transparency.Log.idr"
       ci_cd: "append-on-push"
 
 ---
@@ -517,11 +733,17 @@ edge_certificates:
     Origin certificates should use Cloudflare Origin CA (15-year validity)
     or publicly trusted certs for Full (Strict) mode.
 security:
-  proof: "TLS.Configuration.lean"
+  proof: "TLS.Configuration.idr"
   ci_cd: "verify-tls-settings-drift"
 
 ---
 ### [CLOUDFLARE]
+operator_trust_anchor: |
+  Cloudflare is an operator-chosen trust anchor for this repo. Its edge
+  network provides DDoS absorption, TLS termination, and WAF. This is a
+  single-vendor dependency: compromise or misbehaviour at Cloudflare
+  affects all proxied traffic. Plan for vendor-compromise scenario
+  documented in THREAT-MODEL.md §vendor-anchors.
 waf:
   ruleset: "OWASP_ModSecurity_CRS"
   sensitivity: "high"
@@ -542,7 +764,7 @@ waf:
       ruleset: "Cloudflare HTTP DDoS Attack Protection"
     notes: "Always-on, unmetered DDoS protection on all plans."
   security:
-    proof: "Cloudflare.WAF.lean"
+    proof: "Cloudflare.WAF.idr"
     ci_cd: "validate-waf-rulesets"
 workers:
   - name: "consent-aware-http"
@@ -582,7 +804,7 @@ ssl_tls:
     SSL mode 'strict' requires valid origin certificate (Cloudflare Origin CA
     or publicly trusted). Downgrade to 'full' only if origin has self-signed.
   security:
-    proof: "Cloudflare.SSL.lean"
+    proof: "Cloudflare.SSL.idr"
     ci_cd: "verify-ssl-settings-drift"
 
 bot_defense:
@@ -603,7 +825,7 @@ bot_defense:
     Bot Fight Mode uses pattern matching only. AI Labyrinth is the
     primary free-plan defense against sophisticated AI scraping.
   security:
-    proof: "Cloudflare.Bots.lean"
+    proof: "Cloudflare.Bots.idr"
     ci_cd: "verify-bot-settings"
 
 scrape_shield:
@@ -616,7 +838,7 @@ scrape_shield:
     from embedding your images. Server-side excludes hide content
     from suspicious visitors.
   security:
-    proof: "Cloudflare.ScrapeShield.lean"
+    proof: "Cloudflare.ScrapeShield.idr"
 
 browser_integrity:
   browser_check: true
@@ -628,7 +850,7 @@ browser_integrity:
     challenges visitors from IPs with moderate threat scores.
     Challenge TTL of 30 minutes before re-challenge.
   security:
-    proof: "Cloudflare.BrowserIntegrity.lean"
+    proof: "Cloudflare.BrowserIntegrity.idr"
 
 page_shield:
   enabled: true
@@ -638,7 +860,7 @@ page_shield:
     your pages. Free tier provides script detection and alerts for
     new/changed scripts. Paid tiers add malicious script detection.
   security:
-    proof: "Cloudflare.PageShield.lean"
+    proof: "Cloudflare.PageShield.idr"
     ci_cd: "review-new-scripts"
 
 security_txt:
@@ -655,8 +877,36 @@ security_txt:
     Contact is the author's university email. Expiry set to 1 year from
     deployment, auto-renewed by CI. Canonical URL prevents spoofing.
   security:
-    proof: "Cloudflare.SecurityTxt.lean"
+    proof: "Cloudflare.SecurityTxt.idr"
     ci_cd: "renew-security-txt-before-expiry"
+
+rate_limiting:
+  architecture: "four-tier"
+  tier_1_edge:
+    provider: "Cloudflare"
+    mechanisms: ["Anycast absorption", "DDoS Managed Ruleset", "per-zone rate rules"]
+  tier_2_gateway:
+    provider: "http-capability-gateway / svalinn"
+    mechanisms: ["per-IP token-bucket sliding window", "per-capability-token", "per-endpoint"]
+    status: "PENDING — http-capability-gateway wiring forthcoming"
+  tier_3_beam:
+    provider: "Elixir supervisor"
+    mechanisms: ["per-cartridge-invocation budget", "mailbox back-pressure"]
+  tier_4_cartridge:
+    provider: "cartridge-declared"
+    mechanisms: ["Nickel manifest declares per-cartridge limits"]
+  cross_tier:
+    - "RFC 9530 rate-limit headers (RateLimit-Limit, RateLimit-Remaining, RateLimit-Reset)"
+    - "429 + Retry-After on limit hit"
+    - "Turnstile challenge on high-value endpoints"
+    - "HMAC request signing for API clients"
+    - "per-cartridge circuit breakers with exponential backoff"
+    - "shadow-ban for persistent offenders"
+  cost_ceiling:
+    policy: "operator-managed emergency brake above tier 1"
+    note: "{{COST_CEILING_POLICY}}"
+  security:
+    proof: "RateLimiting.Policy.idr"
 
 ---
 ### [RESPONSE_HEADERS]
@@ -696,7 +946,7 @@ policy: |
   reported to /csp-report endpoint if a report-uri directive is added.
 
 security:
-  proof: "Cloudflare.ResponseHeaders.lean"
+  proof: "Cloudflare.ResponseHeaders.idr"
   ci_cd: "validate-response-headers"
 
 ---
@@ -711,7 +961,11 @@ quic: true
 zero_rtt: true
 websockets: true
 onion_routing: true
-ipv6_compatibility: true
+ipv6_posture:
+  origin: "IPv6-only (strict)"
+  edge: "dual-stack (Cloudflare translates IPv4 clients to IPv6-only origins)"
+  internal_comms: "IPv6-only between BoJ instances"
+  policy: "Declared 2026-04-17. IPv4 clients reach BoJ only via Cloudflare edge translation; origin never listens on IPv4."
 brotli: true
 
 zero_rtt_policy: |
@@ -728,8 +982,30 @@ onion_routing_policy: |
   dedicated .onion address — uses Cloudflare's shared onion service.
 
 security:
-  proof: "Cloudflare.Network.lean"
+  proof: "Cloudflare.Network.idr"
   ci_cd: "verify-network-settings"
+
+---
+### [ORIGIN_PROTECTION]
+hidden_primary:
+  public_dns: "no A/AAAA records resolving directly to origin"
+  public_endpoint: "Cloudflare Tunnel only"
+  authenticated_origin_pulls:
+    enabled: true
+    mtls_ca: "Cloudflare Origin CA"
+    policy: "origin rejects all non-CF traffic at TCP layer"
+  admin_endpoints:
+    mechanism: "Cloudflare Access (zero-trust)"
+    public_endpoint: "none"
+  backup_origin:
+    mechanism: "second Cloudflare Tunnel, passive failover"
+  leak_checks:
+    - "verify no historic origin IP exposure in securitytrails.com"
+    - "verify no origin IP in HTTP error messages"
+    - "verify no origin IP in DNS MX/TXT records"
+security:
+  proof: "OriginProtection.Policy.idr"
+  ci_cd: "verify-origin-hidden-weekly"
 
 ---
 ### [PERFORMANCE]
@@ -760,7 +1036,7 @@ caching:
     authenticated content — use Cache-Control: private on origin.
 
 security:
-  proof: "Cloudflare.Performance.lean"
+  proof: "Cloudflare.Performance.idr"
 
 ---
 ### [PHP_HARDENING]
@@ -791,7 +1067,7 @@ runtime:
   policy: "Rootless containers only. Never Docker."
   socket: "${XDG_RUNTIME_DIR}/podman/podman.sock"
   security:
-    proof: "Container.Runtime.lean"
+    proof: "Container.Runtime.idr"
 
 base_images:
   provider: "Chainguard"
@@ -801,7 +1077,7 @@ base_images:
     - "cgr.dev/chainguard/static:latest"
   policy: "Only Chainguard images permitted as base. Rebuilt daily, CVE-free."
   security:
-    proof: "Container.BaseImages.lean"
+    proof: "Container.BaseImages.idr"
     ci_cd: "scan-base-images-daily"
 
 verified_bundles:
@@ -817,7 +1093,7 @@ verified_bundles:
     required: ["source-signature", "sbom-complete"]
     recommended: ["security-audit", "reproducible-build"]
   security:
-    proof: "Container.Bundles.lean"
+    proof: "Container.Bundles.idr"
     hypatia: "scan-ctp-bundles"
 
 gateway:
@@ -832,7 +1108,7 @@ gateway:
     - "Audit logging for write operations"
     - "TLS auto-provisioning"
   security:
-    proof: "Container.Gateway.lean"
+    proof: "Container.Gateway.idr"
     ci_cd: "validate-gatekeeper-policy-on-push"
 
 monitoring:
@@ -845,7 +1121,7 @@ monitoring:
     - "Structured JSON log output"
     - "Automatic restart on failure (configurable)"
   security:
-    proof: "Container.Monitoring.lean"
+    proof: "Container.Monitoring.idr"
 
 signing:
   algorithm: "Ed25519"
@@ -855,7 +1131,7 @@ signing:
     Ed25519 key pair (e.g. <service>-release). Public keys are
     distributed in .gatekeeper.yaml trusted_signers section.
   security:
-    proof: "Container.Signing.lean"
+    proof: "Container.Signing.idr"
     ci_cd: "rotate-signing-keys-on-compromise"
 
 deployment:
@@ -868,8 +1144,46 @@ deployment:
     Requires cryptographic handshake before execution. Supports
     dev/staging/production environments with rolling deployment.
   security:
-    proof: "Container.Deployment.lean"
+    proof: "Container.Deployment.idr"
     ci_cd: "validate-k9-pedigree-on-push"
+
+---
+### [SUPPLY_CHAIN_DEPS]
+overview: |
+  Source-library supply chain. Chainguard covers base images;
+  this section tracks language-level deps.
+zig:
+  mechanism: "build.zig.zon with SHA256 hashes"
+  adoption_status: "ADOPTED where Zig is used"
+idris2:
+  mechanism: ".ipkg with dep version pinning"
+  adoption_status: "PENDING — estate-wide pinning in CRG contractile"
+proven_library:
+  hash_attestation: "{{PROVEN_HASH}}"
+  source: "verification-ecosystem/proven"
+  verification: "libproven_ffi.a rebuilt on source change; downstream relink verified"
+crg_contractile: "tracked under CRG grade requirements — see CRG-SELF-ASSESSMENT.adoc"
+security:
+  proof: "SupplyChain.Deps.idr"
+
+---
+### [HTTP_CAPABILITY_GATEWAY]
+status: "PENDING"
+repo: "web-ecosystem/http-capability-gateway"
+when: "optional frontend, not yet wired"
+pipeline_state: "loader + validator + compiler + gateway + proxy + telemetry all implemented"
+gaps: "security depth (mTLS), end-to-end verification, benchmark formalisation"
+eta: "~1-2mo focused work to BoJ-production-grade"
+wire_on_land: "will slot into tier_2_gateway of rate_limiting architecture and capability_gateway section"
+
+---
+### [PLACEHOLDER_TRACKING]
+overview: |
+  Every {{PLACEHOLDER}} in this file must resolve to a live value before
+  the Trustfile is considered deployed. CI enforces no-placeholder-state
+  on main branch.
+resolution_policy: "CI check fails on any remaining {{...}} in main"
+ci_cd: "enforce-no-placeholders-on-main"
 
 ---
 ### [SIGNATURE_BLOCK]
@@ -880,18 +1194,18 @@ primary:
     BASE64_Ed448+Dilithium5_SIGNATURE_OF_THIS_FILE
     -----END HYBRID SIGNATURE-----
   signedBy: "did:web:github.com:hyperpolymath:boj-server#primary-sig"
-  lean_proof: "Signature.Primary.lean"
+  idris2_proof: "Signature.Primary.idr"
 fallback:
   algorithm: "SPHINCS+"
   signature: |
     -----BEGIN SPHINCS+ SIGNATURE-----
     BASE64_SPHINCS+_SIGNATURE_OF_THIS_FILE
     -----END SPHINCS+ SIGNATURE-----
-  lean_proof: "Signature.Fallback.lean"
+  idris2_proof: "Signature.Fallback.idr"
 
 ---
 ### [DEPLOYMENT]
 1. Replace all `BASE64_*`, `HEX_*`, and `DID_WEB_ID` placeholders.
-2. Generate LEAN4 proofs:
+2. Generate Idris2 proofs:
    ```bash
-   lake build && lake exectest
+   idris2 --build trust.ipkg
