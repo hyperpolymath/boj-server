@@ -5,18 +5,19 @@
 # Architecture decisions, design rationale, governance.
 
 [metadata]
-version = "0.1.0"
-last-updated = "2026-03-02"
+version = "0.2.0"
+last-updated = "2026-04-17"
 
 [project-info]
 type = "service"
-languages = ["idris2", "zig", "v", "scheme", "nickel"]
+languages = ["idris2", "zig", "scheme", "nickel"]
+# v (V-lang) removed: banned estate-wide 2026-04-10. Adapter layer migrated to Zig.
 license = "PMPL-1.0-or-later"
 author = "Jonathan D.A. Jewell (hyperpolymath)"
 
 [architecture-decisions]
 decisions = [
-  { id = "ADR-001", title = "Three-layer stack: Idris2 ABI + Zig FFI + V-lang Adapter", status = "accepted", date = "2026-03-02" },
+  { id = "ADR-001", title = "Three-layer stack: Idris2 ABI + Zig FFI + Zig Adapter (V-lang retired 2026-04-10)", status = "accepted", date = "2026-03-02" },
   { id = "ADR-002", title = "2D matrix: protocol types (cols) x capability domains (rows)", status = "accepted", date = "2026-03-02" },
   { id = "ADR-003", title = "Cartridge metaphor — swappable, verified capability modules", status = "accepted", date = "2026-03-02" },
   { id = "ADR-004", title = "IsUnbreakable proof type — only Ready cartridges can be mounted", status = "accepted", date = "2026-03-02" },
@@ -24,6 +25,7 @@ decisions = [
   { id = "ADR-006", title = "Teranga menu — three-tier A2ML (Core/Shield/Ayo)", status = "accepted", date = "2026-03-02" },
   { id = "ADR-007", title = "Order-ticket protocol — AI reads menu, writes order, BoJ mounts cartridges", status = "accepted", date = "2026-03-02" },
   { id = "ADR-008", title = "Zero believe_me policy — all Idris2 code must be total and sound", status = "accepted", date = "2026-03-02" },
+  { id = "ADR-009", title = "Align BoJ with unified-zig-api stack (future work)", status = "accepted", date = "2026-04-17" },
 ]
 
 [development-practices]
@@ -58,7 +60,7 @@ drift-risk-example = "single exception broadening into policy violation (e.g. Re
 effects-evidence = "benchmark execution/results and maintainer status dialogue/review"
 
 [design-rationale]
-three-layer-stack = "Idris2 proves correctness (ABI), Zig executes at zero cost (FFI), V-lang serves all three API styles (Adapter). Each layer is independently verifiable."
+three-layer-stack = "Idris2 proves correctness (ABI), Zig executes at zero cost (FFI), Zig serves all three API styles (Adapter — V-lang retired 2026-04-10). Each layer is independently verifiable. Long-term target: adapter tier consumes libzig_api from developer-ecosystem/zig-api/."
 matrix-model = "Every cell in the (Protocol x Domain) matrix is a cartridge. Protocols define HOW you talk to a server; domains define WHAT the server does. This separates concerns and enables independent development."
 cultural-naming = "Teranga (Wolof: hospitality), Umoja (Swahili: unity), Ayo (Yoruba: joy) — naming reflects values of hospitality to users, unity across communities, and joy in contribution."
 zero-believe-me = "believe_me is worse than a TODO because it compiles and hides the problem. Zero tolerance ensures all proofs are genuine."

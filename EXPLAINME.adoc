@@ -18,9 +18,9 @@ This is the Model-Controller-Processor pattern: cartridges are pluggable service
 
 **Location**: `mcp-bridge/lib/cartridge-loader.ts` (TypeScript cartridge discovery and initialization)
 
-**How verified**: The cartridge loader scans `cartridges/*/manifest.json`, reads tool schemas from each, and registers them dynamically with the MCP server. README (§Features) claims "50+ open-source cartridges." The loader validates each manifest, checks for required `name`, `version`, `tools` fields, and prevents duplicate tool names. This enables the "unified endpoint" claim: a single MCP server exposes the union of all cartridges' tools without hardcoding each one.
+**How verified**: The cartridge loader scans `cartridges/*/cartridge.json`, reads tool schemas from each, and registers them dynamically with the MCP server. README (§Features) claims "50+ open-source cartridges." The loader validates each manifest, checks for required `name`, `version`, `tools` fields, and prevents duplicate tool names. This enables the "unified endpoint" claim: a single MCP server exposes the union of all cartridges' tools without hardcoding each one.
 
-**Caveat**: Auto-discovery is runtime dynamic; there is no compile-time verification that all cartridge schemas are valid JSON Schema. A malformed manifest will error at MCP startup, not build time.
+**Caveat**: Auto-discovery is runtime dynamic; there is no compile-time verification that all cartridge schemas are valid JSON Schema. A malformed `cartridge.json` will error at MCP startup, not build time. The authoritative manifest format is Nickel (closed decision `boj-cartridge-manifest-format-dd.md`); migration from JSON is future work.
 
 === Claim 2: PanLL Grid Layout Auto-Wiring for Panel Cartridges
 
@@ -69,7 +69,7 @@ This is the Model-Controller-Processor pattern: cartridges are pluggable service
 | `mcp-bridge/lib/tools.js` | MCP tool schema definitions for all cartridge tools
 | `mcp-bridge/lib/logger.js` | Structured JSON logging to stderr
 | `mcp-bridge/lib/version.js` | Single source of truth for server name and version
-| `mcp-bridge/lib/offline-menu.js` | Static cartridge manifest for offline/inspection mode
+| `mcp-bridge/lib/offline-menu.js` | Static cartridge catalogue for offline/inspection mode
 | `cartridges/*/` | 96 cartridge directories, each with abi/, ffi/, adapter/ structure
 | `src/abi/Boj/` | Idris2 ABI definitions (Protocol, Domain, Catalogue, Safety, etc.)
 | `panll/` | ReScript/TEA panel framework for UI workspace layer

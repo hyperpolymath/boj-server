@@ -3,6 +3,34 @@
 
 All notable changes to Bundle of Joy Server are documented here.
 
+## [0.4.0] — 2026-04-17
+
+### Changed
+
+- **V-lang banned estate-wide (2026-04-10)**: Adapter layer language policy updated.
+  V-lang is no longer an accepted cartridge adapter language. Zig is the default
+  replacement for the adapter tier (`ffi/zig/` remains; V adapter files were swept
+  in commit c4674f8). Historical V-lang API interfaces have been moved to
+  `developer-ecosystem/v-ecosystem/v-api-interfaces/v-<name>/` for potential
+  donation to the V community — they are not HP infrastructure.
+- **Cartridge manifests = Nickel** (prior closed decision `boj-cartridge-manifest-format-dd.md`):
+  The authoritative cartridge manifest format is Nickel (`.ncl`). Current on-disk
+  manifests are `cartridge.json`; migration to Nickel is tracked as future work
+  (see open question in ADR-0002).
+- **BoJ-only MCP rule** (standing estate policy): All MCP access to hyperpolymath
+  services MUST route through BoJ. Standalone MCPs outside BoJ are not permitted.
+  Added explicit citation in `docs/FEDERATION.md`.
+- **Unified-zig-api stack alignment** (planned): BoJ will consume
+  `developer-ecosystem/zig-api/` — the unified Idris2 ABI + Zig runtime + C adaptor
+  + proven-backed path safety stack. `UNIFIED-ZIG-API-STACK.adoc` in
+  `developer-ecosystem/` is the canonical reference. BoJ does **not yet** call
+  `libzig_api` in code; alignment is tracked in ADR-0002 as future work.
+  First estate consumers wired on 2026-04-17: lol-gateway (commits dbb475f/26b6b8c),
+  aerie (e0b17f8), emergency-button/emergency-room (4bd070b),
+  proven→zig-api path-safety wiring (6663956), gen-header CI drift check (0d6a814).
+- **ADR-0002 added**: Documents the decision to align BoJ with the unified-zig-api
+  stack, with explicit status of current V-lang adapter retirement and Zig migration.
+
 ## [0.3.0] — 2026-03-20
 
 ### Added

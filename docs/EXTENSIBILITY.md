@@ -59,12 +59,21 @@ and the cartridge behaves exactly as the existing 2D model.
 
 To extend BoJ with a backend-specific cartridge:
 
-### 1. Write an Extension Descriptor (A2ML)
+### 1. Write an Extension Descriptor
 
-Create a `.a2ml` file describing your extension:
+> **Manifest format note (2026-04-17):** The closed decision
+> `boj-cartridge-manifest-format-dd.md` establishes **Nickel** (`.ncl`) as the
+> authoritative cartridge manifest format. Current on-disk manifests are
+> `cartridge.json`. Migration from JSON to Nickel is tracked as future work.
+> Until migration is complete, both formats coexist; the JSON schema at
+> `https://boj.dev/schemas/cartridge/v1.json` remains the operative validator.
+
+Create a manifest file describing your extension (currently `cartridge.json`; Nickel
+`.ncl` is the planned authoritative format):
 
 ```toml
-# my-extension.a2ml — Extension descriptor for BoJ catalogue
+# my-extension.cartridge.json — Extension descriptor for BoJ catalogue
+# (Future: migrate to my-extension.ncl in Nickel format)
 [extension]
 name = "database-mcp-pg"
 version = "0.1.0"

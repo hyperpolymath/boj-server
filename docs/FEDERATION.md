@@ -1,5 +1,13 @@
 # Umoja Federation — Distributed Hosting Model
 
+## BoJ-Only MCP Policy
+
+**Estate-wide standing rule:** All MCP access to hyperpolymath services MUST route
+through BoJ. Standalone MCPs outside BoJ are not permitted. If a capability is
+reachable via MCP, BoJ is the single gateway — there is no "side channel" MCP
+server for the same capability. This policy is enforced at the estate level; the
+Umoja federation model below is how that single gateway distributes across nodes.
+
 ## Philosophy
 
 *Umoja* means **Unity** in Swahili. The Umoja network is a distributed federation of community-hosted BoJ servers. Like Tor or IPFS, it relies on volunteers donating compute time to create shared infrastructure.

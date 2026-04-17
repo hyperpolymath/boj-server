@@ -374,10 +374,27 @@ When modifying the ABI/FFI:
 
 PMPL-1.0-or-later
 
+## Unified-Zig-API Stack
+
+The estate-wide standard for Zig-edge service boundaries is documented in
+`developer-ecosystem/UNIFIED-ZIG-API-STACK.adoc`. The stack provides a
+four-layer hierarchy (proven → Idris2 ABI → Zig runtime → C adaptor) that
+BoJ is aligned with at the design level. Full code-level alignment — linking
+`libzig_api.so` and calling `uapi_*` symbols — is tracked as future work
+(see `docs/decisions/0002-align-unified-zig-api-stack.md`).
+
+Key differences from BoJ's local ABI/FFI today:
+- The unified stack uses `uapi_gnosis_*` for the HTTP server (single-port model).
+  BoJ currently uses per-port Zig adapters (7700/7701/7702).
+- Path safety proofs from `verification-ecosystem/proven/` are wired into the
+  unified stack (commit 6663956); BoJ will adopt these via `libzig_api`.
+- The C header (`zig_api.h`) is auto-generated with a CI drift check (`0d6a814`).
+  BoJ's `generated/abi/boj_server.h` follows the same pattern locally.
+
 ## See Also
 
 - [Idris2 Documentation](https://idris2.readthedocs.io)
 - [Zig Documentation](https://ziglang.org/documentation/master/)
 - [Rhodium Standard Repositories](https://github.com/hyperpolymath/rhodium-standard-repositories)
-- [FFI Migration Guide](../ffi-migration-guide.md)
-- [ABI Migration Guide](../abi-migration-guide.md)
+- [Unified-Zig-API Stack](../../developer-ecosystem/UNIFIED-ZIG-API-STACK.adoc)
+- [ADR-0002: Align BoJ with unified-zig-api stack](decisions/0002-align-unified-zig-api-stack.md)

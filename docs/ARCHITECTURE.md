@@ -45,15 +45,21 @@ Every cartridge follows the same three-layer pattern:
 |-------|----------|---------|
 | **ABI** | Idris2 | Formal proofs, state machines, `%default total`, zero `believe_me` |
 | **FFI** | Zig | C-compatible native execution, zero runtime dependencies |
-| **Adapter** | V-lang | Triple API (REST + gRPC + GraphQL) on dedicated ports |
+| **Adapter** | Zig | Triple API (REST + gRPC + GraphQL) on dedicated ports (see note) |
+
+> **Note (2026-04-10):** V-lang was banned estate-wide on 2026-04-10. The adapter
+> layer previously used V-lang; it has been replaced by Zig (`ffi/zig/` adapters,
+> swept in commit c4674f8). Historical V-lang API interfaces live in
+> `developer-ecosystem/v-ecosystem/v-api-interfaces/` for potential donation to the
+> V community — they are not HP infrastructure. The long-term target for the adapter
+> layer is the **unified-zig-api stack** (`developer-ecosystem/zig-api/`); see
+> [§ Unified-Zig-API Stack](#unified-zig-api-stack) and ADR-0002.
 
 ### Why these languages?
 
 **Idris2** has dependent types that prove interface correctness at compile-time. The `IsUnbreakable` proof type mathematically guarantees that only `Ready` cartridges can be activated. This isn't aspirational — it's enforced by the type checker.
 
-**Zig** provides native C ABI compatibility without runtime overhead. It bridges the gap between Idris2's proofs and actual system calls. Cross-compilation is built-in, which matters for community nodes running on varied hardware.
-
-**V-lang** exposes all three API styles (REST, gRPC, GraphQL) from a single codebase. One port per protocol, one codebase to maintain.
+**Zig** provides native C ABI compatibility without runtime overhead. It bridges the gap between Idris2's proofs and actual system calls. Cross-compilation is built-in, which matters for community nodes running on varied hardware. Zig now covers both the FFI layer and the adapter (HTTP server) layer.
 
 ## The Teranga Menu
 
@@ -71,7 +77,7 @@ AI agents act as the "Maitre D'" — presenting the menu to users, taking their 
 2. AI writes an order ticket (`order-ticket.scm`)
 3. BoJ validates the order against the catalogue (checks `IsUnbreakable`)
 4. BoJ mounts requested cartridges via Zig FFI
-5. V-lang adapter exposes mounted cartridges as REST+gRPC+GraphQL
+5. Zig adapter exposes mounted cartridges as REST+gRPC+GraphQL
 6. AI receives confirmation with endpoints
 
 ## Distributed Hosting (Umoja Network)
@@ -111,7 +117,7 @@ BoJ doesn't start from scratch:
 
 ## Thread Safety
 
-All 9 Zig FFI modules (`database.zig`, `secrets.zig`, `observe.zig`, `fleet.zig`, `nesy.zig`, `federation.zig`, `lsp.zig`, `dap.zig`, `bsp.zig`) use `std.Thread.Mutex` to guarantee safe concurrent access from V-lang HTTP worker threads.
+All 9 Zig FFI modules (`database.zig`, `secrets.zig`, `observe.zig`, `fleet.zig`, `nesy.zig`, `federation.zig`, `lsp.zig`, `dap.zig`, `bsp.zig`) use `std.Thread.Mutex` to guarantee safe concurrent access from the Zig HTTP adapter worker threads.
 
 **Mutex discipline:**
 
@@ -123,18 +129,47 @@ All 9 Zig FFI modules (`database.zig`, `secrets.zig`, `observe.zig`, `fleet.zig`
 
 Some exported functions need to call other exported functions within the same module (e.g. `federation.zig` where a gossip handler invokes node-lookup logic). If both the caller and callee acquire the same mutex, the thread deadlocks on itself. The solution is a two-tier naming convention:
 
-1. `pub export fn boj_federation_*` — acquires the mutex, called only from V-lang / external C code.
+1. `pub export fn boj_federation_*` — acquires the mutex, called only from the Zig adapter / external C code.
 2. `fn federation_*_impl` — mutex-free internal implementation, called by other functions that already hold the lock.
 
 Exported functions delegate to `_impl` helpers, and re-entrant internal call paths use `_impl` directly, so the mutex is acquired exactly once per external call.
 
 **Concurrency model:**
 
-V-lang's HTTP server spawns worker threads that call into Zig FFI concurrently. Because every C-ABI entry point serialises on the module mutex, workers never observe torn or partially-updated state. The cost is per-module serialisation, which is acceptable at current scale; future work may introduce per-resource fine-grained locks if profiling warrants it.
+The Zig HTTP adapter spawns worker threads that call into the Zig FFI concurrently. Because every C-ABI entry point serialises on the module mutex, workers never observe torn or partially-updated state. The cost is per-module serialisation, which is acceptable at current scale; future work may introduce per-resource fine-grained locks if profiling warrants it.
 
 **panic-attack validation:**
 
 The panic-attack security scanner validated the thread-safety model across all 9 modules. Results: 1 expected weak point (QUIC crypto — inherent to the protocol's 0-RTT replay window, mitigated at the application layer), 0 critical vulnerabilities.
+
+## Unified-Zig-API Stack
+
+The estate standard for all Zig-edge service boundaries is the **unified-zig-api
+stack** documented in `developer-ecosystem/UNIFIED-ZIG-API-STACK.adoc`. It provides
+four vertically-stacked layers:
+
+| Layer | Location | Description |
+|-------|----------|-------------|
+| Idris2 core (proven) | `verification-ecosystem/proven/` | 104 formally verified primitives, `%default total`, zero `believe_me` |
+| Idris2 ABI | `developer-ecosystem/zig-api/src/ZigApi/ABI/` | Dependent-type proofs of the C ABI surface |
+| Zig runtime | `developer-ecosystem/zig-api/ffi/zig/src/` | `uapi_*` symbol set; gnosis HTTP server + connector pool |
+| C adaptor | `developer-ecosystem/zig-api/generated/abi/zig_api.h` | Auto-generated; never edit by hand |
+
+**BoJ alignment status (2026-04-17):** BoJ does **not yet** consume `libzig_api`
+in code. The cartridge ABI + FFI layers (Idris2 + Zig) are BoJ-local today.
+Full alignment — calling `uapi_gnosis_*` from the BoJ adapter and linking
+`libzig_api.so` — is tracked in ADR-0002 as future work. First estate consumers
+wired on 2026-04-17: lol-gateway, aerie, emergency-button/emergency-room.
+
+The `uapi_gnosis_set_handler` pattern (single-port handler dispatch) is in flight
+as of this version; BoJ will adopt it once stabilised upstream.
+
+**Open question:** When BoJ adopts `uapi_gnosis_*`, the per-port V-legacy adapter
+pattern (ports 7700/7701/7702) will consolidate to a single-port gnosis server.
+Port assignments are documented in `docs/API-CONTRACT.md` and are stable until
+a major version bump. Track progress in ADR-0002.
+
+See `developer-ecosystem/UNIFIED-ZIG-API-STACK.adoc` for the canonical wiring guide.
 
 ## License
 
