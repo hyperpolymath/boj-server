@@ -1168,13 +1168,17 @@ security:
 
 ---
 ### [HTTP_CAPABILITY_GATEWAY]
-status: "PENDING"
+status: "ACCEPTED-PLANNED"
 repo: "web-ecosystem/http-capability-gateway"
-when: "optional frontend, not yet wired"
+when: "optional frontend, not yet wired — wiring planned over 8-12 weeks"
 pipeline_state: "loader + validator + compiler + gateway + proxy + telemetry all implemented"
-gaps: "security depth (mTLS), end-to-end verification, benchmark formalisation"
-eta: "~1-2mo focused work to BoJ-production-grade"
-wire_on_land: "will slot into tier_2_gateway of rate_limiting architecture and capability_gateway section"
+gaps: "security depth (mTLS primary path not proved), end-to-end verification, benchmark formalisation"
+eta: "~8-12 weeks to BoJ-production-grade (Phase A-E, see plan)"
+wire_on_land: "tier_2_gateway of rate_limiting architecture and capability_gateway section"
+audit: "docs/integration/http-capability-gateway-audit.md"
+plan: "docs/integration/http-capability-gateway-plan.md"
+adr: "docs/decisions/0004-adopt-http-capability-gateway.md"
+scoped_date: "2026-04-17"
 
 ---
 ### [PLACEHOLDER_TRACKING]
