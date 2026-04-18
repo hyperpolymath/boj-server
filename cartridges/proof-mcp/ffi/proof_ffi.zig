@@ -226,6 +226,45 @@ pub export fn boj_cartridge_version() [*:0]const u8 {
 }
 
 // ═══════════════════════════════════════════════════════════════════════
+// ADR-0006 dispatch (boj_cartridge_invoke, 5th standard symbol)
+// ═══════════════════════════════════════════════════════════════════════
+
+const shim = @import("cartridge_shim");
+
+/// Dispatch the cartridge.json MCP tools. Grade D Alpha — each arm
+/// returns a stub JSON body shaped to the tool's intended response.
+export fn boj_cartridge_invoke(
+    tool_name: [*c]const u8,
+    json_args: [*c]const u8,
+    out_buf: [*c]u8,
+    in_out_len: [*c]usize,
+) callconv(.c) i32 {
+    _ = json_args;
+    if (shim.invokeArgsNull(tool_name, out_buf, in_out_len)) return shim.RC_BAD_ARGS;
+
+    const body: []const u8 =     if (shim.toolIs(tool_name, "proof_init_session"))
+        "{\"result\":{\"status\":\"stub\"}}"
+    else if (shim.toolIs(tool_name, "proof_load_obligation"))
+        "{\"result\":{\"status\":\"stub\"}}"
+    else if (shim.toolIs(tool_name, "proof_verify"))
+        "{\"result\":{\"status\":\"stub\"}}"
+    else if (shim.toolIs(tool_name, "proof_get_result"))
+        "{\"result\":{\"metadata\":{},\"status\":\"stub\"}}"
+    else if (shim.toolIs(tool_name, "proof_get_state"))
+        "{\"result\":{\"metadata\":{},\"status\":\"stub\"}}"
+    else if (shim.toolIs(tool_name, "proof_reset_session"))
+        "{\"result\":{\"status\":\"stub\"}}"
+    else if (shim.toolIs(tool_name, "proof_release_session"))
+        "{\"result\":{\"status\":\"stub\"}}"
+    else if (shim.toolIs(tool_name, "proof_can_transition"))
+        "{\"result\":{\"status\":\"stub\"}}"
+else
+    return shim.RC_UNKNOWN_TOOL;
+
+    return shim.writeResult(out_buf, in_out_len, body);
+}
+
+// ═══════════════════════════════════════════════════════════════════════
 // Tests
 // ═══════════════════════════════════════════════════════════════════════
 
@@ -315,4 +354,43 @@ test "max sessions enforced" {
     // Free one and retry
     _ = proof_release(slots[0]);
     try std.testing.expect(proof_init(@intFromEnum(ProofBackend.idris2)) >= 0);
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// ADR-0006 invoke dispatch tests
+// ═══════════════════════════════════════════════════════════════════════
+
+test "invoke: each declared tool succeeds" {
+    var buf: [256]u8 = undefined;
+    const tools = [_][]const u8{
+        "proof_init_session",
+        "proof_load_obligation",
+        "proof_verify",
+        "proof_get_result",
+        "proof_get_state",
+        "proof_reset_session",
+        "proof_release_session",
+        "proof_can_transition",
+    };
+    for (tools) |t| {
+        var len: usize = buf.len;
+        const rc = boj_cartridge_invoke(t.ptr, "{}", &buf, &len);
+        try std.testing.expectEqual(@as(i32, 0), rc);
+        try std.testing.expect(std.mem.indexOf(u8, buf[0..len], "result") != null);
+    }
+}
+
+test "invoke: unknown tool returns -1" {
+    var buf: [64]u8 = undefined;
+    var len: usize = buf.len;
+    const rc = boj_cartridge_invoke("nope", "{}", &buf, &len);
+    try std.testing.expectEqual(@as(i32, -1), rc);
+}
+
+test "invoke: buffer too small returns -3" {
+    var buf: [4]u8 = undefined;
+    var len: usize = buf.len;
+    const rc = boj_cartridge_invoke("proof_init_session", "{}", &buf, &len);
+    try std.testing.expectEqual(@as(i32, -3), rc);
+    try std.testing.expect(len > 4);
 }

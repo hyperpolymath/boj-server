@@ -9,11 +9,25 @@ pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
 
+    // Shared ADR-0006 invoke-shim module (relative path up to boj-server trunk).
+
+    const shim_mod = b.addModule("cartridge_shim", .{
+
+        .root_source_file = b.path("../../../ffi/zig/src/cartridge_shim.zig"),
+
+        .target = target,
+
+        .optimize = optimize,
+
+    });
+
     const queue_mod = b.addModule("queues_ffi", .{
         .root_source_file = b.path("queues_ffi.zig"),
         .target = target,
         .optimize = optimize,
     });
+
+    queue_mod.addImport("cartridge_shim", shim_mod);
 
     // ── Tests ────────────────────────────────────────────────────────
     const queue_tests = b.addTest(.{
