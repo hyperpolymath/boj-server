@@ -1,0 +1,135 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+// Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+= BoJ Server Dogfood Log
+Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+:toc: left
+:toclevels: 2
+:sectlinks:
+
+== Purpose
+
+This file is the **dated evidence surface** for BoJ Server dogfooding. It exists
+so that claims about "this has been used on real work" are backed by a log
+entry a reviewer can read, rather than by self-report in release notes or
+`STATE.a2ml`.
+
+It is the authoritative source for the "active dogfooding with no known
+home-context failures" evidence that CRG v2.0 requires for D → C promotion
+(see `docs/READINESS.md` §4).
+
+== Scope
+
+An entry belongs in this log if, and only if:
+
+. A BoJ Server component (cartridge, bridge, federation, panel, CLI, or the
+  server itself) was **exercised on real work** — not merely a test run.
+. The exercise was performed in the **home context** (hyperpolymath estate).
+. A **dated, factual** note is recorded: date, component, what was done, what
+  succeeded, what broke, and what was done about any breakage.
+
+**Exclusions.** Aspirational notes ("we intend to use X this week") do not
+belong here. Test-suite runs do not belong here either — they are reported
+under `STATE.a2ml` §quality. This log is about using the thing, not testing
+it.
+
+== Entry Format
+
+Each entry is a third-level section dated in ISO-8601:
+
+[source,asciidoc]
+----
+=== 2026-MM-DD — <short title>
+
+Component:: <component(s) exercised>
+Context:: <what the work was>
+Outcome:: <what succeeded, in specific terms>
+Failures:: <what broke, with verbatim errors where possible; "none observed" if so>
+Remediation:: <what was done about each failure; "n/a" if no failures>
+Witness:: <who ran it — name, or "CI" / "agent" / "cron">
+----
+
+Entries are append-only. If a subsequent entry supersedes a prior claim (e.g.
+a reported failure turned out to be an invoker error), write a new dated entry
+that explicitly references the previous one; do not rewrite history.
+
+== Log
+
+=== 2026-04-18 — Inaugural entry: documentation audit and CRG v2.0 alignment
+
+Component:: Documentation corpus (`cartridges/*/README.adoc`,
+            `docs/READINESS.md`, `docs/practice/DOGFOOD-LOG.adoc`).
+
+Context:: Three-item C-grade-blocker sweep:
+          (1) 46 cartridges lacking `README.adoc` were generated from their
+          `cartridge.json` metadata, bringing coverage to **100/100** (99
+          standard cartridges + `model-router-mcp` as a non-standard
+          exception). Generator logic lives in a one-shot shell script driven
+          by `jq`, reading `cartridge.json` fields (`name`, `description`,
+          `domain`, `tier`, `protocols`, `auth`, `tools`) and detecting the
+          `abi/` / `adapter/` directory layout to pick the correct
+          architecture template. `model-router-mcp` was written by hand
+          because it has no `cartridge.json` — tool list is inline in
+          `src/router.js`.
+          (2) `docs/READINESS.md` was rewritten from CRG v1.0 (dated
+          2026-03-09) to CRG v2.0 (dated 2026-04-18). New schema adds
+          stability posture per component, promotion blockers, honest D-wide
+          rating (no component cleared C under the stricter rubric), and the
+          machine-readable grade declaration line required by
+          `just crg-grade` / `just crg-badge`.
+          (3) This log was inaugurated.
+
+Outcome::
+* 46 new `README.adoc` files written under `cartridges/*/README.adoc`,
+  following the pattern established by `airtable-mcp/README.adoc` and
+  `affinescript-mcp/README.adoc`. Each new README states overview,
+  authentication (where applicable), tool table with descriptions,
+  architecture layer table (ABI/Idris2, FFI/Zig, Adapter/Zig — with V-lang
+  predecessors sidelined), build steps, and honest status line.
+* Cartridge fleet count confirmed at 99 standard + 1 non-standard
+  (`model-router-mcp`), matching the 2026-04-12 V-sweep checkpoint in
+  `MEMORY.md` under `project-status.md`.
+* Adapter audit confirmed all cartridge adapters are now Zig; historical
+  V-lang adapter files survive alongside as `SIDELINED-*.v.adoc`.
+* `READINESS.md` now exposes the promotion-path blockers per component
+  (previously absent) and the six-target diversity criteria for B
+  (previously unspecified).
+
+Failures::
+* **None observed in the audit work itself.**
+* Honest caveat: this session did **not** exercise any BoJ cartridge or the
+  server runtime. The work was performed via the AI assistant's generic file
+  tools (Read/Write/Bash) rather than routed through, e.g., `reposystem-mcp`,
+  `git-mcp`, or the MCP bridge. That is a finding, not a failure: the server
+  is not yet in the author's daily-work critical path for the exact kind of
+  bulk documentation sweep it should eventually enable. Future entries should
+  record actual BoJ-routed executions, not external edits to the BoJ
+  repository.
+* Count reconciliation: `STATE.a2ml §quality` records
+  `cartridges-total = 92` and `cartridge-shared-libs = 96`; the
+  filesystem shows 100 directories under `cartridges/`. The true live count
+  is 99 standard + 1 non-standard. `STATE.a2ml` is stale on this field and
+  should be updated in a follow-up session.
+
+Remediation::
+* Stale `STATE.a2ml` cartridge counters: flagged for a separate commit.
+* Deep per-cartridge annotation (inside `abi/`, `ffi/`, `adapter/` per
+  cartridge) is still outstanding and remains the concrete D → C gate on the
+  cartridge fleet.
+
+Witness:: Jonathan D.A. Jewell (via AI-assisted session, Claude Opus 4.7).
+
+== Maintenance
+
+Each calendar month, the current maintainer SHOULD:
+
+. Scan this log for entries whose `Failures` field names an unresolved
+  breakage, and confirm that either the remediation landed or the breakage
+  still stands (and an issue exists for it).
+. Re-check `docs/READINESS.md` grades against the last 4 weeks of this log.
+  A component claimed at C-or-above with no dogfood entry in the window is
+  a candidate for demotion (CRG v2.0 §7.2).
+. If the log grows past ~500 lines, rotate oldest-year entries into
+  `docs/practice/DOGFOOD-LOG-archive/YYYY.adoc` with a single summary line
+  remaining here.
+
+This log is the evidence floor. No grade above D is honest without it.
