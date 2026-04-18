@@ -187,6 +187,40 @@ pub export fn boj_cartridge_version() [*:0]const u8 {
 }
 
 // ═══════════════════════════════════════════════════════════════════════
+// ADR-0006 dispatch (boj_cartridge_invoke, 5th standard symbol)
+// ═══════════════════════════════════════════════════════════════════════
+
+const shim = @import("cartridge_shim");
+
+/// Dispatch the 4 cartridge.json MCP tools. Grade D Alpha — each arm
+/// returns a stub JSON body that reflects the tool's intended shape.
+/// `json_args` is ignored here; providers that need args (e.g. the
+/// `provider` discriminator in `ml_authenticate`) parse them in a
+/// follow-up migration once dispatch is wired end-to-end.
+export fn boj_cartridge_invoke(
+    tool_name: [*c]const u8,
+    json_args: [*c]const u8,
+    out_buf: [*c]u8,
+    in_out_len: [*c]usize,
+) callconv(.c) i32 {
+    _ = json_args;
+    if (shim.invokeArgsNull(tool_name, out_buf, in_out_len)) return shim.RC_BAD_ARGS;
+
+    const body: []const u8 = if (shim.toolIs(tool_name, "ml_authenticate"))
+        "{\"result\":{\"session_id\":0,\"status\":\"stub\",\"note\":\"Grade D Alpha\"}}"
+    else if (shim.toolIs(tool_name, "ml_inference"))
+        "{\"result\":{\"output\":\"\",\"status\":\"stub\",\"note\":\"Grade D Alpha\"}}"
+    else if (shim.toolIs(tool_name, "ml_list_models"))
+        "{\"result\":{\"models\":[],\"status\":\"stub\",\"note\":\"Grade D Alpha\"}}"
+    else if (shim.toolIs(tool_name, "ml_get_model_info"))
+        "{\"result\":{\"metadata\":{},\"status\":\"stub\",\"note\":\"Grade D Alpha\"}}"
+    else
+        return shim.RC_UNKNOWN_TOOL;
+
+    return shim.writeResult(out_buf, in_out_len, body);
+}
+
+// ═══════════════════════════════════════════════════════════════════════
 // Hugging Face Provider (provider code 1)
 // Grade D Alpha — stub implementations
 // Real API: https://huggingface.co/api/{endpoint}
@@ -445,6 +479,57 @@ test "huggingface datasets" {
     len = ml_hf_read_result(slot, &buf, buf.len);
     try std.testing.expect(std.mem.indexOf(u8, buf[0..@intCast(len)], "\"endpoint\":\"datasets/{dataset_id}\"") != null);
     _ = ml_logout(slot);
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// ADR-0006 invoke dispatch tests
+// ═══════════════════════════════════════════════════════════════════════
+
+test "invoke: ml_authenticate returns session_id stub" {
+    var buf: [256]u8 = undefined;
+    var len: usize = buf.len;
+    const rc = boj_cartridge_invoke("ml_authenticate", "{}", &buf, &len);
+    try std.testing.expectEqual(@as(i32, 0), rc);
+    try std.testing.expect(std.mem.indexOf(u8, buf[0..len], "session_id") != null);
+}
+
+test "invoke: ml_inference returns output stub" {
+    var buf: [256]u8 = undefined;
+    var len: usize = buf.len;
+    const rc = boj_cartridge_invoke("ml_inference", "{}", &buf, &len);
+    try std.testing.expectEqual(@as(i32, 0), rc);
+    try std.testing.expect(std.mem.indexOf(u8, buf[0..len], "output") != null);
+}
+
+test "invoke: ml_list_models returns models array" {
+    var buf: [256]u8 = undefined;
+    var len: usize = buf.len;
+    const rc = boj_cartridge_invoke("ml_list_models", "{}", &buf, &len);
+    try std.testing.expectEqual(@as(i32, 0), rc);
+    try std.testing.expect(std.mem.indexOf(u8, buf[0..len], "models") != null);
+}
+
+test "invoke: ml_get_model_info returns metadata" {
+    var buf: [256]u8 = undefined;
+    var len: usize = buf.len;
+    const rc = boj_cartridge_invoke("ml_get_model_info", "{}", &buf, &len);
+    try std.testing.expectEqual(@as(i32, 0), rc);
+    try std.testing.expect(std.mem.indexOf(u8, buf[0..len], "metadata") != null);
+}
+
+test "invoke: unknown tool returns -1" {
+    var buf: [256]u8 = undefined;
+    var len: usize = buf.len;
+    const rc = boj_cartridge_invoke("not_a_tool", "{}", &buf, &len);
+    try std.testing.expectEqual(@as(i32, -1), rc);
+}
+
+test "invoke: buffer too small returns -3 and sets required length" {
+    var buf: [4]u8 = undefined;
+    var len: usize = buf.len;
+    const rc = boj_cartridge_invoke("ml_authenticate", "{}", &buf, &len);
+    try std.testing.expectEqual(@as(i32, -3), rc);
+    try std.testing.expect(len > 4);
 }
 
 test "huggingface wrong-provider rejection" {

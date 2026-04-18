@@ -282,6 +282,21 @@ pub fn build(b: *std.Build) void {
     const seams_step = b.step("seams", "Run integration seam checks (panic-attack style)");
     seams_step.dependOn(&run_seams_tests.step);
 
+    // --- Cartridge shim tests (ADR-0006 helpers) ---
+    const shim_mod = b.addModule("boj_cartridge_shim", .{
+        .root_source_file = b.path("src/cartridge_shim.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+
+    const shim_tests = b.addTest(.{
+        .root_module = shim_mod,
+    });
+    const run_shim_tests = b.addRunArtifact(shim_tests);
+
+    const shim_step = b.step("shim", "Run cartridge_shim tests (ADR-0006 invoke helpers)");
+    shim_step.dependOn(&run_shim_tests.step);
+
     // --- End-to-end order-ticket tests ---
     const e2e_mod = b.addModule("boj_e2e_order", .{
         .root_source_file = b.path("src/e2e_order.zig"),
@@ -312,4 +327,5 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&run_community_tests.step);
     test_step.dependOn(&run_sdp_tests.step);
     test_step.dependOn(&run_seams_tests.step);
+    test_step.dependOn(&run_shim_tests.step);
 }
