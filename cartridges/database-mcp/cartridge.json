@@ -44,7 +44,7 @@
     },
     {
       "name": "database_query",
-      "description": "Execute a SQL or VQL query.",
+      "description": "Execute a SQL or VCL query.",
       "inputSchema": {
         "type": "object",
         "properties": {
@@ -54,7 +54,7 @@
           },
           "query": {
             "type": "string",
-            "description": "SQL or VQL query string"
+            "description": "SQL or VCL query string"
           },
           "params": {
             "type": "string",

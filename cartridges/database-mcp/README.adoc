@@ -18,7 +18,7 @@ Universal database gateway. Connects to PostgreSQL, SQLite, VeriSimDB, QuandleDB
 | Tool | Description
 
 | `database_connect` | Connect to a database backend. Returns a session slot index.
-| `database_query` | Execute a SQL or VQL query.
+| `database_query` | Execute a SQL or VCL query.
 | `database_execute` | Execute a non-returning SQL statement (INSERT/UPDATE/DELETE/DDL).
 | `database_list_tables` | List tables/collections in the connected database.
 | `database_describe` | Describe a table or collection schema.
