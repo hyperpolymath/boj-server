@@ -1,0 +1,261 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+// Copyright (c) 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+
+= BoJ Server — CRG Audit (2026-04-18)
+Jonathan D.A. Jewell
+2026-04-18
+:toc:
+:sectnums:
+
+== Scope and Standard
+
+Evaluates the Bundle of Joy Server repository against
+*Component Readiness Grades v2.0 (STRICT)*, 2026-03-30 revision.
+
+- Standard: `standards/component-readiness-grades/COMPONENT-READINESS-GRADES.md`
+- Template: `rsr-template-repo/docs/governance/CRG-CRITERIA.adoc`
+- Self-declared grade (prior art):
+  * `.machine_readable/6a2/STATE.a2ml` → `grade = "D-alpha"`
+  * `docs/READINESS.md` (v1.0, 2026-03-09) → `D` for 29 components, `X` for Teranga menu
+- Glama third-party badge: AAA (Security A, License A, Quality A), overall D.
+
+The audit grades the repo *as-is today*, not aspirationally.
+
+== v2.0 Strictness Recap
+
+[cols="1,3,4"]
+|===
+| Grade | Release Stage | Hard Requirement (v2.0)
+
+| X | None             | Untested.
+| F | Reject           | Harmful, wasteful, or superseded.
+| E | Pre-alpha        | >=1 test, failures documented.
+| D | Alpha            | Test matrix + scope documented + *RSR compliance mandatory*.
+| C | Alpha-stable     | Dogfooded, CI green, *deep per-file + per-directory annotation*.
+| B | Beta             | 6+ *diverse* external targets, issues fed back.
+| A | Stable           | Real-world external feedback confirms value; no harm.
+|===
+
+Publication requires B+. Long alpha is discipline, not shame.
+
+== Evidence Inventory (verified 2026-04-18)
+
+=== Structural compliance
+
+[cols="2,1,3"]
+|===
+| Item | State | Source
+
+| RSR mandatory workflows (17+)
+| PRESENT (23 workflows in `.github/workflows/`)
+| `.github/workflows/`
+
+| `.machine_readable/6a2/` canonical A2ML
+| PRESENT (STATE, META, ECOSYSTEM, AGENTIC, NEUROSYM, PLAYBOOK)
+| Layout matches CLAUDE.md invariant
+
+| `0-AI-MANIFEST.a2ml`
+| PRESENT
+| Root
+
+| `docs/EXPLAINME.adoc`, `docs/READINESS.md`, `docs/RSR_OUTLINE.adoc`
+| PRESENT
+| `docs/`
+
+| `guix.scm` + `flake.nix`
+| PRESENT (primary + fallback)
+| Root
+
+| `.well-known/` (security.txt, ai.txt, humans.txt)
+| PRESENT
+| Per RSR_OUTLINE.adoc
+
+| SPDX headers on source
+| PRESENT on sampled files; `PMPL-1.0-or-later` declared
+| `LICENSE`, `LICENSE-MPL-2.0` fallback text
+
+| `Containerfile` (not `Dockerfile`)
+| PRESENT (root + `container/Containerfile`)
+| Container policy met
+
+| Contractile trident
+| PRESENT (`INTENT.contractile`, `TRUST.contractile`, `MUST.contractile`, `ADJUST.contractile`, `contractiles/` subtree)
+| `.machine_readable/`
+
+| Remote
+| `git@github.com:hyperpolymath/boj-server.git` (origin only)
+| `git remote -v`
+|===
+
+RSR compliance: *met* — satisfies Grade D floor.
+
+=== Code and proofs
+
+[cols="2,1,3"]
+|===
+| Item | Count | Notes
+
+| Idris2 ABI modules (`src/abi/Boj/*.idr`)
+| 15 files, 3,025 LOC
+| Includes `CredentialIsolation.idr` (BJ2 isolation, typechecks green).
+
+| Zig FFI modules (`ffi/zig/src/*.zig`)
+| 14 files, 10,149 LOC
+| Core engine — `catalogue.zig` 766, `federation.zig` 3,171, `guardian.zig` 956.
+
+| Cartridges
+| 99 directories, each with `cartridge.json` + `mod.js` + Zig adapter
+| V-lang sweep complete 2026-04-12.
+
+| Axiomatic `believe_me` sites
+| 4 irreducible
+| `SafetyLemmas.idr` (`charEqSound`, `charEqSym`, `unpackLength`) + `SafeAPIKey.idr` (`logSafeBounded`). Documented backend primitives — *not* proof debt.
+
+| Non-axiomatic `believe_me`
+| 0
+| 31->4 sweep closed 2026-04-12 (`fromLteTrue` pattern in `SafetyLemmas.idr`).
+
+| Dangerous-pattern scan (`assert_total`, `Admitted`, `sorry`, `unsafeCoerce`, `Obj.magic`)
+| 0 in ABI
+| Grepped 2026-04-18.
+|===
+
+=== Test matrix (from STATE.a2ml, not re-run here)
+
+- `total-tests = 365` (307 legacy + 58 MCP bridge suite added 2026-04-04).
+- Core Zig FFI: 178. Cartridge FFI: 113. Federation: 40.
+  Coprocessor: 14. SLA: 11. Community: 11. SDP: 10. Guardian: 12.
+  Readiness: 28. VeriSimDB: 7. Seams: 15. Multinode: 11. E2E: 13.
+- MCP bridge (Deno): smoke 8, E2E 10, P2P 14, aspect/security 17, benchmark 10.
+- CI: `.github/workflows/zig-test.yml` runs on push.
+
+=== Annotation depth
+
+- Per-directory orientation docs: `docs/architecture/` (9 files), `docs/decisions/`
+  (4 ADRs + README), `docs/integration/`, `docs/specification/`, `docs/wiki/` (5 pages).
+- Per-cartridge README coverage: *53 of 99* (~54%). **46 cartridges lack `README`** —
+  this is the biggest annotation gap.
+- Idris2 modules: inline ASCII-doc headers present on sampled files (e.g.,
+  `SafetyLemmas.idr` documents its three axiomatic primitives).
+- Zig modules: per-module purpose comments; no per-module standalone READMEs.
+
+=== Dogfooding / home-stable evidence
+
+From `STATE.a2ml` `[dogfooding-status]`:
+
+- `verisimdb` — database-mcp e2e on 8180 (octad CRUD, VCL, drift). DONE.
+- `ssg` — ssg-mcp builds Zola sites end-to-end. DONE.
+- `container` — container-mcp state machine + Stapeln proxy. DONE.
+- `feedback` — feedback-mcp cartridge (ABI+FFI+Adapter+.so). DONE.
+- `panll-panel` — Boj.res panel, 5 tabs, cartridge matrix. DONE (in PanLL repo).
+- `panll-routing` — `bojRouting` toggle on 10 PanLL panels. DONE.
+- LIVE deployment: `boj-server.net` (VPS 209.42.26.106), four ports healthy.
+
+=== External validation
+
+- Awesome-list PRs merged: `C-BJ/awesome-zig` #87, `vlang/awesome-v` #265.
+  *These are catalogue listings, not dogfooders.*
+- Glama MCP directory: listed, AAA badge — *third-party automated assessment,
+  not external usage*.
+- Seed nodes: configured (4-continent in `STATE.a2ml`), *not deployed*.
+- Real external users: *no documented evidence*.
+
+== Grade x Evidence Matrix
+
+[cols="1,1,3,3"]
+|===
+| Grade | Met? | Evidence supporting | Evidence against / gaps
+
+| X
+| n/a
+| Tests exist -> not X
+| —
+
+| F
+| n/a
+| Not superseded (BoJ replaces polystack, not the inverse); no harm signal
+| —
+
+| E
+| ✓
+| Many tests exist; failures documented where relevant
+| —
+
+| D
+| ✓ *clear pass*
+| All RSR structural requirements met; 365 tests; 18 cartridges compiled; scope documented in `STATE.a2ml`, `TOPOLOGY.md`, `ROADMAP.adoc`
+| None blocking — D floor is solidly cleared.
+
+| C
+| ✗ *close but blocked*
+| Home-stable (LIVE, 4 ports healthy); CI green; core dogfood demonstrated across 6 capability lines; deep annotation present for ABI/FFI core and architecture docs.
+| *46 of 99 cartridges lack README* — fails "deep per-file annotation" clause. `READINESS.md` still on v1.0 grade schema (2026-03-09), not aligned with v2.0 strictness. No per-directory orientation README in several subtrees (`cartridges/`, `.machine_readable/`, `ffi/zig/src/`). No written dogfood-sweep log.
+
+| B
+| ✗
+| —
+| No external targets. No real-world users. No issues-fed-back pipeline. The six Grade-B line items in `STATE.a2ml` (QUIC, multinode, coprocessor, podman-secure, api-contract, configurable-ports) are *internal* infrastructure items, not the 6 diverse external targets v2.0 requires.
+
+| A
+| ✗
+| —
+| No field signal of external confirmation.
+|===
+
+== Verdict
+
+*Current CRG grade: **D (Alpha)**.*
+
+This matches the self-declared `grade = "D-alpha"` in `STATE.a2ml` and the
+2026-03-09 `READINESS.md` assessment. v2.0 strictness does *not* change the
+outcome: the repo is firmly a solid D, with the C boundary within session-tractable
+reach but genuinely unmet today.
+
+The D grade is earned, not conservative-by-default:
+
+- All 17 RSR mandatory workflows are present and active.
+- 365 tests across core / cartridge FFI / federation / MCP bridge suites.
+- Formal verification posture is strong (0 non-axiomatic `believe_me`, 4
+  documented axiomatic primitives, `IsUnbreakable` proof type at the ABI layer,
+  BJ2 credential-isolation module typechecks green).
+- LIVE deployment is healthy on `boj-server.net`.
+
+What blocks *immediate* promotion to C:
+
+1. 46 of 99 cartridges lack `README.{adoc,md}` — "deep per-file annotation"
+   clause fails.
+2. `docs/READINESS.md` is on the v1.0 schema from 2026-03-09 and does not
+   reflect v2.0 strictness, the 4-believe_me sweep, BJ2 closure, MCP bridge
+   tests, or the v-sweep cartridge count (99). A stale readiness doc is itself
+   an annotation defect.
+3. No per-directory orientation README for `cartridges/`,
+   `.machine_readable/`, `ffi/zig/src/` — v2.0 wants "per-directory
+   orientation", not just top-level architecture docs.
+
+What blocks promotion to B (even after C is met):
+
+1. *No* external targets documented. The six Grade-B line items enumerated in
+   `STATE.a2ml [grade-b-status]` are internal capabilities; v2.0 requires
+   *external targets*, which are a different category entirely.
+2. No recruited external dogfooders, no feedback pipeline, no issues-fed-back
+   evidence.
+
+== Notes on Non-Negotiables Respected by this Audit
+
+- Four irreducible `believe_me` axioms in `src/abi/Boj/SafetyLemmas.idr` and
+  `src/abi/Boj/SafeAPIKey.idr` are *not* listed as proof debt. They are named
+  backend primitives, documented in file headers, and correct per design.
+- BJ2 credential isolation (`src/abi/Boj/CredentialIsolation.idr`) is considered
+  closed; no action is proposed against it.
+- Irreducible `january-key` / `januskey` items (per user standing rule) are
+  *not touched*.
+
+== Related Files
+
+- `docs/READINESS.md` — v1.0 component-by-component table (2026-03-09). Due for
+  v2.0 refresh.
+- `.machine_readable/6a2/STATE.a2ml` — authoritative self-declared state.
+- `docs/governance/CRG-LIFT-PLAN-2026-04-18.adoc` — companion plan for D->C (and
+  medium-term C->B).
+
+_End of audit._

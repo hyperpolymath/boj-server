@@ -1,0 +1,238 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+// Copyright (c) 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+
+= BoJ Server — CRG Lift Plan (2026-04-18)
+Jonathan D.A. Jewell
+2026-04-18
+:toc:
+:sectnums:
+
+== Companion Document
+
+Read `docs/governance/CRG-AUDIT-2026-04-18.adoc` first. This plan acts on its
+findings. No implementation is performed in the session that drafts this plan.
+
+== Current -> Target
+
+- *Current:* D (Alpha). Solidly earned. Not aspirational.
+- *Immediate target:* C (Alpha-stable, Self-Validated).
+- *Medium-term target:* B (Beta, Broadly Validated).
+
+v2.0 forbids publication below B. BoJ's external-facing materials (Show HN
+post, arXiv draft, blog post drafts in `docs/outreach/`, `docs/papers/`) are
+*blocked* on reaching B before non-abstract publication.
+
+== Tractability Legend
+
+- *S* — session-tractable (hours). One or two focused sessions closes it.
+- *M* — multi-session (days–small weeks). Within author control.
+- *L* — calendar-slow (weeks–months). Depends on external humans, not
+  author effort.
+
+== Phase 1 — D to C (self-validation and annotation)
+
+=== 1.1 Annotation coverage (blocks C directly)
+
+[cols="1,4,1,4"]
+|===
+| ID | Work item | Effort | Notes
+
+| 1.1.a
+| Add `README.adoc` to each of the 46 cartridges currently lacking one.
+Minimum content per README: purpose, protocols exposed, tools surfaced,
+backend(s) targeted, state-machine summary, invariants enforced, link to
+cartridge panel (if any). Template: use an existing high-quality cartridge
+README (e.g. `cartridges/local-coord-mcp/LOCAL-COORD-MCP-REPORT.adoc`) as a
+pattern, scaled down.
+| S-M
+| Can be scripted as a templated sweep + per-cartridge customisation pass.
+The 46 missing cartridges are enumerated in the audit evidence section.
+
+| 1.1.b
+| Add per-directory orientation README to `cartridges/`,
+`.machine_readable/`, `ffi/zig/src/`, `src/abi/Boj/`. One short README each
+("what lives here, how the pieces compose, invariants"). v2.0 wants per-directory
+orientation, not just top-level architecture docs.
+| S
+| ~1-2 pages each. 4 new READMEs.
+
+| 1.1.c
+| Refresh `docs/READINESS.md` to v2.0 schema: current cartridge count (99),
+new test totals (365), closed BJ2 credential-isolation module, four
+documented axiomatic `believe_me`, MCP bridge tests, LIVE deployment state.
+Replace v1.0 grade column wording with v2.0 definitions.
+| S
+| Existing READINESS is frozen at 2026-03-09. The deltas are already summarised
+in `STATE.a2ml` + this audit.
+
+| 1.1.d
+| Add a per-cartridge one-line grade column to the refreshed READINESS.
+Most cartridges will sit at D; some may be X (un-exercised) and must be
+honestly reported.
+| S
+| Demotions are expected. Honest D > dishonest B.
+|===
+
+=== 1.2 Dogfood evidence formalisation
+
+[cols="1,4,1,4"]
+|===
+| ID | Work item | Effort | Notes
+
+| 1.2.a
+| Write `docs/practice/DOGFOOD-LOG.adoc` logging, per cartridge actually
+invoked in author's workflow: what was invoked, from where, what broke, what
+fed back. Pull evidence from existing session history in `STATE.a2ml`
+`[session-history]` and `[dogfooding-status]`.
+| S
+| v2.0 C needs evidence of dogfooding, not a claim of it. The evidence already
+exists — the log does not.
+
+| 1.2.b
+| Capture "home-stable" proof: 24-hour-uptime screenshot / log-tail from
+`boj-server.net`, recent `/health` + `/menu` curl responses pinned into the
+audit trail under `docs/maintenance/` (new subdirectory `home-stable/`).
+| S
+| Plain evidence capture.
+
+| 1.2.c
+| Stand up a stale-cartridge sweep. Any cartridge that has never been invoked
+in recorded dogfooding should be flagged in READINESS and either exercised
+or demoted to X. Prevents grade inflation by cartridge count.
+| S
+| Short audit script over `STATE.a2ml [dogfooding-status]` vs `cartridges/`.
+|===
+
+=== 1.3 Teranga menu
+
+- The 2026-03-09 READINESS lists Teranga Menu at X (spec only, no runtime).
+  Either wire it (promotes X->D) or scope it out explicitly (honest). Pick in a
+  follow-up session; not in scope here. *S* either way.
+
+=== 1.4 Exit criteria for Phase 1 (promotion to C)
+
+A promotion commit to C must be justified by *all* of:
+
+1. Every cartridge has a README containing the six fields listed in 1.1.a.
+2. `cartridges/`, `.machine_readable/`, `ffi/zig/src/`, `src/abi/Boj/`
+   each contain a per-directory README.
+3. `docs/READINESS.md` is v2.0-aligned and dated 2026-04-XX.
+4. `docs/practice/DOGFOOD-LOG.adoc` exists with at least one dated entry per
+   home-dogfooded cartridge.
+5. CI `zig-test.yml` last run is green; `panic-attack assail` run clean;
+   `idris2 --check` passes; no new non-axiomatic `believe_me`.
+6. `STATE.a2ml` updated: `grade = "C-alpha-stable"`, completion %, session
+   entry for the promotion.
+
+Phase 1 total effort: *session-tractable across ~3-5 focused sessions.*
+
+== Phase 2 — C to B (external targets)
+
+This is the hard part. v2.0 B requires *6+ diverse external targets* with
+issues fed back. *No amount of author effort substitutes for this.*
+
+=== 2.1 Recruit external targets (the blocker)
+
+[cols="1,4,1,4"]
+|===
+| ID | Work item | Effort | Notes
+
+| 2.1.a
+| Define "diverse" precisely for BoJ. Six targets on the same Linux workstation
+running Claude Desktop is not diverse. Target matrix should span: (i) at least
+3 host OSes, (ii) at least 3 AI clients (Claude Code, Cursor, Windsurf,
+Continue.dev, VS Code Copilot, Gemini CLI), (iii) at least 2 invocation
+protocols (MCP stdio, HTTP), (iv) at least 2 cartridge domains beyond the
+"big three" (database, ssg, container).
+| S
+| Write this as `docs/governance/CRG-B-TARGET-MATRIX.adoc`. Session-tractable.
+
+| 2.1.b
+| Build an onboarding path for external dogfooders. Currently
+`docs/OPERATOR-QUICKSTART.md` and the Homebrew / Nix / npm / JSR packages exist;
+add a `docs/outreach/DOGFOOD-ONBOARD.adoc` that walks a stranger through 15
+minutes to first `/menu` response, with feedback-capture URL.
+| S
+| Content tractable; reception is not.
+
+| 2.1.c
+| Stand up a feedback pipeline: GitHub Discussions template for dogfooders +
+`feedback-mcp` cartridge invocation reporting. Pipeline must log issues fed
+back per target.
+| S
+| Plumbing; cheap. The flow of signal through it is slow.
+
+| 2.1.d
+| Recruit 6+ diverse external targets.
+| L
+| *This is calendar-slow, typically weeks to months.* Likely channels: Show HN
+post (already drafted), `awesome-mcp-servers` PR, Glama listing, direct
+outreach to MCP client maintainers, conference/workshop slots. Cannot be
+shortcut by author effort.
+
+| 2.1.e
+| Process feedback: issue triage cadence, cartridge-level bug labels, regression
+tests from reported failures.
+| M
+| Per-issue rather than per-session.
+|===
+
+=== 2.2 Publication gate
+
+v2.0 forbids publication below B. Therefore:
+
+- Hold `docs/outreach/show-hn-post.md`, `docs/papers/` arXiv draft, blog drafts
+  *until Phase 2 exit*. The content can be kept hot; the button press waits.
+- `STATE.a2ml [critical-next-actions]` currently lists Show HN and arXiv as
+  next actions; this plan recommends *not* executing them until B is earned.
+  Add an explicit "gated on CRG B" note to those entries.
+
+=== 2.3 Exit criteria for Phase 2 (promotion to B)
+
+1. At least 6 diverse external targets have exercised BoJ, diversity per the
+   matrix defined in 2.1.a.
+2. Per target: one recorded session, one issue (or confirmed nil-issue) fed
+   back, one bugfix or "no-change-needed" disposition logged.
+3. `docs/READINESS.md` updated with per-cartridge B justification where claimed.
+4. `STATE.a2ml` updated: `grade = "B-beta"` with supporting session-history
+   entries citing the 6 targets.
+
+Phase 2 total effort: *calendar-slow.* Planning is session-tractable; signal is
+not.
+
+== Phase 3 — B to A (field-proven)
+
+Out of scope for this plan. A requires sustained external usage over time with
+no harm signal. Not actionable as tasks; it emerges.
+
+== Recommended Top 3 Lift Items (this session's answer)
+
+In priority order, each session-tractable:
+
+1. *Sweep 46 cartridge READMEs* (item 1.1.a). Largest single blocker to C; most
+   leverage per hour.
+2. *Refresh `docs/READINESS.md` to v2.0* (items 1.1.c + 1.1.d). Needed for the
+   promotion commit itself; also corrects the stale 2026-03-09 snapshot.
+3. *Write `docs/practice/DOGFOOD-LOG.adoc`* (item 1.2.a). Substantiates the
+   dogfooding claim with dated evidence, not self-report.
+
+Items 1.1.b (per-directory READMEs) and 1.2.b (home-stable evidence capture)
+round out the C-promotion package and are each one-session tasks.
+
+== Non-Negotiables Honoured
+
+- Do *not* touch the 4 axiomatic `believe_me` primitives.
+- Do *not* re-litigate BJ2 / januskey / other standing flagged items.
+- Do *not* run `just init` or regenerate scaffolds.
+- No file deletions proposed.
+- No Teranga-menu implementation work included; that is scope-gated to a
+  separate session.
+
+== Out of Scope for This Plan
+
+- Re-running `panic-attack assail` (done separately as pre-commit for delivery).
+- Container redeploy (`docs/outreach/vps-redeploy.sh`) — independent of CRG.
+- Seed-node deployment — infrastructure track, not grade track.
+- Gossamer / PanLL / Hypatia cross-repo work.
+
+_End of plan._
