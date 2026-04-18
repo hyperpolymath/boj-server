@@ -62,13 +62,31 @@ defmodule BojRest.Router do
 
   post "/cartridge/:name/invoke" do
     case BojRest.Catalog.get(name) do
-      {:ok, _cart} ->
+      {:ok, cart} ->
+        # Skinny Phase 2 per ADR-0005: we can probe the cartridge .so
+        # via the Zig CLI, but cannot dispatch to a specific tool yet
+        # (ADR-0006 work). Run the probe so the caller gets real
+        # evidence the cartridge loads; still return 501 on the tool
+        # field because dispatch is not wired.
+        so_path = cartridge_so_path(cart)
+
+        probe =
+          case BojRest.Invoker.probe(so_path) do
+            {:ok, map} -> %{probe: :ok, result: map}
+            {:error, info} -> %{probe: :error, info: info}
+          end
+
+        tool = Map.get(conn.body_params || %{}, "tool")
+
         json(conn, 501, %{
-          error: "invocation-not-yet-wired",
+          error: "tool-dispatch-not-wired",
           cartridge: name,
+          tool: tool,
+          so_path: so_path,
+          probe: probe,
           message:
-            "The REST skeleton can find this cartridge in the catalog but does not " <>
-              "yet dispatch to the Zig FFI. Tracked under the Elixir-port Phase 2 task."
+            "Cartridge can be probed (init/name/version) but tool-level dispatch " <>
+              "awaits ADR-0006 (boj_cartridge_invoke ABI)."
         })
 
       :not_found ->
@@ -85,4 +103,15 @@ defmodule BojRest.Router do
     |> Plug.Conn.put_resp_content_type("application/json")
     |> Plug.Conn.send_resp(status, Jason.encode!(body))
   end
+
+  # Derive the expected shared-library path from a cartridge entry.
+  # Each cartridge builds its .so under `cartridges/<name>/ffi/zig-out/lib/lib<name>_mcp.so`.
+  defp cartridge_so_path(cart) do
+    name = Map.get(cart, "name") || "unknown"
+    root = Application.get_env(:boj_rest, :cartridges_root)
+    Path.join([root, name, "ffi", "zig-out", "lib", "lib#{name_to_lib(name)}.so"])
+  end
+
+  # cartridge name "aerie-mcp" -> lib name fragment "aerie_mcp"
+  defp name_to_lib(name), do: String.replace(name, "-", "_")
 end

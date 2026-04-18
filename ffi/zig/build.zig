@@ -61,6 +61,22 @@ pub fn build(b: *std.Build) void {
     const bench_step = b.step("bench", "Run cartridge mount/unmount benchmarks");
     bench_step.dependOn(&bench_run.step);
 
+    // --- boj-invoke CLI (skinny Phase 2 per ADR-0005) ---
+    const invoke_mod = b.addModule("boj_invoke", .{
+        .root_source_file = b.path("src/boj_invoke_cli.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    invoke_mod.link_libc = true; // route std.DynLib through real dlopen(3)
+    const invoke = b.addExecutable(.{
+        .name = "boj-invoke",
+        .root_module = invoke_mod,
+    });
+    const invoke_install = b.addInstallArtifact(invoke, .{});
+
+    const invoke_step = b.step("invoke", "Build boj-invoke CLI for Elixir Invoker pool");
+    invoke_step.dependOn(&invoke_install.step);
+
     // --- Catalogue tests ---
     const catalogue_tests = b.addTest(.{
         .root_module = catalogue_mod,
