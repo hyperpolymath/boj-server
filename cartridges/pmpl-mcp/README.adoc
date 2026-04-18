@@ -1,0 +1,59 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+// Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+= pmpl-mcp
+Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+:spdx: PMPL-1.0-or-later
+:tier: Ayo
+:domain: legal
+:protocols: MCP, REST
+
+== Overview
+
+PMPL licence chain verification and artefact hashing
+
+== Tools (5)
+
+[cols="2,4"]
+|===
+| Tool | Description
+
+| `pmpl_create_chain` | Create a new PMPL provenance chain
+| `pmpl_extend_chain` | Extend a provenance chain with a new link
+| `pmpl_verify_chain` | Verify integrity of a provenance chain
+| `pmpl_hash_artefact` | Hash an artefact for provenance anchoring
+| `pmpl_check_compatible` | Check SPDX licence compatibility
+|===
+
+== Architecture
+
+Three-layer stack per the BoJ cartridge standard:
+
+[cols="1,1,3"]
+|===
+| Layer | Language | Purpose
+
+| ABI    | Idris2 | Formally verified state machine with dependent-type proofs
+| FFI    | Zig    | C-ABI implementation: session pool, action metrics, thread safety
+| Adapter| Zig    | Adapter bridge to the BoJ unified adapter protocol (V-lang predecessors sidelined)
+|===
+
+== Building
+
+[source,bash]
+----
+# ABI (Idris2)
+cd abi && idris2 --check *.idr
+
+# FFI (Zig)
+cd ffi && zig build
+cd ffi && zig build test
+
+# Adapter (Zig)
+cd adapter && zig build
+----
+
+== Status
+
+Alpha (CRG D). Cartridge metadata declared in `cartridge.json`; 5 tool(s) exposed.
+Not yet dogfooded externally. See `docs/READINESS.md` at repo root for the
+project-wide grade table and `docs/practice/DOGFOOD-LOG.adoc` for usage evidence.

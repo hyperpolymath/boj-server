@@ -1,0 +1,62 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+// Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+= toolchain-mcp
+Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+:spdx: PMPL-1.0-or-later
+:tier: Ayo
+:domain: Language Tools
+:protocols: MCP, REST
+
+== Overview
+
+Toolchain orchestrator. Mints, provisions, and configures language toolchains composed from lsp-mcp, dap-mcp, lang-mcp, and bsp-mcp. Integrates with PanLL panels via Groove and supports collaborative Burble sessions for pair-debugging and pair-programming workflows.
+
+== Tools (8)
+
+[cols="2,4"]
+|===
+| Tool | Description
+
+| `toolchain_mint` | Mint a new toolchain configuration for a language workspace. Discovers available servers (LSP/DAP/BSP/lang) and returns a toolchain ID. Does not start any servers — call toolchain_provision to do that.
+| `toolchain_provision` | Provision a minted toolchain: start all configured servers (LSP, DAP, BSP, lang), run their initialize handshakes, and return the ready state with each server's capabilities.
+| `toolchain_configure` | Apply configuration settings to a provisioned toolchain. Supports per-server options and cross-cutting settings (formatting, diagnostics throttle, telemetry).
+| `toolchain_status` | Get the current status of a toolchain or all toolchains. Returns server states, capabilities, and Groove/Burble binding info.
+| `toolchain_list` | List all active toolchains with their language, workspace, server states, and any bound Groove endpoints or Burble rooms.
+| `toolchain_groove_bind` | Bind a provisioned toolchain to a Groove endpoint so PanLL panels can discover and connect to it. Returns the Groove binding descriptor.
+| `toolchain_burble_session` | Create or join a Burble collaborative session for a toolchain. Enables real-time shared debugging and pair-programming over the toolchain's LSP/DAP/BSP connections.
+| `toolchain_stop` | Gracefully stop all servers in a toolchain (LSP shutdown/exit, DAP disconnect, BSP build/shutdown) and release the toolchain ID.
+|===
+
+== Architecture
+
+Three-layer stack per the BoJ cartridge standard:
+
+[cols="1,1,3"]
+|===
+| Layer | Language | Purpose
+
+| ABI    | Idris2 | Formally verified state machine with dependent-type proofs
+| FFI    | Zig    | C-ABI implementation: session pool, action metrics, thread safety
+| Adapter| Zig    | Adapter bridge to the BoJ unified adapter protocol (V-lang predecessors sidelined)
+|===
+
+== Building
+
+[source,bash]
+----
+# ABI (Idris2)
+cd abi && idris2 --check *.idr
+
+# FFI (Zig)
+cd ffi && zig build
+cd ffi && zig build test
+
+# Adapter (Zig)
+cd adapter && zig build
+----
+
+== Status
+
+Alpha (CRG D). Cartridge metadata declared in `cartridge.json`; 8 tool(s) exposed.
+Not yet dogfooded externally. See `docs/READINESS.md` at repo root for the
+project-wide grade table and `docs/practice/DOGFOOD-LOG.adoc` for usage evidence.

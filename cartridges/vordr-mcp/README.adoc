@@ -1,0 +1,58 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+// Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+= vordr-mcp
+Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+:spdx: PMPL-1.0-or-later
+:tier: Ayo
+:domain: Security
+:protocols: MCP, REST
+
+== Overview
+
+Vordr container integrity monitor. BLAKE3 hashing to detect tampering and drift in container images.
+
+== Tools (4)
+
+[cols="2,4"]
+|===
+| Tool | Description
+
+| `vordr_scan` | Scan a container image for integrity (BLAKE3 hash comparison against baseline).
+| `vordr_set_baseline` | Set the known-good BLAKE3 baseline for a container image.
+| `vordr_alerts` | List containers with integrity drift or suspected tampering.
+| `vordr_compare` | Compare two container image digests directly.
+|===
+
+== Architecture
+
+Three-layer stack per the BoJ cartridge standard:
+
+[cols="1,1,3"]
+|===
+| Layer | Language | Purpose
+
+| ABI    | Idris2 | Formally verified state machine with dependent-type proofs
+| FFI    | Zig    | C-ABI implementation: session pool, action metrics, thread safety
+| Adapter| Zig    | Adapter bridge to the BoJ unified adapter protocol (V-lang predecessors sidelined)
+|===
+
+== Building
+
+[source,bash]
+----
+# ABI (Idris2)
+cd abi && idris2 --check *.idr
+
+# FFI (Zig)
+cd ffi && zig build
+cd ffi && zig build test
+
+# Adapter (Zig)
+cd adapter && zig build
+----
+
+== Status
+
+Alpha (CRG D). Cartridge metadata declared in `cartridge.json`; 4 tool(s) exposed.
+Not yet dogfooded externally. See `docs/READINESS.md` at repo root for the
+project-wide grade table and `docs/practice/DOGFOOD-LOG.adoc` for usage evidence.

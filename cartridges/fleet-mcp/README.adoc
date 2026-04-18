@@ -1,0 +1,59 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+// Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+= fleet-mcp
+Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+:spdx: PMPL-1.0-or-later
+:tier: Ayo
+:domain: ci
+:protocols: MCP, REST
+
+== Overview
+
+gitbot-fleet gate compliance tracker
+
+== Tools (5)
+
+[cols="2,4"]
+|===
+| Tool | Description
+
+| `fleet_record_gate` | Record a gate result for a bot
+| `fleet_bot_status` | Get status of a bot
+| `fleet_gate_score` | Get gate compliance score for a bot
+| `fleet_has_mandatory` | Check all mandatory gates passed
+| `fleet_fleet_status` | Get status of all bots in the fleet
+|===
+
+== Architecture
+
+Three-layer stack per the BoJ cartridge standard:
+
+[cols="1,1,3"]
+|===
+| Layer | Language | Purpose
+
+| ABI    | Idris2 | Formally verified state machine with dependent-type proofs
+| FFI    | Zig    | C-ABI implementation: session pool, action metrics, thread safety
+| Adapter| Zig    | Adapter bridge to the BoJ unified adapter protocol (V-lang predecessors sidelined)
+|===
+
+== Building
+
+[source,bash]
+----
+# ABI (Idris2)
+cd abi && idris2 --check *.idr
+
+# FFI (Zig)
+cd ffi && zig build
+cd ffi && zig build test
+
+# Adapter (Zig)
+cd adapter && zig build
+----
+
+== Status
+
+Alpha (CRG D). Cartridge metadata declared in `cartridge.json`; 5 tool(s) exposed.
+Not yet dogfooded externally. See `docs/READINESS.md` at repo root for the
+project-wide grade table and `docs/practice/DOGFOOD-LOG.adoc` for usage evidence.

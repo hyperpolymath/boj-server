@@ -1,0 +1,58 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+// Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+= stapeln-mcp
+Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+:spdx: PMPL-1.0-or-later
+:tier: Ayo
+:domain: Container Orchestration
+:protocols: MCP, REST
+
+== Overview
+
+Stapeln container stack manager. Deploy, scale, and monitor container stacks using Chainguard base images.
+
+== Tools (4)
+
+[cols="2,4"]
+|===
+| Tool | Description
+
+| `stapeln_list_stacks` | List all deployed container stacks with names, replica counts, and health.
+| `stapeln_deploy` | Deploy a named stack with a specified replica count.
+| `stapeln_scale` | Scale an existing stack to a new replica count.
+| `stapeln_get_health` | Get health status of a named stack: healthy / degraded / unhealthy / unknown.
+|===
+
+== Architecture
+
+Three-layer stack per the BoJ cartridge standard:
+
+[cols="1,1,3"]
+|===
+| Layer | Language | Purpose
+
+| ABI    | Idris2 | Formally verified state machine with dependent-type proofs
+| FFI    | Zig    | C-ABI implementation: session pool, action metrics, thread safety
+| Adapter| Zig    | Adapter bridge to the BoJ unified adapter protocol (V-lang predecessors sidelined)
+|===
+
+== Building
+
+[source,bash]
+----
+# ABI (Idris2)
+cd abi && idris2 --check *.idr
+
+# FFI (Zig)
+cd ffi && zig build
+cd ffi && zig build test
+
+# Adapter (Zig)
+cd adapter && zig build
+----
+
+== Status
+
+Alpha (CRG D). Cartridge metadata declared in `cartridge.json`; 4 tool(s) exposed.
+Not yet dogfooded externally. See `docs/READINESS.md` at repo root for the
+project-wide grade table and `docs/practice/DOGFOOD-LOG.adoc` for usage evidence.

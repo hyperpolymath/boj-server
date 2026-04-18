@@ -1,0 +1,66 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+// Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+= dap-mcp
+Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+:spdx: PMPL-1.0-or-later
+:tier: Ayo
+:domain: Language Tools
+:protocols: MCP, REST
+
+== Overview
+
+Generic Debug Adapter Protocol (DAP) gateway. Spawns any DAP adapter as a persistent subprocess and exposes debug lifecycle operations (initialize, launch/attach, breakpoints, stepping, stack inspection, variable evaluation) as MCP tools.
+
+== Tools (12)
+
+[cols="2,4"]
+|===
+| Tool | Description
+
+| `dap_start` | Start a debug adapter subprocess and return a session ID. The adapter stays alive until dap_stop is called.
+| `dap_initialize` | Send the DAP initialize request to negotiate adapter capabilities. Must be called once after dap_start.
+| `dap_launch` | Launch a program under the debug adapter. The adapter starts the debuggee and raises a stopped event at entry (if configured).
+| `dap_attach` | Attach the debug adapter to a running process by PID or by a connection (e.g. localhost:port for remote debugging).
+| `dap_set_breakpoints` | Set breakpoints in a source file, replacing any previously set breakpoints for that file. Returns the verified breakpoint list.
+| `dap_continue` | Continue execution for a thread (or all threads) until the next breakpoint or program exit.
+| `dap_step_over` | Step over (next statement) for a thread. Execution resumes until the next line in the current scope.
+| `dap_step_in` | Step into the next function call for a thread.
+| `dap_step_out` | Step out of the current function for a thread (run until function return).
+| `dap_stack_trace` | Get the call stack for a stopped thread. Returns an array of stack frames with source locations.
+| `dap_variables` | Get variables for a stack frame scope or an expandable variable. Returns an array of variable objects.
+| `dap_stop` | Send the DAP disconnect request and terminate the debug adapter subprocess. The session ID is invalidated.
+|===
+
+== Architecture
+
+Three-layer stack per the BoJ cartridge standard:
+
+[cols="1,1,3"]
+|===
+| Layer | Language | Purpose
+
+| ABI    | Idris2 | Formally verified state machine with dependent-type proofs
+| FFI    | Zig    | C-ABI implementation: session pool, action metrics, thread safety
+| Adapter| Zig    | Adapter bridge to the BoJ unified adapter protocol (V-lang predecessors sidelined)
+|===
+
+== Building
+
+[source,bash]
+----
+# ABI (Idris2)
+cd abi && idris2 --check *.idr
+
+# FFI (Zig)
+cd ffi && zig build
+cd ffi && zig build test
+
+# Adapter (Zig)
+cd adapter && zig build
+----
+
+== Status
+
+Alpha (CRG D). Cartridge metadata declared in `cartridge.json`; 12 tool(s) exposed.
+Not yet dogfooded externally. See `docs/READINESS.md` at repo root for the
+project-wide grade table and `docs/practice/DOGFOOD-LOG.adoc` for usage evidence.
