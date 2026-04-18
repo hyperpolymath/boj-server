@@ -187,6 +187,43 @@ pub export fn boj_cartridge_version() [*:0]const u8 {
 }
 
 // ═══════════════════════════════════════════════════════════════════════
+// ADR-0006 dispatch (boj_cartridge_invoke, 5th standard symbol)
+// ═══════════════════════════════════════════════════════════════════════
+
+const shim = @import("cartridge_shim");
+
+/// Dispatch the cartridge.json MCP tools. Grade D Alpha — each arm
+/// returns a stub JSON body shaped to the tool's intended response.
+export fn boj_cartridge_invoke(
+    tool_name: [*c]const u8,
+    json_args: [*c]const u8,
+    out_buf: [*c]u8,
+    in_out_len: [*c]usize,
+) callconv(.c) i32 {
+    _ = json_args;
+    if (shim.invokeArgsNull(tool_name, out_buf, in_out_len)) return shim.RC_BAD_ARGS;
+
+    const body: []const u8 = if (shim.toolIs(tool_name, "agent_new_session"))
+        "{\"result\":{\"session_id\":0,\"status\":\"stub\"}}"
+    else if (shim.toolIs(tool_name, "agent_end_session"))
+        "{\"result\":{\"ended\":true,\"status\":\"stub\"}}"
+    else if (shim.toolIs(tool_name, "agent_transition"))
+        "{\"result\":{\"transitioned\":true,\"status\":\"stub\"}}"
+    else if (shim.toolIs(tool_name, "agent_state"))
+        "{\"result\":{\"state\":\"unknown\",\"status\":\"stub\"}}"
+    else if (shim.toolIs(tool_name, "agent_loop_count"))
+        "{\"result\":{\"count\":0,\"status\":\"stub\"}}"
+    else if (shim.toolIs(tool_name, "agent_validate_ooda"))
+        "{\"result\":{\"valid\":true,\"status\":\"stub\"}}"
+    else if (shim.toolIs(tool_name, "agent_reset"))
+        "{\"result\":{\"reset\":true,\"status\":\"stub\"}}"
+    else
+        return shim.RC_UNKNOWN_TOOL;
+
+    return shim.writeResult(out_buf, in_out_len, body);
+}
+
+// ═══════════════════════════════════════════════════════════════════════
 // Protocol Types (from proven-agentic, added in v0.2.0)
 // ═══════════════════════════════════════════════════════════════════════
 
@@ -403,4 +440,38 @@ test "validation matches transitions" {
     try std.testing.expectEqual(@as(c_int, 0), agent_validate_ooda(1, 3)); // Obs -> Dec
     try std.testing.expectEqual(@as(c_int, 0), agent_validate_ooda(1, 4)); // Obs -> Act
     try std.testing.expectEqual(@as(c_int, 0), agent_validate_ooda(3, 1)); // Dec -> Obs
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// ADR-0006 invoke dispatch tests
+// ═══════════════════════════════════════════════════════════════════════
+
+test "invoke: each declared tool succeeds" {
+    var buf: [256]u8 = undefined;
+    const tools = [_][]const u8{
+        "agent_new_session", "agent_end_session",  "agent_transition",
+        "agent_state",       "agent_loop_count",   "agent_validate_ooda",
+        "agent_reset",
+    };
+    for (tools) |t| {
+        var len: usize = buf.len;
+        const rc = boj_cartridge_invoke(t.ptr, "{}", &buf, &len);
+        try std.testing.expectEqual(@as(i32, 0), rc);
+        try std.testing.expect(std.mem.indexOf(u8, buf[0..len], "result") != null);
+    }
+}
+
+test "invoke: unknown tool returns -1" {
+    var buf: [64]u8 = undefined;
+    var len: usize = buf.len;
+    const rc = boj_cartridge_invoke("nope", "{}", &buf, &len);
+    try std.testing.expectEqual(@as(i32, -1), rc);
+}
+
+test "invoke: buffer too small returns -3" {
+    var buf: [4]u8 = undefined;
+    var len: usize = buf.len;
+    const rc = boj_cartridge_invoke("agent_new_session", "{}", &buf, &len);
+    try std.testing.expectEqual(@as(i32, -3), rc);
+    try std.testing.expect(len > 4);
 }

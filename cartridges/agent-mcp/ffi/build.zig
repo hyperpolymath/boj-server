@@ -9,11 +9,19 @@ pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
 
+    // Shared ADR-0006 invoke-shim module (relative path up to boj-server trunk).
+    const shim_mod = b.addModule("cartridge_shim", .{
+        .root_source_file = b.path("../../../ffi/zig/src/cartridge_shim.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+
     const agent_mod = b.addModule("agent_ffi", .{
         .root_source_file = b.path("agent_ffi.zig"),
         .target = target,
         .optimize = optimize,
     });
+    agent_mod.addImport("cartridge_shim", shim_mod);
 
     // ── Tests ────────────────────────────────────────────────────────
     const agent_tests = b.addTest(.{
@@ -26,13 +34,16 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&run_tests.step);
 
     // ── Shared library ──────────────────────────────────────────────
+    const lib_mod = b.createModule(.{
+        .root_source_file = b.path("agent_ffi.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    lib_mod.addImport("cartridge_shim", shim_mod);
+
     const lib = b.addLibrary(.{
         .name = "agent_mcp",
-        .root_module = b.createModule(.{
-            .root_source_file = b.path("agent_ffi.zig"),
-            .target = target,
-            .optimize = optimize,
-        }),
+        .root_module = lib_mod,
         .linkage = .dynamic,
     });
     b.installArtifact(lib);
