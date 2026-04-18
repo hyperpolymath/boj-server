@@ -6,7 +6,7 @@
 [metadata]
 project = "boj-server"
 version = "0.4.0"
-last-updated = "2026-04-17"
+last-updated = "2026-04-18"
 status = "active"
 grade = "D-alpha"
 
@@ -62,10 +62,11 @@ mcp-e2e-tests = 10    # Lifecycle, tool invocation, error handling, sandboxing
 mcp-p2p-tests = 14    # Property-based: uniqueness, vocabulary, matrix completeness
 mcp-aspect-tests = 17 # Security: injection, sandboxing, credential handling, SSRF
 mcp-benchmark-tests = 10 # Performance baselines: serialization, latency, throughput
-cartridge-shared-libs = 96
-# All 96 cartridges now built dynamically by Containerfile.
-cartridges-total = 92
-cartridges-with-so = 96
+cartridges-total = 99                   # standard cartridges with cartridge.json; corrected 2026-04-18 (was stale at 92)
+cartridges-non-standard = 1             # model-router-mcp — tool list inline in src/router.js, no cartridge.json
+cartridges-with-readme = 100            # README.adoc coverage complete 2026-04-18 (46 generated this session)
+cartridge-shared-libs-build-target = 99 # shared libs produced by Containerfile at runtime; not checked into the tree
+cartridge-shared-libs-on-disk = 0       # nothing pre-built is committed — the Containerfile is authoritative
 safety-modules = 7  # Safety, Guardian, SafeHTTP, SafePromptInjection, SafeCORS, SafeAPIKey, SafeWebSocket
 sse-transport = true  # Port 7703 — fixed 2026-03-29
 glama-grade = "AAA"  # Security A, License A, Quality A
