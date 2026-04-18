@@ -1,0 +1,39 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+// Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+= conflow-mcp / adapter — protocol bridge
+:orientation: shallow
+
+== Purpose
+
+Exposes this cartridge's FFI over the wire protocols declared in
+`cartridge.json`. Dispatches tool invocations to the C-ABI exports at
+`../ffi/` and formats responses per protocol.
+
+== Files
+
+[cols="1,4"]
+|===
+| File | Role
+
+| `build.zig`  | Zig build graph — depends on the sibling `ffi` target.
+| `conflow_adapter.zig` | Protocol dispatch (129 lines). Tool catalogue matches `cartridge.json`.
+| `SIDELINED-*.v.adoc` | V-lang predecessor(s). Not built — V-lang banned 2026-04-10.
+|===
+
+== Invariants
+
+* **Stateless** — all state lives behind the FFI, never in the adapter.
+* **Response passthrough** — whatever the FFI returns goes back to the wire
+  unmodified (no embellishment, no silent recovery).
+* **Cartridge.json is source of truth** for the tool catalogue; drift between
+  adapter and manifest is a CI failure.
+
+== Test/proof surface
+
+No inline tests at the adapter layer — protocol routing is exercised by the
+trunk seam tests at `ffi/zig/src/seams.zig`.
+
+== Read-first
+
+. `conflow_adapter.zig` — dispatch function and per-protocol routers.
+. `../cartridge.json` — the tool manifest the dispatcher mirrors.

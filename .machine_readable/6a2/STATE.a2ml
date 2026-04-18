@@ -80,7 +80,7 @@ fake-fuzz-placeholder = false  # tests/fuzz/placeholder.txt removed 2026-04-04
 [maintenance]
 must = [
   "Order-ticket end-to-end flow test (done)",
-  "Cartridge .so/.dylib shared library builds (18/18 done)",
+  "Cartridge .so/.dylib shared library builds (99/99 done — counter corrected 2026-04-18; prior '18/18' was stale from early cohort)",
   "CI/CD pipeline (zig-test.yml — done)",
   "Hash verification wired to mount (done)",
   "Distinct error codes for all failure modes (done)",
