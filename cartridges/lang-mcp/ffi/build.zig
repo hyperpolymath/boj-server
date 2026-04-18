@@ -34,13 +34,16 @@ pub fn build(b: *std.Build) void {
     const test_step  = b.step("test", "Run lang-mcp FFI tests");
     test_step.dependOn(&run_tests.step);
 
+    const lib_mod = b.createModule(.{
+        .root_source_file = b.path("lang_ffi.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    lib_mod.addImport("cartridge_shim", shim_mod);
+
     const lib = b.addLibrary(.{
         .name = "lang_mcp",
-        .root_module = b.createModule(.{
-            .root_source_file = b.path("lang_ffi.zig"),
-            .target = target,
-            .optimize = optimize,
-        }),
+        .root_module = lib_mod,
         .linkage = .dynamic,
     });
     b.installArtifact(lib);
