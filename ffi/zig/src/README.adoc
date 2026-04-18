@@ -1,0 +1,135 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+// Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+= BoJ Server — Catalogue FFI (trunk)
+:orientation: deep
+
+== Purpose
+
+This is the **trunk** FFI of the BoJ server — the Zig runtime layer that
+mirrors the Idris2 ABI at `src/abi/Boj/` and exposes it over a C ABI so
+cartridges, the dynamic loader, and the adapter layer can all talk to the
+same facts. Cartridge-local `ffi/` directories (e.g.
+`cartridges/database-mcp/ffi/`) handle cartridge-specific state; **this**
+directory handles everything shared: the catalogue, cartridge loader,
+federation runtime, guardian, safety primitives, SLA tracking, community
+submissions, SDP perimeter, seam checks, readiness tests, coprocessor
+dispatch, end-to-end orchestration, and VeriSimDB backing store.
+
+14 files, ~216 inline tests. This is where correctness is observed at
+runtime, while the proofs live upstairs in `src/abi/`.
+
+== Build
+
+[source,bash]
+----
+cd ffi/zig
+zig build           # produces the shared library under zig-out/
+zig build test      # runs all inline tests
+----
+
+== Modules
+
+Grouped by function. Inline test counts in parentheses are authoritative
+(`grep -c '^test "'` of the file).
+
+=== Core
+
+[cols="1,3"]
+|===
+| File | Role
+
+| `catalogue.zig` (13 tests)   | C-compatible bridge between the Idris2 proofs and the runtime. The FFI face of `Boj.Catalogue`.
+| `loader.zig` (14 tests)      | Dynamic cartridge loader — hash verification, mount/unmount of cartridge shared libraries.
+| `safety.zig` (10 tests)      | C-ABI exports for safe string operations (matches `Boj.Safety` + lemmas).
+| `verisimdb.zig` (18 tests)   | Backing-store bridge — cartridge catalogue state, federation membership, order-ticket persistence.
+|===
+
+=== Federation and perimeter
+
+[cols="1,3"]
+|===
+| File | Role
+
+| `federation.zig` (40 tests)  | Umoja gossip protocol runtime — node handshake, heartbeat, hash attestation.
+| `sdp.zig` (10 tests)         | Software Defined Perimeter — zero-trust perimeter around federation nodes.
+| `community.zig` (11 tests)   | Community cartridge submission pipeline (Ayo menu tier).
+|===
+
+=== Reliability
+
+[cols="1,3"]
+|===
+| File | Role
+
+| `guardian.zig` (12 tests)    | Resource monitoring, preemptive thresholds, circuit breaker. Mirrors `Boj.Guardian`.
+| `sla.zig` (11 tests)         | Per-cartridge and system-level SLA metrics.
+| `readiness.zig` (28 tests)   | Component Readiness Grade verification — runtime evidence for the CRG table in `docs/READINESS.md`.
+| `seams.zig` (32 tests)       | Integration-seam contract checks (panic-attack-inspired `diagnostics.rs` pattern).
+|===
+
+=== Orchestration
+
+[cols="1,3"]
+|===
+| File | Role
+
+| `coprocessor.zig` (14 tests) | Axiom.jl-style GPU/TPU/FPGA offload dispatch.
+| `e2e_order.zig` (3 tests)    | End-to-end order-ticket orchestration at the Zig layer (no external server required).
+| `bench.zig` (0 tests)        | Benchmarks — not tests. Measures cartridge lifecycle latency. Run with `zig build bench`, not `zig build test`.
+|===
+
+== Invariants (trunk-wide)
+
+* **Every C-ABI export uses a named error-code enum.** Negative return
+  values carry documented meanings, matching what the Idris2 ABI expects.
+* **Mutex discipline** is file-local — each file owns its own global
+  `mutex`, acquired at C-ABI entry via `mutex.lock(); defer
+  mutex.unlock();`. No file holds two mutexes at once.
+* **Hardened enum conversions.** C-ABI exports that take `c_int`
+  enum-valued arguments use `std.meta.intToEnum` (returns an error on
+  invalid values) rather than `@enumFromInt` (panics). Exceptions must be
+  justified inline.
+* **Bounds checks before dereference.** Every `(ptr, len)` pair is
+  validated for zero-length and buffer-overflow before any `@memcpy` or
+  slice access. `SAFETY:` comments annotate the checks.
+* **Two-phase lock pattern for blocking I/O.** Functions that call into
+  `curl` or other blocking FFI release the mutex before the call and
+  re-validate state on re-acquisition.
+* **No allocator leaks.** `defer *.deinit(alloc)` / `defer free(…)` on
+  every allocation path. Verified by compile with
+  `-Dstandalone_tests=true`.
+
+== Test/proof surface
+
+216 inline `test "..."` blocks across 13 files (see per-module counts
+above). `bench.zig` contributes zero tests by design — its contents are
+benchmarks. Run `zig build test` for the whole suite; it is the primary
+runtime evidence for Grade D assertions in `docs/READINESS.md`.
+
+End-to-end orchestration lives in `e2e_order.zig` and is run as part of
+the same `zig build test` sweep.
+
+== Read-first
+
+. `catalogue.zig` — the runtime face of the Idris2 matrix. Read alongside
+  `src/abi/Boj/Catalogue.idr`.
+. `loader.zig` — cartridge mount/unmount with hash verification; the path
+  every cartridge travels at boot.
+. `safety.zig` — the cross-cutting string-safety primitives the rest of
+  the FFI imports.
+. `federation.zig` — largest module (40 tests) and the richest
+  concurrency story.
+. `readiness.zig` — the tests here are the direct runtime evidence for
+  `docs/READINESS.md`. Any grade change should be accompanied by a test
+  change here.
+
+== Promotion gate
+
+This trunk is graded D in `docs/READINESS.md`. Lifting to C requires:
+
+. Active dogfood entries in `docs/practice/DOGFOOD-LOG.adoc` showing
+  these exports called in anger from a real cartridge load path (not just
+  from `zig build test`).
+. No open `SAFETY:` TODOs in the 14 files.
+. A consumer outside the home-context test loop (adapter driving the FFI
+  under real protocol load).

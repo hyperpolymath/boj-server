@@ -1,0 +1,125 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+// Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+= BoJ Server — Catalogue ABI (trunk)
+:orientation: deep
+
+== Purpose
+
+This is the **trunk** ABI of the BoJ server: the formally verified Idris2
+layer that every cartridge inherits from. The cartridge-local `abi/`
+directories (e.g. `cartridges/database-mcp/abi/`) define per-cartridge state
+machines and tool catalogues; **this** directory defines the shared
+vocabulary those cartridges compose into — the 2D capability matrix, the
+cartridge dispatch proofs, the credential-isolation model, and the safety
+lemmas that back every safe-HTTP / safe-WebSocket / safe-API-key /
+safe-prompt-injection property in the whole server.
+
+If the cartridge-local ABIs are leaves, this is the stem.
+
+== Package
+
+Defined by `boj.ipkg`. Type-check with:
+
+[source,bash]
+----
+cd src/abi
+idris2 --check boj.ipkg
+----
+
+Depends only on `base` and `contrib`. Every module is `%default total`.
+
+== Modules
+
+The 15 modules under `Boj/` fall into four concentric rings.
+
+=== Ring 1 — the matrix (single source of truth)
+
+[cols="1,3"]
+|===
+| Module | Role
+
+| `Boj.Protocol`   | The **columns** of the 2D capability matrix — wire protocols cartridges can expose (MCP, REST, gRPC, GraphQL, etc.).
+| `Boj.Domain`     | The **rows** — classes of infrastructure capability (database, git, cloud, …).
+| `Boj.Catalogue`  | The matrix itself. Every cartridge occupies one `(Protocol × Domain)` cell and must pass the `IsUnbreakable` proof before activation.
+| `Boj.Menu`       | The Teranga menu — public face of the catalogue. AI agents ("the Maitre D'") present this to users.
+|===
+
+=== Ring 2 — runtime and cross-cutting concerns
+
+[cols="1,3"]
+|===
+| Module | Role
+
+| `Boj.CartridgeDispatch` | Requirement **BJ1** — proves three core dispatch invariants (type-safe dispatch, exhaustive routing, no lost traffic). Not yet listed in `boj.ipkg` `modules`; treat as WIP trunk.
+| `Boj.CredentialIsolation` | Requirement **BJ2** — per-cartridge credential-store isolation modelled at the type level. Each vault partition is indexed by cartridge name; a token must carry the matching index to read.
+| `Boj.Federation` | Umoja federated network protocol. Community nodes volunteer compute (Tor/IPFS-style) and prove identity by hash attestation.
+| `Boj.Guardian`   | Resource-aware failure tolerance, preemptive thresholds, circuit breaker, self-diagnostics.
+|===
+
+=== Ring 3 — safety proofs (every "Safe*" module)
+
+[cols="1,3"]
+|===
+| Module | Role
+
+| `Boj.Safety`               | Top-level formally verified input validation via proven-library patterns.
+| `Boj.SafetyLemmas`         | Foundational lemmas over `List Char`, `Nat`, `String` that the `Safe*` modules reuse.
+| `Boj.SafeHTTP`             | HTTP request/response proofs: valid methods, safe headers, status code ranges, content-type validation. Commentary pins "All proofs are constructive. Zero believe_me. Zero postulates." (line 15).
+| `Boj.SafeCORS`             | CORS policy enforcement.
+| `Boj.SafeWebSocket`        | WebSocket transport safety.
+| `Boj.SafeAPIKey`           | API key handling.
+| `Boj.SafePromptInjection`  | Prompt-injection defences.
+|===
+
+=== Ring 4 — FFI primitives
+
+The primitives exported by the trunk that the Zig FFI at `ffi/zig/src/`
+mirrors byte-for-byte — transition predicates, tool requirements, and the
+matrix-cell identifier scheme.
+
+== Invariants (trunk-wide)
+
+* **`%default total`** at every module top. Partial definitions are a
+  review blocker across the whole trunk.
+* **`believe_me` budget is 4 and declared.** All four live in this trunk:
+  * `Boj.SafetyLemmas`: `charEqSound`, `charEqSym`, `unpackLength` — three
+    axiomatic primitives covering discharge of `Char`/`String` equalities
+    that the Idris2 prelude does not expose constructively.
+  * `Boj.SafeAPIKey`: `logSafeBounded` at line 152 — bound on logger
+    safe-substring length.
+  Any growth in this count triggers the estate-wide believe_me sweep rule.
+* **Zero `assert_total`, zero `postulate`, zero `Admitted`, zero `sorry`**
+  across the trunk (verified by grep: count = 0).
+* **Module DAG is acyclic.** `SafeHTTP`/`SafeCORS`/`SafeWebSocket`/
+  `SafeAPIKey`/`SafePromptInjection`/`Safety` all sit below `SafetyLemmas`;
+  nothing in `SafetyLemmas` imports back upward.
+
+== Test/proof surface
+
+Type-check only — `idris2 --check boj.ipkg`. The runtime evidence for these
+proofs lives in the FFI's test suite at `ffi/zig/src/` (216 inline `test`
+blocks across 13 files; see `ffi/zig/src/README.adoc`).
+
+== Read-first
+
+. `Boj/Protocol.idr` + `Boj/Domain.idr` — matrix axes. Short, definitional.
+. `Boj/Catalogue.idr` — what it means to be a cartridge cell, and
+  `IsUnbreakable`.
+. `Boj/SafetyLemmas.idr` — the four (three here, one in `SafeAPIKey`)
+  axiomatic leaves of the proof tree. Everything else refers to them.
+. `Boj/CartridgeDispatch.idr` (BJ1) and `Boj/CredentialIsolation.idr` (BJ2)
+  — the two named requirements; read after you know the matrix.
+. Safe* modules last — they are leaves that compose the rest.
+
+== Promotion gate
+
+This trunk is graded D in `docs/READINESS.md`. Lifting to C requires:
+
+. Four `believe_me` sites justified and cross-referenced from
+  `SafetyLemmas` docstrings (the three lemmas are already documented as
+  axiomatic primitives; `logSafeBounded` needs the same treatment).
+. `CartridgeDispatch.idr` added to `boj.ipkg modules` once BJ1 is ready
+  to be consumed.
+. Dogfood evidence in `docs/practice/DOGFOOD-LOG.adoc` showing the trunk
+  being used in anger (cartridge load → type-check → matrix lookup round
+  trip) in the home context.
