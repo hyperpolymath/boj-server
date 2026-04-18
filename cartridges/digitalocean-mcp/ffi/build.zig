@@ -10,11 +10,25 @@ pub fn build(b: *std.Build) void {
     const optimize = b.standardOptimizeOption(.{});
 
     // Module
+    // Shared ADR-0006 invoke-shim module (relative path up to boj-server trunk).
+
+    const shim_mod = b.addModule("cartridge_shim", .{
+
+        .root_source_file = b.path("../../../ffi/zig/src/cartridge_shim.zig"),
+
+        .target = target,
+
+        .optimize = optimize,
+
+    });
+
     const ffi_mod = b.addModule("digitalocean_mcp", .{
         .root_source_file = b.path("digitalocean_mcp_ffi.zig"),
         .target = target,
         .optimize = optimize,
     });
+
+    ffi_mod.addImport("cartridge_shim", shim_mod);
 
     // Shared library
     const lib = b.addLibrary(.{
