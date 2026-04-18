@@ -539,18 +539,18 @@ mod tests {
     use tempfile::TempDir;
 
     fn setup_fake_boj() -> (TempDir, PathBuf) {
-        let tmp = TempDir::new().unwrap();
+        let tmp = TempDir::new().expect("TODO: handle error");
         let root = tmp.path().to_path_buf();
 
         // Create minimal boj-server structure
-        fs::create_dir_all(root.join("cartridges")).unwrap();
-        fs::create_dir_all(root.join(".machine_readable/servers")).unwrap();
-        fs::write(root.join("0-AI-MANIFEST.a2ml"), "# test manifest").unwrap();
+        fs::create_dir_all(root.join("cartridges")).expect("TODO: handle error");
+        fs::create_dir_all(root.join(".machine_readable/servers")).expect("TODO: handle error");
+        fs::write(root.join("0-AI-MANIFEST.a2ml"), "# test manifest").expect("TODO: handle error");
         fs::write(
             root.join(".machine_readable/servers/menu.a2ml"),
             "# BoJ Menu\n",
         )
-        .unwrap();
+        .expect("TODO: handle error");
 
         (tmp, root)
     }
@@ -582,7 +582,7 @@ mod tests {
         let scaffolder = Scaffolder::new(root.clone());
         let cfg = CartridgeConfig::with_defaults("test-mcp".to_string());
 
-        scaffolder.mint(&cfg).unwrap();
+        scaffolder.mint(&cfg).expect("TODO: handle error");
         let result = scaffolder.mint(&cfg);
         assert!(result.is_err());
     }
@@ -593,11 +593,11 @@ mod tests {
         let scaffolder = Scaffolder::new(root.clone());
         let cfg = CartridgeConfig::with_defaults("test-mcp".to_string());
 
-        scaffolder.mint(&cfg).unwrap();
+        scaffolder.mint(&cfg).expect("TODO: handle error");
         let result = scaffolder.provision(&cfg);
         assert!(result.is_ok());
 
-        let menu = fs::read_to_string(root.join(".machine_readable/servers/menu.a2ml")).unwrap();
+        let menu = fs::read_to_string(root.join(".machine_readable/servers/menu.a2ml")).expect("TODO: handle error");
         assert!(menu.contains("@cartridge(id=\"test-mcp\")"));
     }
 
@@ -607,7 +607,7 @@ mod tests {
         let scaffolder = Scaffolder::new(root.clone());
         let cfg = CartridgeConfig::with_defaults("test-mcp".to_string());
 
-        scaffolder.mint(&cfg).unwrap();
+        scaffolder.mint(&cfg).expect("TODO: handle error");
         let result = scaffolder.configure(&cfg);
         assert!(result.is_ok());
 
@@ -622,7 +622,7 @@ mod tests {
         let scaffolder = Scaffolder::new(root.clone());
         let cfg = CartridgeConfig::with_defaults("test-mcp".to_string());
 
-        scaffolder.mint(&cfg).unwrap();
+        scaffolder.mint(&cfg).expect("TODO: handle error");
         let result = scaffolder.harness(&cfg);
         assert!(result.is_ok());
 
@@ -631,8 +631,8 @@ mod tests {
         assert!(cart_dir.join("panels/test_mcp/panel.json").is_file());
 
         // Verify manifest is valid JSON
-        let manifest = fs::read_to_string(cart_dir.join("panels/manifest.json")).unwrap();
-        let parsed: serde_json::Value = serde_json::from_str(&manifest).unwrap();
+        let manifest = fs::read_to_string(cart_dir.join("panels/manifest.json")).expect("TODO: handle error");
+        let parsed: serde_json::Value = serde_json::from_str(&manifest).expect("TODO: handle error");
         assert_eq!(parsed["$schema"], "panll-harness/v1");
         assert_eq!(parsed["service_id"], "test-mcp");
     }
@@ -643,8 +643,8 @@ mod tests {
         let scaffolder = Scaffolder::new(root.clone());
         let cfg = CartridgeConfig::with_defaults("test-mcp".to_string());
 
-        scaffolder.mint(&cfg).unwrap();
-        let report = scaffolder.validate("test-mcp").unwrap();
+        scaffolder.mint(&cfg).expect("TODO: handle error");
+        let report = scaffolder.validate("test-mcp").expect("TODO: handle error");
 
         // All structural checks should pass
         for (check, ok) in &report {
@@ -661,10 +661,10 @@ mod tests {
 
         let cfg1 = CartridgeConfig::with_defaults("alpha-mcp".to_string());
         let cfg2 = CartridgeConfig::with_defaults("beta-mcp".to_string());
-        scaffolder.mint(&cfg1).unwrap();
-        scaffolder.mint(&cfg2).unwrap();
+        scaffolder.mint(&cfg1).expect("TODO: handle error");
+        scaffolder.mint(&cfg2).expect("TODO: handle error");
 
-        let entries = scaffolder.status().unwrap();
+        let entries = scaffolder.status().expect("TODO: handle error");
         assert_eq!(entries.len(), 2);
         assert_eq!(entries[0].0, "alpha-mcp");
         assert_eq!(entries[1].0, "beta-mcp");
@@ -675,10 +675,10 @@ mod tests {
         let (_tmp, root) = setup_fake_boj();
         let scaffolder = Scaffolder::new(root.clone());
         let cfg = CartridgeConfig::with_defaults("test-mcp".to_string());
-        scaffolder.mint(&cfg).unwrap();
+        scaffolder.mint(&cfg).expect("TODO: handle error");
 
         let idr = fs::read_to_string(root.join("cartridges/test-mcp/abi/TestMcp/SafeCloud.idr"))
-            .unwrap();
+            .expect("TODO: handle error");
         assert!(idr.contains("%default total"));
         assert!(!idr.contains("believe_me"));
         assert!(!idr.contains("assert_total"));
@@ -690,10 +690,10 @@ mod tests {
         let (_tmp, root) = setup_fake_boj();
         let scaffolder = Scaffolder::new(root.clone());
         let cfg = CartridgeConfig::with_defaults("test-mcp".to_string());
-        scaffolder.mint(&cfg).unwrap();
+        scaffolder.mint(&cfg).expect("TODO: handle error");
 
         let zig = fs::read_to_string(root.join("cartridges/test-mcp/ffi/test_mcp_ffi.zig"))
-            .unwrap();
+            .expect("TODO: handle error");
         assert!(zig.contains("test \"session lifecycle\""));
         assert!(zig.contains("test \"invalid transitions rejected\""));
         assert!(zig.contains("test \"transition validator\""));
@@ -707,13 +707,13 @@ mod tests {
         let cfg = CartridgeConfig::with_defaults("full-mcp".to_string());
 
         // Run all four phases
-        scaffolder.mint(&cfg).unwrap();
-        scaffolder.provision(&cfg).unwrap();
-        scaffolder.configure(&cfg).unwrap();
-        scaffolder.harness(&cfg).unwrap();
+        scaffolder.mint(&cfg).expect("TODO: handle error");
+        scaffolder.provision(&cfg).expect("TODO: handle error");
+        scaffolder.configure(&cfg).expect("TODO: handle error");
+        scaffolder.harness(&cfg).expect("TODO: handle error");
 
         // Everything should validate
-        let report = scaffolder.validate("full-mcp").unwrap();
+        let report = scaffolder.validate("full-mcp").expect("TODO: handle error");
         assert!(report.iter().all(|(_, ok)| *ok));
     }
 }

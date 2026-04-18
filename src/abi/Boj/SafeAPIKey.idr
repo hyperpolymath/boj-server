@@ -123,16 +123,23 @@ toLogSafe s =
 -- Core Theorems
 --------------------------------------------------------------------------------
 
+private
+minKeyLengthNotZero : LTE Boj.SafeAPIKey.minKeyLength 0 -> Void
+minKeyLengthNotZero LTEZero impossible
+minKeyLengthNotZero (LTESucc _) impossible
+
 export
 sufficientEntropyNonEmpty : SufficientEntropy s -> NonEmpty (unpack s)
-sufficientEntropyNonEmpty (MkSufficientEntropy s {prf}) =
-  let -- Recast prf against the unpacked list length
-      len_eq  = unpackLength s              -- length (unpack s) = length s
-      len_ge  = replace {p = \n => LTE Boj.SafeAPIKey.minKeyLength n}
-                        (sym len_eq) prf   -- LTE 22 (length (unpack s))
-  in case unpack s of
-       []       => absurd len_ge            -- Uninhabited (LTE 22 0)
-       (_ :: _) => IsNonEmpty
+sufficientEntropyNonEmpty (MkSufficientEntropy s {prf}) with (unpack s) proof upEq
+  sufficientEntropyNonEmpty (MkSufficientEntropy s {prf}) | [] =
+    let len_eq  = unpackLength s
+        len_ge  = replace {p = \n => LTE Boj.SafeAPIKey.minKeyLength n}
+                          (sym len_eq) prf
+        lenNil = cong length upEq
+        impossibleLen : LTE Boj.SafeAPIKey.minKeyLength 0
+        impossibleLen = replace {p = \n => LTE Boj.SafeAPIKey.minKeyLength n} lenNil len_ge
+    in absurd (minKeyLengthNotZero impossibleLen)
+  sufficientEntropyNonEmpty (MkSufficientEntropy _ {prf}) | (_ :: _) = IsNonEmpty
 
 ||| The redacted key from `toLogSafe` is always at most 11 characters long.
 ||| Axiomatic: length arithmetic over `substr` and `++` is not reducible at the

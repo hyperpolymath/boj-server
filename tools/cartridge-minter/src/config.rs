@@ -325,8 +325,8 @@ mod tests {
     #[test]
     fn test_config_serialisation() {
         let cfg = CartridgeConfig::with_defaults("test-mcp".to_string());
-        let toml_str = toml::to_string_pretty(&cfg).unwrap();
-        let roundtrip: CartridgeConfig = toml::from_str(&toml_str).unwrap();
+        let toml_str = toml::to_string_pretty(&cfg).expect("TODO: handle error");
+        let roundtrip: CartridgeConfig = toml::from_str(&toml_str).expect("TODO: handle error");
         assert_eq!(roundtrip.name, cfg.name);
         assert_eq!(roundtrip.domain, cfg.domain);
     }

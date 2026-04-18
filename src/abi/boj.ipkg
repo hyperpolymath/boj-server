@@ -23,6 +23,7 @@ modules    = Boj.Protocol
            , Boj.SafePromptInjection
            , Boj.SafeCORS
            , Boj.SafeAPIKey
+           , Boj.CredentialIsolation
            , Boj.SafeWebSocket
 
 depends    = base

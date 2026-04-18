@@ -312,9 +312,10 @@
     function renderCartridges(cartridges) {
       const list = document.getElementById("cartridge-list");
       if (cartridges.length === 0) {
-        list.innerHTML = '<div style="color: var(--muted); font-size: 13px;">No cartridges loaded</div>';
+        list.textContent = 'No cartridges loaded';
         return;
       }
+      // SECURITY: innerHTML with HTML content — sanitize input or use DOM API
       list.innerHTML = cartridges.map((c) => `
         <div class="cartridge-item">
           <div class="toggle ${c.enabled ? 'on' : ''}" data-name="${c.name}" data-enabled="${c.enabled}"></div>
