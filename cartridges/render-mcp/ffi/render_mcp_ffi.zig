@@ -307,6 +307,77 @@ pub export fn render_mcp_reset() void {
 }
 
 // ---------------------------------------------------------------------------
+// ═══════════════════════════════════════════════════════════════════════
+// Standard ABI (ADR-0005 four symbols + ADR-0006 invoke)
+// ═══════════════════════════════════════════════════════════════════════
+
+const shim = @import("cartridge_shim");
+
+const CARTRIDGE_NAME_PTR: [*:0]const u8 = "render-mcp";
+const CARTRIDGE_VERSION_PTR: [*:0]const u8 = "0.1.0";
+
+export fn boj_cartridge_init() callconv(.c) c_int {
+    return 0;
+}
+
+export fn boj_cartridge_deinit() callconv(.c) void {}
+
+export fn boj_cartridge_name() callconv(.c) [*:0]const u8 {
+    return CARTRIDGE_NAME_PTR;
+}
+
+export fn boj_cartridge_version() callconv(.c) [*:0]const u8 {
+    return CARTRIDGE_VERSION_PTR;
+}
+
+/// Dispatch the cartridge.json MCP tools. Grade D Alpha stubs.
+export fn boj_cartridge_invoke(
+    tool_name: [*c]const u8,
+    json_args: [*c]const u8,
+    out_buf: [*c]u8,
+    in_out_len: [*c]usize,
+) callconv(.c) i32 {
+    _ = json_args;
+    if (shim.invokeArgsNull(tool_name, out_buf, in_out_len)) return shim.RC_BAD_ARGS;
+
+    const body: []const u8 =     if (shim.toolIs(tool_name, "render_list_services"))
+        "{\"result\":{\"items\":[],\"count\":0,\"status\":\"stub\"}}"
+    else if (shim.toolIs(tool_name, "render_get_service"))
+        "{\"result\":{\"metadata\":{},\"status\":\"stub\"}}"
+    else if (shim.toolIs(tool_name, "render_create_service"))
+        "{\"result\":{\"status\":\"stub\"}}"
+    else if (shim.toolIs(tool_name, "render_delete_service"))
+        "{\"result\":{\"status\":\"stub\"}}"
+    else if (shim.toolIs(tool_name, "render_list_deploys"))
+        "{\"result\":{\"items\":[],\"count\":0,\"status\":\"stub\"}}"
+    else if (shim.toolIs(tool_name, "render_trigger_deploy"))
+        "{\"result\":{\"status\":\"stub\"}}"
+    else if (shim.toolIs(tool_name, "render_get_deploy"))
+        "{\"result\":{\"metadata\":{},\"status\":\"stub\"}}"
+    else if (shim.toolIs(tool_name, "render_list_env_groups"))
+        "{\"result\":{\"items\":[],\"count\":0,\"status\":\"stub\"}}"
+    else if (shim.toolIs(tool_name, "render_get_env_group"))
+        "{\"result\":{\"metadata\":{},\"status\":\"stub\"}}"
+    else if (shim.toolIs(tool_name, "render_list_custom_domains"))
+        "{\"result\":{\"items\":[],\"count\":0,\"status\":\"stub\"}}"
+    else if (shim.toolIs(tool_name, "render_add_custom_domain"))
+        "{\"result\":{\"status\":\"stub\"}}"
+    else if (shim.toolIs(tool_name, "render_list_jobs"))
+        "{\"result\":{\"items\":[],\"count\":0,\"status\":\"stub\"}}"
+    else if (shim.toolIs(tool_name, "render_create_job"))
+        "{\"result\":{\"status\":\"stub\"}}"
+    else if (shim.toolIs(tool_name, "render_suspend_service"))
+        "{\"result\":{\"status\":\"stub\"}}"
+    else if (shim.toolIs(tool_name, "render_resume_service"))
+        "{\"result\":{\"status\":\"stub\"}}"
+    else if (shim.toolIs(tool_name, "render_get_bandwidth"))
+        "{\"result\":{\"metadata\":{},\"status\":\"stub\"}}"
+else
+    return shim.RC_UNKNOWN_TOOL;
+
+    return shim.writeResult(out_buf, in_out_len, body);
+}
+
 // Tests
 // ---------------------------------------------------------------------------
 
@@ -398,4 +469,60 @@ test "bandwidth counter" {
 
 test "rate limit constant" {
     try std.testing.expectEqual(@as(c_int, 100), render_mcp_rate_limit_per_minute());
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// ADR-0006 invoke dispatch tests
+// ═══════════════════════════════════════════════════════════════════════
+
+test "boj_cartridge_name returns render-mcp" {
+    const n = std.mem.span(boj_cartridge_name());
+    try std.testing.expectEqualStrings("render-mcp", n);
+}
+
+test "boj_cartridge_init returns 0" {
+    try std.testing.expectEqual(@as(c_int, 0), boj_cartridge_init());
+}
+
+test "invoke: each declared tool succeeds" {
+    var buf: [256]u8 = undefined;
+    const tools = [_][]const u8{
+        "render_list_services",
+        "render_get_service",
+        "render_create_service",
+        "render_delete_service",
+        "render_list_deploys",
+        "render_trigger_deploy",
+        "render_get_deploy",
+        "render_list_env_groups",
+        "render_get_env_group",
+        "render_list_custom_domains",
+        "render_add_custom_domain",
+        "render_list_jobs",
+        "render_create_job",
+        "render_suspend_service",
+        "render_resume_service",
+        "render_get_bandwidth",
+    };
+    for (tools) |t| {
+        var len: usize = buf.len;
+        const rc = boj_cartridge_invoke(t.ptr, "{}", &buf, &len);
+        try std.testing.expectEqual(@as(i32, 0), rc);
+        try std.testing.expect(std.mem.indexOf(u8, buf[0..len], "result") != null);
+    }
+}
+
+test "invoke: unknown tool returns -1" {
+    var buf: [64]u8 = undefined;
+    var len: usize = buf.len;
+    const rc = boj_cartridge_invoke("nope", "{}", &buf, &len);
+    try std.testing.expectEqual(@as(i32, -1), rc);
+}
+
+test "invoke: buffer too small returns -3" {
+    var buf: [4]u8 = undefined;
+    var len: usize = buf.len;
+    const rc = boj_cartridge_invoke("render_list_services", "{}", &buf, &len);
+    try std.testing.expectEqual(@as(i32, -3), rc);
+    try std.testing.expect(len > 4);
 }
