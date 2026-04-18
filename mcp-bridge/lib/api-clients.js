@@ -24,7 +24,12 @@ async function fetchHealth() {
     const res = await fetch(`${BOJ_BASE}/health`);
     return await res.json();
   } catch {
-    return { status: "offline", message: "BoJ REST API not reachable. Start the server with: systemctl --user start boj-server" };
+    return {
+      status: "rest-unavailable",
+      mode: "stdio-only",
+      message: "BoJ REST API is not currently deployed — pending Elixir rewrite. The systemd unit `boj-server.service` starts the stdio MCP bridge, not a REST server on " + BOJ_BASE + ". Offline-capable tools (menu, cartridges, cartridge-info) still work via static fallbacks; REST-only tools (health, invoke, research, codeseeker) will return this error until the Elixir port ships.",
+      base_url_probed: BOJ_BASE,
+    };
   }
 }
 
@@ -75,7 +80,12 @@ async function invokeCartridge(name, params) {
     });
     return await res.json();
   } catch {
-    return { error: "BoJ REST API not reachable. Invocation requires a running server.", cartridge: name, hint: "Start with: systemctl --user start boj-server" };
+    return {
+      error: "rest-unavailable",
+      cartridge: name,
+      message: "Cartridge invocation requires the BoJ REST server, which is not currently deployed (pending Elixir rewrite). The stdio MCP bridge cannot route /cartridge/" + name + "/invoke on its own.",
+      base_url_probed: BOJ_BASE,
+    };
   }
 }
 
