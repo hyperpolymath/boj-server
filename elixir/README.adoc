@@ -1,0 +1,91 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+// Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+= BoJ Server — Elixir REST skeleton
+:orientation: shallow
+
+== Purpose
+
+Serves the five HTTP endpoints `mcp-bridge/lib/api-clients.js` calls, on
+port **7700** by default. This is a **skeleton**, not the finished REST
+server:
+
+* `GET /health` — returns `{"status": "ok", "mode": "skeleton", ...}` with
+  live cartridge-load count.
+* `GET /menu` — summarises each cartridge (name / domain / tier /
+  description).
+* `GET /cartridges` — cartridge-name list.
+* `GET /cartridge/:name` — full `cartridge.json` for that cartridge, or
+  404 if unknown.
+* `POST /cartridge/:name/invoke` — **returns 501** with
+  `{"error": "invocation-not-yet-wired"}`. Dispatch to the Zig FFI is
+  Phase 2.
+
+== Relationship to the stdio bridge
+
+The Node.js stdio bridge at `mcp-bridge/` is what Claude Code and Glama
+talk to. When the REST server behind it was missing, `boj_health` and
+`boj_research` returned misleading errors pointing at a nonexistent
+listener. This skeleton closes that gap:
+
+[cols="1,3"]
+|===
+| Endpoint | Bridge tool
+
+| `/health`                      | `boj_health`
+| `/menu`                        | `boj_menu`
+| `/cartridges`                  | `boj_cartridges`
+| `/cartridge/:name`             | `boj_cartridge_info`
+| `/cartridge/:name/invoke`      | `boj_cartridge_invoke` (501 until Phase 2)
+|===
+
+== Build
+
+[source,bash]
+----
+cd elixir
+mix deps.get
+mix compile
+mix test          # five endpoint tests
+----
+
+== Run
+
+[source,bash]
+----
+cd elixir
+mix run --no-halt
+# listener binds http://localhost:7700
+----
+
+Configure via env vars:
+
+* `BOJ_PORT` — listener port (default `7700`).
+* `BOJ_CARTRIDGES_ROOT` — where to scan for `cartridge.json` (default:
+  `../cartridges` relative to the Elixir project).
+
+== Design notes
+
+* **Cowboy + Plug** — matches the http-capability-gateway decision
+  (`docs/decisions/0004-adopt-http-capability-gateway.md`), so this
+  listener is a natural attachment point for that gateway's verb-governance
+  and trust-level plugs in a later phase.
+* **ETS-backed catalog, read-only.** The cartridge catalog is loaded once
+  at boot and never mutated. Re-scanning requires a restart. This matches
+  the current mount lifecycle (`cartridge.json` changes are already
+  restart-gated).
+* **Best-effort load.** A malformed `cartridge.json` is logged and
+  skipped; the listener still comes up with whatever parsed cleanly.
+* **Skeleton only.** Invocation routing, federation, auth, rate-limiting,
+  TLS — all out of scope for this file. Those land with the Elixir port
+  phases declared in the dogfood log.
+
+== Phase plan
+
+. **Phase 1 — this.** REST listener serves cartridge metadata. `boj_health`
+  stops lying. `boj_research` still returns 501 but with a structured,
+  explainable error. **DONE 2026-04-18.**
+. **Phase 2.** Wire `POST /cartridge/:name/invoke` into the Zig FFI via
+  the loader (`ffi/zig/src/loader.zig`). `boj_cartridge_invoke` becomes
+  live.
+. **Phase 3.** Attach http-capability-gateway per ADR-0004 at tier 2.
+. **Phase 4.** mTLS / SDP (see `Trustfile.a2ml` `[SDP_RULES]`).

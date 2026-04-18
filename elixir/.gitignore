@@ -1,0 +1,6 @@
+# SPDX-License-Identifier: PMPL-1.0-or-later
+_build/
+deps/
+*.ez
+erl_crash.dump
+.elixir_ls/
