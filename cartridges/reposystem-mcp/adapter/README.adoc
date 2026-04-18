@@ -1,0 +1,35 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+// Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+= reposystem-mcp / adapter — REST/gRPC/GraphQL bridge
+:orientation: deep
+
+== Purpose
+
+Exposes the (stub) reposystem FFI over three protocols: REST on **9130**,
+gRPC-compat on **9131**, GraphQL on **9132**. Stateless.
+
+== Files
+
+[cols="1,4"]
+|===
+| File | Role
+
+| `build.zig`                             | Zig build graph.
+| `reposystem_adapter.zig`                | Protocol dispatch. Tools: `reposystem_list_repos`, `reposystem_check_health`, `reposystem_sync_mirrors`, `reposystem_run_audit`.
+| `SIDELINED-reposystem_adapter.v.adoc`   | V-lang predecessor. Not built.
+|===
+
+== Invariants
+
+* **Stateless.**
+* Responses reflect whatever the (stub) FFI returns — the adapter does not
+  embellish.
+
+== Test/proof surface
+
+No inline tests.
+
+== Read-first
+
+. Lines 35–43 — `dispatch`.
+. Lines 46–73 — protocol routers.

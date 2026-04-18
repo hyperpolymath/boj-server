@@ -1,0 +1,44 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+// Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+= git-mcp / abi — Idris2 ABI layer
+:orientation: deep
+
+== Purpose
+
+Encodes the forge-session state machine
+(`Unauthenticated → Authenticated → RepoSelected → Operating → RepoSelected`)
+as an Idris2 indexed type plus a parallel runtime predicate. The ABI is the
+source-of-truth spec; the FFI implements the same graph in Zig. Tools are
+tagged with their state precondition so the FFI can refuse an operation that
+would require a `RepoSelected` session when no repo has been selected.
+
+== Files
+
+[cols="1,4"]
+|===
+| File | Role
+
+| `git-mcp.ipkg`                | Idris2 package descriptor. `modules = GitMcp.SafeGit`, `depends = base, contrib`. Type-check with `idris2 --check git-mcp.ipkg`.
+| `GitMcp/SafeGit.idr`          | 5-state `GitState`, `ValidTransition` type proof, `ForgeSession` record with state tag, `HasRepo` proof, the `McpTool` enum, `requiresRepo` predicate, and C-ABI exports `git_can_transition`, `git_tool_requires_repo`.
+|===
+
+== Invariants
+
+* Linear session pipeline: the state machine cannot jump — e.g. a tool that
+  needs `RepoSelected` cannot be called from `Authenticated` without going
+  through `git_select_repo`.
+* Read-only ops (`ToolStatus`, `ToolLog`, `ToolDiff`) do **not** require a
+  selected repo; mutating ops (`ToolCreatePR`, `ToolPush`, `ToolCreateBranch`)
+  do. See `requiresRepo` predicate.
+* Module commentary at line 26 pins the intended progression:
+  `Unauthenticated -> Authenticated -> RepoSelected -> Operating -> RepoSelected`.
+
+== Test/proof surface
+
+Type-check only (`idris2 --check`). No inline `test` blocks.
+
+== Read-first
+
+. Lines 22–63 — `GitState`, `ValidTransition` constructors, and `canTransition`.
+. Lines 89–104 — `ForgeSession` record and `HasRepo` proof.
+. Lines 113–143 — `McpTool` constructors and `requiresRepo` predicate.

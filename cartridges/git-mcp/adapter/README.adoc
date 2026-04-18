@@ -1,0 +1,37 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+// Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+= git-mcp / adapter — REST/gRPC/GraphQL bridge
+:orientation: deep
+
+== Purpose
+
+Exposes the git-mcp FFI over three protocols: REST on **9250**, gRPC-compat on
+**9251**, GraphQL on **9252**. Stateless — the session state lives behind the
+FFI mutex in `../ffi/`.
+
+== Files
+
+[cols="1,4"]
+|===
+| File | Role
+
+| `build.zig`                         | Zig build graph for the adapter binary.
+| `git_adapter.zig`                   | Three listener threads spawned from `main`. `dispatchRest`, `dispatchGrpc`, and `dispatchGraphql` map a path or body shape to a tool name, then call the shared `dispatch` stub that forwards to the FFI. Tool set: `git_authenticate`, `git_select_repo`, `git_status`, `git_log`, `git_diff`, `git_create_branch`, `git_push`.
+| `SIDELINED-git_adapter.v.adoc`      | Archived V-lang predecessor. Kept for lineage; not built.
+|===
+
+== Invariants
+
+* **Stateless** — the adapter carries no session data.
+* **Port binding** — three sibling ports, no header-multiplexing.
+* Responses always `application/json`; 200 success, 404 unknown tool.
+
+== Test/proof surface
+
+No inline tests. Adapter is integration scaffolding.
+
+== Read-first
+
+. Lines 27–51 — `dispatch` mapping (tool name → FFI call).
+. Lines 53–70 — REST/gRPC routing.
+. Lines 125–144 — listener loop and `main`.

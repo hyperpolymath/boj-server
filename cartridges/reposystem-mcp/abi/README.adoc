@@ -1,0 +1,40 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+// Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+= reposystem-mcp / abi — Idris2 ABI layer
+:orientation: deep
+
+== Purpose
+
+Protocol types for repository management operations: list, health check,
+mirror sync, and RSR compliance audit. Carries an **audit conservation proof**
+— a full-pass audit has zero failures — and a health/sync state vocabulary
+for the whole estate.
+
+== Files
+
+[cols="1,4"]
+|===
+| File | Role
+
+| `Reposystem/Protocol.idr`     | Enums `ReposystemOp`, `RepoHealth` (`Green`, `Yellow`, `Red`, `Unknown`), `SyncState` (`Synced`, `Behind Nat`, `Diverged`, `Unreachable`). Records `Repo` (name, health, sync), `AuditResult` (`passed`, `failed`, `total`) with equality proof `sumPrf : passed + failed = total`. Helper `fullPassAudit`.
+|===
+
+No `.ipkg`. The module is imported directly by consuming packages.
+
+== Invariants
+
+* **Audit conservation**: `AuditResult.sumPrf : passed + failed = total`
+  (line 41). An audit that mis-counts cannot be expressed in the type.
+* **Full-pass witness**: `fullPassAudit n = MkAuditResult n 0 n` (line 44)
+  is the canonical all-pass result.
+* **Sync semantics**: `Behind 0` is semantically equal to `Synced` (line
+  50–51). Runtime code should not treat them as different states.
+
+== Test/proof surface
+
+Thin module. No inline tests.
+
+== Read-first
+
+. Lines 12–32 — the enums and basic records.
+. Lines 34–46 — `AuditResult` with the conservation proof.

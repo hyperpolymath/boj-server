@@ -1,0 +1,54 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+// Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+= reposystem-mcp / ffi — Zig FFI layer (stubs)
+:orientation: deep
+
+== Purpose
+
+**Stub** implementation. `list_repos_count` returns a hardcoded count,
+`check_health` returns `0` (green), `sync_mirrors` is a no-op, and
+`run_audit` returns a hardcoded pass count (17). The real reposystem driver
+lives elsewhere; this layer exists so the cartridge can be mounted and its
+ABI consumed by the BoJ loader today.
+
+Honestly recorded as stubs; no C-promotion is possible until a real backend
+is wired in.
+
+== Files
+
+[cols="1,4"]
+|===
+| File | Role
+
+| `build.zig`                 | Zig build graph.
+| `reposystem_ffi.zig`        | C-ABI exports `reposystem_list_repos_count`, `reposystem_check_health` (`u8` with 0=green, 1=yellow, 2=red, 3=unknown), `reposystem_sync_mirrors`, `reposystem_run_audit` (u32 pass count). Null-guarded throughout.
+| `zig-out/`                  | Build artefacts (gitignored).
+|===
+
+== Invariants
+
+* **Null rejection** on every repo-name string (lines 14–16, 20–21, 26–27).
+* **Health encoding** — `u8` values 0–3 map 1:1 to the ABI's `RepoHealth`
+  enum. Unknown maps to `3`.
+* **Stub returns** are the *only* source of data; do not build on the
+  current return values elsewhere in the codebase.
+
+== Test/proof surface
+
+3 inline `test "..."` blocks (lines 33–43):
+
+* health returns `Unknown` for a null repo name
+* sync rejects null repo name
+* audit returns zero for null input
+
+Run with `cd ffi && zig build test`.
+
+== Read-first
+
+. Lines 8–29 — function signatures.
+. Lines 33–43 — null-guard tests.
+
+== Promotion gate
+
+Replace stubs with calls into the real reposystem inventory/health/audit
+pipeline before attempting D→C promotion for this component.

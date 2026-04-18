@@ -1,0 +1,73 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+// Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+= database-mcp / ffi — Zig FFI layer
+:orientation: deep
+
+== Purpose
+
+The Zig implementation of the connection state machine from `../abi/`, plus
+live SQL execution against SQLite (linked via `@cImport("sqlite3.h")`) and
+live VQL / KQL / GQL execution against VeriSimDB / QuandleDB / LithoGlyph via
+child `curl` processes. Exposes the four standard cartridge symbols
+(`boj_cartridge_init`, `boj_cartridge_deinit`, `boj_cartridge_name`,
+`boj_cartridge_version`) and ~20 database-specific `db_*` exports.
+
+== Files
+
+[cols="1,4"]
+|===
+| File | Role
+
+| `build.zig`          | Zig build graph — produces the loadable shared library plus the unit-test binary.
+| `database_ffi.zig`   | All of it. ~1200 lines. State machine, 16-slot connection pool, SQLite integration, VQL/KQL/GQL curl execution, 24 inline tests.
+| `zig-out/`           | Build artefacts (gitignored).
+|===
+
+== Invariants
+
+* **Mutex discipline.** All reads and writes to the global `connections`
+  array are protected by `var mutex: std.Thread.Mutex`. Every C-ABI export
+  opens with `mutex.lock(); defer mutex.unlock();`. Pure helpers
+  (`isValidTransition`, `appendJsonEscaped`) do not need the lock.
+* **Two-phase pattern** for blocking I/O. `db_execute_vql` / `_kql` / `_gql`
+  release the mutex during the `curl` call and re-acquire it afterwards,
+  then **re-validate slot state** (`active && state == .querying`) before
+  writing the result back. See lines 515–587 for the canonical pattern.
+* **Bounds checks before dereference.** All `*_ptr` / `*_len` pairs reject
+  zero-length and oversize inputs (error codes `-6`, `-8`) before any
+  `@memcpy`. Pointer safety is documented in-line with `SAFETY:` comments.
+* **Enum hardening.** All public exports use `std.meta.intToEnum` rather
+  than `@enumFromInt` on `c_int` arguments, so an invalid enum returns `-1`
+  instead of panicking.
+* **State-machine mirror.** `isValidTransition` (lines 81–88) is the exact
+  graph from `SafeDatabase.idr`. Changes there must land in both files.
+* **Slot capacity** is `MAX_CONNECTIONS = 16`. Exhaustion returns `-1`.
+* **Error codes**: `-1` invalid slot / exhausted, `-2` invalid transition,
+  `-3` no sqlite handle (wrong backend), `-4` sqlite3_exec failed,
+  `-5` output buffer too small, `-6` URL/path empty or too long, `-7` curl
+  failed, `-8` zero-length input/output.
+
+== Test/proof surface
+
+24 inline `test "..."` blocks in `database_ffi.zig` (lines 878–1189). Coverage:
+
+* State machine (lines 878–931): connect, disconnect, double-close, query
+  lifecycle, error recovery, transition validation.
+* SQLite live execution (lines 933–1045): in-memory DB open, execute
+  `CREATE`/`INSERT`/`SELECT`, multiple rows, invalid SQL → error state,
+  non-sqlite slot rejection.
+* VeriSimDB / QuandleDB / LithoGlyph connection lifecycle (lines 1047–1169):
+  URL storage, empty/oversize rejection, query lifecycle via manual state
+  transitions (no live server in test).
+* Wrong-backend rejection (lines 1171–1188).
+
+Run with `cd ffi && zig build test`.
+
+== Read-first
+
+. Lines 14–57 — types and the `ConnectionSlot` struct; note `url_buf[512]` for the HTTP backends.
+. Lines 59–88 — `connections` array, `mutex` declaration, `isValidTransition`.
+. Lines 95–113 — the simplest export (`db_connect`); read before the sqlite/verisimdb variants.
+. Lines 324–401 — `db_execute_sql` — full state-machine-guarded sqlite exec with JSON serialisation.
+. Lines 515–641 — `db_execute_vql` + `runCurlPost` — the two-phase lock pattern for blocking I/O.
+. Lines 842–872 — the standard cartridge-interface exports required by the BoJ loader.

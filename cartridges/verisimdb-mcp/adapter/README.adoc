@@ -1,0 +1,34 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+// Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+= verisimdb-mcp / adapter — REST/gRPC/GraphQL bridge
+:orientation: deep
+
+== Purpose
+
+Exposes the (stub) verisimdb-mcp FFI over three protocols: REST on **9115**,
+gRPC-compat on **9116**, GraphQL on **9117**. Stateless.
+
+== Files
+
+[cols="1,4"]
+|===
+| File | Role
+
+| `build.zig`                            | Zig build graph.
+| `verisimdb_adapter.zig`                | Protocol dispatch. Tools: `verisimdb_store_octad`, `verisimdb_get_octad`, `verisimdb_detect_drift`, `verisimdb_query_audit`.
+| `SIDELINED-verisimdb_adapter.v.adoc`   | V-lang predecessor. Not built.
+|===
+
+== Invariants
+
+* **Stateless.**
+* Responses pass through whatever the (stub) FFI returns — no embellishment.
+
+== Test/proof surface
+
+No inline tests.
+
+== Read-first
+
+. Lines 35–43 — `dispatch`.
+. Lines 46–73 — protocol routers.

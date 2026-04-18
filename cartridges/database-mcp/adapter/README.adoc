@@ -1,0 +1,53 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+// Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+= database-mcp / adapter — REST/gRPC/GraphQL bridge
+:orientation: deep
+
+== Purpose
+
+Exposes the FFI layer over three protocols so non-Zig callers can drive the
+cartridge. The adapter is **stateless** — it does not hold its own connection
+or slot state; all state lives behind the FFI mutex in `../ffi/`. The adapter
+simply parses an incoming request, routes to a tool name, calls the matching
+FFI export, and serialises the response.
+
+== Files
+
+[cols="1,4"]
+|===
+| File | Role
+
+| `build.zig`                             | Zig build graph for the adapter binary.
+| `database_adapter.zig`                  | Three-protocol dispatcher. Listens on three ports, maps tool names to FFI calls, returns JSON over HTTP.
+| `SIDELINED-database_adapter.v.adoc`     | Historical V-lang predecessor. Retained for lineage per the 2026-04-10 V-ban transition rule ("V sources MOVE, don't delete"). Not compiled.
+|===
+
+== Invariants
+
+* **Stateless.** No global mutable state beyond protocol listeners. The
+  adapter never caches slot indices; the caller must carry them.
+* **One tool call per HTTP request.** Pipelining or keep-alive batching is
+  out of scope for this layer.
+* **JSON content type.** Responses are always `Content-Type:
+  application/json`; errors are `{"error": "<code>", "message": "<text>"}`.
+* **Port binding.** Each protocol runs on a dedicated port so a single
+  cartridge can simultaneously serve all three without header-based
+  multiplexing.
+
+== Test/proof surface
+
+No inline tests in the adapter (FFI tests cover correctness; the adapter is
+thin scaffolding). Adapter-level integration is exercised by the
+cartridge-matrix tests run from the repo root via `zig build test` in the
+main tree.
+
+== Read-first
+
+. `database_adapter.zig` top of file — port constants and protocol enum.
+. The `dispatch` function — canonical tool-name → FFI-call mapping.
+. The three protocol routers (REST, gRPC-compat, GraphQL) — each is a thin
+  wrapper around `dispatch`.
+. `main` — listener thread spawn.
+
+Skip `SIDELINED-database_adapter.v.adoc` for current work; it documents the
+pre-sidelining design only.
