@@ -5,11 +5,25 @@ pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
 
+    // Shared ADR-0006 invoke-shim module (relative path up to boj-server trunk).
+
+    const shim_mod = b.addModule("cartridge_shim", .{
+
+        .root_source_file = b.path("../../../ffi/zig/src/cartridge_shim.zig"),
+
+        .target = target,
+
+        .optimize = optimize,
+
+    });
+
     const ffi_mod = b.addModule("burble_admin_ffi", .{
         .root_source_file = b.path("burble_admin_ffi.zig"),
         .target = target,
         .optimize = optimize,
     });
+
+    ffi_mod.addImport("cartridge_shim", shim_mod);
     const lib = b.addLibrary(.{
         .name = "burble_admin_ffi",
         .root_module = ffi_mod,
