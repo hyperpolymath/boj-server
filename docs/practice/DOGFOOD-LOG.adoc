@@ -118,6 +118,60 @@ Remediation::
 
 Witness:: Jonathan D.A. Jewell (via AI-assisted session, Claude Opus 4.7).
 
+=== 2026-04-18 — Second entry: first MCP-routed query surfaces REST-gap
+
+Component:: MCP bridge (`mcp-bridge/main.js`), `boj_health` tool, `boj_cartridges`
+            tool, `boj_research` tool, systemd unit `boj-server.service`.
+
+Context:: Follow-up to the inaugural entry, which noted that no BoJ cartridge
+          had actually been exercised during the audit. This entry deliberately
+          routes work through the MCP bridge to begin accumulating real
+          runtime evidence:
+          (1) `boj_health` called directly from the AI assistant.
+          (2) `boj_cartridges` called to enumerate the matrix.
+          (3) `boj_research` called with operation=search to surface any
+          cartridge-routed lookups.
+
+Outcome::
+* `boj_cartridges` returned a 23-item list **in offline mode** — correct
+  degradation behaviour (the MCP bridge knows the cartridge names statically
+  and does not need the REST API to enumerate them).
+* Bridge answered both `boj_health` and `boj_cartridges` invocations cleanly
+  under stdio transport; no crashes, no timeouts.
+* `systemctl --user start boj-server` succeeds repeatedly (six recent starts
+  logged between Apr 15 and Apr 18, all `status=0/SUCCESS`).
+
+Failures::
+* **REST API unreachable.** `boj_health` returns
+  `{"status":"offline","message":"BoJ REST API not reachable. Start the server
+  with: systemctl --user start boj-server"}` even immediately after starting
+  the unit. The hint is misleading: the unit `ExecStart` runs
+  `/usr/bin/node mcp-bridge/main.js` (an stdio MCP proxy that exits when no
+  client is attached — observed CPU time ~500 ms per invocation). No process
+  is listening on the port the REST-facing tools expect.
+* **`boj_research` fails with a same-message error** on any operation, because
+  the research cartridge goes through the REST path, not the stdio path, and
+  the REST path has no server behind it.
+* **Language-policy drift in the unit file.** The `ExecStart` line uses
+  `/usr/bin/node` — Node.js is banned estate-wide (CLAUDE.md: "Node.js →
+  Deno"). The inline comment in the unit file acknowledges this: "REST server
+  pending Elixir rewrite. Cartridges run as standalone MCP servers via Claude
+  Code settings until BoJ REST is restored."
+
+Remediation::
+* **Architectural, not a quick fix.** The REST server is explicitly on the
+  backlog pending Elixir port; this log entry is the first concrete
+  user-facing consequence recorded. Two tracks follow:
+  (a) Fix the `boj_health` message — if the design is stdio-only today, the
+  hint should stop pointing at a nonexistent REST server.
+  (b) Land the Elixir port so `boj_research`, `boj_codeseeker`, and the other
+  REST-backed tools work.
+* **Node → Deno.** The user-unit `ExecStart` should move to Deno when the MCP
+  bridge is rewritten; tracked implicitly under the Elixir-port task.
+
+Witness:: Jonathan D.A. Jewell (via AI-assisted session, Claude Opus 4.7,
+          MCP stdio transport).
+
 == Maintenance
 
 Each calendar month, the current maintainer SHOULD:
