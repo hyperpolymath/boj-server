@@ -247,6 +247,69 @@ pub export fn gha_mcp_reset() void {
 }
 
 // ---------------------------------------------------------------------------
+// ═══════════════════════════════════════════════════════════════════════
+// Standard ABI (ADR-0005 four symbols + ADR-0006 invoke)
+// ═══════════════════════════════════════════════════════════════════════
+
+const shim = @import("cartridge_shim");
+
+const CARTRIDGE_NAME_PTR: [*:0]const u8 = "github-actions-mcp";
+const CARTRIDGE_VERSION_PTR: [*:0]const u8 = "0.1.0";
+
+export fn boj_cartridge_init() callconv(.c) c_int {
+    return 0;
+}
+
+export fn boj_cartridge_deinit() callconv(.c) void {}
+
+export fn boj_cartridge_name() callconv(.c) [*:0]const u8 {
+    return CARTRIDGE_NAME_PTR;
+}
+
+export fn boj_cartridge_version() callconv(.c) [*:0]const u8 {
+    return CARTRIDGE_VERSION_PTR;
+}
+
+/// Dispatch the cartridge.json MCP tools. Grade D Alpha stubs.
+export fn boj_cartridge_invoke(
+    tool_name: [*c]const u8,
+    json_args: [*c]const u8,
+    out_buf: [*c]u8,
+    in_out_len: [*c]usize,
+) callconv(.c) i32 {
+    _ = json_args;
+    if (shim.invokeArgsNull(tool_name, out_buf, in_out_len)) return shim.RC_BAD_ARGS;
+
+    const body: []const u8 =     if (shim.toolIs(tool_name, "gha_list_workflows"))
+        "{\"result\":{\"items\":[],\"count\":0,\"status\":\"stub\"}}"
+    else if (shim.toolIs(tool_name, "gha_list_runs"))
+        "{\"result\":{\"items\":[],\"count\":0,\"status\":\"stub\"}}"
+    else if (shim.toolIs(tool_name, "gha_get_run"))
+        "{\"result\":{\"metadata\":{},\"status\":\"stub\"}}"
+    else if (shim.toolIs(tool_name, "gha_list_jobs"))
+        "{\"result\":{\"items\":[],\"count\":0,\"status\":\"stub\"}}"
+    else if (shim.toolIs(tool_name, "gha_get_logs"))
+        "{\"result\":{\"metadata\":{},\"status\":\"stub\"}}"
+    else if (shim.toolIs(tool_name, "gha_list_artifacts"))
+        "{\"result\":{\"items\":[],\"count\":0,\"status\":\"stub\"}}"
+    else if (shim.toolIs(tool_name, "gha_dispatch_workflow"))
+        "{\"result\":{\"status\":\"stub\"}}"
+    else if (shim.toolIs(tool_name, "gha_rerun_workflow"))
+        "{\"result\":{\"status\":\"stub\"}}"
+    else if (shim.toolIs(tool_name, "gha_cancel_run"))
+        "{\"result\":{\"status\":\"stub\"}}"
+    else if (shim.toolIs(tool_name, "gha_list_secrets"))
+        "{\"result\":{\"items\":[],\"count\":0,\"status\":\"stub\"}}"
+    else if (shim.toolIs(tool_name, "gha_list_runners"))
+        "{\"result\":{\"items\":[],\"count\":0,\"status\":\"stub\"}}"
+    else if (shim.toolIs(tool_name, "gha_list_caches"))
+        "{\"result\":{\"items\":[],\"count\":0,\"status\":\"stub\"}}"
+else
+    return shim.RC_UNKNOWN_TOOL;
+
+    return shim.writeResult(out_buf, in_out_len, body);
+}
+
 // Tests
 // ---------------------------------------------------------------------------
 
@@ -324,4 +387,56 @@ test "slot exhaustion" {
     try std.testing.expectEqual(@as(c_int, 0), gha_mcp_close(slots[0]));
     const new_slot = gha_mcp_authenticate(0);
     try std.testing.expect(new_slot >= 0);
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// ADR-0006 invoke dispatch tests
+// ═══════════════════════════════════════════════════════════════════════
+
+test "boj_cartridge_name returns github-actions-mcp" {
+    const n = std.mem.span(boj_cartridge_name());
+    try std.testing.expectEqualStrings("github-actions-mcp", n);
+}
+
+test "boj_cartridge_init returns 0" {
+    try std.testing.expectEqual(@as(c_int, 0), boj_cartridge_init());
+}
+
+test "invoke: each declared tool succeeds" {
+    var buf: [256]u8 = undefined;
+    const tools = [_][]const u8{
+        "gha_list_workflows",
+        "gha_list_runs",
+        "gha_get_run",
+        "gha_list_jobs",
+        "gha_get_logs",
+        "gha_list_artifacts",
+        "gha_dispatch_workflow",
+        "gha_rerun_workflow",
+        "gha_cancel_run",
+        "gha_list_secrets",
+        "gha_list_runners",
+        "gha_list_caches",
+    };
+    for (tools) |t| {
+        var len: usize = buf.len;
+        const rc = boj_cartridge_invoke(t.ptr, "{}", &buf, &len);
+        try std.testing.expectEqual(@as(i32, 0), rc);
+        try std.testing.expect(std.mem.indexOf(u8, buf[0..len], "result") != null);
+    }
+}
+
+test "invoke: unknown tool returns -1" {
+    var buf: [64]u8 = undefined;
+    var len: usize = buf.len;
+    const rc = boj_cartridge_invoke("nope", "{}", &buf, &len);
+    try std.testing.expectEqual(@as(i32, -1), rc);
+}
+
+test "invoke: buffer too small returns -3" {
+    var buf: [4]u8 = undefined;
+    var len: usize = buf.len;
+    const rc = boj_cartridge_invoke("gha_list_workflows", "{}", &buf, &len);
+    try std.testing.expectEqual(@as(i32, -3), rc);
+    try std.testing.expect(len > 4);
 }

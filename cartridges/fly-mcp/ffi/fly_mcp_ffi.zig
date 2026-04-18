@@ -257,6 +257,87 @@ pub export fn fly_mcp_reset() void {
 }
 
 // ---------------------------------------------------------------------------
+// ═══════════════════════════════════════════════════════════════════════
+// Standard ABI (ADR-0005 four symbols + ADR-0006 invoke)
+// ═══════════════════════════════════════════════════════════════════════
+
+const shim = @import("cartridge_shim");
+
+const CARTRIDGE_NAME_PTR: [*:0]const u8 = "fly-mcp";
+const CARTRIDGE_VERSION_PTR: [*:0]const u8 = "0.1.0";
+
+export fn boj_cartridge_init() callconv(.c) c_int {
+    return 0;
+}
+
+export fn boj_cartridge_deinit() callconv(.c) void {}
+
+export fn boj_cartridge_name() callconv(.c) [*:0]const u8 {
+    return CARTRIDGE_NAME_PTR;
+}
+
+export fn boj_cartridge_version() callconv(.c) [*:0]const u8 {
+    return CARTRIDGE_VERSION_PTR;
+}
+
+/// Dispatch the cartridge.json MCP tools. Grade D Alpha stubs.
+export fn boj_cartridge_invoke(
+    tool_name: [*c]const u8,
+    json_args: [*c]const u8,
+    out_buf: [*c]u8,
+    in_out_len: [*c]usize,
+) callconv(.c) i32 {
+    _ = json_args;
+    if (shim.invokeArgsNull(tool_name, out_buf, in_out_len)) return shim.RC_BAD_ARGS;
+
+    const body: []const u8 =     if (shim.toolIs(tool_name, "fly_list_apps"))
+        "{\"result\":{\"items\":[],\"count\":0,\"status\":\"stub\"}}"
+    else if (shim.toolIs(tool_name, "fly_get_app"))
+        "{\"result\":{\"metadata\":{},\"status\":\"stub\"}}"
+    else if (shim.toolIs(tool_name, "fly_create_app"))
+        "{\"result\":{\"status\":\"stub\"}}"
+    else if (shim.toolIs(tool_name, "fly_destroy_app"))
+        "{\"result\":{\"status\":\"stub\"}}"
+    else if (shim.toolIs(tool_name, "fly_list_machines"))
+        "{\"result\":{\"items\":[],\"count\":0,\"status\":\"stub\"}}"
+    else if (shim.toolIs(tool_name, "fly_get_machine"))
+        "{\"result\":{\"metadata\":{},\"status\":\"stub\"}}"
+    else if (shim.toolIs(tool_name, "fly_create_machine"))
+        "{\"result\":{\"status\":\"stub\"}}"
+    else if (shim.toolIs(tool_name, "fly_start_machine"))
+        "{\"result\":{\"status\":\"stub\"}}"
+    else if (shim.toolIs(tool_name, "fly_stop_machine"))
+        "{\"result\":{\"status\":\"stub\"}}"
+    else if (shim.toolIs(tool_name, "fly_restart_machine"))
+        "{\"result\":{\"status\":\"stub\"}}"
+    else if (shim.toolIs(tool_name, "fly_destroy_machine"))
+        "{\"result\":{\"status\":\"stub\"}}"
+    else if (shim.toolIs(tool_name, "fly_list_volumes"))
+        "{\"result\":{\"items\":[],\"count\":0,\"status\":\"stub\"}}"
+    else if (shim.toolIs(tool_name, "fly_create_volume"))
+        "{\"result\":{\"status\":\"stub\"}}"
+    else if (shim.toolIs(tool_name, "fly_list_secrets"))
+        "{\"result\":{\"items\":[],\"count\":0,\"status\":\"stub\"}}"
+    else if (shim.toolIs(tool_name, "fly_set_secrets"))
+        "{\"result\":{\"status\":\"stub\"}}"
+    else if (shim.toolIs(tool_name, "fly_delete_secret"))
+        "{\"result\":{\"status\":\"stub\"}}"
+    else if (shim.toolIs(tool_name, "fly_list_certificates"))
+        "{\"result\":{\"items\":[],\"count\":0,\"status\":\"stub\"}}"
+    else if (shim.toolIs(tool_name, "fly_add_certificate"))
+        "{\"result\":{\"status\":\"stub\"}}"
+    else if (shim.toolIs(tool_name, "fly_list_regions"))
+        "{\"result\":{\"items\":[],\"count\":0,\"status\":\"stub\"}}"
+    else if (shim.toolIs(tool_name, "fly_allocate_ip"))
+        "{\"result\":{\"status\":\"stub\"}}"
+    else if (shim.toolIs(tool_name, "fly_release_ip"))
+        "{\"result\":{\"status\":\"stub\"}}"
+else
+    return shim.RC_UNKNOWN_TOOL;
+
+    return shim.writeResult(out_buf, in_out_len, body);
+}
+
 // Tests
 // ---------------------------------------------------------------------------
 
@@ -345,4 +426,65 @@ test "app and machine counters" {
     try std.testing.expectEqual(@as(c_int, 0), fly_mcp_machine_count(slot));
     try std.testing.expectEqual(@as(c_int, 0), fly_mcp_set_machine_count(slot, 12));
     try std.testing.expectEqual(@as(c_int, 12), fly_mcp_machine_count(slot));
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// ADR-0006 invoke dispatch tests
+// ═══════════════════════════════════════════════════════════════════════
+
+test "boj_cartridge_name returns fly-mcp" {
+    const n = std.mem.span(boj_cartridge_name());
+    try std.testing.expectEqualStrings("fly-mcp", n);
+}
+
+test "boj_cartridge_init returns 0" {
+    try std.testing.expectEqual(@as(c_int, 0), boj_cartridge_init());
+}
+
+test "invoke: each declared tool succeeds" {
+    var buf: [256]u8 = undefined;
+    const tools = [_][]const u8{
+        "fly_list_apps",
+        "fly_get_app",
+        "fly_create_app",
+        "fly_destroy_app",
+        "fly_list_machines",
+        "fly_get_machine",
+        "fly_create_machine",
+        "fly_start_machine",
+        "fly_stop_machine",
+        "fly_restart_machine",
+        "fly_destroy_machine",
+        "fly_list_volumes",
+        "fly_create_volume",
+        "fly_list_secrets",
+        "fly_set_secrets",
+        "fly_delete_secret",
+        "fly_list_certificates",
+        "fly_add_certificate",
+        "fly_list_regions",
+        "fly_allocate_ip",
+        "fly_release_ip",
+    };
+    for (tools) |t| {
+        var len: usize = buf.len;
+        const rc = boj_cartridge_invoke(t.ptr, "{}", &buf, &len);
+        try std.testing.expectEqual(@as(i32, 0), rc);
+        try std.testing.expect(std.mem.indexOf(u8, buf[0..len], "result") != null);
+    }
+}
+
+test "invoke: unknown tool returns -1" {
+    var buf: [64]u8 = undefined;
+    var len: usize = buf.len;
+    const rc = boj_cartridge_invoke("nope", "{}", &buf, &len);
+    try std.testing.expectEqual(@as(i32, -1), rc);
+}
+
+test "invoke: buffer too small returns -3" {
+    var buf: [4]u8 = undefined;
+    var len: usize = buf.len;
+    const rc = boj_cartridge_invoke("fly_list_apps", "{}", &buf, &len);
+    try std.testing.expectEqual(@as(i32, -3), rc);
+    try std.testing.expect(len > 4);
 }
