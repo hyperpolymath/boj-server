@@ -10,6 +10,13 @@ pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
 
+    // Shared ADR-0006 invoke-shim module (relative path up to boj-server trunk).
+    const shim_mod = b.addModule("cartridge_shim", .{
+        .root_source_file = b.path("../../../ffi/zig/src/cartridge_shim.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+
     // Module definition
     const echidna_llm_mod = b.createModule(.{
         .root_source_file = b.path("echidna_llm_ffi.zig"),
@@ -17,6 +24,7 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
         .link_libc = true,
     });
+    echidna_llm_mod.addImport("cartridge_shim", shim_mod);
 
     // Tests
     const echidna_llm_tests = b.addTest(.{
@@ -28,27 +36,33 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&run_tests.step);
 
     // Shared library
+    const lib_mod = b.createModule(.{
+        .root_source_file = b.path("echidna_llm_ffi.zig"),
+        .target = target,
+        .optimize = optimize,
+        .link_libc = true,
+    });
+    lib_mod.addImport("cartridge_shim", shim_mod);
+
     const lib = b.addLibrary(.{
         .name = "echidna_llm_mcp",
-        .root_module = b.createModule(.{
-            .root_source_file = b.path("echidna_llm_ffi.zig"),
-            .target = target,
-            .optimize = optimize,
-            .link_libc = true,
-        }),
+        .root_module = lib_mod,
         .linkage = .dynamic,
     });
     b.installArtifact(lib);
 
     // Static library
+    const lib_static_mod = b.createModule(.{
+        .root_source_file = b.path("echidna_llm_ffi.zig"),
+        .target = target,
+        .optimize = optimize,
+        .link_libc = true,
+    });
+    lib_static_mod.addImport("cartridge_shim", shim_mod);
+
     const lib_static = b.addLibrary(.{
         .name = "echidna_llm_mcp",
-        .root_module = b.createModule(.{
-            .root_source_file = b.path("echidna_llm_ffi.zig"),
-            .target = target,
-            .optimize = optimize,
-            .link_libc = true,
-        }),
+        .root_module = lib_static_mod,
         .linkage = .static,
     });
     b.installArtifact(lib_static);
