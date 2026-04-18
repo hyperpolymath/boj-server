@@ -402,6 +402,41 @@ pub export fn boj_cartridge_version() [*:0]const u8 {
 }
 
 // ═══════════════════════════════════════════════════════════════════════
+// ADR-0006 dispatch (boj_cartridge_invoke, 5th standard symbol)
+// ═══════════════════════════════════════════════════════════════════════
+
+const shim = @import("cartridge_shim");
+
+/// Dispatch the cartridge.json MCP tools. Grade D Alpha — each arm
+/// returns a stub JSON body shaped to the tool's intended response.
+export fn boj_cartridge_invoke(
+    tool_name: [*c]const u8,
+    json_args: [*c]const u8,
+    out_buf: [*c]u8,
+    in_out_len: [*c]usize,
+) callconv(.c) i32 {
+    _ = json_args;
+    if (shim.invokeArgsNull(tool_name, out_buf, in_out_len)) return shim.RC_BAD_ARGS;
+
+    const body: []const u8 =     if (shim.toolIs(tool_name, "coord_register"))
+        "{\"result\":{\"status\":\"stub\"}}"
+    else if (shim.toolIs(tool_name, "coord_list_peers"))
+        "{\"result\":{\"items\":[],\"count\":0,\"status\":\"stub\"}}"
+    else if (shim.toolIs(tool_name, "coord_send"))
+        "{\"result\":{\"status\":\"stub\"}}"
+    else if (shim.toolIs(tool_name, "coord_receive"))
+        "{\"result\":{\"status\":\"stub\"}}"
+    else if (shim.toolIs(tool_name, "coord_claim_task"))
+        "{\"result\":{\"status\":\"stub\"}}"
+    else if (shim.toolIs(tool_name, "coord_status"))
+        "{\"result\":{\"metadata\":{},\"status\":\"stub\"}}"
+else
+    return shim.RC_UNKNOWN_TOOL;
+
+    return shim.writeResult(out_buf, in_out_len, body);
+}
+
+// ═══════════════════════════════════════════════════════════════════════
 // Reset (for testing)
 // ═══════════════════════════════════════════════════════════════════════
 
@@ -580,4 +615,41 @@ test "deregister releases claims" {
     try std.testing.expectEqual(@as(c_int, 0), r); // Granted
 
     coord_reset();
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// ADR-0006 invoke dispatch tests
+// ═══════════════════════════════════════════════════════════════════════
+
+test "invoke: each declared tool succeeds" {
+    var buf: [256]u8 = undefined;
+    const tools = [_][]const u8{
+        "coord_register",
+        "coord_list_peers",
+        "coord_send",
+        "coord_receive",
+        "coord_claim_task",
+        "coord_status",
+    };
+    for (tools) |t| {
+        var len: usize = buf.len;
+        const rc = boj_cartridge_invoke(t.ptr, "{}", &buf, &len);
+        try std.testing.expectEqual(@as(i32, 0), rc);
+        try std.testing.expect(std.mem.indexOf(u8, buf[0..len], "result") != null);
+    }
+}
+
+test "invoke: unknown tool returns -1" {
+    var buf: [64]u8 = undefined;
+    var len: usize = buf.len;
+    const rc = boj_cartridge_invoke("nope", "{}", &buf, &len);
+    try std.testing.expectEqual(@as(i32, -1), rc);
+}
+
+test "invoke: buffer too small returns -3" {
+    var buf: [4]u8 = undefined;
+    var len: usize = buf.len;
+    const rc = boj_cartridge_invoke("coord_register", "{}", &buf, &len);
+    try std.testing.expectEqual(@as(i32, -3), rc);
+    try std.testing.expect(len > 4);
 }

@@ -195,6 +195,43 @@ pub export fn boj_cartridge_version() [*:0]const u8 {
 }
 
 // ═══════════════════════════════════════════════════════════════════════
+// ADR-0006 dispatch (boj_cartridge_invoke, 5th standard symbol)
+// ═══════════════════════════════════════════════════════════════════════
+
+const shim = @import("cartridge_shim");
+
+/// Dispatch the cartridge.json MCP tools. Grade D Alpha — each arm
+/// returns a stub JSON body shaped to the tool's intended response.
+export fn boj_cartridge_invoke(
+    tool_name: [*c]const u8,
+    json_args: [*c]const u8,
+    out_buf: [*c]u8,
+    in_out_len: [*c]usize,
+) callconv(.c) i32 {
+    _ = json_args;
+    if (shim.invokeArgsNull(tool_name, out_buf, in_out_len)) return shim.RC_BAD_ARGS;
+
+    const body: []const u8 =     if (shim.toolIs(tool_name, "iac_init"))
+        "{\"result\":{\"status\":\"stub\"}}"
+    else if (shim.toolIs(tool_name, "iac_plan"))
+        "{\"result\":{\"status\":\"stub\"}}"
+    else if (shim.toolIs(tool_name, "iac_apply"))
+        "{\"result\":{\"status\":\"stub\"}}"
+    else if (shim.toolIs(tool_name, "iac_destroy"))
+        "{\"result\":{\"status\":\"stub\"}}"
+    else if (shim.toolIs(tool_name, "iac_state"))
+        "{\"result\":{\"status\":\"stub\"}}"
+    else if (shim.toolIs(tool_name, "iac_output"))
+        "{\"result\":{\"status\":\"stub\"}}"
+    else if (shim.toolIs(tool_name, "iac_release"))
+        "{\"result\":{\"status\":\"stub\"}}"
+else
+    return shim.RC_UNKNOWN_TOOL;
+
+    return shim.writeResult(out_buf, in_out_len, body);
+}
+
+// ═══════════════════════════════════════════════════════════════════════
 // Tests
 // ═══════════════════════════════════════════════════════════════════════
 
@@ -261,4 +298,42 @@ test "state transition validation" {
     try std.testing.expectEqual(@as(c_int, 0), iac_can_transition(1, 3)); // init -> applying (BLOCKED)
     try std.testing.expectEqual(@as(c_int, 0), iac_can_transition(0, 2)); // uninit -> planned
     try std.testing.expectEqual(@as(c_int, 0), iac_can_transition(2, 0)); // planned -> uninit
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// ADR-0006 invoke dispatch tests
+// ═══════════════════════════════════════════════════════════════════════
+
+test "invoke: each declared tool succeeds" {
+    var buf: [256]u8 = undefined;
+    const tools = [_][]const u8{
+        "iac_init",
+        "iac_plan",
+        "iac_apply",
+        "iac_destroy",
+        "iac_state",
+        "iac_output",
+        "iac_release",
+    };
+    for (tools) |t| {
+        var len: usize = buf.len;
+        const rc = boj_cartridge_invoke(t.ptr, "{}", &buf, &len);
+        try std.testing.expectEqual(@as(i32, 0), rc);
+        try std.testing.expect(std.mem.indexOf(u8, buf[0..len], "result") != null);
+    }
+}
+
+test "invoke: unknown tool returns -1" {
+    var buf: [64]u8 = undefined;
+    var len: usize = buf.len;
+    const rc = boj_cartridge_invoke("nope", "{}", &buf, &len);
+    try std.testing.expectEqual(@as(i32, -1), rc);
+}
+
+test "invoke: buffer too small returns -3" {
+    var buf: [4]u8 = undefined;
+    var len: usize = buf.len;
+    const rc = boj_cartridge_invoke("iac_init", "{}", &buf, &len);
+    try std.testing.expectEqual(@as(i32, -3), rc);
+    try std.testing.expect(len > 4);
 }

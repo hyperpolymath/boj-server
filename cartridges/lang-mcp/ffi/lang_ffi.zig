@@ -371,6 +371,47 @@ pub export fn boj_cartridge_version() [*:0]const u8 {
 }
 
 // ═══════════════════════════════════════════════════════════════════════
+// ADR-0006 dispatch (boj_cartridge_invoke, 5th standard symbol)
+// ═══════════════════════════════════════════════════════════════════════
+
+const shim = @import("cartridge_shim");
+
+/// Dispatch the cartridge.json MCP tools. Grade D Alpha — each arm
+/// returns a stub JSON body shaped to the tool's intended response.
+export fn boj_cartridge_invoke(
+    tool_name: [*c]const u8,
+    json_args: [*c]const u8,
+    out_buf: [*c]u8,
+    in_out_len: [*c]usize,
+) callconv(.c) i32 {
+    _ = json_args;
+    if (shim.invokeArgsNull(tool_name, out_buf, in_out_len)) return shim.RC_BAD_ARGS;
+
+    const body: []const u8 =     if (shim.toolIs(tool_name, "lang_list"))
+        "{\"result\":{\"items\":[],\"count\":0,\"status\":\"stub\"}}"
+    else if (shim.toolIs(tool_name, "lang_session_create"))
+        "{\"result\":{\"status\":\"stub\"}}"
+    else if (shim.toolIs(tool_name, "lang_session_status"))
+        "{\"result\":{\"metadata\":{},\"status\":\"stub\"}}"
+    else if (shim.toolIs(tool_name, "lang_check"))
+        "{\"result\":{\"status\":\"stub\"}}"
+    else if (shim.toolIs(tool_name, "lang_eval"))
+        "{\"result\":{\"status\":\"stub\"}}"
+    else if (shim.toolIs(tool_name, "lang_compile"))
+        "{\"result\":{\"status\":\"stub\"}}"
+    else if (shim.toolIs(tool_name, "lang_hover"))
+        "{\"result\":{\"status\":\"stub\"}}"
+    else if (shim.toolIs(tool_name, "lang_complete"))
+        "{\"result\":{\"status\":\"stub\"}}"
+    else if (shim.toolIs(tool_name, "lang_session_close"))
+        "{\"result\":{\"status\":\"stub\"}}"
+else
+    return shim.RC_UNKNOWN_TOOL;
+
+    return shim.writeResult(out_buf, in_out_len, body);
+}
+
+// ═══════════════════════════════════════════════════════════════════════
 // Tests
 // ═══════════════════════════════════════════════════════════════════════
 
@@ -459,4 +500,44 @@ test "session URL rejects empty and overlong" {
     var long_url: [URL_BUF_SIZE]u8 = [_]u8{'x'} ** URL_BUF_SIZE;
     try std.testing.expectEqual(@as(c_int, -6), lang_session_set_url(sess, &long_url, long_url.len));
     _ = lang_session_end(sess);
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// ADR-0006 invoke dispatch tests
+// ═══════════════════════════════════════════════════════════════════════
+
+test "invoke: each declared tool succeeds" {
+    var buf: [256]u8 = undefined;
+    const tools = [_][]const u8{
+        "lang_list",
+        "lang_session_create",
+        "lang_session_status",
+        "lang_check",
+        "lang_eval",
+        "lang_compile",
+        "lang_hover",
+        "lang_complete",
+        "lang_session_close",
+    };
+    for (tools) |t| {
+        var len: usize = buf.len;
+        const rc = boj_cartridge_invoke(t.ptr, "{}", &buf, &len);
+        try std.testing.expectEqual(@as(i32, 0), rc);
+        try std.testing.expect(std.mem.indexOf(u8, buf[0..len], "result") != null);
+    }
+}
+
+test "invoke: unknown tool returns -1" {
+    var buf: [64]u8 = undefined;
+    var len: usize = buf.len;
+    const rc = boj_cartridge_invoke("nope", "{}", &buf, &len);
+    try std.testing.expectEqual(@as(i32, -1), rc);
+}
+
+test "invoke: buffer too small returns -3" {
+    var buf: [4]u8 = undefined;
+    var len: usize = buf.len;
+    const rc = boj_cartridge_invoke("lang_list", "{}", &buf, &len);
+    try std.testing.expectEqual(@as(i32, -3), rc);
+    try std.testing.expect(len > 4);
 }
