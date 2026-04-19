@@ -56,4 +56,21 @@ pub fn build(b: *std.Build) void {
 
     const lib_step = b.step("lib", "Build shared library");
     lib_step.dependOn(&lib.step);
+
+    // ── Benchmarks ──────────────────────────────────────────────────
+    const bench_mod = b.createModule(.{
+        .root_source_file = b.path("bench_coord.zig"),
+        .target = target,
+        .optimize = .ReleaseFast,
+    });
+    bench_mod.addImport("cartridge_shim", shim_mod);
+
+    const bench_exe = b.addExecutable(.{
+        .name = "bench_coord",
+        .root_module = bench_mod,
+    });
+
+    const run_bench = b.addRunArtifact(bench_exe);
+    const bench_step = b.step("bench", "Run local-coord-mcp benchmarks");
+    bench_step.dependOn(&run_bench.step);
 }
