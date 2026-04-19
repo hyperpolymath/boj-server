@@ -151,6 +151,46 @@ fn findPeerByToken(token_ptr: [*]const u8, token_len: usize) ?usize {
     return null;
 }
 
+/// Find an active peer by its 4-char hex suffix. Returns index 0..MAX_PEERS-1
+/// or -1 if no match. Adapters use this to resolve a peer_id string like
+/// "claude-7f3a" (suffix = "7f3a") to the FFI peer index expected by coord_send.
+pub export fn coord_find_peer_by_suffix(suffix_ptr: [*]const u8) c_int {
+    mutex.lock();
+    defer mutex.unlock();
+    for (&peers, 0..) |*p, i| {
+        if (p.active and std.mem.eql(u8, &p.suffix, suffix_ptr[0..4])) {
+            return @intCast(i);
+        }
+    }
+    return -1;
+}
+
+/// Read a peer's current status string. Writes up to out_cap bytes into out.
+/// Returns status length on success, 0 if empty, -1 if peer index out of range.
+/// Intended for coord_list_peers enrichment — the caller token is not required
+/// because status is broadcast-visible by design.
+pub export fn coord_read_peer_status(peer_idx: c_int, out: [*]u8, out_cap: c_int) c_int {
+    mutex.lock();
+    defer mutex.unlock();
+    if (peer_idx < 0 or peer_idx >= MAX_PEERS) return -1;
+    const p = &peers[@intCast(peer_idx)];
+    if (!p.active) return -1;
+    const slen: usize = @min(@as(usize, p.status_len), @as(usize, @intCast(out_cap)));
+    if (slen > 0) @memcpy(out[0..slen], p.status[0..slen]);
+    return @intCast(slen);
+}
+
+/// Read a peer's client_kind. Returns 0=claude 1=gemini 2=copilot 3=custom,
+/// or -1 if peer index out of range / inactive.
+pub export fn coord_read_peer_kind(peer_idx: c_int) c_int {
+    mutex.lock();
+    defer mutex.unlock();
+    if (peer_idx < 0 or peer_idx >= MAX_PEERS) return -1;
+    const p = &peers[@intCast(peer_idx)];
+    if (!p.active) return -1;
+    return @intFromEnum(p.kind);
+}
+
 /// Register a new peer. Returns peer index, or -1 if full.
 /// Writes token into token_out (must be TOKEN_LEN bytes).
 /// Writes suffix into suffix_out (must be 4 bytes).

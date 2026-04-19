@@ -19,14 +19,38 @@ fn errJson(buf: []u8, msg: []const u8) []u8 {
     return std.fmt.bufPrint(buf, "{{\"success\":false,\"error\":\"{s}\"}}", .{msg}) catch buf[0..0];
 }
 
+fn kindName(kind: i32) []const u8 {
+    return switch (kind) {
+        0 => "claude",
+        1 => "gemini",
+        2 => "copilot",
+        else => "custom",
+    };
+}
+
+fn stateName(state: i32) []const u8 {
+    return switch (state) {
+        0 => "registering",
+        1 => "active",
+        2 => "departing",
+        else => "gone",
+    };
+}
+
+fn parseToken(token_hex: []const u8, out: *[16]u8) bool {
+    if (token_hex.len != 32) return false;
+    _ = std.fmt.hexToBytes(out, token_hex) catch return false;
+    return true;
+}
+
 fn dispatch(tool: []const u8, body: []const u8, resp: []u8, allocator: std.mem.Allocator) Response {
     if (std.mem.eql(u8, tool, "coord_register")) {
         const parsed = std.json.parseFromSlice(std.json.Value, allocator, body, .{}) catch return .{ .status = 400, .body = errJson(resp, "invalid json") };
         defer parsed.deinit();
-        
+
         const kind_val = parsed.value.object.get("client_kind") orelse return .{ .status = 400, .body = errJson(resp, "missing client_kind") };
         const kind_str = kind_val.string;
-        var kind: i32 = 3; 
+        var kind: i32 = 3;
         if (std.mem.eql(u8, kind_str, "claude")) kind = 0;
         if (std.mem.eql(u8, kind_str, "gemini")) kind = 1;
         if (std.mem.eql(u8, kind_str, "copilot")) kind = 2;
@@ -42,13 +66,118 @@ fn dispatch(tool: []const u8, body: []const u8, resp: []u8, allocator: std.mem.A
             token_hex[i * 2] = hex_chars[b >> 4];
             token_hex[i * 2 + 1] = hex_chars[b & 0x0f];
         }
-        
+
         const body_out = std.fmt.bufPrint(resp, "{{\"success\":true,\"peer_id\":\"{s}-{s}\",\"token\":\"{s}\"}}", .{ kind_str, suffix, token_hex }) catch return .{ .status = 500, .body = errJson(resp, "buffer overflow") };
         return .{ .status = 200, .body = body_out };
     }
 
     if (std.mem.eql(u8, tool, "coord_list_peers")) {
-        return .{ .status = 200, .body = okJson(resp, "peers list placeholder") };
+        const parsed = std.json.parseFromSlice(std.json.Value, allocator, body, .{}) catch return .{ .status = 400, .body = errJson(resp, "invalid json") };
+        defer parsed.deinit();
+        const token_val = parsed.value.object.get("token") orelse return .{ .status = 400, .body = errJson(resp, "missing token") };
+        var token: [16]u8 = undefined;
+        if (!parseToken(token_val.string, &token)) return .{ .status = 400, .body = errJson(resp, "invalid token hex") };
+
+        // FFI returns 12 bytes per peer: kind(i32) + suffix[4] + state(i32).
+        // Cap at MAX_PEERS (16) * 12 = 192 bytes.
+        var raw: [192]u8 = undefined;
+        const count = ffi.coord_list_peers(&token, 16, &raw, @intCast(raw.len));
+        if (count < 0) return .{ .status = 401, .body = errJson(resp, "unauthenticated") };
+
+        // Build JSON: {"success":true,"peers":[{"peer_id":"kind-xxxx","kind":"...","state":"...","status":"..."},...]}
+        var stream = std.io.fixedBufferStream(resp);
+        const w = stream.writer();
+        w.writeAll("{\"success\":true,\"peers\":[") catch return .{ .status = 500, .body = errJson(resp, "buffer overflow") };
+
+        // The 12-byte records in `raw` are packed in peer-index-ascending order
+        // (FFI iterates peers[] and writes only active ones). We scan the same
+        // peer-index range and pair each active index with the next dense record.
+        var i: i32 = 0;
+        var written_idx: usize = 0;
+        const cnt: usize = @intCast(count);
+        while (i < 16 and written_idx < cnt) : (i += 1) {
+            const kind_val = ffi.coord_read_peer_kind(i);
+            if (kind_val < 0) continue;
+
+            const rec_offset = written_idx * 12;
+            const suffix = raw[rec_offset + 4 .. rec_offset + 8];
+            const state_bytes = raw[rec_offset + 8 .. rec_offset + 12];
+            const state: i32 = @bitCast([4]u8{ state_bytes[0], state_bytes[1], state_bytes[2], state_bytes[3] });
+
+            var status_buf: [256]u8 = undefined;
+            const status_len = ffi.coord_read_peer_status(i, &status_buf, @intCast(status_buf.len));
+            const status_slice: []const u8 = if (status_len > 0) status_buf[0..@intCast(status_len)] else "";
+
+            if (written_idx > 0) w.writeAll(",") catch return .{ .status = 500, .body = errJson(resp, "buffer overflow") };
+            std.fmt.format(w, "{{\"peer_id\":\"{s}-{s}\",\"kind\":\"{s}\",\"state\":\"{s}\",\"status\":\"{s}\"}}", .{
+                kindName(kind_val), suffix, kindName(kind_val), stateName(state), status_slice,
+            }) catch return .{ .status = 500, .body = errJson(resp, "buffer overflow") };
+            written_idx += 1;
+        }
+
+        w.writeAll("]}") catch return .{ .status = 500, .body = errJson(resp, "buffer overflow") };
+        return .{ .status = 200, .body = resp[0..stream.pos] };
+    }
+
+    if (std.mem.eql(u8, tool, "coord_send")) {
+        const parsed = std.json.parseFromSlice(std.json.Value, allocator, body, .{}) catch return .{ .status = 400, .body = errJson(resp, "invalid json") };
+        defer parsed.deinit();
+        const token_val = parsed.value.object.get("token") orelse return .{ .status = 400, .body = errJson(resp, "missing token") };
+        const target_val = parsed.value.object.get("target") orelse return .{ .status = 400, .body = errJson(resp, "missing target") };
+        const msg_val = parsed.value.object.get("message") orelse return .{ .status = 400, .body = errJson(resp, "missing message") };
+
+        var token: [16]u8 = undefined;
+        if (!parseToken(token_val.string, &token)) return .{ .status = 400, .body = errJson(resp, "invalid token hex") };
+
+        const target_str = target_val.string;
+        var target_idx: i32 = -1;
+        if (!std.mem.eql(u8, target_str, "*")) {
+            // Peer ID format: "<kind>-<suffix>". Extract suffix (last 4 chars).
+            if (target_str.len < 5) return .{ .status = 400, .body = errJson(resp, "invalid target format") };
+            const suffix = target_str[target_str.len - 4 ..];
+            target_idx = ffi.coord_find_peer_by_suffix(suffix.ptr);
+            if (target_idx < 0) return .{ .status = 404, .body = errJson(resp, "target peer not found") };
+        }
+
+        const msg = msg_val.string;
+        const sent = ffi.coord_send(&token, 16, target_idx, msg.ptr, @intCast(msg.len));
+        if (sent < 0) return .{ .status = 401, .body = errJson(resp, "unauthenticated or invalid target") };
+
+        const body_out = std.fmt.bufPrint(resp, "{{\"success\":true,\"sent\":{d}}}", .{sent}) catch return .{ .status = 500, .body = errJson(resp, "buffer overflow") };
+        return .{ .status = 200, .body = body_out };
+    }
+
+    if (std.mem.eql(u8, tool, "coord_receive")) {
+        const parsed = std.json.parseFromSlice(std.json.Value, allocator, body, .{}) catch return .{ .status = 400, .body = errJson(resp, "invalid json") };
+        defer parsed.deinit();
+        const token_val = parsed.value.object.get("token") orelse return .{ .status = 400, .body = errJson(resp, "missing token") };
+        var token: [16]u8 = undefined;
+        if (!parseToken(token_val.string, &token)) return .{ .status = 400, .body = errJson(resp, "invalid token hex") };
+
+        var msg_buf: [512]u8 = undefined;
+        const mlen = ffi.coord_receive(&token, 16, &msg_buf, @intCast(msg_buf.len));
+        if (mlen < 0) return .{ .status = 401, .body = errJson(resp, "unauthenticated") };
+
+        if (mlen == 0) {
+            return .{ .status = 200, .body = std.fmt.bufPrint(resp, "{{\"success\":true,\"message\":null}}", .{}) catch resp[0..0] };
+        }
+        const msg_slice = msg_buf[0..@intCast(mlen)];
+        const body_out = std.fmt.bufPrint(resp, "{{\"success\":true,\"message\":\"{s}\"}}", .{msg_slice}) catch return .{ .status = 500, .body = errJson(resp, "buffer overflow") };
+        return .{ .status = 200, .body = body_out };
+    }
+
+    if (std.mem.eql(u8, tool, "coord_status")) {
+        const parsed = std.json.parseFromSlice(std.json.Value, allocator, body, .{}) catch return .{ .status = 400, .body = errJson(resp, "invalid json") };
+        defer parsed.deinit();
+        const token_val = parsed.value.object.get("token") orelse return .{ .status = 400, .body = errJson(resp, "missing token") };
+        const status_val = parsed.value.object.get("status") orelse return .{ .status = 400, .body = errJson(resp, "missing status") };
+        var token: [16]u8 = undefined;
+        if (!parseToken(token_val.string, &token)) return .{ .status = 400, .body = errJson(resp, "invalid token hex") };
+
+        const status = status_val.string;
+        const rc = ffi.coord_set_status(&token, 16, status.ptr, @intCast(status.len));
+        if (rc < 0) return .{ .status = 401, .body = errJson(resp, "unauthenticated") };
+        return .{ .status = 200, .body = okJson(resp, "ok") };
     }
 
     if (std.mem.eql(u8, tool, "coord_claim_task")) {
@@ -58,7 +187,7 @@ fn dispatch(tool: []const u8, body: []const u8, resp: []u8, allocator: std.mem.A
         const task = parsed.value.object.get("task") orelse return .{ .status = 400, .body = errJson(resp, "missing task") };
 
         var token: [16]u8 = undefined;
-        _ = std.fmt.hexToBytes(&token, token_hex.string) catch return .{ .status = 400, .body = errJson(resp, "invalid token hex") };
+        if (!parseToken(token_hex.string, &token)) return .{ .status = 400, .body = errJson(resp, "invalid token hex") };
 
         const result = ffi.coord_claim_task(&token, 16, task.string.ptr, @intCast(task.string.len));
         if (result == 0) return .{ .status = 200, .body = okJson(resp, "granted") };

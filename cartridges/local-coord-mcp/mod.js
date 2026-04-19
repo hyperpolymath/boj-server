@@ -27,20 +27,20 @@ async function post(path, payload) {
   } finally { clearTimeout(t); }
 }
 
+// Path canonical: /tools/<tool>. Matches main.js:dispatchLocalCoord and the
+// estate-wide Zig-adapter convention. Earlier /api/v1/* paths were a dead
+// code path — the mcp-bridge bypasses mod.js and POSTs directly to the
+// adapter, so mod.js is a secondary transport used only by alternative
+// bridges (e.g. an Elixir catalogue-level proxy).
 export async function handleTool(toolName, args) {
   switch (toolName) {
     case "coord_register":
-      return post("/api/v1/coord_register", args ?? {});
     case "coord_list_peers":
-      return post("/api/v1/coord_list_peers", args ?? {});
     case "coord_send":
-      return post("/api/v1/coord_send", args ?? {});
     case "coord_receive":
-      return post("/api/v1/coord_receive", args ?? {});
     case "coord_claim_task":
-      return post("/api/v1/coord_claim_task", args ?? {});
     case "coord_status":
-      return post("/api/v1/coord_status", args ?? {});
+      return post(`/tools/${toolName}`, args ?? {});
     default:
       return { status: 404, data: { error: `Unknown tool: ${toolName}` } };
   }
