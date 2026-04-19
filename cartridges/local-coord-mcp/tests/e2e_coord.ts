@@ -4,7 +4,7 @@
 // e2e_coord.ts — End-to-end validation of local-coord-mcp (Task #8).
 //
 // Spawns the compiled adapter binary, drives a 2-peer flow through the
-// REST surface (supervisor + supervised), exercises the gate + approve
+// REST surface (master + apprentice), exercises the gate + approve
 // + reject + claim paths, then restarts the adapter with the same state
 // dir and verifies durability replay restores the pending quarantine,
 // claim, and peer registry.
@@ -89,7 +89,7 @@ async function spawnAdapter(stateDir: string): Promise<Adapter> {
   const cmd = new Deno.Command(ADAPTER, {
     env: {
       BOJ_COORD_STATE_DIR: stateDir,
-      BOJ_SUPERVISOR_TOKEN: SUP_SECRET,
+      BOJ_MASTER_TOKEN: SUP_SECRET,
     },
     stdout: "piped",
     stderr: "piped",
@@ -158,7 +158,7 @@ async function run() {
   try {
     console.log("\n── Phase 1: baseline peer flow ──");
 
-    // 1. Register A (claude) + promote to supervisor
+    // 1. Register A (claude) + promote to master
     const regA = await call("coord_register", {
       client_kind: "claude",
       context: "window-A",
@@ -168,13 +168,14 @@ async function run() {
     const peerIdA: string = regA.body.peer_id;
     assert(peerIdA.startsWith("claude-") && peerIdA.endsWith("@window-A"), "peer_id A shape");
 
+    // Exercises DD-32 backward-compat: old tool name still works as alias.
     const promoteA = await call("coord_promote_to_supervisor", {
       token: tokenA,
       secret: SUP_SECRET,
     });
-    assert(promoteA.status === 200, "promote A to supervisor");
+    assert(promoteA.status === 200, "promote A to master (via old alias coord_promote_to_supervisor)");
 
-    // 2. Register B (gemini, defaults to supervised)
+    // 2. Register B (gemini, defaults to apprentice)
     const regB = await call("coord_register", {
       client_kind: "gemini",
       context: "window-B",
@@ -192,12 +193,12 @@ async function run() {
     const send1 = await call("coord_send", {
       token: tokenB,
       target: peerIdA,
-      message: "hello from supervised",
+      message: "hello from apprentice",
     });
     assertEq(send1.body.sent, 1, "B→A send count");
 
     const recv1 = await call("coord_receive", { token: tokenA });
-    assertEq(recv1.body.message, "hello from supervised", "A receives Tier 0");
+    assertEq(recv1.body.message, "hello from apprentice", "A receives Tier 0");
 
     console.log("\n── Phase 2: gate / approve ──");
 
@@ -208,7 +209,7 @@ async function run() {
       message: "please commit feature X",
       risk_tier: 3,
     });
-    assertEq(gated1.body.status, "quarantined", "Tier 3 from supervised quarantined");
+    assertEq(gated1.body.status, "quarantined", "Tier 3 from apprentice quarantined");
     const rid1: number = gated1.body.request_id;
     assert(typeof rid1 === "number" && rid1 > 0, "request_id is positive");
 
@@ -271,11 +272,11 @@ async function run() {
     const claimB = await call("coord_claim_task", { token: tokenB, task: "e2e-shared-task" });
     assertEq(claimB.body.error, "held", "B denied — held by A");
 
-    console.log("\n── Phase 5: supervised peer cannot bypass gate ──");
+    console.log("\n── Phase 5: apprentice peer cannot bypass gate ──");
 
-    // 10. Supervised cannot set urgent_direct (enforced in Nickel contracts,
-    // but the FFI also rejects supervisor role_hint on register).
-    const tryPromoteB = await call("coord_promote_to_supervisor", {
+    // 10. Apprentice cannot set urgent_direct (enforced in Nickel contracts,
+    // but the FFI also rejects master role_hint on register).
+    const tryPromoteB = await call("coord_promote_to_master", {
       token: tokenB,
       secret: "wrong-secret",
     });
@@ -284,14 +285,24 @@ async function run() {
       "B with wrong secret rejected",
     );
 
-    // Can't self-assign via register either.
+    // Can't self-assign via register either. Uses new name `master`.
+    const tryRegMaster = await call("coord_register", {
+      client_kind: "custom",
+      role: "master",
+    });
+    assert(
+      tryRegMaster.status === 400 && tryRegMaster.body.success === false,
+      "register with role=master rejected",
+    );
+
+    // And the old alias still rejected too (DD-32 backward-compat).
     const tryRegSupervisor = await call("coord_register", {
       client_kind: "custom",
       role: "supervisor",
     });
     assert(
       tryRegSupervisor.status === 400 && tryRegSupervisor.body.success === false,
-      "register with role=supervisor rejected",
+      "register with role=supervisor (alias) also rejected",
     );
 
     console.log("\n── Phase 6: track-record + affinity ──");

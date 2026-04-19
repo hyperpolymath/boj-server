@@ -50,8 +50,8 @@
           },
           role = {
             type = "string",
-            description = "Optional requested role. supervisor is ALWAYS rejected here — promote via coord_promote_to_supervisor. Default derived from client_kind (claude->executor, others->supervised).",
-            enum = ["executor", "supervised"],
+            description = "Optional requested role (DD-32). master is ALWAYS rejected here — promote via coord_promote_to_master. Default derived from client_kind (claude->journeyman, others->apprentice). Old names (executor, supervised) accepted as aliases for one release.",
+            enum = ["journeyman", "apprentice", "executor", "supervised"],
           },
         },
         required = ["client_kind"],
@@ -145,8 +145,8 @@
     },
     # ── Supervision tools ─────────────────────────────────────────
     {
-      name = "coord_promote_to_supervisor",
-      description = "Promote this peer to the supervisor role. Requires the BOJ_SUPERVISOR_TOKEN env-var to be set on the server and the presented secret to match. At most one supervisor at a time. Intended for the Opus-tier Claude that holds the veto.",
+      name = "coord_promote_to_master",
+      description = "Promote this peer to the master role (DD-32, renamed from supervisor). Requires the BOJ_MASTER_TOKEN env-var to be set on the server and the presented secret to match. Old BOJ_SUPERVISOR_TOKEN is read as fallback for one release. At most one master at a time. Intended for the Opus-tier Claude that holds the veto. The old tool name `coord_promote_to_supervisor` is accepted as an alias.",
       inputSchema = {
         type = "object",
         properties = {
@@ -158,7 +158,7 @@
     },
     {
       name = "coord_send_gated",
-      description = "Send a message with a declared risk_tier. Tier 2+ from role=supervised peers is quarantined for supervisor review; everything else delivers directly. Returns status:quarantined + request_id when gated.",
+      description = "Send a message with a declared risk_tier. Tier 2+ from role=apprentice peers is quarantined for master review; everything else delivers directly. Returns status:quarantined + request_id when gated.",
       inputSchema = {
         type = "object",
         properties = {
@@ -172,7 +172,7 @@
     },
     {
       name = "coord_review",
-      description = "List all currently quarantined messages awaiting supervisor decision. Supervisor role only.",
+      description = "List all currently quarantined messages awaiting master decision. Master role only.",
       inputSchema = {
         type = "object",
         properties = {

@@ -104,7 +104,7 @@ run_case "tier 2 claim WITHOUT context_fetch_id (TierContextGate)" \
 }' \
 "fail"
 
-run_case "tier 3 from supervised WITHOUT attestation (TierAttestationGate)" \
+run_case "tier 3 from apprentice WITHOUT attestation (TierAttestationGate) — exercises DD-32 'supervised' alias" \
 '{
     version = 1,
     msg_id = "abcdef012348",
@@ -120,7 +120,7 @@ run_case "tier 3 from supervised WITHOUT attestation (TierAttestationGate)" \
 }' \
 "fail"
 
-run_case "urgent_direct from supervised (UrgentDirectRestriction)" \
+run_case "urgent_direct from apprentice (UrgentDirectRestriction) — exercises DD-32 'supervised' alias" \
 '{
     version = 1,
     msg_id = "abcdef012349",

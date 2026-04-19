@@ -34,11 +34,11 @@ toc::[]
 | P-08 | Ring-buffer FIFO correctness under replay | P-06 | P1 | Idris2
 | P-09 | Persistence monotonicity (commits cannot un-happen) | P-05, P-06 | P1 | Idris2
 | P-10 | Supervisor privilege gating (env-var secret necessary) | P-03 | P1 | Idris2
-| P-11 | Tier-4 forbidden-list schema-level reject for `supervised` | P-10 | P1 | Nickel + Idris2
+| P-11 | Tier-4 forbidden-list schema-level reject for `apprentice` | P-10 | P1 | Nickel + Idris2
 | P-12 | Nickel-contract soundness wrt risk-ladder spec | P-11 | P2 | Lean4 ‖ Idris2
 | P-13 | Zig ↔ Idris2 ABI correspondence (hardcoded `127.0.0.1` realises `IsIPv4Loop`) | P-00 | P2 | Idris2 + SPARK-style assertions
 | P-14 | Token unforgeability (probabilistic; 128-bit CSPRNG) | P-03 | documented | prose argument
-| P-15 | Choreographic types for supervisor/attestation flow | P-06, P-07 | Phase 2 (deferred) | Idris2 session types
+| P-15 | Choreographic types for master/attestation flow | P-06, P-07 | Phase 2 (deferred) | Idris2 session types
 | P-16 | Epistemic types for context-knowledge-witness | P-15 | Phase 2 (deferred) | Idris2 + A2ML tags
 | P-17 | Echo-type formalisation of audit + summary + hash chain | P-15, P-16 | Phase 3 (deferred) | Agda (echo-types repo)
 | P-18 | Tropical-semiring model of TTL + trust | P-17 | Phase 3 (deferred) | Agda (EchoTropical)
@@ -203,17 +203,17 @@ only *append*, never overwrite.
 
 === P-10 Supervisor privilege gating [P1]
 
-*Claim.* There is no execution in which `peers[i].role = supervisor`
+*Claim.* There is no execution in which `peers[i].role = master`
 without one of:
 
-. a prior call to `coord_promote_to_supervisor(tok_i, secret, ...)` with
+. a prior call to `coord_promote_to_master(tok_i, secret, ...)` with
   `secret ≡ getenv(BOJ_SUPERVISOR_TOKEN)` (constant-time match), *or*
 . a test-only direct mutation (explicitly out of scope — the proof
   applies to the public API only).
 
 *Artefact.* `abi/LocalCoord/Role.idr` — `Role` type with phantom
 witness `PromotedVia`; public API functions require a `PromotedVia`
-argument to produce a `supervisor`-tagged peer.
+argument to produce a `master`-tagged peer.
 
 *Dependencies.* P-03.
 
@@ -222,7 +222,7 @@ wired (return codes -3 / -4 / promote-requires-env-var).
 
 === P-11 Tier-4 forbidden list [P1]
 
-*Claim.* For any envelope `e` with `sender_role = supervised` and
+*Claim.* For any envelope `e` with `sender_role = apprentice` and
 `op_kind` matching a Tier-4 forbidden pattern (force-push, branch
 delete, public-repo create, license change, always-private-repo touch),
 `validate e` rejects.
@@ -270,7 +270,7 @@ compile error.
 
 === P-15 Choreographic types
 
-Model the `supervised → server → {opus, attester} → server → target`
+Model the `apprentice → server → {opus, attester} → server → target`
 protocol as a session type. Compile-time enforcement replaces run-time
 imperative checks in `coord_send_gated`.
 
@@ -316,7 +316,7 @@ Reference: Appendix G.
 .P1 block — before Task #13 track-record
 5. P-08 (FIFO) — ~1 day — standard Vect-indexed argument.
 6. P-09 (monotonicity) — ~0.5 day — corollary of P-05.
-7. P-10 (supervisor privilege) — ~1 day — phantom-witness refactor.
+7. P-10 (master privilege) — ~1 day — phantom-witness refactor.
 8. P-11 (Tier-4 forbidden) — ~1 day — schema + Idris2 wrapper.
 
 .P2 block — nice-to-have; triggered by Task #17 Deno shim
