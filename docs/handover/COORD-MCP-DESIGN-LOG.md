@@ -1,0 +1,732 @@
+# local-coord-mcp + BoJ agent coordination — design log
+
+**Started:** 2026-04-20
+**Lead:** Opus (1M context)
+**Scope:** Multi-agent coordination across Claude + vibe + codex + gemini windows on one box; full BoJ cartridge support; 007 dogfooding.
+
+This file is a running design log. Outline up top, detailed explanations in the appendices. Updated as the work progresses.
+
+---
+
+## Part 1 — Outline of what we're building
+
+### The big picture
+
+A localhost message bus (`boj-server/cartridges/local-coord-mcp`) that lets multiple AI agents on the same machine discover each other, exchange typed messages, claim tasks without collision, and operate under a supervision model where Opus co-supervises with you. Non-Claude agents (Gemini, Codex, Vibe) work under a firewall that contains their failure modes without stopping them from contributing.
+
+### Layers
+
+1. **Transport** — loopback-only Zig REST server on port 7745. Idris2 ABI proves loopback-only at compile time (`IsLoopback` type has exactly two constructors; bind to non-loopback is *type-impossible*).
+2. **Identity** — `coord_register(client_kind, role_hint, context)` → peer_id like `claude-7f3a@007-lang` + 128-bit CSPRNG session token.
+3. **Envelope** — typed messages with 18 op_kinds, 5-level risk ladder, Byzantine-safe fields (hash chain, attestation refs, self-assessment, context_fetch_id).
+4. **Supervision** — quarantine queue for Tier 2+ ops from `supervised` role peers; supervisor reviews/approves/rejects.
+5. **Durability** — VeriSimDB sidecar (Task #7) persists inbox, claims, audit log, track record.
+6. **007-mcp cartridge** — exposes `oo7` CLI + Justfile recipes as MCP tools for routine 007 operations.
+
+---
+
+## Part 2 — Progress ledger (session 2026-04-20)
+
+| # | Task | Status | Commit |
+|---|------|--------|--------|
+| 1 | Complete adapter dispatch for list_peers/send/receive/status | ✅ | `5d57daa` |
+| 2 | Wire `boj_cartridge_invoke` to real FFI | ⏳ pending | — |
+| 3 | A2ML envelope schema + design doc | ✅ | `ceb5125` |
+| 4 | Per-window peer ID disambiguation (`@<context>`) | ✅ | `2a8e4c0` |
+| 5 | Supervision tier/role in FFI + ABI | ✅ | `4e164a7` |
+| 6 | Supervisor tools: coord_review / approve / reject | ✅ | `4e164a7` |
+| 16 | Nickel contracts with dependent constraints | ✅ | `93c589d` |
+| 7 | Durable coord state (append log + replay) | ✅ | `2ae952e`, `282de53`, `bafcd25` |
+| 8 | E2E test: 2-instance master-gate + durability | ✅ | `3e9eae8` |
+| 13 | Track-record table + effective_affinity + coord_get_affinities | ✅ | `f8cafbf`, `3bd4710` |
+| 15 | Dispatch preference + task_difficulty + sender_confidence + reject cooldown | ✅ | `6065878` |
+| 14 | Reassignment engine (server-origin quarantine entries for master review) | ✅ | `9e40a86` |
+| 17 | Deno/Node Nickel shim — runtime envelope validation in mcp-bridge | ✅ | `ed85ca2` |
+| 32 | Role rename supervisor/executor/supervised → master/journeyman/apprentice | ✅ | `634c163` |
+| 35 | `coord_transfer_master` — live master handoff | ✅ | `634c163` |
+| 36 | `difficulty_hint` envelope field + `DifficultyHintValid` Nickel contract | ✅ | `7f2f4a9`, `aeae440` |
+| 37 | Prover-tag convention (`proof:<lean4\|agda\|idris2\|rocq\|tla>`) doc + example | ✅ | `eba7cfe` |
+| 9 | Create 007-mcp BoJ cartridge | ✅ | `62bdac0` (007-lang) |
+| 10 | 007 on-enter/on-exit contractile hooks | ✅ | `018a1fd` (007-lang) |
+| 11 | Fill 007 missing bust + adjust contractiles | ✅ | `6bbb4f8` (007-lang) |
+| 12 | Memory auto-lift on 007 context entry | ✅ | `e753d10` (007-lang) |
+| k9-svc | Spot-fix: move 007 k9 from contractiles/ to svc/ (ADR-001) | ✅ | `f6f3c91` (007-lang) |
+| 33 | `client_kind` + `variant` extension (openai/mistral + free-form variant) | ⏳ pending | — |
+| 34 | Capability advertisement on register (class, tier, prover_strengths) | ⏳ pending | — |
+
+**Committed + pushed this lane (Prompt 3 — coord finishers):** `f8cafbf`, `3bd4710`, `6065878`, `9e40a86`, `ed85ca2`, `634c163`, `7f2f4a9`, `aeae440`, `eba7cfe` on `hyperpolymath/boj-server main`.
+
+**Committed + pushed this lane (Prompt 2 — 007-mcp family):** `62bdac0`, `018a1fd`, `f6f3c91`, `6bbb4f8`, `e753d10` (+ one follow-up role-rename sync) on `The-Metadatastician/007 main`. Per CLAUDE.md 007 is never mirrored — GitHub-only.
+
+**Memory written:** `project_coord_supervision_architecture.md` + `project_federation_authoritative_site.md` (workspace memory index).
+
+---
+
+## Part 3 — Design decisions taken (concise)
+
+| # | Decision | Why |
+|---|----------|-----|
+| DD-1 | Localhost-only v1, loopback bind at 127.0.0.1:7745 | Compile-time proof via Idris2 `IsLoopback`; no exposure surface |
+| DD-2 | Session tokens (128-bit CSPRNG), not OAuth / vault | Local-only; no cross-machine trust needed |
+| DD-3 | Hybrid peer IDs `<kind>-<4hex>[@<context>]` | Human-readable + collision-free across windows |
+| DD-4 | 18 typed op_kinds (not raw strings) | Routable, auditable, schema-validatable |
+| DD-5 | 5-level risk ladder (0-4) | Proportional gating; coord overhead ≠ rate limiter |
+| DD-6 | Three roles: supervisor / executor / supervised | Trust-tiered; Opus supervises, Claude executes, others gated |
+| DD-7 | Opus default to supervisor when claimed; Claude Sonnet/Haiku default to executor; non-Claude defaults to supervised | Matches actual agent strengths + user's trust model |
+| DD-8 | Byzantine safety: 5 mechanisms (hash chain, M-of-N attestation, watchdog claims, sanity gate, audit log) | Specifically addresses "Gemini is often nuts" failure modes |
+| DD-9 | Self-assessment 4 layers: affinity + confidence + track record + drift detector | Catches self-overclaiming by cross-check |
+| DD-10 | Adaptive awareness — `context_fetch_id` required for Tier 2+ | Forces context read before risky action; blast-radius-scaled |
+| DD-11 | Summary-vs-raw context gated by role | Supervised peers never see raw state (prevents hallucinated connections) |
+| DD-12 | User interaction routing: fyi / clarify / blocker op_kinds; only executor/supervisor can set urgent_direct | Single user locus; supervised peers firewalled from interrupting you |
+| DD-13 | Tier 4 forbidden list baked into schema for supervised peers | Force-push, license touches, always-private-repos — schema-level reject |
+| DD-14 | Sanity auto-promote patterns (`git push` → Tier 3 regardless of declared) | Blocks tier underclaiming by content-match |
+| DD-15 | Default dispatch mode: hybrid (Opus seeds + peers self-claim by affinity) | Most flexible; works for lanes, MoE, fine-grained equally |
+| DD-16 | Nickel source-of-truth → JSON export for cartridge manifests | Matches broader boj-server pattern |
+| DD-17 | Quarantine queue is in-memory ring (MAX=32) + spills to VeriSimDB when full | Hot cache + truth separation; nothing dropped |
+| DD-18 | GitHub is single source of truth — push `origin` only, never other forges | Estate-wide policy; mirroring is hub-and-spoke downstream |
+| DD-19 | Supervisor role gated by env-var `BOJ_SUPERVISOR_TOKEN` | Stops Gemini/supervised from claiming supervisor role |
+| DD-20 | Watchdog TTL 30s on supervised claims, `progress` heartbeat resets timer | Active work extends claim; silence kills it |
+| DD-21 | Watchdog auto-release broadcasts `warn_drift` via Opus review | Prevents pile-on pivots when an agent abandons a task |
+| DD-22 | v2 federation with authoritative-site model (IDApTIK-drift-motivated) | One site holds primacy per project; peer site defers on code-ownership; no contradictory claims |
+| DD-23 | VeriSimDB uses both patterns case-by-case per cartridge | Coord = per-box (machine-level); 007 repo data = per-project (travels with repo); track record = per-box; memory auto-lift index = per-project |
+| DD-24 | 007-mcp cartridge source lives in 007-lang with install hook into boj-server/cartridges/ | Keeps cartridge next to its code; install script in 007's Justfile deploys to boj-server |
+| DD-25 | 007-mcp exposes full `oo7` CLI surface as MCP tools | No curated subset — all 25+ CLI commands surfaced |
+| DD-26 | Memory auto-lift = dynamic tag-indexed VeriSimDB lookup | Memories tagged; cartridge queries on 007 entry with repo-derived tags; returns matches as tool output |
+| DD-27 | Attester selection is deliberate by affinity (Opus picks), with exception for broadcast on "anyone could do it" tasks | Quality on hard attestations; speed on trivial ones; overhead-aware |
+| DD-28 | Learning rules: track-record updates effective_affinity; periodic scan surfaces reassignment suggestions to Opus → user | System refines assignments over time; never auto-modifies; preserves supervisor/user loop |
+| DD-29 | Peer crash+restart = fresh chain as new peer; old chain preserved as audit echo anchor | Epistemically honest (new peer doesn't claim lost knowledge); echo type preserves forensic continuity without identity continuity |
+| DD-30 | Dispatch preference per claim: deliberate (default novel/challenging) vs broadcast (trivial/routine) vs auto | Overhead-aware dispatch; easy tasks don't compete with hard ones for Opus attention |
+| DD-31 | Task #7 durability implemented as in-tree `coord_durability.zig` (append-only log + CRC-trailed records + typed helpers), not via `verisimdb-mcp` FFI | `verisimdb-mcp`'s FFI is all stubs (`return 0 // Stub`); using it would have meant implementing VeriSimDB first. Option C narrows scope to finish Task #7 cleanly. The typed log helpers (`logPeerAdd`, `logInboxPush`, …) are the stable seam a follow-up task can swap behind verisimdb-mcp once its FFI is real. State lives at `$BOJ_COORD_STATE_DIR` (default suggestion `$XDG_STATE_HOME/boj-server/coord/`), per-box per DD-23. |
+| DD-32 | Rename trust roles to **master / journeyman / apprentice** (guild-craft terminology) | Matches user's own "master production/scheduler" phrasing + 007's craft aesthetic. Apprentice→journeyman→master is a clear ladder with no corporate-hierarchy baggage. `supervisor` gets split into pure trust tier (this) + capability class (DD-34). Backward-compat: old enum values preserved as aliases for one release before removal. Env var renamed `BOJ_SUPERVISOR_TOKEN → BOJ_MASTER_TOKEN`. |
+| DD-33 | Extend `client_kind` enum with `openai` and `mistral`; add free-form `variant` string (e.g. `"opus-4.7"`, `"gpt-5-reasoning"`, `"flash-2.5"`, `"leanstral"`) | Today's 4-entry enum can't distinguish Pro from Flash or Opus from Sonnet. Variant is a string (not enum) because model-line naming evolves faster than the cartridge ABI. Peer ID becomes `<kind>[@<variant>]-<4hex>[@<context>]` rendered form — or we keep the old short form and carry variant as a separate field. Leaning separate field for stability. |
+| DD-34 | Capability advertisement on register: **class** ∈ `{reasoner, coder, mathematician, scribe, proofsmith, reader, jester}`, **tier** ∈ `{A, B, C}`, **prover_strengths** map `{agda, lean4, idris2, rocq, tla}` → 0–100 | Today the server learns affinity from outcomes alone; cold starts are weak. Advertised capabilities seed the router. Class vocabulary kept short + craft-flavoured on purpose (`proofsmith` not "prover"; `jester` for silly jobs — not pejorative, descriptive). Tier A/B/C is self-declared but calibrated by track record via DD-28. |
+| DD-35 | Live **master handoff** via `coord_transfer_master(current_token, new_peer_id, secret)` | Today if Opus's session ends mid-flight, any replacement has to re-promote via the env secret and there's a gap. Handoff tool lets the outgoing master hand the role to a named successor without a restart. Secret still required — prevents hostile handoff. Audit-logged as `AUDIT(kind=MASTER_HANDOFF, from, to)`. |
+| DD-36 | **Difficulty hint** on envelope: `difficulty_hint ∈ {low, medium, high}` | Routing aid for the scheduler; orthogonal to `risk_tier`. "Silly job" ≈ low; "thought-provoking bit" ≈ high. Not policy-enforced — master (or the peer's self-claim) picks the model-class match. Cheap to add (3 bits on the wire), immediate value for per-model routing. |
+| DD-37 | **Prover routing by tag convention only** — no new FFI; use `proof:agda`, `proof:lean4`, `proof:idris2`, `proof:rocq`, `proof:tla` as task tags; peers advertise per-prover strength via DD-34 | Zero-code routing — existing affinity picks the right peer per prover. "Leanstral for Lean" = Mistral-variant peer with high `proof:lean4` strength; Gemini-Pro for Agda = peer with high `proof:agda`. Documentation-only; no protocol change required. Keeps the "hard to get wrong" character. |
+| DD-38 | Split **gatekeeper (trust)** from **scheduler (dispatch)** roles — not done in this extension, flagged for future | Today the master both approves and schedules. Splitting them lets one peer hold veto and another hold routing (small-team = merged; big = split). Out of scope for DDs 32–37; revisit when cross-model dispatch gets complex. |
+
+---
+
+## Part 4 — Answered design questions (closed)
+
+1. ✅ **Supervisor role claim protection** — env-var gated (`BOJ_SUPERVISOR_TOKEN`). Server only grants the supervisor role to a register call that presents the secret.
+2. ✅ **Watchdog TTL on supervised peers' claims** — 30s baseline, `progress` heartbeats reset the timer. Active work extends the claim; silence kills it.
+3. ✅ **Quarantine queue behaviour on full** — spill to VeriSimDB so nothing is dropped. In-memory MAX_QUARANTINE=32 is a hot cache; VeriSimDB is durable tail.
+4. ✅ **Watchdog auto-release → `warn_drift` broadcast** — YES, but Opus-reviewed first. Server generates the broadcast candidate and queues it in the quarantine flow with `origin=server`; Opus approves or vetoes before other peers see it. Prevents pile-on pivots.
+5. ✅ **Multi-box future** — v1 hermetically local (no network fields). v2 adds optional federation for joint projects with son (IDApTIK, ASS), with **authoritative-site** designation per project to prevent mission drift. Security stack: VeriSimDB + SDP + Stapeln + HTTP capability gateway. Details in Appendix G.
+
+---
+
+## Part 5 — Interaction model (how you actually use this)
+
+**Primary channel: main terminal, me (Opus) as your chief of staff.**
+
+Other agents run in their own terminals / processes. When they have questions, they emit envelope ops:
+
+- `fyi` — log-only, never interrupts
+- `clarify` — batched through me, synthesised, shown periodically
+- `blocker` — inline interrupt in my output, stops the peer's task
+- `urgent_direct` flag — allowed for supervisor/executor peers only; supervised peers CANNOT set it (they never interrupt you)
+
+I dedupe near-identical questions, reject confabulated ones from supervised peers, and relay to you with context. You reply to me; I route answers back via `coord_send`.
+
+Escape hatch: nothing stops you from visiting another agent's terminal directly. It's just that you shouldn't *need* to.
+
+---
+
+## Appendix A — Deep rationale: supervision architecture
+
+### Why tiered trust is the right frame
+
+The user's model isn't "Gemini bad, Claude good". It's: *big things I stress a lot more, little things I trust them on*. That's a **risk ladder**, not a binary gate. So the design is proportional: Tier 0/1 flows free (the 90% case — status, query, tests, lint, small edits), Tier 2 gets a light auto-approve gate (multi-file edits, dep bumps), Tier 3 is the hard gate where Opus must approve (commits, pushes, schema changes), Tier 4 is schema-level forbidden for `supervised` (force-push, license changes, always-private-repo touches).
+
+### Why five Byzantine mechanisms (not fewer)
+
+Each catches a specific Gemini failure mode:
+
+1. **Hash chain per sender** — catches *retroactive rewriting* ("I said X earlier" when the record shows Y).
+2. **M-of-N attestation for Tier 2+ from supervised** — catches *unilateral bad commits* (Gemini confidently pushes garbage; needs an independent second executor to cosign).
+3. **Watchdog TTL on claims** — catches *claim-squatting* (Gemini locks 10 tasks, produces nothing, refuses to release).
+4. **Content sanity gate** — catches *confabulation + tier underclaiming* (references to files that don't exist; payload mentions `git push` but declared Tier 1).
+5. **Tamper-evident audit log** — catches *everything in retrospect* even when mechanisms 1-4 miss (f+1 byzantine case); forensic recovery.
+
+Each is cheap individually. Together they're defense-in-depth.
+
+### Why four self-assessment layers
+
+Self-declared confidence is a signal, never a decision. Four layers progressively stronger:
+
+- **A. Static affinity** — advertised on register; coarse filter
+- **B. Per-claim confidence** — peer judges fit on the specific task; risk: Gemini confidently wrong
+- **C. Track record** — server-computed `effective_affinity` per (peer, tag) from outcomes; can't be forged
+- **D. Drift detector** — if confidence ≫ track record, flag for review
+
+Tie-break on concurrent claims = `max(confidence × effective_affinity)`. Honest modest-confidence peer with good track record beats confident-wrong one.
+
+### Why adaptive awareness (not "drone" or "full-picture")
+
+Agents are drones when safe; strategic when blast radius demands it. Enforced via `context_fetch_id` — required for Tier 2+ envelopes. Server won't accept a Tier 2+ op from any peer that hasn't called `coord_query_context` on the affected scope in the last N minutes.
+
+**Summary-vs-raw is gated by role.** Supervised peers never see raw state — the server returns a summary only. This prevents hallucinated connections where Gemini reads the whole STATE.a2ml and invents a relationship that isn't there. Executors see raw on request. Supervisors always see raw.
+
+---
+
+## Appendix B — Interaction model details
+
+### How questions from agents surface to you
+
+When any agent emits `clarify` or `blocker`:
+
+1. Server delivers to supervisor's inbox
+2. I (Opus) see it next time I'm invoked
+3. I attempt to answer from context — ~half the time I can
+4. If I can't: I surface to you with deduplication and synthesis
+5. You reply to me in natural language
+6. I route the answer back via `coord_send(target=asker, op_kind=supervise_resp)`
+
+### Typical status dump you'd see in my output
+
+> *"Claude@aerie finished the auth refactor (committed `a1b2c3d`). Codex@ingest-svc blocked — wants to know whether to preserve the legacy column or drop it. Gemini@docs asked 3 things; I answered 2, one escalated: it claims `src/foo.ts` has a bug but the file doesn't exist in the repo — I rejected as confabulation."*
+
+### What happens when multiple agents ask the same thing
+
+Dedup by content similarity + tag + scope. Presented as: *"Claude@aerie and Codex@ingest both asking about X. Claude's context: ... Codex's context: ... they want the same answer."* One reply from you routes to both.
+
+---
+
+## Appendix C — Affinity routing
+
+Peers declare strengths on register. Tasks declare tags. Server prefers matching peers but doesn't force the match.
+
+| Agent | Likely affinities |
+|-------|-------------------|
+| Opus (me) | `supervision`, `proof-analysis`, `architecture`, `ambiguous-tradeoff` |
+| Claude Sonnet/Haiku | `routine-edit`, `test-writing`, `doc-writing`, `lint-sweep` |
+| Codex | `typescript-refactor`, `react`, `js-heavy` |
+| Gemini | `long-document-grok`, `legacy-code-read` |
+| Vibe | `exploratory` (low-trust) |
+
+Affinity tags also function as **routing exclusion**: don't tag a task with an affinity you don't want Gemini picking up.
+
+---
+
+## Appendix D — Memory auto-lift (what it is)
+
+**Not** a context-window expander. It's a retrieval-timing change.
+
+**Today:** Memories live in `~/.claude/projects/-var-mnt-eclipse-repos/memory/*.md`. I recall them by grep/search. I often miss relevant ones because I don't know to look.
+
+**With auto-lift:** Entering `007-lang` triggers the `007-mcp` cartridge's on-enter hook, which returns relevant memories (Coquelicot gotchas, v1.0 closure rules, Cerro-Torre postulate pattern) as tool output. I don't have to recall — they're handed to me.
+
+**Mechanism:**
+- Static mapping per repo (curated list)
+- Smart version: VeriSimDB indexes memories by tag; cartridge queries on enter with context-derived tags
+
+**Net effect:** slightly more tokens at session start; fewer mid-session recall misses where I say "let me try X" on something memory warned against.
+
+---
+
+## Appendix E — Schema summary (envelope v1)
+
+Full schema: `boj-server/cartridges/local-coord-mcp/schemas/coord-messages.ncl`
+Full rationale: `boj-server/cartridges/local-coord-mcp/docs/envelope-design.adoc`
+
+Core envelope fields:
+
+```
+version           integer = 1
+msg_id            12-char lowercase hex
+prev_msg_hash     SHA-256 of sender's previous envelope
+correlation_id    optional — request/response pairing
+sender            peer_id: <kind>-<4hex>[@<context>]
+recipient         peer_id or "*" for broadcast
+timestamp         ISO 8601 UTC
+op_kind           one of 18 taxonomy entries
+risk_tier         0-4
+payload           op-specific shape
+sender_confidence 0.0-1.0 (optional, recommended Tier 2+)
+sender_reasoning  <=200 chars (optional, recommended Tier 2+)
+context_fetch_id  REQUIRED for Tier 2+
+attestation_refs  array of cosigners (REQUIRED Tier 2+ from supervised)
+tier_override_reason  required when declared tier ≠ default
+urgent_direct     boolean (reject for supervised)
+ack_required      boolean
+ttl_seconds       optional auto-expiry
+```
+
+---
+
+## Appendix F — Commit log (this session)
+
+| Commit | Subject | Files |
+|--------|---------|-------|
+| `5d57daa` | feat(local-coord-mcp): complete adapter dispatch for list/send/receive/status | 4 |
+| `2a8e4c0` | feat(local-coord-mcp): per-window peer ID disambiguation via context field | 5 |
+| `ceb5125` | docs(local-coord-mcp): envelope schema v1 + design rationale | 3 |
+| `4e164a7` | feat(local-coord-mcp): role tiers, supervisor gating, quarantine queue | 6 |
+| `93c589d` | feat(local-coord-mcp): proper Nickel contracts with dependent constraints | 3 |
+| `2ae952e` | feat(local-coord-mcp): durability module — append log + replay | 1 |
+| `282de53` | feat(local-coord-mcp): persist-on-write + replay-on-init for coord state | 1 |
+| `bafcd25` | test(local-coord-mcp): restart-preserves-state integration tests | 1 |
+
+Repository: `git@github.com:hyperpolymath/boj-server.git`
+
+---
+
+## Appendix G — Federation + authoritative-site (v2, future)
+
+### Motivation
+
+Localhost-only is v1 and the current implementation. v2 adds optional federation specifically for **joint projects with son** (IDApTIK, ASS). The motivation is **NOT** credit-load distribution (nice side effect) — it's **preventing mission drift like IDApTIK had**. When two people + their respective AI agents work on the same codebase without a clear authority, scope creep and contradictory claims on code happen. Federation with explicit authoritative-site designation is the structural fix.
+
+### Authoritative site concept
+
+Per project, per time-window, **one site is authoritative**:
+
+- Authoritative site's Opus = federation-level supervisor
+- Peer site's Opus = federation-level executor (can suggest, do independent work, but defers on code-ownership decisions for the project)
+- Cross-site Tier 3 ops require authoritative-site Opus approval
+- Primacy handoff is **explicit ceremony**, never automatic
+
+This maps cleanly onto the existing local supervision hierarchy (just one level up — the local supervisor/executor/supervised tiers are unchanged within each site).
+
+### Security stack
+
+When federation is enabled:
+
+1. **VeriSimDB** holds state authoritatively
+2. **SDP (Secure Device Provisioning)** wraps the coord server
+3. **Stapeln container** isolates the whole thing (per estate container policy)
+4. **HTTP capability gateway** enforces the capability model in front
+5. **High-security options** set throughout (specific options TBD at build time)
+
+### Envelope changes (v2)
+
+- `site_id` string (localhost v1 implicitly "local")
+- `federation` sub-object with optional fields:
+  - `authoritative_site`
+  - `project_id`
+  - `handoff_ceremony_id`
+
+### v1 scope discipline
+
+- No network fields in envelope v1 (hermetically local, clean boundary)
+- No federation stubs in code (add when building v2)
+- Umoja federation stays a separate layer; the coord cartridge doesn't reimplement Umoja's gossip / attestation protocols
+
+### Trigger to start v2
+
+First concrete joint IDApTIK/ASS session where both father and son are coding in parallel. Currently: v1 still being built; v2 not scheduled.
+
+---
+
+## Appendix H — Choreographic + epistemic types (future phases)
+
+Proposed 2026-04-20 as refinement layers atop the schema.
+
+### Choreographic types (Phase 2)
+
+Session types for multi-party protocols. Makes the supervision gate flow (supervised → server → {opus, attester} → server → target) correct *by construction* rather than enforced imperatively in Zig. Also locks in `context_query` → `context_reply` → `Tier 2+` as a compiler-checked antecedent.
+
+Lives in `abi/LocalCoord/Protocol.idr` (Idris2). Compile-time only, no runtime cost. Starts after Task #8 E2E tests validate the imperative version.
+
+### Epistemic types (conceptual, already load-bearing)
+
+Tracks what each participant knows (K_A(φ) logic). Already implicit in:
+
+- `context_fetch_id` — knowledge witness; sender proves it knows the scope
+- Role asymmetry (supervisor/executor/supervised) — epistemic access differences
+- Attestation — common knowledge of depth 2 between supervisor + attester
+- Authoritative site (v2 federation) — common knowledge of primacy
+
+Making explicit: rename `context_fetch_id` to `knowledge_witness` in v2. Document the epistemic policy per role in `docs/envelope-design.adoc`.
+
+### Temporal-epistemic intersection
+
+- Watchdog TTL = "supervisor will know at time T that progress was not received"
+- Hash chain = sender cannot later know a different past (temporal immutability)
+- Staleness on knowledge witnesses = knowledge ages out
+
+### Practical recommendation
+
+- Phase 1 (now): JSON Schema + imperative Zig
+- Phase 2 (after Task #8): Idris2 session types for supervision choreography
+- Phase 3 (v2 federation): full choreographic + epistemic types for cross-site primacy
+
+---
+
+## Appendix I — Echo types (Phase 3 / practice-dogfooding)
+
+From `echo-types/readme.adoc`: Echo types = "loss that is not total erasure"; the fiber Σ(x:A), f x ≡ y. Structured irreversibility with retained proof-relevant constraint. The repo already has bridges to choreographic, epistemic, linear, graded, and tropical types (EchoChoreo, EchoEpistemic, EchoLinear, EchoGraded, EchoTropical, EchoIntegration).
+
+### Natural mappings in coord
+
+- **Supervisor decision** (approve/reject) — lossy collapse over the reasoning trace; echo fiber = all envelopes that could have gone this way
+- **Hash chain per sender** — quintessential echo; 32-byte hash collapses full message but retains "sender cannot claim different past"
+- **Summary-vs-raw for supervised peers** — epistemic firewall expressed as echo type; supervised peer knows they're in the fiber over some real state, can't reconstruct
+- **Rejected messages** — content forgotten from delivery; reason survives as constraint; forensic audit = echo-fiber query
+- **Tier promotion by sanity gate** — declared tier collapses to effective tier; retained: effective = promoted
+- **Broadcast identity** — recipient can't distinguish intentional from incidental targeting
+
+### Dogfooding value
+
+- Use echo-types IN coord — Phase 3. Real non-toy consumer.
+- EchoIntegration combines knowledge + choreography + graded degradation — almost exactly our supervisor/attestation flow.
+- Makes coord's audit + summary semantics theorem-backed rather than convention.
+
+### Phase plan (revised)
+
+- Phase 1 (now): JSON Schema + imperative Zig enforcement + in-memory supervision
+- Phase 2 (post-Task #8): Nickel contracts upgrade for server-side validation; Idris2 session types for supervision choreography
+- Phase 3: Agda echo-types formalisation of audit + summary + hash chain layer, using EchoChoreo + EchoEpistemic + EchoTropical bridges
+- Phase 4 (with v2 federation): Full choreographic + epistemic + echo formalisation across sites with primacy ceremony as choreography + knowledge transfer
+
+---
+
+## Appendix J — Tropical types (temporal + trust arithmetic)
+
+Tropical semiring = (min, +) or (max, +). Useful as modeling lens (not runtime enforcement) for:
+
+- **Watchdog TTLs** = tropical max: `claim_expiry = max(registered_at + TTL, last_heartbeat + TTL)`
+- **Trust composition** = tropical min: transitive trust bounded by weakest link
+- **Risk tier promotion** = max: `effective = max(declared, sanity_min)`
+- **Attention budget / supervisor priority** = tropical inf over priorities
+
+Already present in 007-lang proofs (`proofs/TropicalSemiring.idr`). echo-types has `EchoTropical` bridge. Integrates cleanly with Phase 3 echo-types formalisation.
+
+---
+
+## Appendix M — Multi-model supervision extension (DDs 32–37)
+
+### Motivation
+
+Two real needs surfaced on 2026-04-20 that the v1 design handles mechanically but not ergonomically:
+
+1. **Fallback authority.** If Claude credits run out, another model (GPT-5,
+   Mistral, Gemini Ultra) should be able to step in as the master /
+   scheduler without code changes. The env-secret gate already permits
+   this — but the defaults, the naming, and the vendor assumptions bake
+   in "Claude = master".
+2. **Model-specialist routing.** Inside a multi-model stack, work should
+   flow to the best-matched peer: Gemini Pro for code + maths, Gemini
+   Flash for lightweight jobs, reasoning-class models for hard problems,
+   prover-specialised peers (Leanstral on Lean, Gemini on Agda, etc.).
+   Today this is implicit in the supervisor's head; DD-28 learns it
+   over time but has nothing to work with on cold start.
+
+The extension splits **trust** from **capability**, adds a small amount
+of explicit metadata peers declare on register, and renames the three
+trust tiers to match the craft-guild ladder the estate already uses.
+
+### Naming — the three axes
+
+[cols="1,2,3",options="header"]
+|===
+| Axis | Values | Meaning
+
+| *Trust role* (one per peer, gated)
+| `master` \| `journeyman` \| `apprentice`
+| Who may approve Tier 2+ (master); who acts solo on Tier 2 (journeyman); who is quarantined for review (apprentice). Master gated by `BOJ_MASTER_TOKEN` env secret.
+
+| *Capability* (multiple per peer, advertised)
+| class ∈ {reasoner, coder, mathematician, scribe, proofsmith, reader, jester}; tier ∈ {A, B, C}; prover_strengths ∈ map of provers → 0–100
+| What the peer is *good at*. Independent of trust. Drives affinity routing. `jester` = "silly jobs" — descriptive, not pejorative. `proofsmith` covers all formal-proof work.
+
+| *Model identity* (set on register)
+| client_kind ∈ {claude, gemini, openai, mistral, copilot, custom}; variant: free-form string
+| Who the peer *is*. Kind is the vendor family; variant is the specific model line (`"opus-4.7"`, `"gpt-5-reasoning"`, `"flash-2.5"`, `"leanstral"`).
+|===
+
+Peer id rendering stays `<kind>-<4hex>[@<context>]` — variant and capabilities
+surface in `coord_list_peers` payload but don't crowd the short identifier.
+
+### What DDs 32–37 change concretely
+
+==== DD-32 — Role renaming
+
+FFI enum:
+[source,zig]
+----
+pub const Role = enum(c_int) {
+    master = 0,       // was: supervisor
+    journeyman = 1,   // was: executor
+    apprentice = 2,   // was: supervised
+};
+----
+
+Env var `BOJ_SUPERVISOR_TOKEN` → `BOJ_MASTER_TOKEN`. Old name accepted as
+fallback for one release. Idris2 ABI in `abi/LocalCoord/SafeLocalCoord.idr`
+updated with the same enum names.
+
+==== DD-33 — client_kind + variant
+
+[source,zig]
+----
+pub const ClientKind = enum(c_int) {
+    claude = 0,
+    gemini = 1,
+    copilot = 2,
+    custom = 3,
+    openai = 4,    // new
+    mistral = 5,   // new
+};
+----
+
+`coord_register` gains an optional `variant: *const u8, variant_len: c_int`
+pair. Stored per peer (max 32 bytes, alphanumeric + `.-_`). Rendered in
+`coord_list_peers` response.
+
+==== DD-34 — Capability advertisement
+
+`coord_register` gains three optional fields:
+
+- `class_str` — one of the 7 class names.
+- `tier_char` — `A` / `B` / `C`.
+- `prover_strengths_json` — `{"lean4":80,"agda":60,"idris2":90}`.
+
+Stored per peer. Surfaced via new `coord_get_peer_capabilities(peer_id)`
+FFI call. Affinity router uses these + DD-28 track record as a weighted
+sum (advertised ↓ decays, track-record ↑ grows).
+
+==== DD-35 — Master handoff
+
+[source]
+----
+coord_transfer_master(current_master_token, new_peer_id_str, secret)
+  -> 0 on success
+  -> -1 caller not master
+  -> -2 target peer not found
+  -> -3 secret mismatch
+  -> -4 target peer's role is `apprentice` (blocked — must be journeyman+)
+----
+
+Logged as `AUDIT(kind=MASTER_HANDOFF, from_idx, to_idx)`. Survives restart
+via replay (the AUDIT event + the two PEER_ROLE_SET events the handoff
+emits).
+
+==== DD-36 — Difficulty hint
+
+Envelope gains `difficulty_hint: "low" | "medium" | "high"` (optional).
+Orthogonal to risk_tier — risk says *how bad if wrong*, difficulty says
+*how hard to get right*. The master/scheduler uses the combination for
+model-class match:
+
+[cols="1,1,3",options="header"]
+|===
+| risk | difficulty | prefer
+| low  | low  | jester (Flash)
+| low  | high | reasoner (Pro / Sonnet)
+| high | low  | journeyman + trust check — "easy but dangerous" (e.g. `rm -rf` on verified path)
+| high | high | master + reasoner + attester (cosigned Tier 3)
+|===
+
+Nickel contract update: `DifficultyHintValid` predicate.
+
+==== DD-37 — Prover routing via tag
+
+Zero code change. Convention: task tags prefixed `proof:<prover>` —
+`proof:lean4`, `proof:agda`, `proof:idris2`, `proof:rocq`, `proof:tla`.
+Peers advertise per-prover strength via DD-34. The existing affinity
+machinery picks the best match.
+
+Example dispatch: user files a task `{tag: "proof:agda", difficulty: high,
+risk: 3}`. Scheduler looks at all `journeyman`/`master` peers with
+`class=proofsmith` and `prover_strengths.agda > 50`; picks the one with
+the best combined (advertised × track_record) affinity; delegates.
+
+### What stays the same
+
+* Loopback-only bind (DD-1, P-00).
+* Session-token unforgeability (DD-2, P-03).
+* Tier 2+ from apprentice → quarantine (DD-6 renamed).
+* Replay-equivalence keystone theorem (P-06).
+* Durable state schema — new fields extend events, never reshape them.
+* GitHub-only mirroring, v1 hermetic-local scope.
+
+### Migration
+
+One release of backwards-compat shims:
+[source]
+----
+// coord_register accepts both role=supervisor / role=master → master
+// coord_register accepts role=executor / role=journeyman → journeyman
+// coord_register accepts role=supervised / role=apprentice → apprentice
+// BOJ_SUPERVISOR_TOKEN read as fallback when BOJ_MASTER_TOKEN unset
+----
+
+Log format: the `peer_role_set` event payload already carries a byte for
+the role — the enum integers stay (0=master, 1=journeyman, 2=apprentice),
+so no replay-breaking change.
+
+Removed cleanly in the release after (per feedback_commit_asap — no
+backwards-compat debt lingers).
+
+### Implementation sketch (not in this commit)
+
+Rough order of landing:
+
+1. *Rename pass* — DD-32. FFI enum, adapter string literals, Idris2 ABI,
+   Nickel contracts, docs. Mechanical; ~1 day.
+2. *client_kind extension + variant* — DD-33. New enum values + variant
+   storage. ~0.5 day.
+3. *Capability advertisement* — DD-34. Three optional register fields +
+   `coord_get_peer_capabilities`. ~1 day.
+4. *Master handoff* — DD-35. One new FFI fn + adapter binding + audit
+   event. ~0.5 day.
+5. *Difficulty hint* — DD-36. Envelope schema + Nickel contract +
+   optional field in coord_send/coord_send_gated. ~0.5 day.
+6. *Prover convention doc* — DD-37. README update. ~1 hour.
+
+Total ≈ 3.5 days. No new proof obligations beyond the rename (P-10
+gets renamed and stays the same theorem).
+
+### Non-goals
+
+* Splitting gatekeeper from scheduler (DD-38 — separate RFC when needed).
+* Heuristics for automatic model selection (master still chooses; the
+  extension just gives them better metadata).
+* Any change to v2 federation plans (Appendix G) — the rename lands in
+  v2 unchanged.
+* Cost-aware scheduling. Credit burn tracking is a separate feature
+  that can consume the capability metadata later.
+
+---
+
+## Appendix K — Roadmap: deferred work (things not done in v1, worth doing sometime)
+
+Ordered by rough priority within each phase. Each item references its rationale elsewhere in the log.
+
+### Phase 1b — refinements during current coord buildout
+
+- **Multi-model supervision extension (DDs 32–37)** — 6 tasks, ~3.5 days total. See Appendix M for full rationale.
+  * *Task #32* — Role rename `supervisor/executor/supervised → master/journeyman/apprentice`. FFI enum + Idris2 ABI + adapter strings + env var. Backward-compat shims for one release. ~1 day.
+  * *Task #33* — Extend `client_kind` enum with `openai`, `mistral`; add `variant` free-form string. ~0.5 day.
+  * *Task #34* — Capability advertisement on register (class, tier, prover_strengths) + `coord_get_peer_capabilities` FFI. ~1 day.
+  * *Task #35* — Live master handoff via `coord_transfer_master(current_token, new_peer_id, secret)`. ~0.5 day.
+  * *Task #36* — `difficulty_hint` envelope field + Nickel contract `DifficultyHintValid`. ~0.5 day.
+  * *Task #37* — Prover tag convention doc (`proof:lean4`, `proof:agda`, `proof:idris2`, `proof:rocq`, `proof:tla`). README update. ~1 hour.
+- **Task #7b**: Swap `coord_durability.zig` backend to `verisimdb-mcp` FFI once that FFI is real. Typed log helpers stay as the API; implementation switches from append-only file to VeriSimDB octad calls. Prerequisite: `cartridges/verisimdb-mcp/ffi/verisimdb_ffi.zig` gains a non-stub implementation. See DD-31.
+- **Task #16**: Nickel contracts proper (dependent constraints, predicate composition). In-flight this session. See DD-16 + user guidance on Zig/Nickel layering.
+- **Task #17**: Deno shim in mcp-bridge to run Nickel contracts at validation time. User confirmed option (b). After #16 lands.
+- **Task #13**: Track-record table in VeriSimDB + effective_affinity computation.
+- **Task #14**: Reassignment suggestion engine — surfaces outliers to Opus for user review.
+- **Task #15**: Dispatch-preference mode on claims (deliberate/broadcast/auto).
+- **coord_health metrics tool** — counters for active peers, pending quarantine, reject rate, claim depth.
+- **Hash chain per envelope** — sender-side chain with `prev_msg_hash`; server tracks chain head.
+- **Content sanity gate** — file-reference validity check against recent-FS cache + self-contradiction heuristic + risk-tier escalator patterns.
+- **Watchdog TTL enforcement** — per-role defaults (30s supervised, 5min executor), `progress` heartbeats reset.
+- **Warn-drift broadcast on watchdog auto-release** via Opus review (DD-21).
+- **Quarantine queue spill to VeriSimDB when full** (DD-21).
+- **Audit-echo anchor** — preserve old chain head on peer crash+restart (DD-29).
+- **Rate-limit on rejections** — 5 rejects / 10 min = 30s cooldown (confirmed).
+- **Drift detector** — flag when confidence > 0.8 AND effective_affinity < 0.3 (confirmed).
+
+### Phase 2 — after Task #8 (E2E test proves the imperative version)
+
+- **Idris2 session types** for the supervisor/attestation choreography in `abi/LocalCoord/Protocol.idr`. Makes protocol compliance a compile-time property.
+- **Deontic types** for supervision rules (if user confirms reading of "dyadic types"). Could formalise "tier 4 forbidden for supervised" as a type-level obligation.
+
+### Phase 3 — formal foundations
+
+- **Agda echo-types formalisation** of audit + summary + hash-chain as echo types, using `EchoChoreo` / `EchoEpistemic` / `EchoTropical` bridges in `echo-types/` repo. Dogfoods echo-types (Appendix I).
+- **Tropical types** as modeling lens for TTL + trust + tier arithmetic (Appendix J). Integrates via `EchoTropical`.
+- **Epistemic types** explicit formalisation — rename `context_fetch_id` to `knowledge_witness`, document per-role epistemic policy in envelope-design.adoc.
+
+### Phase 4 — v2 federation (trigger: first joint IDApTIK/ASS session)
+
+- **Envelope v2** with `site_id` + `federation.authoritative_site` + `federation.project_id` + `federation.handoff_ceremony_id`.
+- **Authoritative-site model** (DD-22) — one site holds primacy per project; peer defers on code-ownership.
+- **Security stack** — SDP + Stapeln container + HTTP capability gateway + high-security options.
+- **Primacy handoff ceremony** — explicit protocol, formalised as choreographic + epistemic transfer.
+- **Cross-site attestation + trust composition** — tropical min for transitive trust across federated sites.
+- **Integration with Umoja federation layer** (gossip + hash attestation) for cross-machine transport.
+
+### Deferred design questions (revisit if needed)
+
+- Nickel vs Zig boundary for rich validation — currently: Nickel contracts = shape + predicates, Zig = imperative state. Could shift if Nickel runtime becomes too slow.
+- Multi-party session-type generalisation (if dyadic types mean 2-party classical session types) — multi-party choreographic is the preferred fit but classical dyadic compositions may be easier initially.
+- LLM-based summary generator for `context_reply` — currently no design; could be Opus synthesising summaries per-request, or a fixed algorithm, or pre-baked templates.
+
+### Non-goals / explicitly not doing
+
+- HTTP capability gateway + SDP for local-only v1 (overkill; confirmed).
+- Auto-modifying affinities without Opus + user review (always a loop back through supervisor/user).
+- Pushing `boj_cartridge_invoke` wiring (Task #2) ahead of the primary HTTP path — not blocking.
+- Cross-machine transport in v1 envelope.
+
+---
+
+## Appendix L — Session close 2026-04-20 + handoff brief
+
+### Session close state (updated 2026-04-20 late)
+
+- **Session duration:** long, multi-phase; huge land this session
+- **Repo:** `hyperpolymath/boj-server` main
+- **Tasks complete:** #1, #3, #4, #5, #6, #7, #8, #13, #14, #15, #16, #17, #32, #35, #36, #37 (sixteen total). DDs 1–38 recorded; Appendix M extension formalised.
+- **Tests:** 27 Zig + 41 Deno E2E, all green. Panic-attack assail clean (1 suppressed `nickel eval` false-positive).
+- **Benches:** ~4.7 µs append, ~9 µs durable round-trip, ~110k ops/sec durable, ~9M ops/sec no-durability.
+- **Proof schedule:** 10 P0/P1 obligations tracked in `cartridges/local-coord-mcp/abi/LocalCoord/PROOF-SCHEDULE.adoc`.
+- **Key commit range:** `5d57daa..HEAD` (see `git log --oneline -30` for full list).
+
+### Remaining tasks (for handoff)
+
+| # | Task | Priority | Notes |
+|---|------|----------|-------|
+| 2 | Wire `boj_cartridge_invoke` to real FFI | low | Deferred — HTTP path works fine |
+| 33 | Extend `client_kind` with `openai` + `mistral`; add `variant` string | medium | ~0.5 day — unlocks cross-model ops |
+| 34 | Capability advertisement (class/tier/prover_strengths) | medium | ~1 day — consumes #33 |
+| 9 | Create 007-mcp BoJ cartridge | medium | Separate track — unblocks #10–#12 |
+| 10 | 007 on-enter/on-exit contractile hooks | blocked by #9 | — |
+| 11 | Fill 007 missing bust + adjust contractiles | blocked by #9 | — |
+| 12 | Memory auto-lift on 007 context entry | blocked by #9 | — |
+| 7b | Swap `coord_durability.zig` backend to `verisimdb-mcp` FFI | blocked by verisimdb-mcp real FFI | DD-31 |
+| Proofs P-04..P-07 | Idris2 `Durability.idr` (record format, CRC truncation, replay-equivalence, quarantine state machine) | formal sign-off | ~6 days |
+
+### Handoff brief for the next Claude
+
+**First actions (in order):**
+
+1. Read this file (`Desktop/COORD-MCP-DESIGN-LOG.md`) end-to-end. Source of truth for decisions, wiring, and pending work.
+2. Read workspace memory: `project_coord_supervision_architecture.md`, `project_federation_authoritative_site.md`.
+3. `git -C /var/mnt/eclipse/repos/boj-server log --oneline -30` to see the landed commits.
+4. Read `cartridges/local-coord-mcp/docs/envelope-design.adoc` for rationale, plus `schemas/coord-messages-contracts.ncl` for Nickel contracts and `schemas/coord-messages.ncl` for the JSON-Schema envelope.
+5. Read Appendix M (in this file) for the three-axis peer model (trust role / capability / model identity).
+
+**Recommended next target — Task #33 + #34 (cross-model capability metadata), ~1.5 days:**
+
+Rationale: Task #32 landed the role rename (master/journeyman/apprentice) but peers still can't distinguish Gemini-Pro from Gemini-Flash, or advertise that they're strong at Lean vs Agda. Tasks #33 + #34 close that gap and are the last Phase 1b protocol changes before the 007-mcp track (#9–#12) picks up.
+
+Concrete scope:
+- Add `openai = 4, mistral = 5` to `pub const ClientKind` in `ffi/local_coord_ffi.zig`. Update the Idris2 ABI and the C-ABI enum comment.
+- Add a `variant: [32]u8` + `variant_len: u8` to the `Peer` struct. New FFI `coord_set_variant` + `coord_read_peer_variant`. New log event `PEER_VARIANT_SET` (event type 15) + replay dispatcher branch.
+- Add `class: u8` (enum index into reasoner/coder/mathematician/scribe/proofsmith/reader/jester), `tier: u8` (ASCII 'A'/'B'/'C'), `prover_strengths: [5]u8` (agda/lean4/idris2/rocq/tla, 0–100 each) on Peer. New FFI `coord_set_capabilities` + `coord_read_peer_capabilities`. New log event `PEER_CAPABILITIES_SET` (event type 16) + replay dispatcher branch.
+- Adapter: accept new fields in `coord_register` JSON, surface them in `coord_list_peers` response. Update `cartridge.ncl` tool descriptions + re-export JSON.
+- Deno E2E: extend existing `e2e_coord.ts` with one Phase 8 that exercises variant + capabilities via register and read-back.
+- Expect ~5 commits: role-FFI-extend, adapter-glue, capability-FFI-extend, adapter-glue, E2E-extension.
+
+**Do not:**
+- Redesign anything covered by DD-1 through DD-38 without flagging first.
+- Implement choreographic / epistemic / echo / tropical types (Phase 2+/Phase 3 — Appendices G/H/I/J/K).
+- Touch v2 federation fields on envelope (Phase 4 per DD-22 + Appendix G).
+- Build HTTP capability gateway or SDP for local (non-goal — v2 federation only).
+- Start the 007-mcp track (#9–#12) in the same session as #33/#34 — different cartridge, different file tree, keeps churn tidy.
+
+**Style rules this session followed (continuity):**
+- Commit ASAP (one unit = one commit), specific paths in `git add`.
+- Push origin after commit (GitHub is source of truth; no other forges).
+- Update this log at each checkpoint (commits + decisions + open items).
+- Ask before writing new memories; explicit requests bypass confirmation.
+- Test + bench + panic-attack-assail before claiming complete (full-battery rule).
+- Keep `Connection: close` in adapter HTTP responses (needed for Deno fetch pool sanity).
+
+### Status markers for parallel session planning
+
+- **Safe to parallelise NOW**: documentation, design, Phase 2+ planning — no shared state risk.
+- **Safe to parallelise**: 007-mcp family (#9-12) can run in a separate session independent of coord finishers (#33-34). Different cartridge tree, no file overlap.
+- **Do not parallelise**: two agents both touching `cartridges/local-coord-mcp/ffi/` or `mcp-bridge/` in the same wall-clock window — the FFI enum / Peer struct is the shared state.
+
+---
+
+## How this file evolves
+
+I update Part 2 (progress ledger), Part 3 (decisions as they're taken), Part 4 (closing questions as you answer), and Appendix F (commit log) at each meaningful checkpoint. New topics get new appendices (G, H, ...). Structural rewrites happen only when the design itself shifts — otherwise it stays append-mostly so you can diff what changed between sessions.
