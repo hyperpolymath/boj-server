@@ -326,16 +326,30 @@ pub fn logAudit(kind: u8, detail: []const u8) void {
     append(.audit, buf[0 .. 3 + detail.len]);
 }
 
-/// TRACK_UPDATE — peer_suffix[4]u8 outcome:u8 (0=fail, 1=success)
-///                tag_len:u8 tag[tag_len]
-pub fn logTrackUpdate(peer_suffix: *const [4]u8, outcome: u8, tag: []const u8) void {
+/// TRACK_UPDATE — client_kind:u8 outcome:u8 risk_tier:u8 duration_ms:u32
+///                timestamp_ms:u64 tag_len:u8 tag[tag_len]
+///
+/// DD-29: keyed on client_kind (not peer_id/suffix) so the track record
+/// survives peer crash+restart — a fresh peer of the same client_kind
+/// inherits the track record.
+pub fn logTrackUpdate(
+    client_kind: u8,
+    outcome: u8,
+    risk_tier: u8,
+    duration_ms: u32,
+    timestamp_ms: u64,
+    tag: []const u8,
+) void {
     if (tag.len > 64) return;
-    var buf: [6 + 64]u8 = undefined;
-    @memcpy(buf[0..4], peer_suffix);
-    buf[4] = outcome;
-    buf[5] = @intCast(tag.len);
-    if (tag.len > 0) @memcpy(buf[6 .. 6 + tag.len], tag);
-    append(.track_update, buf[0 .. 6 + tag.len]);
+    var buf: [16 + 64]u8 = undefined;
+    buf[0] = client_kind;
+    buf[1] = outcome;
+    buf[2] = risk_tier;
+    std.mem.writeInt(u32, buf[3..7], duration_ms, .little);
+    std.mem.writeInt(u64, buf[7..15], timestamp_ms, .little);
+    buf[15] = @intCast(tag.len);
+    if (tag.len > 0) @memcpy(buf[16 .. 16 + tag.len], tag);
+    append(.track_update, buf[0 .. 16 + tag.len]);
 }
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -442,16 +456,26 @@ pub fn decodeAudit(p: []const u8) ?Audit {
     return .{ .kind = p[0], .detail = p[3 .. 3 + n] };
 }
 
-pub const TrackUpdate = struct { suffix: [4]u8, outcome: u8, tag: []const u8 };
+pub const TrackUpdate = struct {
+    client_kind: u8,
+    outcome: u8,
+    risk_tier: u8,
+    duration_ms: u32,
+    timestamp_ms: u64,
+    tag: []const u8,
+};
 pub fn decodeTrackUpdate(p: []const u8) ?TrackUpdate {
-    if (p.len < 6) return null;
-    const n: usize = p[5];
-    if (p.len < 6 + n) return null;
-    var out: TrackUpdate = undefined;
-    @memcpy(&out.suffix, p[0..4]);
-    out.outcome = p[4];
-    out.tag = p[6 .. 6 + n];
-    return out;
+    if (p.len < 16) return null;
+    const n: usize = p[15];
+    if (p.len < 16 + n) return null;
+    return .{
+        .client_kind = p[0],
+        .outcome = p[1],
+        .risk_tier = p[2],
+        .duration_ms = std.mem.readInt(u32, p[3..7], .little),
+        .timestamp_ms = std.mem.readInt(u64, p[7..15], .little),
+        .tag = p[16 .. 16 + n],
+    };
 }
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -587,7 +611,7 @@ test "replay decodes every event type" {
     logQuarApprove(42);
     logQuarReject(43, "confabulated path");
     logAudit(1, "tier3-from-supervised");
-    logTrackUpdate(&suffix, 1, "proof-analysis");
+    logTrackUpdate(0, 1, 2, 1234, 1_700_000_000_000, "proof-analysis");
     logPeerRemove(0);
     close();
 
@@ -612,6 +636,10 @@ test "replay decodes every event type" {
 
     try std.testing.expectEqual(EventType.track_update, t_events[12]);
     const tr = decodeTrackUpdate(t_payloads[12][0..t_payload_lens[12]]) orelse return error.DecodeFailed;
+    try std.testing.expectEqual(@as(u8, 0), tr.client_kind);
     try std.testing.expectEqual(@as(u8, 1), tr.outcome);
+    try std.testing.expectEqual(@as(u8, 2), tr.risk_tier);
+    try std.testing.expectEqual(@as(u32, 1234), tr.duration_ms);
+    try std.testing.expectEqual(@as(u64, 1_700_000_000_000), tr.timestamp_ms);
     try std.testing.expectEqualSlices(u8, "proof-analysis", tr.tag);
 }
