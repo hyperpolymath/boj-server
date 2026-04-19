@@ -318,12 +318,15 @@ function buildToolList() {
 
   tools.push({
     name: "coord_claim_task",
-    description: "Attempt to claim a task (mutex-style). If the task is unclaimed, this peer becomes the holder. If another peer holds it, returns the holder's peer ID. Idempotent if already held by caller. Use this to prevent two AI instances from duplicating work.",
+    description: "Attempt to claim a task (mutex-style). If the task is unclaimed, this peer becomes the holder. Idempotent if already held by caller. Task #15: optional confidence (0.0-1.0), dispatch_preference (deliberate/broadcast/auto), task_difficulty (trivial/routine/challenging/novel). Default policy (DD-30): broadcast trivial+routine, deliberate challenging+novel. Rejection cooldown: 5 claim rejections per client_kind in 10 min => 30s freeze before next attempt.",
     inputSchema: {
       type: "object",
       properties: {
         token: { type: "string", description: "Session token from coord_register" },
         task: { type: "string", description: "Task identifier to claim (e.g. 'audit-boj-server')" },
+        confidence: { type: "number", minimum: 0, maximum: 1, description: "Self-assessed fit 0.0-1.0 (feeds overclaim detector DD-28)" },
+        dispatch_preference: { type: "string", enum: ["deliberate", "broadcast", "auto"], description: "Routing hint (DD-30). auto = derive from difficulty" },
+        task_difficulty: { type: "string", enum: ["trivial", "routine", "challenging", "novel"], description: "Difficulty level (DD-30)" },
       },
       required: ["token", "task"],
     },

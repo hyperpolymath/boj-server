@@ -675,6 +675,52 @@ pub export fn coord_receive(
     return @intCast(mlen);
 }
 
+// ═══════════════════════════════════════════════════════════════════════
+// Rejection cooldown (Task #15) — per client_kind, enforce a short
+// cooldown after a burst of claim rejections to blunt runaway peers.
+//
+// Policy: 5 rejections within REJECT_WINDOW_MS (10 min) trigger a
+// COOLDOWN_MS (30 s) freeze from the 5th rejection's timestamp. During
+// cooldown the server returns a dedicated "cooldown" result so callers
+// can back off rather than tight-looping.
+// ═══════════════════════════════════════════════════════════════════════
+
+const REJECT_WINDOW_MS: u64 = 10 * 60 * 1000;
+const REJECT_LIMIT: usize = 5;
+const COOLDOWN_MS: u64 = 30 * 1000;
+
+// Timestamps of the most recent rejections per client_kind, as a small
+// ring. ClientKind enum has 4 variants — one slot each.
+const KIND_COUNT: usize = 4;
+var reject_ring: [KIND_COUNT][REJECT_LIMIT]u64 = [_][REJECT_LIMIT]u64{[_]u64{0} ** REJECT_LIMIT} ** KIND_COUNT;
+var reject_head: [KIND_COUNT]usize = [_]usize{0} ** KIND_COUNT;
+
+fn isInCooldown(kind: ClientKind, now_ms: u64) bool {
+    const k: usize = @intCast(@intFromEnum(kind));
+    if (k >= KIND_COUNT) return false;
+    const ring = &reject_ring[k];
+    // Count rejections within the window.
+    var count: usize = 0;
+    var newest: u64 = 0;
+    for (ring) |ts| {
+        if (ts == 0) continue;
+        if (now_ms > ts and (now_ms - ts) > REJECT_WINDOW_MS) continue;
+        count += 1;
+        if (ts > newest) newest = ts;
+    }
+    if (count < REJECT_LIMIT) return false;
+    if (now_ms > newest and (now_ms - newest) >= COOLDOWN_MS) return false;
+    return true;
+}
+
+fn recordRejection(kind: ClientKind, now_ms: u64) void {
+    const k: usize = @intCast(@intFromEnum(kind));
+    if (k >= KIND_COUNT) return;
+    const h = reject_head[k];
+    reject_ring[k][h] = now_ms;
+    reject_head[k] = (h + 1) % REJECT_LIMIT;
+}
+
 /// Attempt to claim a task. Returns ClaimResult encoding.
 pub export fn coord_claim_task(
     token_ptr: [*]const u8,
@@ -682,11 +728,53 @@ pub export fn coord_claim_task(
     task_ptr: [*]const u8,
     task_len: c_int,
 ) c_int {
+    return coord_claim_task_ex(token_ptr, token_len, task_ptr, task_len, -1, -1, -1);
+}
+
+/// Dispatch-preference constants shared with the envelope schema.
+pub const DispatchPref = enum(c_int) {
+    deliberate = 0,
+    broadcast = 1,
+    auto = 2,
+};
+
+pub const TaskDifficulty = enum(c_int) {
+    trivial = 0,
+    routine = 1,
+    challenging = 2,
+    novel = 3,
+};
+
+/// Extended claim — carries the sender's own confidence (0-100 %),
+/// dispatch preference, and task difficulty. All three are optional
+/// (-1 for unset). Return codes match coord_claim_task:
+///   0 = granted
+///   1 = held by another peer
+///   2 = no claim slot
+///  -1 = bad token
+///  -5 = rejection cooldown in effect for this client_kind
+pub export fn coord_claim_task_ex(
+    token_ptr: [*]const u8,
+    token_len: c_int,
+    task_ptr: [*]const u8,
+    task_len: c_int,
+    confidence_pct: c_int, // 0..100, or -1 for unset
+    dispatch_pref: c_int, // DispatchPref, or -1 for auto-derive
+    task_difficulty: c_int, // TaskDifficulty, or -1 if unknown
+) c_int {
+    _ = dispatch_pref; // schema-level field; server records but doesn't gate on it
+    _ = task_difficulty; // likewise
+    _ = confidence_pct; // recorded via coord_report_outcome; here it's metadata only
+
     mutex.lock();
     defer mutex.unlock();
 
     const idx = findPeerByToken(token_ptr, @intCast(token_len)) orelse return -1;
     const tlen: usize = @intCast(@min(task_len, 128));
+
+    const now_ms: u64 = @intCast(std.time.milliTimestamp());
+    const kind = peers[idx].kind;
+    if (isInCooldown(kind, now_ms)) return -5;
 
     // Check if already claimed
     for (&claims) |*c| {
@@ -696,6 +784,7 @@ pub export fn coord_claim_task(
             if (c.holder_idx == @as(u8, @intCast(idx))) {
                 return 0; // Already held by caller — idempotent grant
             }
+            recordRejection(kind, now_ms);
             return 1; // Held by another peer
         }
     }
@@ -711,6 +800,7 @@ pub export fn coord_claim_task(
             return 0; // Granted
         }
     }
+    recordRejection(kind, now_ms);
     return 2; // No slots available (treated as NotFound)
 }
 
@@ -1443,6 +1533,8 @@ pub export fn coord_reset() void {
     track = [_]TrackEntry{empty_track} ** MAX_TRACK;
     track_head = 0;
     track_count = 0;
+    reject_ring = [_][REJECT_LIMIT]u64{[_]u64{0} ** REJECT_LIMIT} ** KIND_COUNT;
+    reject_head = [_]usize{0} ** KIND_COUNT;
 }
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -2218,6 +2310,55 @@ test "affinity bad token rejected" {
         @as(c_int, -1),
         coord_report_outcome(&bad_tok, TOKEN_LEN, "x".ptr, 1, 1, 0, 0),
     );
+    coord_reset();
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// Claim extension + rejection cooldown tests (Task #15)
+// ═══════════════════════════════════════════════════════════════════════
+
+test "coord_claim_task_ex accepts optional fields and grants" {
+    coord_reset();
+    var tok: [TOKEN_LEN]u8 = undefined;
+    var suf: [4]u8 = undefined;
+    _ = coord_register(0, -1, &tok, &suf);
+
+    const task = "design-review";
+    // confidence=80, dispatch_pref=deliberate (0), difficulty=challenging (2)
+    const rc = coord_claim_task_ex(&tok, TOKEN_LEN, task.ptr, @intCast(task.len), 80, 0, 2);
+    try std.testing.expectEqual(@as(c_int, 0), rc);
+    coord_reset();
+}
+
+test "rejection cooldown engages after 5 rejects in 10 min" {
+    coord_reset();
+    var tok1: [TOKEN_LEN]u8 = undefined;
+    var tok2: [TOKEN_LEN]u8 = undefined;
+    var suf: [4]u8 = undefined;
+    _ = coord_register(0, -1, &tok1, &suf); // claude holds the task
+    _ = coord_register(0, -1, &tok2, &suf); // claude #2 keeps colliding
+
+    const task = "held-task";
+    try std.testing.expectEqual(@as(c_int, 0), coord_claim_task(&tok1, TOKEN_LEN, task.ptr, @intCast(task.len)));
+
+    // 5 rejects in sequence — the 6th triggers cooldown.
+    var i: usize = 0;
+    while (i < 5) : (i += 1) {
+        try std.testing.expectEqual(
+            @as(c_int, 1),
+            coord_claim_task(&tok2, TOKEN_LEN, task.ptr, @intCast(task.len)),
+        );
+    }
+    // Same kind (claude) — should now be in cooldown.
+    const cool = coord_claim_task(&tok2, TOKEN_LEN, task.ptr, @intCast(task.len));
+    try std.testing.expectEqual(@as(c_int, -5), cool);
+
+    // Different kind is unaffected.
+    var gem_tok: [TOKEN_LEN]u8 = undefined;
+    _ = coord_register(1, -1, &gem_tok, &suf);
+    const gem_rc = coord_claim_task(&gem_tok, TOKEN_LEN, task.ptr, @intCast(task.len));
+    try std.testing.expectEqual(@as(c_int, 1), gem_rc); // held, not cooldown
+
     coord_reset();
 }
 

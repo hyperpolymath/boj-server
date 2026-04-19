@@ -126,6 +126,39 @@ let OpKinds = std.record.fields OpDefaults in
     )
   ),
 
+  # ── Task #15 fields — shape-level guards ────────────────────────
+
+  # sender_confidence, if present, must be a float in [0.0, 1.0].
+  # Feeds the overclaim rule (conf > 0.8 AND effective_affinity < 0.3
+  # flags a reassignment suggestion; see DD-28).
+  ConfidenceShape = std.contract.from_predicate (fun e =>
+    !(std.record.has_field "sender_confidence" e)
+    || (std.is_number e.sender_confidence
+        && e.sender_confidence >= 0
+        && e.sender_confidence <= 1)
+  ),
+
+  # dispatch_preference, if present, must be one of the three modes.
+  # Default policy (DD-30): broadcast for trivial+routine tasks;
+  # deliberate for challenging+novel. Server-side auto-derivation
+  # kicks in when the value is absent or set to "auto".
+  DispatchPrefShape = std.contract.from_predicate (fun e =>
+    !(std.record.has_field "dispatch_preference" e)
+    || (std.is_string e.dispatch_preference
+        && std.array.any
+           (fun k => k == e.dispatch_preference)
+           ["deliberate", "broadcast", "auto"])
+  ),
+
+  # task_difficulty, if present, must be one of the four levels.
+  TaskDifficultyShape = std.contract.from_predicate (fun e =>
+    !(std.record.has_field "task_difficulty" e)
+    || (std.is_string e.task_difficulty
+        && std.array.any
+           (fun k => k == e.task_difficulty)
+           ["trivial", "routine", "challenging", "novel"])
+  ),
+
   # ── Combined validator ─────────────────────────────────────────
   #
   # Lazy function that applies all four dependent-constraint contracts
@@ -149,5 +182,8 @@ let OpKinds = std.record.fields OpDefaults in
     | TierContextGate
     | TierAttestationGate
     | UrgentDirectRestriction
-    | TierOverrideJustification,
+    | TierOverrideJustification
+    | ConfidenceShape
+    | DispatchPrefShape
+    | TaskDifficultyShape,
 }

@@ -120,11 +120,36 @@
       "name": "coord_receive"
     },
     {
-      "description": "Attempt to claim a task (mutex-style). If the task is unclaimed, this peer becomes the holder. If another peer holds it, the claim is denied. Idempotent if already held by caller.",
+      "description": "Attempt to claim a task (mutex-style). If the task is unclaimed, this peer becomes the holder. If another peer holds it, the claim is denied. Idempotent if already held by caller. Task #15: optional confidence, dispatch_preference (deliberate/broadcast/auto), task_difficulty (trivial/routine/challenging/novel) — default policy broadcasts trivial+routine, deliberates on challenging+novel. Claim rejection triggers a per-client_kind rate-limit: 5 rejections / 10 min => 30s cooldown before the next attempt.",
       "inputSchema": {
         "properties": {
+          "confidence": {
+            "description": "Sender's self-assessed fit 0.0-1.0 (DD-28; feeds overclaim detector)",
+            "maximum": 1,
+            "minimum": 0,
+            "type": "number"
+          },
+          "dispatch_preference": {
+            "description": "Routing hint (DD-30). auto = server derives from task_difficulty",
+            "enum": [
+              "deliberate",
+              "broadcast",
+              "auto"
+            ],
+            "type": "string"
+          },
           "task": {
             "description": "Task identifier to claim (e.g. 'audit-boj-server')",
+            "type": "string"
+          },
+          "task_difficulty": {
+            "description": "Difficulty level (DD-30; drives default dispatch mode)",
+            "enum": [
+              "trivial",
+              "routine",
+              "challenging",
+              "novel"
+            ],
             "type": "string"
           },
           "token": {

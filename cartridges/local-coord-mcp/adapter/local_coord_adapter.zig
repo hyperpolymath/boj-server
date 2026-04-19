@@ -247,9 +247,41 @@ fn dispatch(tool: []const u8, body: []const u8, resp: []u8, allocator: std.mem.A
         var token: [16]u8 = undefined;
         if (!parseToken(token_hex.string, &token)) return .{ .status = 400, .body = errJson(resp, "invalid token hex") };
 
-        const result = ffi.coord_claim_task(&token, 16, task.string.ptr, @intCast(task.string.len));
+        // Optional Task #15 fields: confidence, dispatch_preference, task_difficulty.
+        const confidence: i32 = blk: {
+            const v = parsed.value.object.get("confidence") orelse break :blk -1;
+            // Accept either a float in 0..1 or a percentage 0..100.
+            switch (v) {
+                .float => |f| break :blk @intFromFloat(@min(@max(f * 100.0, 0.0), 100.0)),
+                .integer => |i| break :blk @intCast(i),
+                else => break :blk -1,
+            }
+        };
+        const dispatch_pref: i32 = blk: {
+            const v = parsed.value.object.get("dispatch_preference") orelse break :blk -1;
+            const s = v.string;
+            if (std.mem.eql(u8, s, "deliberate")) break :blk 0;
+            if (std.mem.eql(u8, s, "broadcast")) break :blk 1;
+            if (std.mem.eql(u8, s, "auto")) break :blk 2;
+            break :blk -1;
+        };
+        const difficulty: i32 = blk: {
+            const v = parsed.value.object.get("task_difficulty") orelse break :blk -1;
+            const s = v.string;
+            if (std.mem.eql(u8, s, "trivial")) break :blk 0;
+            if (std.mem.eql(u8, s, "routine")) break :blk 1;
+            if (std.mem.eql(u8, s, "challenging")) break :blk 2;
+            if (std.mem.eql(u8, s, "novel")) break :blk 3;
+            break :blk -1;
+        };
+
+        const result = ffi.coord_claim_task_ex(
+            &token, 16, task.string.ptr, @intCast(task.string.len),
+            confidence, dispatch_pref, difficulty,
+        );
         if (result == 0) return .{ .status = 200, .body = okJson(resp, "granted") };
         if (result == 1) return .{ .status = 200, .body = errJson(resp, "held") };
+        if (result == -5) return .{ .status = 429, .body = errJson(resp, "cooldown: too many recent claim rejections for this client_kind — wait 30s") };
         return .{ .status = 500, .body = errJson(resp, "claim failed") };
     }
 

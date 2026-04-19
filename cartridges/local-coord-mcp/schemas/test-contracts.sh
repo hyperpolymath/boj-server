@@ -151,6 +151,73 @@ run_case "status declared as tier 3 WITHOUT tier_override_reason (TierOverrideJu
 }' \
 "fail"
 
+# ── Task #15 fields ────────────────────────────────────────────
+
+run_case "claim with valid sender_confidence + dispatch_preference + task_difficulty" \
+'{
+    version = 1,
+    msg_id = "abcdef01234b",
+    prev_msg_hash = "0000000000000000000000000000000000000000000000000000000000000000",
+    sender = "claude-7f3a",
+    recipient = "*",
+    timestamp = "2026-04-20T10:00:00Z",
+    op_kind = "claim",
+    risk_tier = 2,
+    payload = { task = "proof-audit" },
+    context_fetch_id = "ctx-xyz",
+    sender_confidence = 0.75,
+    dispatch_preference = "deliberate",
+    task_difficulty = "challenging",
+}' \
+"pass"
+
+run_case "sender_confidence outside 0..1 (ConfidenceShape)" \
+'{
+    version = 1,
+    msg_id = "abcdef01234c",
+    prev_msg_hash = "0000000000000000000000000000000000000000000000000000000000000000",
+    sender = "claude-7f3a",
+    recipient = "*",
+    timestamp = "2026-04-20T10:00:00Z",
+    op_kind = "status",
+    risk_tier = 0,
+    payload = { status = "ok" },
+    sender_confidence = 1.5,
+}' \
+"fail"
+
+run_case "unknown dispatch_preference string (DispatchPrefShape)" \
+'{
+    version = 1,
+    msg_id = "abcdef01234d",
+    prev_msg_hash = "0000000000000000000000000000000000000000000000000000000000000000",
+    sender = "claude-7f3a",
+    recipient = "*",
+    timestamp = "2026-04-20T10:00:00Z",
+    op_kind = "claim",
+    risk_tier = 2,
+    payload = { task = "x" },
+    context_fetch_id = "ctx",
+    dispatch_preference = "yolo",
+}' \
+"fail"
+
+run_case "unknown task_difficulty string (TaskDifficultyShape)" \
+'{
+    version = 1,
+    msg_id = "abcdef01234e",
+    prev_msg_hash = "0000000000000000000000000000000000000000000000000000000000000000",
+    sender = "claude-7f3a",
+    recipient = "*",
+    timestamp = "2026-04-20T10:00:00Z",
+    op_kind = "claim",
+    risk_tier = 2,
+    payload = { task = "x" },
+    context_fetch_id = "ctx",
+    task_difficulty = "spicy",
+}' \
+"fail"
+
 echo
 echo "=== Summary ==="
 echo "Accepted (pass expected): $PASS"
