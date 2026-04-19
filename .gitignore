@@ -105,6 +105,11 @@ src/abi/build/
 **/.zig-cache/
 **/zig-out/
 
+# Nickel validator temp files — written to schemas/ for relative import,
+# deleted on normal exit; leftovers only appear on crash. Defensive.
+**/._validate_*.ncl
+**/_test_case_*.ncl
+
 # Cartridge Idris2 build artifacts
 cartridges/*/abi/build/
 
