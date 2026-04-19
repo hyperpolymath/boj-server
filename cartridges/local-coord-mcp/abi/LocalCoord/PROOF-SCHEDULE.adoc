@@ -1,0 +1,357 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+// Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+
+= local-coord-mcp — proof schedule
+:author: Jonathan D.A. Jewell
+:date: 2026-04-20
+:toc: macro
+:version: 1
+
+Companion to `SafeLocalCoord.idr` (already-proved invariants) and
+`Protocol.idr` (message-passing algebra). This document enumerates every
+formal-verification obligation the cartridge carries, ranks them by
+priority, names the prover, and sequences the work.
+
+Scope is *Phase 1* (local, hermetic). Phase 2+ obligations (choreographic /
+epistemic / echo / tropical) are listed but deferred per
+`Desktop/COORD-MCP-DESIGN-LOG.md` Appendices H-J.
+
+toc::[]
+
+== Summary
+
+[cols="1,4,1,1,2",options="header"]
+|===
+| # | Obligation | Prior | Status | Prover
+| P-00 | Loopback-only bind | — | ✅ done | Idris2
+| P-01 | Port in non-privileged range | — | ✅ done | Idris2
+| P-02 | Federation policy ≡ LocalOnly uninhabited elsewhere | — | ✅ done | Idris2
+| P-03 | Session-token non-empty on issue | — | ✅ done (type-level) | Idris2
+| P-04 | Record format invariants (magic ∧ version ∧ CRC) | P-00…P-03 | P0 | Idris2
+| P-05 | CRC truncation tolerance (prefix-closed replay) | P-04 | P0 | Idris2
+| P-06 | Replay-equivalence (persist-then-replay ≡ direct execute) | P-04, P-05 | P0 | Idris2
+| P-07 | Quarantine state machine (determinism + monotonicity) | P-06 | P0 | Idris2
+| P-08 | Ring-buffer FIFO correctness under replay | P-06 | P1 | Idris2
+| P-09 | Persistence monotonicity (commits cannot un-happen) | P-05, P-06 | P1 | Idris2
+| P-10 | Supervisor privilege gating (env-var secret necessary) | P-03 | P1 | Idris2
+| P-11 | Tier-4 forbidden-list schema-level reject for `supervised` | P-10 | P1 | Nickel + Idris2
+| P-12 | Nickel-contract soundness wrt risk-ladder spec | P-11 | P2 | Lean4 ‖ Idris2
+| P-13 | Zig ↔ Idris2 ABI correspondence (hardcoded `127.0.0.1` realises `IsIPv4Loop`) | P-00 | P2 | Idris2 + SPARK-style assertions
+| P-14 | Token unforgeability (probabilistic; 128-bit CSPRNG) | P-03 | documented | prose argument
+| P-15 | Choreographic types for supervisor/attestation flow | P-06, P-07 | Phase 2 (deferred) | Idris2 session types
+| P-16 | Epistemic types for context-knowledge-witness | P-15 | Phase 2 (deferred) | Idris2 + A2ML tags
+| P-17 | Echo-type formalisation of audit + summary + hash chain | P-15, P-16 | Phase 3 (deferred) | Agda (echo-types repo)
+| P-18 | Tropical-semiring model of TTL + trust | P-17 | Phase 3 (deferred) | Agda (EchoTropical)
+| P-19 | Cross-site primacy ceremony | P-15…P-18 | Phase 4 (deferred) | Idris2 + Agda
+|===
+
+Stage priorities:
+
+P0 (**must land before Task #8 e2e sign-off**) → P-04, P-05, P-06, P-07.
+
+P1 (**should land before track-record work, Task #13**) → P-08, P-09, P-10, P-11.
+
+P2 (**nice-to-have; unblocks Task #17 Deno shim formal verification**) → P-12, P-13.
+
+== Already proved — carry forward
+
+=== P-00 Loopback-only bind
+
+`SafeLocalCoord.loopbackToString` is total, and `IsLoopback addr` has
+exactly two inhabitants (`IsIPv4Loop`, `IsIPv6Loop`). `BindConfig`
+requires a `LoopbackAddr` value, and the only constructors map to
+"127.0.0.1" or "::1". `wildcardNotLoopback : IsLoopback "0.0.0.0" -> Void`
+closes the negative case.
+
+=== P-01 Port range
+
+`ValidPort p` requires `LTE 1024 p` and `LTE p 65535` implicit args.
+`coordPortValid : ValidPort 7745` is the specific instance used.
+
+=== P-02 Federation opt-out
+
+`FederationPolicy` has one constructor (`LocalOnly`). `IsFederated` is
+defined with no constructor — uninhabited. `localOnlyNotFederated`
+closes the case.
+
+=== P-03 Session token non-emptiness
+
+`SessionToken`'s constructor demands `NonEmpty (unpack tok)`.
+
+These are the spine SafeLocalCoord.idr already enforces. Every new
+obligation below composes with them.
+
+== New obligations (this task + Task #7 durability layer)
+
+=== P-04 Record format invariants [P0]
+
+*Claim.* For every record `r` successfully decoded by the replay
+iterator, `r.magic = MAGIC ∧ r.format_version = 1 ∧ crc32(header(r) ‖
+payload(r)) = r.crc`.
+
+*Artefact.* `abi/LocalCoord/Durability.idr` defines a record type
+`DurableRecord` whose constructor requires all three witnesses as
+implicit args. `decodeOne : BitStream -> Maybe DurableRecord` total.
+
+*Dependencies.* Idris2 library for CRC32 (or a cheap algebraic stand-in
+for the proof; the CRC need only be opaque + extensional).
+
+*Acceptance.* `decodeOne` is shown to produce only well-formed records;
+any corruption yields `Nothing`.
+
+=== P-05 CRC truncation tolerance [P0]
+
+*Claim.* For any log `L` with a valid prefix `L_good` followed by a
+corrupt tail `L_bad` (bad magic, wrong version, or failed CRC), replay
+accepts exactly the events in `L_good` and emits nothing for `L_bad`.
+
+*Artefact.* `Durability.idr`:
+`replay : BitStream -> List DurableRecord` total + a corollary
+`replayPrefixClosed : (L_good, L_bad : BitStream) -> (allValid L_good) ->
+(¬ allValid L_bad) -> replay (L_good ‖ L_bad) = replay L_good`.
+
+*Dependencies.* P-04.
+
+*Acceptance.* Matches `test "replay stops at CRC corruption"` in
+`coord_durability.zig` — property-test lines up with theorem statement.
+
+=== P-06 Replay-equivalence [P0 — keystone theorem]
+
+*Claim.* Let `σ : State` be the coord in-memory state. Let `step :
+State -> Mutation -> State` be the direct mutation step. Let `logStep :
+LogBuffer -> Mutation -> LogBuffer` be the append side. Let `replayInto
+: LogBuffer -> State -> State` be the dispatcher. Then for any
+mutation sequence `ms : List Mutation` and initial `σ0`,
+
+  foldl step σ0 ms ≡ replayInto (foldl logStep [] ms) σ0
+
+*Interpretation.* Persist-then-replay is observationally equivalent to
+direct execution. The durability layer never changes semantics.
+
+*Artefact.* `abi/LocalCoord/Durability.idr` bundles `step`, `logStep`,
+`replayInto` with the equivalence lemma `replayEquivalent`.
+
+*Dependencies.* P-04, P-05. Requires encoding coord `State` (peers,
+claims, quarantine, next_request_id) in Idris2 — 80% overlap with
+`Protocol.idr` state.
+
+*Acceptance.* Unit-tested empirically already by
+`test "restart replay restores peer, claim, inbox, quarantine"`; proof
+closes the case for arbitrary mutation sequences.
+
+*Subtlety.* The replay dispatcher uses "first free slot" for quarantine
+reconstruction. The theorem must state slot assignments need not match
+the original run — only the *active-entry-set* (modulo slot identity)
+must. This is the right abstraction since callers address entries by
+`request_id`, not by slot index.
+
+=== P-07 Quarantine state machine [P0]
+
+*Claim.* For every `request_id r`, the log contains at most one terminal
+event among `{QUAR_APPROVE r, QUAR_REJECT r}` after `QUAR_ADD r`. After
+a terminal event, no further events reference `r`.
+
+*State chart.*
+[cols="1,1,1,1",options="header"]
+|===
+| State | QUAR_ADD | QUAR_APPROVE | QUAR_REJECT
+| initial | → pending (ok) | error | error
+| pending | error | → approved (ok) | → rejected (ok)
+| approved | error | error | error
+| rejected | error | error | error
+|===
+
+*Artefact.* `abi/LocalCoord/Quarantine.idr` — state-machine witness with
+`QuarState` enum, `validTransition` predicate, and a soundness lemma
+that the event stream respects it.
+
+*Dependencies.* P-06.
+
+*Acceptance.* Existing `coord_approve` / `coord_reject` are single-shot
+(they deactivate the entry); the code meets the spec already — proof
+just makes it type-level.
+
+=== P-08 Ring-buffer FIFO correctness [P1]
+
+*Claim.* Under a schedule of `INBOX_PUSH(peer, msg_i)` and
+`INBOX_POP(peer)` events with the invariant `count ≤ MAX_MESSAGES`, the
+sequence of messages returned by consecutive `coord_receive` calls is
+the sub-sequence of pushed messages whose indices exceed the number of
+prior pops. (FIFO.)
+
+*Artefact.* `abi/LocalCoord/RingBuffer.idr` — with `Vect n Msg` indexed
+by queue depth + push/pop operations + `popOrderFifo` lemma.
+
+*Dependencies.* P-06 (to lift single-peer reasoning to the replay-aware
+form).
+
+*Acceptance.* Corresponds to the `"send and receive direct message"`
+and `"broadcast message"` Zig tests.
+
+=== P-09 Persistence monotonicity [P1]
+
+*Claim.* Let `L_t` be the log at wall-clock time `t`. For `t1 < t2`
+without intervening truncation or CRC-destroying corruption, `replay
+L_t1 ⊆ replay L_t2` (prefix-wise).
+
+*Artefact.* `Durability.idr` lemma `replayMonotone`.
+
+*Dependencies.* P-05.
+
+*Acceptance.* Matches the in-code guarantee that `logPeerAdd` et al.
+only *append*, never overwrite.
+
+=== P-10 Supervisor privilege gating [P1]
+
+*Claim.* There is no execution in which `peers[i].role = supervisor`
+without one of:
+
+. a prior call to `coord_promote_to_supervisor(tok_i, secret, ...)` with
+  `secret ≡ getenv(BOJ_SUPERVISOR_TOKEN)` (constant-time match), *or*
+. a test-only direct mutation (explicitly out of scope — the proof
+  applies to the public API only).
+
+*Artefact.* `abi/LocalCoord/Role.idr` — `Role` type with phantom
+witness `PromotedVia`; public API functions require a `PromotedVia`
+argument to produce a `supervisor`-tagged peer.
+
+*Dependencies.* P-03.
+
+*Acceptance.* Corresponds to the run-time rejection paths already
+wired (return codes -3 / -4 / promote-requires-env-var).
+
+=== P-11 Tier-4 forbidden list [P1]
+
+*Claim.* For any envelope `e` with `sender_role = supervised` and
+`op_kind` matching a Tier-4 forbidden pattern (force-push, branch
+delete, public-repo create, license change, always-private-repo touch),
+`validate e` rejects.
+
+*Artefact.* New `forbiddenT4Patterns` predicate in
+`coord-messages-contracts.ncl` + Idris2 wrapper proving
+exhaustiveness over the current taxonomy (schema-driven).
+
+*Dependencies.* P-10.
+
+*Acceptance.* Gates the envelope before it reaches the FFI.
+
+=== P-12 Nickel-contract soundness wrt risk-ladder spec [P2]
+
+*Claim.* The four dependent contracts (TierContextGate,
+TierAttestationGate, UrgentDirectRestriction, TierOverrideJustification)
+are sound wrt a Lean4 model of the risk ladder: every envelope the
+ladder should reject is rejected, and every envelope the ladder should
+accept is accepted.
+
+*Artefact.* `proofs/RiskLadder.lean` — model of the ladder + contract
+equivalence theorem. Optional: translate back to Idris2 if we want a
+single-prover house.
+
+*Dependencies.* P-11. Prover tentative; Idris2 can also do this.
+
+*Acceptance.* Closes the Nickel-vs-Zig boundary question currently open
+in Appendix K.
+
+=== P-13 Zig ↔ Idris2 ABI correspondence [P2]
+
+*Claim.* The Zig constant `BIND_ADDR = [4]u8{127,1,0,1}` together with
+`BIND_PORT = 7745` faithfully realises `coordBindConfig` from
+`SafeLocalCoord.idr`.
+
+*Artefact.* An extraction-style check: Idris2 generates a C header
+declaring `BIND_ADDR`/`BIND_PORT`; Zig imports it. Any divergence is a
+compile error.
+
+*Dependencies.* P-00.
+
+*Acceptance.* Pure mechanical — turns a convention into a constraint.
+
+== Deferred (Phase 2+)
+
+=== P-15 Choreographic types
+
+Model the `supervised → server → {opus, attester} → server → target`
+protocol as a session type. Compile-time enforcement replaces run-time
+imperative checks in `coord_send_gated`.
+
+Reference: Appendix H in design log.
+
+=== P-16 Epistemic types
+
+Rename `context_fetch_id` to `knowledge_witness`; formalise per-role
+epistemic policy. Track what each peer knows, with K_A(φ) logic.
+
+Reference: Appendix H.
+
+=== P-17 Echo-type formalisation
+
+Use `echo-types/` bridges (`EchoChoreo`, `EchoEpistemic`, `EchoTropical`)
+to prove audit + summary + hash-chain behave as echo types — structured
+irreversibility with retained constraint.
+
+Reference: Appendix I.
+
+=== P-18 Tropical-semiring TTL/trust
+
+Model watchdog TTLs as tropical max, trust composition as tropical min.
+Integrates with P-17.
+
+Reference: Appendix J.
+
+=== P-19 Cross-site primacy ceremony (v2 federation)
+
+When Phase 4 lands, prove the authoritative-site model provides primacy
+transfer as a choreographic + epistemic ceremony.
+
+Reference: Appendix G.
+
+== Work schedule
+
+.P0 block — before Task #8 E2E sign-off
+1. P-04 (record format) — ~1 day — `abi/LocalCoord/Durability.idr`, smallest theorem, unlocks rest.
+2. P-05 (CRC truncation) — ~1 day — prefix-closure lemma on top of P-04.
+3. P-06 (replay-equivalence) — ~3 days — biggest single theorem, needs `State` encoding. Most of the value.
+4. P-07 (quarantine state machine) — ~1 day — simple state chart, well-isolated.
+
+.P1 block — before Task #13 track-record
+5. P-08 (FIFO) — ~1 day — standard Vect-indexed argument.
+6. P-09 (monotonicity) — ~0.5 day — corollary of P-05.
+7. P-10 (supervisor privilege) — ~1 day — phantom-witness refactor.
+8. P-11 (Tier-4 forbidden) — ~1 day — schema + Idris2 wrapper.
+
+.P2 block — nice-to-have; triggered by Task #17 Deno shim
+9. P-12 (Nickel soundness) — ~2 days.
+10. P-13 (Zig↔Idris2 correspondence) — ~0.5 day — mostly plumbing.
+
+.Phase 2+ — deferred; revisit when moving from v1
+11. P-15 through P-19 — scheduled by federation triggers, not by calendar.
+
+Estimate totals: P0 ≈ 6 days, P1 ≈ 3.5 days, P2 ≈ 2.5 days. Comfortably
+one Claude-calendar-week of focused proof work if taken end-to-end.
+
+== Notes on prover choice
+
+Idris2 remains the default — proofs for a cartridge ABI belong next to
+the existing `SafeLocalCoord.idr` and `Protocol.idr`. Idris2 handles
+everything through P-13.
+
+Agda enters only for Phase 3 echo-type + tropical work, consuming the
+`echo-types/` bridge library. No echo-type obligation lives inside the
+cartridge repo — it lands upstream in `echo-types/` with coord as the
+dogfood consumer.
+
+Lean4 is listed as an alternative for P-12 only, and only if the user
+wants an external mathlib-backed model of the ladder; otherwise Idris2
+does it.
+
+No part of the schedule needs Coq/Rocq or SPARK/Ada — those are
+reserved for upstream proof-heavy consumers (007, Cerro-Torre).
+
+== Cross-references
+
+* Already-proved obligations: `SafeLocalCoord.idr`, `Protocol.idr`.
+* Phase 2+/Phase 3 rationale: `Desktop/COORD-MCP-DESIGN-LOG.md`
+  Appendices H, I, J, K.
+* Durability module: `../../ffi/coord_durability.zig`.
+* Envelope schema + contracts:
+  `../../schemas/coord-messages.ncl`, `coord-messages-contracts.ncl`.
