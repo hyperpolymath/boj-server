@@ -83,9 +83,21 @@ fn dispatch(tool: []const u8, body: []const u8, resp: []u8, allocator: std.mem.A
             break :blk ctx_val.string;
         };
 
+        // Optional role hint. Server rejects role=supervisor here; callers
+        // must promote via coord_promote_to_supervisor with the env secret.
+        const role_hint: i32 = blk: {
+            const rv = parsed.value.object.get("role") orelse break :blk -1;
+            const rs = rv.string;
+            if (std.mem.eql(u8, rs, "supervisor")) break :blk 0;
+            if (std.mem.eql(u8, rs, "executor")) break :blk 1;
+            if (std.mem.eql(u8, rs, "supervised")) break :blk 2;
+            break :blk -1;
+        };
+
         var token: [16]u8 = undefined;
         var suffix: [4]u8 = undefined;
-        const idx = ffi.coord_register(kind, &token, &suffix);
+        const idx = ffi.coord_register(kind, role_hint, &token, &suffix);
+        if (idx == -3) return .{ .status = 400, .body = errJson(resp, "supervisor role must be obtained via coord_promote_to_supervisor") };
         if (idx < 0) return .{ .status = 500, .body = errJson(resp, "registry full") };
 
         if (ctx_str.len > 0) {
@@ -239,6 +251,155 @@ fn dispatch(tool: []const u8, body: []const u8, resp: []u8, allocator: std.mem.A
         if (result == 0) return .{ .status = 200, .body = okJson(resp, "granted") };
         if (result == 1) return .{ .status = 200, .body = errJson(resp, "held") };
         return .{ .status = 500, .body = errJson(resp, "claim failed") };
+    }
+
+    if (std.mem.eql(u8, tool, "coord_promote_to_supervisor")) {
+        const parsed = std.json.parseFromSlice(std.json.Value, allocator, body, .{}) catch return .{ .status = 400, .body = errJson(resp, "invalid json") };
+        defer parsed.deinit();
+        const token_val = parsed.value.object.get("token") orelse return .{ .status = 400, .body = errJson(resp, "missing token") };
+        const secret_val = parsed.value.object.get("secret") orelse return .{ .status = 400, .body = errJson(resp, "missing secret") };
+        var token: [16]u8 = undefined;
+        if (!parseToken(token_val.string, &token)) return .{ .status = 400, .body = errJson(resp, "invalid token hex") };
+
+        const secret = secret_val.string;
+        const rc = ffi.coord_promote_to_supervisor(&token, 16, secret.ptr, @intCast(secret.len));
+        if (rc == 0) return .{ .status = 200, .body = okJson(resp, "promoted") };
+        if (rc == -1) return .{ .status = 401, .body = errJson(resp, "unauthenticated") };
+        if (rc == -2) return .{ .status = 409, .body = errJson(resp, "supervisor already exists") };
+        if (rc == -3) return .{ .status = 403, .body = errJson(resp, "supervisor role not configured on this server") };
+        if (rc == -4) return .{ .status = 403, .body = errJson(resp, "secret does not match") };
+        return .{ .status = 500, .body = errJson(resp, "promotion failed") };
+    }
+
+    if (std.mem.eql(u8, tool, "coord_send_gated")) {
+        const parsed = std.json.parseFromSlice(std.json.Value, allocator, body, .{}) catch return .{ .status = 400, .body = errJson(resp, "invalid json") };
+        defer parsed.deinit();
+        const token_val = parsed.value.object.get("token") orelse return .{ .status = 400, .body = errJson(resp, "missing token") };
+        const target_val = parsed.value.object.get("target") orelse return .{ .status = 400, .body = errJson(resp, "missing target") };
+        const msg_val = parsed.value.object.get("message") orelse return .{ .status = 400, .body = errJson(resp, "missing message") };
+        const tier_val = parsed.value.object.get("risk_tier") orelse return .{ .status = 400, .body = errJson(resp, "missing risk_tier") };
+
+        var token: [16]u8 = undefined;
+        if (!parseToken(token_val.string, &token)) return .{ .status = 400, .body = errJson(resp, "invalid token hex") };
+
+        const target_str = target_val.string;
+        var target_idx: i32 = -1;
+        if (!std.mem.eql(u8, target_str, "*")) {
+            const suffix = extractSuffix(target_str) orelse return .{ .status = 400, .body = errJson(resp, "invalid target format") };
+            target_idx = ffi.coord_find_peer_by_suffix(suffix.ptr);
+            if (target_idx < 0) return .{ .status = 404, .body = errJson(resp, "target peer not found") };
+        }
+
+        const msg = msg_val.string;
+        const tier: i32 = @intCast(tier_val.integer);
+        const rc = ffi.coord_send_gated(&token, 16, target_idx, msg.ptr, @intCast(msg.len), tier);
+
+        if (rc >= 0) {
+            const body_out = std.fmt.bufPrint(resp, "{{\"success\":true,\"status\":\"delivered\",\"sent\":{d}}}", .{rc}) catch return .{ .status = 500, .body = errJson(resp, "buffer overflow") };
+            return .{ .status = 200, .body = body_out };
+        }
+        if (rc < -1000) {
+            const request_id: i64 = -(@as(i64, rc) + 1000);
+            const body_out = std.fmt.bufPrint(resp, "{{\"success\":true,\"status\":\"quarantined\",\"request_id\":{d}}}", .{request_id}) catch return .{ .status = 500, .body = errJson(resp, "buffer overflow") };
+            return .{ .status = 200, .body = body_out };
+        }
+        if (rc == -1) return .{ .status = 401, .body = errJson(resp, "unauthenticated") };
+        if (rc == -2) return .{ .status = 404, .body = errJson(resp, "target peer not found") };
+        if (rc == -3) return .{ .status = 503, .body = errJson(resp, "target inbox full") };
+        if (rc == -4) return .{ .status = 503, .body = errJson(resp, "quarantine queue full — spill to VeriSimDB not yet wired") };
+        if (rc == -5) return .{ .status = 428, .body = errJson(resp, "no supervisor registered — Tier 2+ from supervised requires a supervisor") };
+        return .{ .status = 500, .body = errJson(resp, "gated send failed") };
+    }
+
+    if (std.mem.eql(u8, tool, "coord_review")) {
+        const parsed = std.json.parseFromSlice(std.json.Value, allocator, body, .{}) catch return .{ .status = 400, .body = errJson(resp, "invalid json") };
+        defer parsed.deinit();
+        const token_val = parsed.value.object.get("token") orelse return .{ .status = 400, .body = errJson(resp, "missing token") };
+        var token: [16]u8 = undefined;
+        if (!parseToken(token_val.string, &token)) return .{ .status = 400, .body = errJson(resp, "invalid token hex") };
+
+        // 32 entries max * 16 bytes per record = 512 bytes raw.
+        var raw: [512]u8 = undefined;
+        const count = ffi.coord_review(&token, 16, &raw, @intCast(raw.len));
+        if (count < 0) return .{ .status = 403, .body = errJson(resp, "supervisor role required") };
+
+        var stream = std.io.fixedBufferStream(resp);
+        const w = stream.writer();
+        w.writeAll("{\"success\":true,\"entries\":[") catch return .{ .status = 500, .body = errJson(resp, "buffer overflow") };
+
+        var i: usize = 0;
+        const cnt: usize = @intCast(count);
+        while (i < cnt) : (i += 1) {
+            const rec = raw[i * 16 ..][0..16];
+            const rid_bytes: *const [4]u8 = rec[0..4];
+            const rid: u32 = @bitCast(rid_bytes.*);
+            const sender_idx: u8 = rec[4];
+            const target_idx_sign: i8 = @bitCast(rec[5]);
+            const risk_tier: u8 = rec[6];
+            const mlen_bytes: *const [2]u8 = rec[7..9];
+            const mlen: u16 = @bitCast(mlen_bytes.*);
+            const preview_n: usize = @min(@as(usize, 7), @as(usize, mlen));
+            const preview = rec[9 .. 9 + preview_n];
+
+            if (i > 0) w.writeAll(",") catch return .{ .status = 500, .body = errJson(resp, "buffer overflow") };
+            std.fmt.format(w, "{{\"request_id\":{d},\"sender_idx\":{d},\"target_idx\":{d},\"risk_tier\":{d},\"msg_len\":{d},\"preview\":\"{s}\"}}", .{
+                rid, sender_idx, target_idx_sign, risk_tier, mlen, preview,
+            }) catch return .{ .status = 500, .body = errJson(resp, "buffer overflow") };
+        }
+        w.writeAll("]}") catch return .{ .status = 500, .body = errJson(resp, "buffer overflow") };
+        return .{ .status = 200, .body = resp[0..stream.pos] };
+    }
+
+    if (std.mem.eql(u8, tool, "coord_review_entry")) {
+        const parsed = std.json.parseFromSlice(std.json.Value, allocator, body, .{}) catch return .{ .status = 400, .body = errJson(resp, "invalid json") };
+        defer parsed.deinit();
+        const token_val = parsed.value.object.get("token") orelse return .{ .status = 400, .body = errJson(resp, "missing token") };
+        const rid_val = parsed.value.object.get("request_id") orelse return .{ .status = 400, .body = errJson(resp, "missing request_id") };
+        var token: [16]u8 = undefined;
+        if (!parseToken(token_val.string, &token)) return .{ .status = 400, .body = errJson(resp, "invalid token hex") };
+
+        var msg_buf: [512]u8 = undefined;
+        const rc = ffi.coord_review_entry(&token, 16, @intCast(rid_val.integer), &msg_buf, @intCast(msg_buf.len));
+        if (rc == -1) return .{ .status = 403, .body = errJson(resp, "supervisor role required") };
+        if (rc == -2) return .{ .status = 404, .body = errJson(resp, "request_id not found") };
+        if (rc < 0) return .{ .status = 500, .body = errJson(resp, "review failed") };
+
+        const msg_slice = msg_buf[0..@intCast(rc)];
+        const body_out = std.fmt.bufPrint(resp, "{{\"success\":true,\"message\":\"{s}\"}}", .{msg_slice}) catch return .{ .status = 500, .body = errJson(resp, "buffer overflow") };
+        return .{ .status = 200, .body = body_out };
+    }
+
+    if (std.mem.eql(u8, tool, "coord_approve")) {
+        const parsed = std.json.parseFromSlice(std.json.Value, allocator, body, .{}) catch return .{ .status = 400, .body = errJson(resp, "invalid json") };
+        defer parsed.deinit();
+        const token_val = parsed.value.object.get("token") orelse return .{ .status = 400, .body = errJson(resp, "missing token") };
+        const rid_val = parsed.value.object.get("request_id") orelse return .{ .status = 400, .body = errJson(resp, "missing request_id") };
+        var token: [16]u8 = undefined;
+        if (!parseToken(token_val.string, &token)) return .{ .status = 400, .body = errJson(resp, "invalid token hex") };
+
+        const rc = ffi.coord_approve(&token, 16, @intCast(rid_val.integer));
+        if (rc == 0) return .{ .status = 200, .body = okJson(resp, "approved") };
+        if (rc == -1) return .{ .status = 403, .body = errJson(resp, "supervisor role required") };
+        if (rc == -2) return .{ .status = 404, .body = errJson(resp, "request_id not found") };
+        if (rc == -3) return .{ .status = 503, .body = errJson(resp, "target inbox full — retry") };
+        return .{ .status = 500, .body = errJson(resp, "approve failed") };
+    }
+
+    if (std.mem.eql(u8, tool, "coord_reject")) {
+        const parsed = std.json.parseFromSlice(std.json.Value, allocator, body, .{}) catch return .{ .status = 400, .body = errJson(resp, "invalid json") };
+        defer parsed.deinit();
+        const token_val = parsed.value.object.get("token") orelse return .{ .status = 400, .body = errJson(resp, "missing token") };
+        const rid_val = parsed.value.object.get("request_id") orelse return .{ .status = 400, .body = errJson(resp, "missing request_id") };
+        const reason_val = parsed.value.object.get("reason") orelse return .{ .status = 400, .body = errJson(resp, "missing reason") };
+        var token: [16]u8 = undefined;
+        if (!parseToken(token_val.string, &token)) return .{ .status = 400, .body = errJson(resp, "invalid token hex") };
+
+        const reason = reason_val.string;
+        const rc = ffi.coord_reject(&token, 16, @intCast(rid_val.integer), reason.ptr, @intCast(reason.len));
+        if (rc == 0) return .{ .status = 200, .body = okJson(resp, "rejected") };
+        if (rc == -1) return .{ .status = 403, .body = errJson(resp, "supervisor role required") };
+        if (rc == -2) return .{ .status = 404, .body = errJson(resp, "request_id not found") };
+        return .{ .status = 500, .body = errJson(resp, "reject failed") };
     }
 
     return .{ .status = 404, .body = errJson(resp, "not implemented") };

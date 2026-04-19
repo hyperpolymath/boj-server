@@ -342,6 +342,87 @@ function buildToolList() {
     },
   });
 
+  // ── Supervision tools ──────────────────────────────────────────
+  tools.push({
+    name: "coord_promote_to_supervisor",
+    description: "Promote this peer to the supervisor role. Requires BOJ_SUPERVISOR_TOKEN to be set on the server and presented secret to match. At most one supervisor at a time.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        token: { type: "string", description: "Own session token from coord_register" },
+        secret: { type: "string", description: "Must match BOJ_SUPERVISOR_TOKEN env var on the server" },
+      },
+      required: ["token", "secret"],
+    },
+  });
+
+  tools.push({
+    name: "coord_send_gated",
+    description: "Send a message with a declared risk_tier (0-4). Tier 2+ from role=supervised peers is quarantined for supervisor review. Returns status:quarantined + request_id when gated, status:delivered otherwise.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        token: { type: "string", description: "Session token from coord_register" },
+        target: { type: "string", description: "Peer ID to send to, or '*' for broadcast" },
+        message: { type: "string", description: "Message content (typically an A2ML envelope)" },
+        risk_tier: { type: "integer", minimum: 0, maximum: 4, description: "Declared risk tier 0-4" },
+      },
+      required: ["token", "target", "message", "risk_tier"],
+    },
+  });
+
+  tools.push({
+    name: "coord_review",
+    description: "List all quarantined messages awaiting supervisor decision. Supervisor role only. Returns entries with request_id + preview.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        token: { type: "string", description: "Supervisor session token" },
+      },
+      required: ["token"],
+    },
+  });
+
+  tools.push({
+    name: "coord_review_entry",
+    description: "Read the full body of a specific quarantined entry by request_id. Supervisor role only.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        token: { type: "string", description: "Supervisor session token" },
+        request_id: { type: "integer", description: "Request ID from coord_review" },
+      },
+      required: ["token", "request_id"],
+    },
+  });
+
+  tools.push({
+    name: "coord_approve",
+    description: "Approve a quarantined message — delivers to target, removes from queue. Supervisor role only.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        token: { type: "string", description: "Supervisor session token" },
+        request_id: { type: "integer", description: "Request ID to approve" },
+      },
+      required: ["token", "request_id"],
+    },
+  });
+
+  tools.push({
+    name: "coord_reject",
+    description: "Reject a quarantined message with a reason — removes without delivery. Supervisor role only. Reason logged.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        token: { type: "string", description: "Supervisor session token" },
+        request_id: { type: "integer", description: "Request ID to reject" },
+        reason: { type: "string", description: "Reason for rejection" },
+      },
+      required: ["token", "request_id", "reason"],
+    },
+  });
+
   return tools;
 }
 

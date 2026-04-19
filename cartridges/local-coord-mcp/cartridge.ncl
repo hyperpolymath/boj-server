@@ -11,7 +11,7 @@
   spdx = "PMPL-1.0-or-later",
   copyright = "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>",
   name = "local-coord-mcp",
-  version = "0.2.0",
+  version = "0.3.0",
   description = "Localhost multi-instance coordination — peer discovery, message passing, and task claiming for parallel AI sessions on the same machine",
   domain = "ai",
   tier = "Ayo",
@@ -47,6 +47,11 @@
           context = {
             type = "string",
             description = "Optional per-window disambiguator (repo name, tty label). Alphanumeric/hyphen/underscore only, max 32 chars.",
+          },
+          role = {
+            type = "string",
+            description = "Optional requested role. supervisor is ALWAYS rejected here — promote via coord_promote_to_supervisor. Default derived from client_kind (claude->executor, others->supervised).",
+            enum = ["executor", "supervised"],
           },
         },
         required = ["client_kind"],
@@ -136,6 +141,81 @@
           },
         },
         required = ["token", "status"],
+      },
+    },
+    # ── Supervision tools ─────────────────────────────────────────
+    {
+      name = "coord_promote_to_supervisor",
+      description = "Promote this peer to the supervisor role. Requires the BOJ_SUPERVISOR_TOKEN env-var to be set on the server and the presented secret to match. At most one supervisor at a time. Intended for the Opus-tier Claude that holds the veto.",
+      inputSchema = {
+        type = "object",
+        properties = {
+          token = { type = "string", description = "Own session token from coord_register" },
+          secret = { type = "string", description = "Must match BOJ_SUPERVISOR_TOKEN env var on the server" },
+        },
+        required = ["token", "secret"],
+      },
+    },
+    {
+      name = "coord_send_gated",
+      description = "Send a message with a declared risk_tier. Tier 2+ from role=supervised peers is quarantined for supervisor review; everything else delivers directly. Returns status:quarantined + request_id when gated.",
+      inputSchema = {
+        type = "object",
+        properties = {
+          token = { type = "string", description = "Session token from coord_register" },
+          target = { type = "string", description = "Peer ID to send to, or '*' for broadcast" },
+          message = { type = "string", description = "Message content (typically an A2ML envelope per schemas/coord-messages.ncl)" },
+          risk_tier = { type = "integer", minimum = 0, maximum = 4, description = "Declared risk tier 0-4 per the risk ladder" },
+        },
+        required = ["token", "target", "message", "risk_tier"],
+      },
+    },
+    {
+      name = "coord_review",
+      description = "List all currently quarantined messages awaiting supervisor decision. Supervisor role only.",
+      inputSchema = {
+        type = "object",
+        properties = {
+          token = { type = "string", description = "Supervisor session token" },
+        },
+        required = ["token"],
+      },
+    },
+    {
+      name = "coord_review_entry",
+      description = "Read the full message body of a specific quarantined entry. Supervisor role only.",
+      inputSchema = {
+        type = "object",
+        properties = {
+          token = { type = "string", description = "Supervisor session token" },
+          request_id = { type = "integer", description = "Request ID from coord_review or coord_send_gated" },
+        },
+        required = ["token", "request_id"],
+      },
+    },
+    {
+      name = "coord_approve",
+      description = "Approve a quarantined message — delivers to target and removes from queue. Supervisor role only.",
+      inputSchema = {
+        type = "object",
+        properties = {
+          token = { type = "string", description = "Supervisor session token" },
+          request_id = { type = "integer", description = "Request ID to approve" },
+        },
+        required = ["token", "request_id"],
+      },
+    },
+    {
+      name = "coord_reject",
+      description = "Reject a quarantined message with a reason — removes from queue without delivery. Supervisor role only. Reason logged for audit.",
+      inputSchema = {
+        type = "object",
+        properties = {
+          token = { type = "string", description = "Supervisor session token" },
+          request_id = { type = "integer", description = "Request ID to reject" },
+          reason = { type = "string", description = "Reason for rejection (surfaces in audit log)" },
+        },
+        required = ["token", "request_id", "reason"],
       },
     },
   ],

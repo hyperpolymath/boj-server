@@ -234,6 +234,12 @@ async function dispatchTool(toolName, args) {
     case "coord_receive":
     case "coord_claim_task":
     case "coord_status":
+    case "coord_promote_to_supervisor":
+    case "coord_send_gated":
+    case "coord_review":
+    case "coord_review_entry":
+    case "coord_approve":
+    case "coord_reject":
       return dispatchLocalCoord(toolName, args);
 
     default:

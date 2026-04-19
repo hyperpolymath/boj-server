@@ -44,6 +44,14 @@
           "context": {
             "description": "Optional per-window disambiguator (repo name, tty label). Alphanumeric/hyphen/underscore only, max 32 chars.",
             "type": "string"
+          },
+          "role": {
+            "description": "Optional requested role. supervisor is ALWAYS rejected here — promote via coord_promote_to_supervisor. Default derived from client_kind (claude->executor, others->supervised).",
+            "enum": [
+              "executor",
+              "supervised"
+            ],
+            "type": "string"
           }
         },
         "required": [
@@ -152,7 +160,145 @@
         "type": "object"
       },
       "name": "coord_status"
+    },
+    {
+      "description": "Promote this peer to the supervisor role. Requires the BOJ_SUPERVISOR_TOKEN env-var to be set on the server and the presented secret to match. At most one supervisor at a time. Intended for the Opus-tier Claude that holds the veto.",
+      "inputSchema": {
+        "properties": {
+          "secret": {
+            "description": "Must match BOJ_SUPERVISOR_TOKEN env var on the server",
+            "type": "string"
+          },
+          "token": {
+            "description": "Own session token from coord_register",
+            "type": "string"
+          }
+        },
+        "required": [
+          "token",
+          "secret"
+        ],
+        "type": "object"
+      },
+      "name": "coord_promote_to_supervisor"
+    },
+    {
+      "description": "Send a message with a declared risk_tier. Tier 2+ from role=supervised peers is quarantined for supervisor review; everything else delivers directly. Returns status:quarantined + request_id when gated.",
+      "inputSchema": {
+        "properties": {
+          "message": {
+            "description": "Message content (typically an A2ML envelope per schemas/coord-messages.ncl)",
+            "type": "string"
+          },
+          "risk_tier": {
+            "description": "Declared risk tier 0-4 per the risk ladder",
+            "maximum": 4,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "target": {
+            "description": "Peer ID to send to, or '*' for broadcast",
+            "type": "string"
+          },
+          "token": {
+            "description": "Session token from coord_register",
+            "type": "string"
+          }
+        },
+        "required": [
+          "token",
+          "target",
+          "message",
+          "risk_tier"
+        ],
+        "type": "object"
+      },
+      "name": "coord_send_gated"
+    },
+    {
+      "description": "List all currently quarantined messages awaiting supervisor decision. Supervisor role only.",
+      "inputSchema": {
+        "properties": {
+          "token": {
+            "description": "Supervisor session token",
+            "type": "string"
+          }
+        },
+        "required": [
+          "token"
+        ],
+        "type": "object"
+      },
+      "name": "coord_review"
+    },
+    {
+      "description": "Read the full message body of a specific quarantined entry. Supervisor role only.",
+      "inputSchema": {
+        "properties": {
+          "request_id": {
+            "description": "Request ID from coord_review or coord_send_gated",
+            "type": "integer"
+          },
+          "token": {
+            "description": "Supervisor session token",
+            "type": "string"
+          }
+        },
+        "required": [
+          "token",
+          "request_id"
+        ],
+        "type": "object"
+      },
+      "name": "coord_review_entry"
+    },
+    {
+      "description": "Approve a quarantined message — delivers to target and removes from queue. Supervisor role only.",
+      "inputSchema": {
+        "properties": {
+          "request_id": {
+            "description": "Request ID to approve",
+            "type": "integer"
+          },
+          "token": {
+            "description": "Supervisor session token",
+            "type": "string"
+          }
+        },
+        "required": [
+          "token",
+          "request_id"
+        ],
+        "type": "object"
+      },
+      "name": "coord_approve"
+    },
+    {
+      "description": "Reject a quarantined message with a reason — removes from queue without delivery. Supervisor role only. Reason logged for audit.",
+      "inputSchema": {
+        "properties": {
+          "reason": {
+            "description": "Reason for rejection (surfaces in audit log)",
+            "type": "string"
+          },
+          "request_id": {
+            "description": "Request ID to reject",
+            "type": "integer"
+          },
+          "token": {
+            "description": "Supervisor session token",
+            "type": "string"
+          }
+        },
+        "required": [
+          "token",
+          "request_id",
+          "reason"
+        ],
+        "type": "object"
+      },
+      "name": "coord_reject"
     }
   ],
-  "version": "0.2.0"
+  "version": "0.3.0"
 }
