@@ -8,8 +8,15 @@
 // claiming (mutex). Binds ONLY to 127.0.0.1:7745 — the Idris2 ABI
 // proves loopback-only at compile time; this FFI honours that constraint
 // at runtime.
+//
+// Durability: every mutation persists to an append-only log under
+// BOJ_COORD_STATE_DIR. On init the log is replayed to restore state
+// across adapter restarts. When the env var is unset, durability is a
+// silent no-op — process-local in-memory behaviour is preserved.
+// See coord_durability.zig.
 
 const std = @import("std");
+const dur = @import("coord_durability.zig");
 
 // ═══════════════════════════════════════════════════════════════════════
 // Constants (must match SafeLocalCoord.idr)
@@ -310,6 +317,7 @@ pub export fn coord_register(kind: c_int, role_hint: c_int, token_out: [*]u8, su
             @memcpy(token_out[0..TOKEN_LEN], &p.token);
             @memcpy(suffix_out[0..4], &p.suffix);
 
+            dur.logPeerAdd(@intCast(i), @intCast(@intFromEnum(client_kind)), @intCast(@intFromEnum(role)), &p.suffix, &p.token);
             return @intCast(i);
         }
     }
@@ -356,6 +364,7 @@ pub export fn coord_promote_to_supervisor(
     if (diff != 0) return -4;
 
     peers[idx].role = .supervisor;
+    dur.logPeerRoleSet(@intCast(idx), @intCast(@intFromEnum(Role.supervisor)));
     return 0;
 }
 
@@ -403,6 +412,7 @@ pub export fn coord_set_role(
     }
 
     target.role = nr;
+    dur.logPeerRoleSet(@intCast(target_peer_idx), @intCast(@intFromEnum(nr)));
     return 0;
 }
 
@@ -433,6 +443,7 @@ pub export fn coord_set_context(
 
     if (clen > 0) @memcpy(peers[idx].context[0..clen], ctx_ptr[0..clen]);
     peers[idx].context_len = @intCast(clen);
+    dur.logPeerContextSet(@intCast(idx), ctx_ptr[0..clen]);
     return 0;
 }
 
@@ -459,14 +470,16 @@ pub export fn coord_deregister(token_ptr: [*]const u8, token_len: c_int) c_int {
     const idx = findPeerByToken(token_ptr, @intCast(token_len)) orelse return -1;
 
     // Release all claims held by this peer
-    for (&claims) |*c| {
+    for (&claims, 0..) |*c, ci| {
         if (c.active and c.holder_idx == @as(u8, @intCast(idx))) {
             c.active = false;
+            dur.logClaimRel(@intCast(ci));
         }
     }
 
     peers[idx].active = false;
     peers[idx].state = .gone;
+    dur.logPeerRemove(@intCast(idx));
     return 0;
 }
 
@@ -524,6 +537,7 @@ pub export fn coord_send(
                 p.inbox_lens[head] = @intCast(mlen);
                 p.inbox_head = @intCast((@as(u32, p.inbox_head) + 1) % MAX_MESSAGES);
                 p.inbox_count += 1;
+                dur.logInboxPush(@intCast(i), msg_ptr[0..mlen]);
                 sent += 1;
             }
         }
@@ -541,6 +555,7 @@ pub export fn coord_send(
         target.inbox_lens[head] = @intCast(mlen);
         target.inbox_head = @intCast((@as(u32, target.inbox_head) + 1) % MAX_MESSAGES);
         target.inbox_count += 1;
+        dur.logInboxPush(@intCast(tidx), msg_ptr[0..mlen]);
         return 1;
     }
 }
@@ -566,6 +581,7 @@ pub export fn coord_receive(
     @memcpy(msg_out[0..mlen], peer.inbox[tail][0..mlen]);
     peer.inbox_tail = @intCast((@as(u32, peer.inbox_tail) + 1) % MAX_MESSAGES);
     peer.inbox_count -= 1;
+    dur.logInboxPop(@intCast(idx));
     return @intCast(mlen);
 }
 
@@ -595,12 +611,13 @@ pub export fn coord_claim_task(
     }
 
     // Find an empty claim slot
-    for (&claims) |*c| {
+    for (&claims, 0..) |*c, ci| {
         if (!c.active) {
             c.active = true;
             @memcpy(c.task_name[0..tlen], task_ptr[0..tlen]);
             c.task_name_len = @intCast(tlen);
             c.holder_idx = @intCast(idx);
+            dur.logClaimAdd(@intCast(ci), @intCast(idx), task_ptr[0..tlen]);
             return 0; // Granted
         }
     }
@@ -620,12 +637,13 @@ pub export fn coord_release_task(
     const idx = findPeerByToken(token_ptr, @intCast(token_len)) orelse return -1;
     const tlen: usize = @intCast(@min(task_len, 128));
 
-    for (&claims) |*c| {
+    for (&claims, 0..) |*c, ci| {
         if (c.active and c.task_name_len == @as(u8, @intCast(tlen)) and
             std.mem.eql(u8, c.task_name[0..tlen], task_ptr[0..tlen]) and
             c.holder_idx == @as(u8, @intCast(idx)))
         {
             c.active = false;
+            dur.logClaimRel(@intCast(ci));
             return 0;
         }
     }
@@ -681,6 +699,7 @@ pub export fn coord_send_gated(
                     p.inbox_lens[head] = @intCast(mlen);
                     p.inbox_head = @intCast((@as(u32, p.inbox_head) + 1) % MAX_MESSAGES);
                     p.inbox_count += 1;
+                    dur.logInboxPush(@intCast(i), msg_ptr[0..mlen]);
                     sent += 1;
                 }
             }
@@ -697,6 +716,7 @@ pub export fn coord_send_gated(
         target.inbox_lens[head] = @intCast(mlen);
         target.inbox_head = @intCast((@as(u32, target.inbox_head) + 1) % MAX_MESSAGES);
         target.inbox_count += 1;
+        dur.logInboxPush(@intCast(target_idx), msg_ptr[0..mlen]);
         return 1;
     }
 
@@ -715,6 +735,7 @@ pub export fn coord_send_gated(
             @memcpy(q.msg[0..mlen], msg_ptr[0..mlen]);
             q.msg_len = @intCast(mlen);
             q.reason_len = 0;
+            dur.logQuarAdd(q.request_id, q.sender_idx, q.target_idx, q.risk_tier, msg_ptr[0..mlen]);
             // Encode request_id as -(id + 1000) so caller can distinguish
             // from direct-send counts.
             const encoded: i64 = -(@as(i64, @intCast(q.request_id)) + 1000);
@@ -825,6 +846,7 @@ pub export fn coord_approve(
                         p.inbox_lens[head] = @intCast(mlen);
                         p.inbox_head = @intCast((@as(u32, p.inbox_head) + 1) % MAX_MESSAGES);
                         p.inbox_count += 1;
+                        dur.logInboxPush(@intCast(i), q.msg[0..mlen]);
                     }
                 }
             } else {
@@ -838,8 +860,10 @@ pub export fn coord_approve(
                 target.inbox_lens[head] = @intCast(mlen);
                 target.inbox_head = @intCast((@as(u32, target.inbox_head) + 1) % MAX_MESSAGES);
                 target.inbox_count += 1;
+                dur.logInboxPush(@intCast(tidx), q.msg[0..mlen]);
             }
             q.active = false;
+            dur.logQuarApprove(rid);
             return 0;
         }
     }
@@ -871,6 +895,7 @@ pub export fn coord_reject(
             if (rlen > 0) @memcpy(q.reason[0..rlen], reason_ptr[0..rlen]);
             q.reason_len = @intCast(rlen);
             q.active = false;
+            dur.logQuarReject(rid, reason_ptr[0..rlen]);
             return 0;
         }
     }
@@ -891,6 +916,7 @@ pub export fn coord_set_status(
     const slen: usize = @intCast(@min(status_len, 256));
     @memcpy(peers[idx].status[0..slen], status_ptr[0..slen]);
     peers[idx].status_len = @intCast(slen);
+    dur.logPeerStatusSet(@intCast(idx), status_ptr[0..slen]);
     return 0;
 }
 
@@ -900,11 +926,153 @@ pub export fn coord_set_status(
 
 pub export fn boj_cartridge_init() c_int {
     coord_reset();
+    _ = dur.open();
+    if (dur.isEnabled()) {
+        dur.replay(replayDispatch);
+    }
     return 0;
 }
 
 pub export fn boj_cartridge_deinit() void {
+    dur.close();
     coord_reset();
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// Replay dispatcher — reconstructs in-memory state from the durable log.
+// Called exactly once per record during boj_cartridge_init replay.
+// Events that can't apply (e.g. slot out of range, unknown request_id)
+// are silently skipped — the log is best-effort, never a correctness gate.
+// ═══════════════════════════════════════════════════════════════════════
+
+fn replayDispatch(event: dur.EventType, payload: []const u8) void {
+    switch (event) {
+        .peer_add => {
+            const d = dur.decodePeerAdd(payload) orelse return;
+            if (d.slot_idx >= MAX_PEERS) return;
+            const p = &peers[d.slot_idx];
+            p.active = true;
+            p.kind = @enumFromInt(d.kind);
+            p.role = @enumFromInt(d.role);
+            p.state = .active;
+            p.suffix = d.suffix;
+            p.token = d.token;
+            p.inbox_head = 0;
+            p.inbox_tail = 0;
+            p.inbox_count = 0;
+            p.status_len = 0;
+            p.context_len = 0;
+        },
+        .peer_remove => {
+            const idx = dur.decodeSlotIdx(payload) orelse return;
+            if (idx >= MAX_PEERS) return;
+            peers[idx].active = false;
+            peers[idx].state = .gone;
+        },
+        .peer_role_set => {
+            const d = dur.decodePeerRoleSet(payload) orelse return;
+            if (d.slot_idx >= MAX_PEERS) return;
+            peers[d.slot_idx].role = @enumFromInt(d.role);
+        },
+        .peer_context_set => {
+            const d = dur.decodePeerContextSet(payload) orelse return;
+            if (d.slot_idx >= MAX_PEERS) return;
+            const p = &peers[d.slot_idx];
+            if (d.ctx.len > MAX_CONTEXT) return;
+            if (d.ctx.len > 0) @memcpy(p.context[0..d.ctx.len], d.ctx);
+            p.context_len = @intCast(d.ctx.len);
+        },
+        .peer_status_set => {
+            const d = dur.decodePeerStatusSet(payload) orelse return;
+            if (d.slot_idx >= MAX_PEERS) return;
+            const p = &peers[d.slot_idx];
+            if (d.status.len > 256) return;
+            if (d.status.len > 0) @memcpy(p.status[0..d.status.len], d.status);
+            p.status_len = @intCast(d.status.len);
+        },
+        .inbox_push => {
+            const d = dur.decodeInboxPush(payload) orelse return;
+            if (d.target_idx >= MAX_PEERS) return;
+            const p = &peers[d.target_idx];
+            if (!p.active or p.inbox_count >= MAX_MESSAGES) return;
+            const mlen: usize = @min(d.msg.len, 512);
+            const head: usize = p.inbox_head;
+            if (mlen > 0) @memcpy(p.inbox[head][0..mlen], d.msg[0..mlen]);
+            p.inbox_lens[head] = @intCast(mlen);
+            p.inbox_head = @intCast((@as(u32, p.inbox_head) + 1) % MAX_MESSAGES);
+            p.inbox_count += 1;
+        },
+        .inbox_pop => {
+            const idx = dur.decodeSlotIdx(payload) orelse return;
+            if (idx >= MAX_PEERS) return;
+            const p = &peers[idx];
+            if (p.inbox_count == 0) return;
+            p.inbox_tail = @intCast((@as(u32, p.inbox_tail) + 1) % MAX_MESSAGES);
+            p.inbox_count -= 1;
+        },
+        .claim_add => {
+            const d = dur.decodeClaimAdd(payload) orelse return;
+            if (d.claim_idx >= MAX_CLAIMS) return;
+            if (d.holder_idx >= MAX_PEERS) return;
+            const c = &claims[d.claim_idx];
+            c.active = true;
+            c.holder_idx = d.holder_idx;
+            const tlen: usize = @min(d.task.len, 128);
+            if (tlen > 0) @memcpy(c.task_name[0..tlen], d.task[0..tlen]);
+            c.task_name_len = @intCast(tlen);
+        },
+        .claim_rel => {
+            const idx = dur.decodeSlotIdx(payload) orelse return;
+            if (idx >= MAX_CLAIMS) return;
+            claims[idx].active = false;
+        },
+        .quar_add => {
+            const d = dur.decodeQuarAdd(payload) orelse return;
+            // First empty slot; logged entries beyond MAX_QUARANTINE are
+            // dropped during replay (hot-cache-only in Phase 1).
+            for (&quarantine) |*q| {
+                if (!q.active) {
+                    q.active = true;
+                    q.request_id = d.request_id;
+                    q.sender_idx = d.sender_idx;
+                    q.target_idx = d.target_idx;
+                    q.risk_tier = d.risk_tier;
+                    const mlen: usize = @min(d.msg.len, 512);
+                    if (mlen > 0) @memcpy(q.msg[0..mlen], d.msg[0..mlen]);
+                    q.msg_len = @intCast(mlen);
+                    q.reason_len = 0;
+                    if (d.request_id >= next_request_id) next_request_id = d.request_id + 1;
+                    return;
+                }
+            }
+        },
+        .quar_approve => {
+            const rid = dur.decodeRequestId(payload) orelse return;
+            for (&quarantine) |*q| {
+                if (q.active and q.request_id == rid) {
+                    q.active = false;
+                    return;
+                }
+            }
+        },
+        .quar_reject => {
+            const d = dur.decodeQuarReject(payload) orelse return;
+            for (&quarantine) |*q| {
+                if (q.active and q.request_id == d.request_id) {
+                    const rlen: usize = @min(d.reason.len, MAX_REASON);
+                    if (rlen > 0) @memcpy(q.reason[0..rlen], d.reason[0..rlen]);
+                    q.reason_len = @intCast(rlen);
+                    q.active = false;
+                    return;
+                }
+            }
+        },
+        .audit, .track_update => {
+            // Append-only by design — nothing to reconstruct in live memory.
+            // Track-record aggregation lands in Task #13 (effective_affinity).
+        },
+        else => {},
+    }
 }
 
 pub export fn boj_cartridge_name() [*:0]const u8 {
