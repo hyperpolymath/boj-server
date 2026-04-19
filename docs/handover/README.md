@@ -20,28 +20,46 @@ When a session updates a handover prompt, update **both** the Desktop
 copy and the in-repo copy in the same commit. If they drift, the
 in-repo copy wins.
 
-## Current status (as of 2026-04-20)
+## Current status (as of 2026-04-20 session close, commit `473733b` on main)
 
-- **Prompt 3 (coord finishers)**: SHIPPED — 11 tasks, 10 commits, all
-  pushed to `origin/main`. Track-record + affinity routing, dispatch
-  preference, reassignment engine, Nickel envelope validator, role
-  rename (master/journeyman/apprentice) + `coord_transfer_master`,
-  `difficulty_hint` envelope + Nickel contract, `proof:<prover>` tag
-  convention.
-- **Prompt 2 (007-mcp family)**: IN PROGRESS in parallel lane. New
-  tools + FFI entries ready for 007-mcp: `affinities`,
-  `declared_affinities`, `scan_suggestions`, `transfer_master`.
-  Role terminology is now master/journeyman/apprentice; old names
-  accepted at boundary for one release.
-- **Deferred** (Appendix M): Tasks #33 (client_kind+variant) and #34
-  (capability advertisement).
+### Complete (sixteen tasks)
 
-## Parallel-session uncommitted work (do not touch)
+- **#1, #3–#8, #13–#17, #32, #35, #36, #37** — all shipped.
+- 27 Zig tests + 41 Deno E2E assertions green. Panic-attack clean.
+- Role terminology is now **master / journeyman / apprentice**;
+  old names accepted at the boundary for one release.
+- Track-record + affinity routing, dispatch preference, reassignment
+  engine (server-origin quarantine), Nickel envelope validator,
+  `coord_transfer_master`, `difficulty_hint` envelope + Nickel contract,
+  `proof:<prover>` tag convention.
+- 007-mcp family **#9–#12** marked complete in a separate repo
+  (`The-Metadatastician/007` commits `62bdac0`, `018a1fd`, `6bbb4f8`,
+  `e753d10`).
 
-These belong to the Prompt 2 / parallel-session lane as of 2026-04-20:
+### Immediate next pick-up (Appendix L)
 
-- `cartridge.ncl` (modified)
-- `PROOF-SCHEDULE.adoc` (modified)
-- `test-contracts.sh` (modified)
-- `tests/e2e_coord.ts` (modified)
-- `.machine_readable/contractiles/bust/` (untracked)
+- **Task #33** — `client_kind` + `variant` extension (Peer struct
+  changes, adapter JSON shape, log events 15 + 16).
+- **Task #34** — capability advertisement.
+- Estimate: ~1.5 days / ~5 commits. Concrete scope in
+  `COORD-MCP-DESIGN-LOG.md` Appendix L.
+
+### Also pending
+
+- **Task #2** (low priority).
+- **Proof Track P-04…P-07** Idris2 proofs in `Durability.idr`,
+  ~6 days. **Keystone: P-06 replay-equivalence**.
+
+## Warning for parallel sessions (shared-state files)
+
+Do **not** run parallel sessions that both touch the `Peer` struct or
+the `ClientKind` enum in the same wall-clock window:
+
+- `cartridges/local-coord-mcp/ffi/local_coord_ffi.zig`
+- `cartridges/local-coord-mcp/adapter/local_coord_adapter.zig`
+
+Everything else can parallelise safely.
+
+## Untracked from other tracks (intentionally not committed)
+
+- `.machine_readable/contractiles/bust/` — belongs to a different lane.
