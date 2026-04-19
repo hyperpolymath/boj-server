@@ -52,6 +52,10 @@ pub const EventType = enum(u16) {
     quar_reject = 12,
     audit = 13,
     track_update = 14,
+    // Task #33 — variant label (free-form model identifier).
+    peer_variant_set = 15,
+    // Task #34 — capability advertisement (class / tier / prover_strengths).
+    peer_capabilities_set = 16,
     _,
 };
 
@@ -242,6 +246,32 @@ pub fn logPeerContextSet(slot_idx: u8, ctx: []const u8) void {
     append(.peer_context_set, buf[0 .. 2 + ctx.len]);
 }
 
+/// PEER_VARIANT_SET — slot_idx:u8 variant_len:u8 variant[variant_len] (Task #33)
+pub fn logPeerVariantSet(slot_idx: u8, variant: []const u8) void {
+    if (variant.len > 32) return;
+    var buf: [34]u8 = undefined;
+    buf[0] = slot_idx;
+    buf[1] = @intCast(variant.len);
+    if (variant.len > 0) @memcpy(buf[2 .. 2 + variant.len], variant);
+    append(.peer_variant_set, buf[0 .. 2 + variant.len]);
+}
+
+/// PEER_CAPABILITIES_SET — Task #34.
+/// Payload: slot_idx:u8 tier:u8 class_len:u16 class[class_len] provers_len:u16 provers[provers_len]
+/// class_len ≤ 128, provers_len ≤ 256; oversized payloads drop silently.
+pub fn logPeerCapabilitiesSet(slot_idx: u8, tier: u8, class: []const u8, provers: []const u8) void {
+    if (class.len > 128 or provers.len > 256) return;
+    var buf: [2 + 2 + 128 + 2 + 256]u8 = undefined;
+    buf[0] = slot_idx;
+    buf[1] = tier;
+    std.mem.writeInt(u16, buf[2..4], @intCast(class.len), .little);
+    if (class.len > 0) @memcpy(buf[4 .. 4 + class.len], class);
+    const p_off: usize = 4 + class.len;
+    std.mem.writeInt(u16, buf[p_off..][0..2], @intCast(provers.len), .little);
+    if (provers.len > 0) @memcpy(buf[p_off + 2 .. p_off + 2 + provers.len], provers);
+    append(.peer_capabilities_set, buf[0 .. p_off + 2 + provers.len]);
+}
+
 /// PEER_STATUS_SET — slot_idx:u8 status_len:u16 status[status_len]
 pub fn logPeerStatusSet(slot_idx: u8, status: []const u8) void {
     if (status.len > 256) return;
@@ -391,6 +421,37 @@ pub fn decodePeerContextSet(p: []const u8) ?PeerContextSet {
     const n: usize = p[1];
     if (p.len < 2 + n) return null;
     return .{ .slot_idx = p[0], .ctx = p[2 .. 2 + n] };
+}
+
+/// Task #33 — identical shape to PeerContextSet.
+pub const PeerVariantSet = struct { slot_idx: u8, variant: []const u8 };
+pub fn decodePeerVariantSet(p: []const u8) ?PeerVariantSet {
+    if (p.len < 2) return null;
+    const n: usize = p[1];
+    if (p.len < 2 + n) return null;
+    return .{ .slot_idx = p[0], .variant = p[2 .. 2 + n] };
+}
+
+/// Task #34 — layout mirrors logPeerCapabilitiesSet exactly.
+pub const PeerCapabilitiesSet = struct {
+    slot_idx: u8,
+    tier: u8,
+    class: []const u8,
+    provers: []const u8,
+};
+pub fn decodePeerCapabilitiesSet(p: []const u8) ?PeerCapabilitiesSet {
+    if (p.len < 4) return null;
+    const class_len: usize = std.mem.readInt(u16, p[2..4], .little);
+    if (p.len < 4 + class_len + 2) return null;
+    const p_off: usize = 4 + class_len;
+    const provers_len: usize = std.mem.readInt(u16, p[p_off..][0..2], .little);
+    if (p.len < p_off + 2 + provers_len) return null;
+    return .{
+        .slot_idx = p[0],
+        .tier = p[1],
+        .class = p[4 .. 4 + class_len],
+        .provers = p[p_off + 2 .. p_off + 2 + provers_len],
+    };
 }
 
 pub const PeerStatusSet = struct { slot_idx: u8, status: []const u8 };

@@ -149,13 +149,16 @@ data TokenMatch : SessionToken -> SessionToken -> Type where
 -- ═══════════════════════════════════════════════════════════════════════════
 
 ||| Known client type prefixes for the hybrid identity model.
-||| e.g. "claude", "gemini", "copilot", "custom"
+||| e.g. "claude", "gemini", "copilot", "custom", "openai", "mistral"
+||| (Task #33: extended 2026-04 to cover OpenAI and Mistral families.)
 public export
 data ClientKind : Type where
   Claude  : ClientKind
   Gemini  : ClientKind
   Copilot : ClientKind
   Custom  : ClientKind
+  Openai  : ClientKind
+  Mistral : ClientKind
 
 public export
 Show ClientKind where
@@ -163,6 +166,8 @@ Show ClientKind where
   show Gemini  = "gemini"
   show Copilot = "copilot"
   show Custom  = "custom"
+  show Openai  = "openai"
+  show Mistral = "mistral"
 
 ||| A peer identity: human-readable prefix + 4-character hex suffix.
 ||| e.g. "claude-7f3a", "gemini-b2c1"
@@ -231,12 +236,16 @@ clientKindToInt Claude  = 0
 clientKindToInt Gemini  = 1
 clientKindToInt Copilot = 2
 clientKindToInt Custom  = 3
+clientKindToInt Openai  = 4
+clientKindToInt Mistral = 5
 
 public export
 intToClientKind : Int -> ClientKind
 intToClientKind 0 = Claude
 intToClientKind 1 = Gemini
 intToClientKind 2 = Copilot
+intToClientKind 4 = Openai
+intToClientKind 5 = Mistral
 intToClientKind _ = Custom
 
 ||| FFI: Get the bind port.

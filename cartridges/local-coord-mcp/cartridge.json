@@ -28,16 +28,44 @@
   "tier": "Ayo",
   "tools": [
     {
-      "description": "Register this instance as a coordination peer. Returns a peer ID and a session token for all subsequent calls. Optional `context` (alphanumeric + hyphen/underscore, max 32 bytes) disambiguates multiple windows of the same client_kind. Optional `declared_affinities` is an array of tag names the peer self-reports as strengths — feeds the reassignment engine (Task #14).",
+      "description": "Register this instance as a coordination peer. Returns a peer ID and a session token for all subsequent calls. Optional `context` (alphanumeric + hyphen/underscore, max 32 bytes) disambiguates multiple windows of the same client_kind. Optional `declared_affinities` is an array of tag names the peer self-reports as strengths — feeds the reassignment engine (Task #14). Optional `variant` is a free-form model identifier (Task #33). Optional `capabilities` advertises class / tier / prover_strengths for cold-start routing (Task #34).",
       "inputSchema": {
         "properties": {
+          "capabilities": {
+            "description": "Capability advertisement used for cold-start routing (Task #34). All three keys are individually optional.",
+            "properties": {
+              "class": {
+                "description": "Capability classes (e.g. 'reasoning', 'coding', 'proof', 'grammar'). CSV internally, max 128 bytes total.",
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "prover_strengths": {
+                "description": "Prover names this peer claims strength in (e.g. 'coq', 'lean', 'tlaps'). CSV internally, max 256 bytes total.",
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "tier": {
+                "description": "Advertised capability tier 1..5 (0 = unset).",
+                "maximum": 5,
+                "minimum": 0,
+                "type": "integer"
+              }
+            },
+            "type": "object"
+          },
           "client_kind": {
-            "description": "Client type: claude, gemini, copilot, or custom",
+            "description": "Client family: claude, gemini, copilot, openai, mistral, or custom (Task #33 extended openai + mistral).",
             "enum": [
               "claude",
               "gemini",
               "copilot",
-              "custom"
+              "custom",
+              "openai",
+              "mistral"
             ],
             "type": "string"
           },
@@ -60,6 +88,10 @@
               "executor",
               "supervised"
             ],
+            "type": "string"
+          },
+          "variant": {
+            "description": "Free-form model/variant label (Task #33). Alphanumeric + `.`/`-`/`_` only, max 32 bytes. e.g. 'opus-4.7', 'flash-2.5', 'leanstral'.",
             "type": "string"
           }
         },
@@ -463,7 +495,85 @@
         "type": "object"
       },
       "name": "coord_transfer_master"
+    },
+    {
+      "description": "Set or update this peer's free-form model/variant label after registration (Task #33). Alphanumeric + `.`/`-`/`_` only, max 32 bytes. Empty clears.",
+      "inputSchema": {
+        "properties": {
+          "token": {
+            "description": "Session token from coord_register",
+            "type": "string"
+          },
+          "variant": {
+            "description": "Variant label (e.g. 'opus-4.7', 'flash-2.5', 'leanstral')",
+            "type": "string"
+          }
+        },
+        "required": [
+          "token",
+          "variant"
+        ],
+        "type": "object"
+      },
+      "name": "coord_set_variant"
+    },
+    {
+      "description": "Set or update this peer's advertised capabilities (Task #34). Any omitted key is cleared.",
+      "inputSchema": {
+        "properties": {
+          "class": {
+            "description": "Capability classes (CSV internally, max 128 bytes).",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "prover_strengths": {
+            "description": "Prover strengths (CSV internally, max 256 bytes).",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "tier": {
+            "description": "Advertised capability tier 1..5 (0 = unset).",
+            "maximum": 5,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "token": {
+            "description": "Session token from coord_register",
+            "type": "string"
+          }
+        },
+        "required": [
+          "token"
+        ],
+        "type": "object"
+      },
+      "name": "coord_set_capabilities"
+    },
+    {
+      "description": "Read another peer's advertised capabilities (Task #34). Used by the routing layer for cold-start dispatch when track_record is thin.",
+      "inputSchema": {
+        "properties": {
+          "peer_id": {
+            "description": "Target peer_id (<kind>-<4hex>[@<context>])",
+            "type": "string"
+          },
+          "token": {
+            "description": "Own session token",
+            "type": "string"
+          }
+        },
+        "required": [
+          "token",
+          "peer_id"
+        ],
+        "type": "object"
+      },
+      "name": "coord_get_peer_capabilities"
     }
   ],
-  "version": "0.6.0"
+  "version": "0.7.0"
 }
