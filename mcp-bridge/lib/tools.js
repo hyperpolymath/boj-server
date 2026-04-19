@@ -483,6 +483,21 @@ function buildToolList() {
     },
   });
 
+  // ── Master handoff (Task #35) ──────────────────────────────────
+  tools.push({
+    name: "coord_transfer_master",
+    description: "Live master handoff — outgoing master passes authority to a named successor without process restart. Secret-gated by BOJ_MASTER_TOKEN. Target must be journeyman or master (apprentices rejected). Logged as AUDIT(MASTER_HANDOFF) so replay reconstructs the transfer.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        token: { type: "string", description: "Current master's session token" },
+        new_peer_id: { type: "string", description: "Successor peer id (<kind>-<4hex>[@<context>])" },
+        secret: { type: "string", description: "Must match BOJ_MASTER_TOKEN env var on the server" },
+      },
+      required: ["token", "new_peer_id", "secret"],
+    },
+  });
+
   return tools;
 }
 

@@ -32,13 +32,13 @@
   #   0 free           status / query / reads / peer discovery
   #   1 logged         single-file edits (non-critical), tests, lint, fyi
   #   2 light gate     multi-file edits, dep bumps, new files — auto-approve
-  #                    after 60s unless supervisor intervenes
+  #                    after 60s unless master intervenes
   #   3 hard gate      commits, pushes, mirrors, secret-adjacent, schema
-  #                    migrations, deletions — supervisor approval, no
+  #                    migrations, deletions — master approval, no
   #                    timeout
   #   4 forbidden      force-push, branch delete, public-repo creation,
   #                    license changes, touching always-private repos —
-  #                    schema-level reject for role=supervised
+  #                    schema-level reject for role=apprentice
   # ────────────────────────────────────────────────────────────────────
 
   op_kinds = {
@@ -47,10 +47,10 @@
     query            = { tier_default = 0, description = "Ask a peer or the server a read-only question." },
     context_query    = { tier_default = 0, description = "Request big-picture context for Tier 2+ preparation. Returns a context_fetch_id cited by subsequent higher-tier ops." },
     context_reply    = { tier_default = 0, description = "Server or peer responds to a context_query." },
-    supervise_req    = { tier_default = 0, description = "Supervised peer requests authorisation for a gated op; embeds the original envelope." },
-    supervise_resp   = { tier_default = 0, description = "Supervisor responds with approve/reject + reason." },
-    attest_req       = { tier_default = 0, description = "Server asks a second executor for independent attestation on a Tier 2+ op from a supervised peer (BFT f=1)." },
-    attest_resp      = { tier_default = 0, description = "Executor responds with attest/reject + reason." },
+    supervise_req    = { tier_default = 0, description = "Apprentice peer requests authorisation for a gated op; embeds the original envelope." },
+    supervise_resp   = { tier_default = 0, description = "Master responds with approve/reject + reason." },
+    attest_req       = { tier_default = 0, description = "Server asks a second journeyman for independent attestation on a Tier 2+ op from an apprentice peer (BFT f=1)." },
+    attest_resp      = { tier_default = 0, description = "Journeyman responds with attest/reject + reason." },
     fyi              = { tier_default = 1, description = "Log-only progress/observation. Never interrupts the user." },
 
     # Tier 1 — logged, no gate
@@ -61,10 +61,10 @@
     # Tier 2 — light gate (60s auto-approve)
     claim            = { tier_default = 2, description = "Claim a task. Mutex-style. Tier escalates to 3 when scope=estate." },
     handoff          = { tier_default = 2, description = "Transfer a task from one peer to another with artefact refs. Tier escalates to 3 when scope=estate." },
-    clarify          = { tier_default = 2, description = "Question for the user, batched through supervisor. Only executor + supervisor peers may set urgent_direct=true." },
+    clarify          = { tier_default = 2, description = "Question for the user, batched through master. Only journeyman + master peers may set urgent_direct=true." },
 
-    # Tier 3 — hard gate (supervisor approval required)
-    blocker          = { tier_default = 3, description = "Peer cannot proceed without user input. Surfaces inline in supervisor terminal." },
+    # Tier 3 — hard gate (master approval required)
+    blocker          = { tier_default = 3, description = "Peer cannot proceed without user input. Surfaces inline in master terminal." },
 
     # op_kinds whose tier is always the envelope's declared risk_tier;
     # used for wrapping arbitrary actions through the supervision system.
@@ -105,7 +105,7 @@
       # ── Byzantine tolerance ──────────────────────────────────────
       attestation_refs  = {
         type = "array",
-        description = "Cosigner attestations. REQUIRED for Tier 2+ envelopes from role=supervised peers. Empty otherwise.",
+        description = "Cosigner attestations. REQUIRED for Tier 2+ envelopes from role=apprentice peers. Empty otherwise.",
         maxItems = 8,
         items = {
           type = "object",
@@ -123,7 +123,7 @@
       tier_override_reason = { type = "string", maxLength = 200, description = "Required when declared risk_tier differs from op_kinds.<op>.tier_default. Sanity gate may reject. Server records." },
 
       # ── User-interaction flags ────────────────────────────────────
-      urgent_direct     = { type = "boolean", default = false, description = "Requests inline interrupt in supervisor terminal. Only role ∈ {supervisor, executor} may set true — schema rejects for supervised." },
+      urgent_direct     = { type = "boolean", default = false, description = "Requests inline interrupt in master terminal. Only role ∈ {master, journeyman} may set true — schema rejects for apprentice." },
       ack_required      = { type = "boolean", default = false },
       ttl_seconds       = { type = "integer", minimum = 1, maximum = 86400, description = "Optional auto-expiry. Default = unlimited." },
     },
@@ -161,7 +161,7 @@
         scope_files     = { type = "array", items = { type = "string" }, description = "Specific files. Optional." },
         scope_peers     = { type = "string", enum = ["self", "claiming", "all"] },
         scope_queue     = { type = "boolean", description = "Include task-queue snapshot." },
-        summarise_for   = { type = "string", enum = ["supervised", "executor", "supervisor"], description = "Determines summary depth. Supervised gets summary; executor/supervisor get raw on request." },
+        summarise_for   = { type = "string", enum = ["apprentice", "journeyman", "master", "supervised", "executor", "supervisor"], description = "Determines summary depth. Apprentice (ex-supervised) gets summary; journeyman/master (ex-executor/supervisor) get raw on request. Old names accepted as aliases per DD-32." },
       },
       required = [],
     },
@@ -173,7 +173,7 @@
         context_fetch_id = { type = "string", description = "ID the requester cites in later Tier 2+ envelopes." },
         ttl_seconds      = { type = "integer", description = "Staleness budget." },
         summary          = { type = "string", maxLength = 8192 },
-        raw              = { type = "object", description = "Full structured context, only for executor/supervisor." },
+        raw              = { type = "object", description = "Full structured context, only for journeyman/master." },
       },
       required = ["context_fetch_id", "ttl_seconds", "summary"],
     },
@@ -332,8 +332,8 @@
   peer_registration_extensions = {
     role = {
       type = "string",
-      enum = ["supervisor", "executor", "supervised"],
-      description = "Trust tier. Defaults: client_kind=claude -> executor; non-claude -> supervised. supervisor must be requested explicitly and the server SHOULD restrict to Opus-tier clients.",
+      enum = ["master", "journeyman", "apprentice", "supervisor", "executor", "supervised"],
+      description = "Trust tier (DD-32). master (ex-supervisor) = approval authority; journeyman (ex-executor) = trusted to act solo on Tier 2; apprentice (ex-supervised) = Tier 2+ quarantined. Defaults: client_kind=claude -> journeyman; non-claude -> apprentice. master must be requested explicitly via coord_promote_to_master with BOJ_MASTER_TOKEN. Old enum values accepted as aliases for one release.",
     },
     affinities = {
       type = "array",
@@ -346,11 +346,11 @@
   # ────────────────────────────────────────────────────────────────────
   # Forbidden-action policy (Tier 4).
   #
-  # Schema-level reject for envelopes from role=supervised matching any
+  # Schema-level reject for envelopes from role=apprentice matching any
   # of these signatures. The server runs this list at validate time.
   # ────────────────────────────────────────────────────────────────────
 
-  tier_4_forbidden_for_supervised = [
+  tier_4_forbidden_for_apprentice = [
     { match_kind = "payload_contains", value = "--force", description = "Force-push (raw or wrapped)." },
     { match_kind = "payload_contains", value = "git push --force", description = "Force-push explicit." },
     { match_kind = "payload_contains", value = "branch --delete", description = "Remote branch delete." },

@@ -435,7 +435,33 @@
         "type": "object"
       },
       "name": "coord_scan_suggestions"
+    },
+    {
+      "description": "Live master handoff (Task #35). Outgoing master passes the role to a named successor without a process restart. Secret-gated by BOJ_MASTER_TOKEN (BOJ_SUPERVISOR_TOKEN fallback). Target must be journeyman or already master — apprentices rejected. Audit-logged so replay reconstructs the transfer.",
+      "inputSchema": {
+        "properties": {
+          "new_peer_id": {
+            "description": "Peer id of the successor (kind-4hex[@context])",
+            "type": "string"
+          },
+          "secret": {
+            "description": "Must match BOJ_MASTER_TOKEN env var on the server",
+            "type": "string"
+          },
+          "token": {
+            "description": "Current master's session token",
+            "type": "string"
+          }
+        },
+        "required": [
+          "token",
+          "new_peer_id",
+          "secret"
+        ],
+        "type": "object"
+      },
+      "name": "coord_transfer_master"
     }
   ],
-  "version": "0.5.0"
+  "version": "0.6.0"
 }

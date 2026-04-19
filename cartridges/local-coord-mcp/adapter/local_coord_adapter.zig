@@ -83,21 +83,23 @@ fn dispatch(tool: []const u8, body: []const u8, resp: []u8, allocator: std.mem.A
             break :blk ctx_val.string;
         };
 
-        // Optional role hint. Server rejects role=supervisor here; callers
-        // must promote via coord_promote_to_supervisor with the env secret.
+        // Optional role hint. Server rejects role=master here; callers
+        // must promote via coord_promote_to_master with the env secret.
+        // Old names (supervisor/executor/supervised) accepted as aliases
+        // for one release per DD-32.
         const role_hint: i32 = blk: {
             const rv = parsed.value.object.get("role") orelse break :blk -1;
             const rs = rv.string;
-            if (std.mem.eql(u8, rs, "supervisor")) break :blk 0;
-            if (std.mem.eql(u8, rs, "executor")) break :blk 1;
-            if (std.mem.eql(u8, rs, "supervised")) break :blk 2;
+            if (std.mem.eql(u8, rs, "master") or std.mem.eql(u8, rs, "supervisor")) break :blk 0;
+            if (std.mem.eql(u8, rs, "journeyman") or std.mem.eql(u8, rs, "executor")) break :blk 1;
+            if (std.mem.eql(u8, rs, "apprentice") or std.mem.eql(u8, rs, "supervised")) break :blk 2;
             break :blk -1;
         };
 
         var token: [16]u8 = undefined;
         var suffix: [4]u8 = undefined;
         const idx = ffi.coord_register(kind, role_hint, &token, &suffix);
-        if (idx == -3) return .{ .status = 400, .body = errJson(resp, "supervisor role must be obtained via coord_promote_to_supervisor") };
+        if (idx == -3) return .{ .status = 400, .body = errJson(resp, "master role must be obtained via coord_promote_to_master") };
         if (idx < 0) return .{ .status = 500, .body = errJson(resp, "registry full") };
 
         if (ctx_str.len > 0) {
@@ -309,7 +311,10 @@ fn dispatch(tool: []const u8, body: []const u8, resp: []u8, allocator: std.mem.A
         return .{ .status = 500, .body = errJson(resp, "claim failed") };
     }
 
-    if (std.mem.eql(u8, tool, "coord_promote_to_supervisor")) {
+    // Old name accepted as alias per DD-32 backward-compat (one release).
+    if (std.mem.eql(u8, tool, "coord_promote_to_master") or
+        std.mem.eql(u8, tool, "coord_promote_to_supervisor"))
+    {
         const parsed = std.json.parseFromSlice(std.json.Value, allocator, body, .{}) catch return .{ .status = 400, .body = errJson(resp, "invalid json") };
         defer parsed.deinit();
         const token_val = parsed.value.object.get("token") orelse return .{ .status = 400, .body = errJson(resp, "missing token") };
@@ -318,13 +323,38 @@ fn dispatch(tool: []const u8, body: []const u8, resp: []u8, allocator: std.mem.A
         if (!parseToken(token_val.string, &token)) return .{ .status = 400, .body = errJson(resp, "invalid token hex") };
 
         const secret = secret_val.string;
-        const rc = ffi.coord_promote_to_supervisor(&token, 16, secret.ptr, @intCast(secret.len));
+        const rc = ffi.coord_promote_to_master(&token, 16, secret.ptr, @intCast(secret.len));
         if (rc == 0) return .{ .status = 200, .body = okJson(resp, "promoted") };
         if (rc == -1) return .{ .status = 401, .body = errJson(resp, "unauthenticated") };
-        if (rc == -2) return .{ .status = 409, .body = errJson(resp, "supervisor already exists") };
-        if (rc == -3) return .{ .status = 403, .body = errJson(resp, "supervisor role not configured on this server") };
+        if (rc == -2) return .{ .status = 409, .body = errJson(resp, "master already exists") };
+        if (rc == -3) return .{ .status = 403, .body = errJson(resp, "master role not configured on this server") };
         if (rc == -4) return .{ .status = 403, .body = errJson(resp, "secret does not match") };
         return .{ .status = 500, .body = errJson(resp, "promotion failed") };
+    }
+
+    if (std.mem.eql(u8, tool, "coord_transfer_master")) {
+        const parsed = std.json.parseFromSlice(std.json.Value, allocator, body, .{}) catch return .{ .status = 400, .body = errJson(resp, "invalid json") };
+        defer parsed.deinit();
+        const token_val = parsed.value.object.get("token") orelse return .{ .status = 400, .body = errJson(resp, "missing token") };
+        const target_val = parsed.value.object.get("new_peer_id") orelse return .{ .status = 400, .body = errJson(resp, "missing new_peer_id") };
+        const secret_val = parsed.value.object.get("secret") orelse return .{ .status = 400, .body = errJson(resp, "missing secret") };
+
+        var token: [16]u8 = undefined;
+        if (!parseToken(token_val.string, &token)) return .{ .status = 400, .body = errJson(resp, "invalid token hex") };
+
+        const target_str = target_val.string;
+        const suffix = extractSuffix(target_str) orelse return .{ .status = 400, .body = errJson(resp, "invalid new_peer_id format — expected <kind>-<4hex>[@<context>]") };
+        const target_idx = ffi.coord_find_peer_by_suffix(suffix.ptr);
+        if (target_idx < 0) return .{ .status = 404, .body = errJson(resp, "target peer not found") };
+
+        const secret = secret_val.string;
+        const rc = ffi.coord_transfer_master(&token, 16, target_idx, secret.ptr, @intCast(secret.len));
+        if (rc == 0) return .{ .status = 200, .body = okJson(resp, "transferred") };
+        if (rc == -1) return .{ .status = 401, .body = errJson(resp, "caller is not the current master") };
+        if (rc == -2) return .{ .status = 404, .body = errJson(resp, "target peer not found or same as caller") };
+        if (rc == -3) return .{ .status = 403, .body = errJson(resp, "secret does not match BOJ_MASTER_TOKEN") };
+        if (rc == -4) return .{ .status = 403, .body = errJson(resp, "target is an apprentice — must be journeyman or master") };
+        return .{ .status = 500, .body = errJson(resp, "transfer failed") };
     }
 
     if (std.mem.eql(u8, tool, "coord_send_gated")) {
@@ -363,7 +393,7 @@ fn dispatch(tool: []const u8, body: []const u8, resp: []u8, allocator: std.mem.A
         if (rc == -2) return .{ .status = 404, .body = errJson(resp, "target peer not found") };
         if (rc == -3) return .{ .status = 503, .body = errJson(resp, "target inbox full") };
         if (rc == -4) return .{ .status = 503, .body = errJson(resp, "quarantine queue full — spill to VeriSimDB not yet wired") };
-        if (rc == -5) return .{ .status = 428, .body = errJson(resp, "no supervisor registered — Tier 2+ from supervised requires a supervisor") };
+        if (rc == -5) return .{ .status = 428, .body = errJson(resp, "no master registered — Tier 2+ from apprentice requires a master") };
         return .{ .status = 500, .body = errJson(resp, "gated send failed") };
     }
 
@@ -377,7 +407,7 @@ fn dispatch(tool: []const u8, body: []const u8, resp: []u8, allocator: std.mem.A
         // 32 entries max * 16 bytes per record = 512 bytes raw.
         var raw: [512]u8 = undefined;
         const count = ffi.coord_review(&token, 16, &raw, @intCast(raw.len));
-        if (count < 0) return .{ .status = 403, .body = errJson(resp, "supervisor role required") };
+        if (count < 0) return .{ .status = 403, .body = errJson(resp, "master role required") };
 
         var stream = std.io.fixedBufferStream(resp);
         const w = stream.writer();
@@ -419,7 +449,7 @@ fn dispatch(tool: []const u8, body: []const u8, resp: []u8, allocator: std.mem.A
 
         var msg_buf: [512]u8 = undefined;
         const rc = ffi.coord_review_entry(&token, 16, @intCast(rid_val.integer), &msg_buf, @intCast(msg_buf.len));
-        if (rc == -1) return .{ .status = 403, .body = errJson(resp, "supervisor role required") };
+        if (rc == -1) return .{ .status = 403, .body = errJson(resp, "master role required") };
         if (rc == -2) return .{ .status = 404, .body = errJson(resp, "request_id not found") };
         if (rc < 0) return .{ .status = 500, .body = errJson(resp, "review failed") };
 
@@ -438,7 +468,7 @@ fn dispatch(tool: []const u8, body: []const u8, resp: []u8, allocator: std.mem.A
 
         const rc = ffi.coord_approve(&token, 16, @intCast(rid_val.integer));
         if (rc == 0) return .{ .status = 200, .body = okJson(resp, "approved") };
-        if (rc == -1) return .{ .status = 403, .body = errJson(resp, "supervisor role required") };
+        if (rc == -1) return .{ .status = 403, .body = errJson(resp, "master role required") };
         if (rc == -2) return .{ .status = 404, .body = errJson(resp, "request_id not found") };
         if (rc == -3) return .{ .status = 503, .body = errJson(resp, "target inbox full — retry") };
         return .{ .status = 500, .body = errJson(resp, "approve failed") };
@@ -596,7 +626,7 @@ fn dispatch(tool: []const u8, body: []const u8, resp: []u8, allocator: std.mem.A
         const reason = reason_val.string;
         const rc = ffi.coord_reject(&token, 16, @intCast(rid_val.integer), reason.ptr, @intCast(reason.len));
         if (rc == 0) return .{ .status = 200, .body = okJson(resp, "rejected") };
-        if (rc == -1) return .{ .status = 403, .body = errJson(resp, "supervisor role required") };
+        if (rc == -1) return .{ .status = 403, .body = errJson(resp, "master role required") };
         if (rc == -2) return .{ .status = 404, .body = errJson(resp, "request_id not found") };
         return .{ .status = 500, .body = errJson(resp, "reject failed") };
     }

@@ -81,8 +81,9 @@ let OpKinds = std.record.fields OpDefaults in
         && std.string.length e.context_fetch_id > 0)
   ),
 
-  # Any Tier >= 2 envelope from a peer whose role is "supervised" MUST
-  # carry at least one attestation_refs entry. M-of-N Byzantine safety.
+  # Any Tier >= 2 envelope from a peer whose role is "apprentice" (or
+  # legacy alias "supervised" — DD-32) MUST carry at least one
+  # attestation_refs entry. M-of-N Byzantine safety.
   #
   # The sender's role is NOT in the envelope itself (server-attached at
   # dispatch). Validator caller passes role via e._meta.sender_role when
@@ -92,20 +93,21 @@ let OpKinds = std.record.fields OpDefaults in
     || e.risk_tier < 2
     || !(std.record.has_field "_meta" e)
     || !(std.record.has_field "sender_role" e._meta)
-    || e._meta.sender_role != "supervised"
+    || (e._meta.sender_role != "apprentice" && e._meta.sender_role != "supervised")
     || (std.record.has_field "attestation_refs" e
         && std.is_array e.attestation_refs
         && std.array.length e.attestation_refs >= 1)
   ),
 
-  # urgent_direct=true is only permitted for supervisor + executor.
-  # supervised peers never interrupt the user directly.
+  # urgent_direct=true is only permitted for master + journeyman.
+  # apprentice peers never interrupt the user directly. Legacy
+  # "supervised" string accepted for one release per DD-32.
   UrgentDirectRestriction = std.contract.from_predicate (fun e =>
     !(std.record.has_field "urgent_direct" e)
     || !e.urgent_direct
     || !(std.record.has_field "_meta" e)
     || !(std.record.has_field "sender_role" e._meta)
-    || e._meta.sender_role != "supervised"
+    || (e._meta.sender_role != "apprentice" && e._meta.sender_role != "supervised")
   ),
 
   # If declared risk_tier differs from the op_kind's default, a

@@ -48,12 +48,16 @@ pub const PeerState = enum(c_int) {
     gone = 3,
 };
 
-/// Trust role — determines what a peer may do without a supervision gate.
-/// See docs/envelope-design.adoc for the risk ladder.
+/// Trust role — determines what a peer may do without a master gate.
+/// See docs/envelope-design.adoc for the risk ladder. Integer ordinals
+/// preserved across the 2026-04-20 rename (old supervisor → master,
+/// executor → journeyman, supervised → apprentice — DD-32) so logs
+/// written before the rename still replay correctly
+/// from before the rename still replay.
 pub const Role = enum(c_int) {
-    supervisor = 0, // Opus — holds the veto
-    executor = 1, // Claude Sonnet/Haiku — trusted executor
-    supervised = 2, // gemini/codex/vibe — Tier 2+ ops quarantined
+    master = 0, // Opus (or whoever holds BOJ_MASTER_TOKEN) — approval authority
+    journeyman = 1, // Claude Sonnet/Haiku — trusted to act solo on Tier 2
+    apprentice = 2, // gemini/codex/vibe — Tier 2+ quarantined for master review
 };
 
 /// Role-hint sentinel for coord_register — lets the server decide the
@@ -122,7 +126,7 @@ const empty_peer = Peer{
     .suffix = [_]u8{ '0', '0', '0', '0' },
     .state = .gone,
     .token = [_]u8{0} ** TOKEN_LEN,
-    .role = .supervised,
+    .role = .apprentice,
     .inbox = [_][512]u8{[_]u8{0} ** 512} ** MAX_MESSAGES,
     .inbox_lens = [_]u16{0} ** MAX_MESSAGES,
     .inbox_head = 0,
@@ -160,8 +164,8 @@ const empty_claim = Claim{
 var claims: [MAX_CLAIMS]Claim = [_]Claim{empty_claim} ** MAX_CLAIMS;
 
 // ═══════════════════════════════════════════════════════════════════════
-// Quarantine Queue — Tier 2+ ops from role=supervised peers held here
-// until a supervisor approves or rejects.
+// Quarantine Queue — Tier 2+ ops from role=apprentice peers held here
+// until a master approves or rejects.
 // ═══════════════════════════════════════════════════════════════════════
 
 const MAX_QUARANTINE: usize = 32;
@@ -367,43 +371,43 @@ pub export fn coord_read_peer_kind(peer_idx: c_int) c_int {
 }
 
 /// Default role for a client_kind when no explicit hint is given.
-/// claude -> executor (trusted executor)
-/// everything else -> supervised (Tier 2+ gated)
+/// claude -> journeyman (trusted to act solo on Tier 2)
+/// everything else -> apprentice (Tier 2+ gated by master)
 fn defaultRoleForKind(kind: ClientKind) Role {
     return switch (kind) {
-        .claude => .executor,
-        else => .supervised,
+        .claude => .journeyman,
+        else => .apprentice,
     };
 }
 
-/// Find the active supervisor, if any. Returns the peer index or null.
-fn findSupervisor() ?usize {
+/// Find the active master, if any. Returns the peer index or null.
+fn findMaster() ?usize {
     for (&peers, 0..) |*p, i| {
-        if (p.active and p.role == .supervisor) return i;
+        if (p.active and p.role == .master) return i;
     }
     return null;
 }
 
 /// Register a new peer. Returns peer index, or -1 if full, -3 if the
-/// caller tries to claim supervisor via role_hint (use
-/// coord_promote_to_supervisor instead).
+/// caller tries to claim master via role_hint (use
+/// coord_promote_to_master instead).
 ///
 /// role_hint = -1 (ROLE_HINT_DEFAULT): server assigns from kind
-/// role_hint = 0 (supervisor): REJECTED here — use coord_promote_to_supervisor
-/// role_hint = 1 (executor): granted executor role
-/// role_hint = 2 (supervised): granted supervised role (self-downgrade)
+/// role_hint = 0 (master): REJECTED here — use coord_promote_to_master
+/// role_hint = 1 (journeyman): granted journeyman role
+/// role_hint = 2 (apprentice): granted apprentice role (self-downgrade)
 pub export fn coord_register(kind: c_int, role_hint: c_int, token_out: [*]u8, suffix_out: [*]u8) c_int {
     mutex.lock();
     defer mutex.unlock();
 
     const client_kind: ClientKind = @enumFromInt(kind);
 
-    // Resolve role. Supervisor NEVER granted at register — must be
-    // promoted via coord_promote_to_supervisor with env-var secret.
+    // Resolve role. Master NEVER granted at register — must be
+    // promoted via coord_promote_to_master with env-var secret.
     const role: Role = blk: {
         if (role_hint == ROLE_HINT_DEFAULT) break :blk defaultRoleForKind(client_kind);
         const r: Role = @enumFromInt(role_hint);
-        if (r == .supervisor) return -3;
+        if (r == .master) return -3;
         break :blk r;
     };
 
@@ -431,18 +435,19 @@ pub export fn coord_register(kind: c_int, role_hint: c_int, token_out: [*]u8, su
     return -1; // registry full
 }
 
-/// Promote the caller's peer to supervisor role. Gated by the
-/// BOJ_SUPERVISOR_TOKEN env var (must be set, and presented secret
-/// must match). At most one supervisor at a time.
+/// Promote the caller's peer to master role. Gated by the
+/// BOJ_MASTER_TOKEN env var (must be set, and presented secret must
+/// match). At most one master at a time. `BOJ_SUPERVISOR_TOKEN` is
+/// honoured as a fallback for one release (DD-32 backward-compat).
 ///
 /// Returns:
 ///   0   — promoted
 ///  -1   — bad own token
-///  -2   — supervisor already exists
-///  -3   — BOJ_SUPERVISOR_TOKEN env var not set (server doesn't allow
-///          supervisor role in this deployment)
+///  -2   — master already exists
+///  -3   — BOJ_MASTER_TOKEN (and deprecated BOJ_SUPERVISOR_TOKEN) not
+///          set — server doesn't allow master role in this deployment
 ///  -4   — presented secret does not match env var
-pub export fn coord_promote_to_supervisor(
+pub export fn coord_promote_to_master(
     own_token_ptr: [*]const u8,
     own_token_len: c_int,
     secret_ptr: [*]const u8,
@@ -452,11 +457,13 @@ pub export fn coord_promote_to_supervisor(
     defer mutex.unlock();
 
     const idx = findPeerByToken(own_token_ptr, @intCast(own_token_len)) orelse return -1;
-    if (findSupervisor() != null) return -2;
+    if (findMaster() != null) return -2;
 
-    // Env-var check — read at promotion time so a running server can
-    // have its policy changed by restart.
-    const env_secret = std.posix.getenv("BOJ_SUPERVISOR_TOKEN") orelse return -3;
+    // Env-var check — BOJ_MASTER_TOKEN first, BOJ_SUPERVISOR_TOKEN fallback
+    // for one release (DD-32). Read at promotion time so a running server
+    // can have its policy changed by restart.
+    const env_secret = std.posix.getenv("BOJ_MASTER_TOKEN") orelse
+        std.posix.getenv("BOJ_SUPERVISOR_TOKEN") orelse return -3;
     if (env_secret.len == 0) return -3;
 
     const slen: usize = @intCast(secret_len);
@@ -470,12 +477,86 @@ pub export fn coord_promote_to_supervisor(
     }
     if (diff != 0) return -4;
 
-    peers[idx].role = .supervisor;
-    dur.logPeerRoleSet(@intCast(idx), @intCast(@intFromEnum(Role.supervisor)));
+    peers[idx].role = .master;
+    dur.logPeerRoleSet(@intCast(idx), @intCast(@intFromEnum(Role.master)));
     return 0;
 }
 
-/// Read a peer's role. Returns 0=supervisor, 1=executor, 2=supervised,
+/// Backward-compat alias for the 2026-04-20 rename (DD-32). Old MCP
+/// clients call this name; it forwards to coord_promote_to_master.
+/// Remove one release after DD-32 lands.
+pub export fn coord_promote_to_supervisor(
+    own_token_ptr: [*]const u8,
+    own_token_len: c_int,
+    secret_ptr: [*]const u8,
+    secret_len: c_int,
+) c_int {
+    return coord_promote_to_master(own_token_ptr, own_token_len, secret_ptr, secret_len);
+}
+
+/// Live master handoff (Task #35) — pass the master role to a named
+/// successor without a process restart. Secret-gated by BOJ_MASTER_TOKEN
+/// (BOJ_SUPERVISOR_TOKEN fallback for one release). Target must be
+/// journeyman or already master — apprentices are rejected (prevents
+/// hostile handoff to an untrusted peer). Audit-logged so replay
+/// reconstructs the transfer.
+///
+/// Returns:
+///   0   promoted successor + demoted self to journeyman
+///  -1   caller not master / bad token
+///  -2   target peer not found / inactive
+///  -3   secret mismatch (or env var unset)
+///  -4   target is apprentice — blocked, must be journeyman+
+pub export fn coord_transfer_master(
+    current_master_token_ptr: [*]const u8,
+    current_master_token_len: c_int,
+    target_peer_idx: c_int,
+    secret_ptr: [*]const u8,
+    secret_len: c_int,
+) c_int {
+    mutex.lock();
+    defer mutex.unlock();
+
+    const cur_idx = findPeerByToken(current_master_token_ptr, @intCast(current_master_token_len)) orelse return -1;
+    if (peers[cur_idx].role != .master) return -1;
+
+    if (target_peer_idx < 0 or target_peer_idx >= MAX_PEERS) return -2;
+    const tidx: usize = @intCast(target_peer_idx);
+    const target = &peers[tidx];
+    if (!target.active) return -2;
+    if (target.role == .apprentice) return -4;
+    if (tidx == cur_idx) return -2; // handoff to self is a no-op, treat as bad target
+
+    // Secret must match BOJ_MASTER_TOKEN (or BOJ_SUPERVISOR_TOKEN as
+    // back-compat fallback). Fail closed if neither is set.
+    const env_secret = std.posix.getenv("BOJ_MASTER_TOKEN")
+        orelse std.posix.getenv("BOJ_SUPERVISOR_TOKEN")
+        orelse return -3;
+    if (env_secret.len == 0) return -3;
+
+    const slen: usize = @intCast(secret_len);
+    if (slen != env_secret.len) return -3;
+    var diff: u8 = 0;
+    var k: usize = 0;
+    while (k < slen) : (k += 1) {
+        diff |= env_secret[k] ^ secret_ptr[k];
+    }
+    if (diff != 0) return -3;
+
+    // Atomic pair: demote caller to journeyman, promote target to master.
+    peers[cur_idx].role = .journeyman;
+    dur.logPeerRoleSet(@intCast(cur_idx), @intCast(@intFromEnum(Role.journeyman)));
+    target.role = .master;
+    dur.logPeerRoleSet(@intCast(tidx), @intCast(@intFromEnum(Role.master)));
+
+    // Audit breadcrumb — kind=2 reserved for MASTER_HANDOFF.
+    var detail_buf: [64]u8 = undefined;
+    const detail = std.fmt.bufPrint(&detail_buf, "from={d}|to={d}", .{ cur_idx, tidx }) catch "";
+    dur.logAudit(2, detail);
+    return 0;
+}
+
+/// Read a peer's role. Returns 0=master, 1=journeyman, 2=apprentice,
 /// or -1 if peer index out of range / inactive.
 pub export fn coord_read_peer_role(peer_idx: c_int) c_int {
     mutex.lock();
@@ -486,21 +567,21 @@ pub export fn coord_read_peer_role(peer_idx: c_int) c_int {
     return @intFromEnum(p.role);
 }
 
-/// Re-assign a peer's role. Only callable by an active supervisor (token
-/// must belong to role=supervisor). Returns 0 on success, -1 on bad
-/// supervisor token, -2 on bad target, -3 on disallowed transition
-/// (e.g. demoting the sole supervisor).
+/// Re-assign a peer's role. Only callable by an active master (token
+/// must belong to role=master). Returns 0 on success, -1 on bad
+/// master token, -2 on bad target, -3 on disallowed transition
+/// (e.g. demoting the sole master).
 pub export fn coord_set_role(
-    supervisor_token_ptr: [*]const u8,
-    supervisor_token_len: c_int,
+    master_token_ptr: [*]const u8,
+    master_token_len: c_int,
     target_peer_idx: c_int,
     new_role: c_int,
 ) c_int {
     mutex.lock();
     defer mutex.unlock();
 
-    const sup_idx = findPeerByToken(supervisor_token_ptr, @intCast(supervisor_token_len)) orelse return -1;
-    if (peers[sup_idx].role != .supervisor) return -1;
+    const sup_idx = findPeerByToken(master_token_ptr, @intCast(master_token_len)) orelse return -1;
+    if (peers[sup_idx].role != .master) return -1;
 
     if (target_peer_idx < 0 or target_peer_idx >= MAX_PEERS) return -2;
     const target = &peers[@intCast(target_peer_idx)];
@@ -508,12 +589,12 @@ pub export fn coord_set_role(
 
     const nr: Role = @enumFromInt(new_role);
 
-    // Forbid demoting the only supervisor.
-    if (target.role == .supervisor and nr != .supervisor) {
+    // Forbid demoting the only master.
+    if (target.role == .master and nr != .master) {
         var other_sup: bool = false;
         for (&peers, 0..) |*p, i| {
             if (i == @as(usize, @intCast(target_peer_idx))) continue;
-            if (p.active and p.role == .supervisor) { other_sup = true; break; }
+            if (p.active and p.role == .master) { other_sup = true; break; }
         }
         if (!other_sup) return -3;
     }
@@ -851,7 +932,7 @@ pub export fn coord_release_task(
 // Gated send + Quarantine Queue
 // ═══════════════════════════════════════════════════════════════════════
 
-/// Send a message that MAY be gated. If sender role is supervised and
+/// Send a message that MAY be gated. If sender role is apprentice and
 /// risk_tier >= 2, the message is quarantined and a request_id returned.
 /// Otherwise it's delivered directly (identical to coord_send).
 ///
@@ -861,7 +942,7 @@ pub export fn coord_release_task(
 ///   -2    — bad target_idx
 ///   -3    — target inbox full (direct send)
 ///   -4    — quarantine queue full
-///   -5    — no supervisor registered (supervised peer can't file a Tier 2+
+///   -5    — no master registered (apprentice peer can't file a Tier 2+
 ///           without someone to review it)
 ///   < -1000 — quarantined; request_id = -(returned_value + 1000)
 ///             (lets a single c_int carry both direct-send count and
@@ -881,8 +962,8 @@ pub export fn coord_send_gated(
     const sender = &peers[sender_idx];
     const tier_u: u8 = if (risk_tier < 0) 0 else @intCast(@min(risk_tier, 4));
 
-    // Free path: supervisor/executor, or supervised with low tier.
-    if (sender.role != .supervised or tier_u < 2) {
+    // Free path: master/journeyman, or apprentice with low tier.
+    if (sender.role != .apprentice or tier_u < 2) {
         // Defer to unlocked direct-send by releasing the mutex — coord_send
         // re-acquires. Inline here to avoid lock churn.
         const mlen: usize = @intCast(@min(msg_len, 512));
@@ -917,8 +998,8 @@ pub export fn coord_send_gated(
         return 1;
     }
 
-    // Gated path: supervised peer + Tier 2+ = quarantine.
-    if (findSupervisor() == null) return -5;
+    // Gated path: apprentice peer + Tier 2+ = quarantine.
+    if (findMaster() == null) return -5;
 
     for (&quarantine) |*q| {
         if (!q.active) {
@@ -942,7 +1023,7 @@ pub export fn coord_send_gated(
     return -4; // queue full
 }
 
-/// List pending quarantine entries. Only callable by a supervisor.
+/// List pending quarantine entries. Only callable by a master.
 /// Writes records into `out` — each record is 16 bytes:
 ///   request_id: u32 little-endian
 ///   sender_idx: u8
@@ -951,18 +1032,18 @@ pub export fn coord_send_gated(
 ///   msg_len: u16 little-endian
 ///   first 7 bytes of msg (preview)
 ///
-/// Returns number of records written, or -1 if caller is not supervisor.
+/// Returns number of records written, or -1 if caller is not master.
 pub export fn coord_review(
-    supervisor_token_ptr: [*]const u8,
-    supervisor_token_len: c_int,
+    master_token_ptr: [*]const u8,
+    master_token_len: c_int,
     out: [*]u8,
     out_cap: c_int,
 ) c_int {
     mutex.lock();
     defer mutex.unlock();
 
-    const idx = findPeerByToken(supervisor_token_ptr, @intCast(supervisor_token_len)) orelse return -1;
-    if (peers[idx].role != .supervisor) return -1;
+    const idx = findPeerByToken(master_token_ptr, @intCast(master_token_len)) orelse return -1;
+    if (peers[idx].role != .master) return -1;
 
     var written: usize = 0;
     const cap: usize = @intCast(out_cap);
@@ -987,10 +1068,10 @@ pub export fn coord_review(
 }
 
 /// Read the full message body of a specific quarantine entry. Supervisor-only.
-/// Returns message length on success, -1 on bad supervisor, -2 on unknown id.
+/// Returns message length on success, -1 on bad master, -2 on unknown id.
 pub export fn coord_review_entry(
-    supervisor_token_ptr: [*]const u8,
-    supervisor_token_len: c_int,
+    master_token_ptr: [*]const u8,
+    master_token_len: c_int,
     request_id: c_int,
     out: [*]u8,
     out_cap: c_int,
@@ -998,8 +1079,8 @@ pub export fn coord_review_entry(
     mutex.lock();
     defer mutex.unlock();
 
-    const idx = findPeerByToken(supervisor_token_ptr, @intCast(supervisor_token_len)) orelse return -1;
-    if (peers[idx].role != .supervisor) return -1;
+    const idx = findPeerByToken(master_token_ptr, @intCast(master_token_len)) orelse return -1;
+    if (peers[idx].role != .master) return -1;
 
     const rid: u32 = @intCast(request_id);
     for (&quarantine) |*q| {
@@ -1015,18 +1096,18 @@ pub export fn coord_review_entry(
 
 /// Approve a quarantined entry — delivers the message to its target(s)
 /// and removes the entry. Supervisor-only. Returns 0 on success, -1 on
-/// bad supervisor, -2 on unknown id, -3 if target inbox full (caller
+/// bad master, -2 on unknown id, -3 if target inbox full (caller
 /// should retry later).
 pub export fn coord_approve(
-    supervisor_token_ptr: [*]const u8,
-    supervisor_token_len: c_int,
+    master_token_ptr: [*]const u8,
+    master_token_len: c_int,
     request_id: c_int,
 ) c_int {
     mutex.lock();
     defer mutex.unlock();
 
-    const idx = findPeerByToken(supervisor_token_ptr, @intCast(supervisor_token_len)) orelse return -1;
-    if (peers[idx].role != .supervisor) return -1;
+    const idx = findPeerByToken(master_token_ptr, @intCast(master_token_len)) orelse return -1;
+    if (peers[idx].role != .master) return -1;
 
     const rid: u32 = @intCast(request_id);
     for (&quarantine) |*q| {
@@ -1070,11 +1151,11 @@ pub export fn coord_approve(
 /// Reject a quarantined entry — removes it with a recorded reason. The
 /// message is NOT delivered. Reason stays in the entry until the next
 /// coord_reset (for audit; VeriSimDB sidecar will persist it later).
-/// Supervisor-only. Returns 0 on success, -1 on bad supervisor, -2 on
+/// Supervisor-only. Returns 0 on success, -1 on bad master, -2 on
 /// unknown id.
 pub export fn coord_reject(
-    supervisor_token_ptr: [*]const u8,
-    supervisor_token_len: c_int,
+    master_token_ptr: [*]const u8,
+    master_token_len: c_int,
     request_id: c_int,
     reason_ptr: [*]const u8,
     reason_len: c_int,
@@ -1082,8 +1163,8 @@ pub export fn coord_reject(
     mutex.lock();
     defer mutex.unlock();
 
-    const idx = findPeerByToken(supervisor_token_ptr, @intCast(supervisor_token_len)) orelse return -1;
-    if (peers[idx].role != .supervisor) return -1;
+    const idx = findPeerByToken(master_token_ptr, @intCast(master_token_len)) orelse return -1;
+    if (peers[idx].role != .master) return -1;
 
     const rid: u32 = @intCast(request_id);
     for (&quarantine) |*q| {
@@ -1386,7 +1467,7 @@ pub export fn coord_get_affinities(
 // Scans track-record aggregates + per-peer declared_affinities and
 // synthesises candidate envelopes that land in the QUARANTINE as
 // server-origin entries (sender_idx = SERVER_ORIGIN_SENTINEL). Opus
-// (supervisor) then approves or rejects via coord_approve / coord_reject
+// (master) then approves or rejects via coord_approve / coord_reject
 // — never auto-modifies.
 //
 // Suggestion kinds:
@@ -1495,7 +1576,7 @@ fn tagInDeclaredFor(kind: u8, tag: []const u8) bool {
 
 /// Scan track-record aggregates and enqueue candidate envelopes into the
 /// quarantine. Returns the number of suggestions emitted, or -1 on bad
-/// token. Caller should be a supervisor — only the supervisor can act
+/// token. Caller should be a master — only the master can act
 /// on these through coord_approve/coord_reject anyway, but any peer can
 /// trigger the scan since it mutates only server-owned queue state.
 pub export fn coord_scan_suggestions(
@@ -1976,42 +2057,42 @@ test "default role derives from client_kind" {
     var tok: [TOKEN_LEN]u8 = undefined;
     var suf: [4]u8 = undefined;
 
-    // claude -> executor
+    // claude -> journeyman
     const c_idx = coord_register(0, -1, &tok, &suf);
     try std.testing.expect(c_idx >= 0);
-    try std.testing.expectEqual(@as(c_int, @intFromEnum(Role.executor)), coord_read_peer_role(c_idx));
+    try std.testing.expectEqual(@as(c_int, @intFromEnum(Role.journeyman)), coord_read_peer_role(c_idx));
 
-    // gemini -> supervised
+    // gemini -> apprentice
     const g_idx = coord_register(1, -1, &tok, &suf);
     try std.testing.expect(g_idx >= 0);
-    try std.testing.expectEqual(@as(c_int, @intFromEnum(Role.supervised)), coord_read_peer_role(g_idx));
+    try std.testing.expectEqual(@as(c_int, @intFromEnum(Role.apprentice)), coord_read_peer_role(g_idx));
 
-    // copilot -> supervised
+    // copilot -> apprentice
     const p_idx = coord_register(2, -1, &tok, &suf);
     try std.testing.expect(p_idx >= 0);
-    try std.testing.expectEqual(@as(c_int, @intFromEnum(Role.supervised)), coord_read_peer_role(p_idx));
+    try std.testing.expectEqual(@as(c_int, @intFromEnum(Role.apprentice)), coord_read_peer_role(p_idx));
 
-    // custom -> supervised
+    // custom -> apprentice
     const x_idx = coord_register(3, -1, &tok, &suf);
     try std.testing.expect(x_idx >= 0);
-    try std.testing.expectEqual(@as(c_int, @intFromEnum(Role.supervised)), coord_read_peer_role(x_idx));
+    try std.testing.expectEqual(@as(c_int, @intFromEnum(Role.apprentice)), coord_read_peer_role(x_idx));
 
     coord_reset();
 }
 
-test "register rejects supervisor role_hint" {
+test "register rejects master role_hint" {
     coord_reset();
     var tok: [TOKEN_LEN]u8 = undefined;
     var suf: [4]u8 = undefined;
 
-    // role_hint=0 (supervisor) is always rejected; must use coord_promote_to_supervisor.
+    // role_hint=0 (master) is always rejected; must use coord_promote_to_master.
     const rc = coord_register(0, 0, &tok, &suf);
     try std.testing.expectEqual(@as(c_int, -3), rc);
 
     coord_reset();
 }
 
-test "promote to supervisor requires env-var secret match" {
+test "promote to master requires env-var secret match" {
     coord_reset();
     var tok: [TOKEN_LEN]u8 = undefined;
     var suf: [4]u8 = undefined;
@@ -2026,32 +2107,85 @@ test "promote to supervisor requires env-var secret match" {
     coord_reset();
 }
 
-test "gated send from supervised peer lands in quarantine" {
+test "coord_transfer_master rejects apprentice target" {
+    coord_reset();
+    var mas_tok: [TOKEN_LEN]u8 = undefined;
+    var app_tok: [TOKEN_LEN]u8 = undefined;
+    var suf: [4]u8 = undefined;
+
+    // Install master directly to avoid env-var gymnastics.
+    _ = coord_register(0, 1, &mas_tok, &suf); // journeyman
+    peers[0].role = .master;
+
+    // Register apprentice (gemini default).
+    const app_idx = coord_register(1, -1, &app_tok, &suf);
+    try std.testing.expect(app_idx >= 0);
+    try std.testing.expectEqual(Role.apprentice, peers[@intCast(app_idx)].role);
+
+    // Handoff to apprentice target -> -4.
+    // Even with a valid env secret, target role blocks before secret check.
+    // Without env secret the same target would yield -3 — but role gate
+    // fires first in our implementation so -4 is returned when target is
+    // an apprentice regardless of secret validity.
+    const rc = coord_transfer_master(&mas_tok, TOKEN_LEN, app_idx, "whatever".ptr, 8);
+    try std.testing.expectEqual(@as(c_int, -4), rc);
+
+    coord_reset();
+}
+
+test "coord_transfer_master caller must be master" {
+    coord_reset();
+    var jm_tok: [TOKEN_LEN]u8 = undefined;
+    var other_tok: [TOKEN_LEN]u8 = undefined;
+    var suf: [4]u8 = undefined;
+
+    _ = coord_register(0, -1, &jm_tok, &suf); // claude -> journeyman
+    const other_idx = coord_register(0, -1, &other_tok, &suf);
+    try std.testing.expect(other_idx >= 0);
+
+    const rc = coord_transfer_master(&jm_tok, TOKEN_LEN, other_idx, "x".ptr, 1);
+    try std.testing.expectEqual(@as(c_int, -1), rc);
+    coord_reset();
+}
+
+test "coord_transfer_master bad target idx" {
+    coord_reset();
+    var mas_tok: [TOKEN_LEN]u8 = undefined;
+    var suf: [4]u8 = undefined;
+    _ = coord_register(0, 1, &mas_tok, &suf);
+    peers[0].role = .master;
+
+    const rc = coord_transfer_master(&mas_tok, TOKEN_LEN, 99, "x".ptr, 1);
+    try std.testing.expectEqual(@as(c_int, -2), rc);
+    coord_reset();
+}
+
+test "gated send from apprentice peer lands in quarantine" {
     coord_reset();
     var sup_tok: [TOKEN_LEN]u8 = undefined;
     var gem_tok: [TOKEN_LEN]u8 = undefined;
     var suf: [4]u8 = undefined;
 
-    // Manually install a supervisor by bypassing env-var gate (test-only
+    // Manually install a master by bypassing env-var gate (test-only
     // shortcut — we set role directly via coord_set_role which needs a
-    // supervisor token, so we instead register the supervisor by direct
+    // master token, so we instead register the master by direct
     // register + role override for this test).
-    _ = coord_register(0, 1, &sup_tok, &suf); // executor
+    _ = coord_register(0, 1, &sup_tok, &suf); // journeyman
     // Upgrade directly for test purposes by touching the peer record.
-    // In production this happens via coord_promote_to_supervisor.
-    peers[0].role = .supervisor;
+    // In production this happens via coord_promote_to_master.
+    peers[0].role = .master;
 
-    // Now register gemini as supervised (default for kind=1).
+    // Now register gemini as apprentice (default for kind=1).
     const gem_idx = coord_register(1, -1, &gem_tok, &suf);
     try std.testing.expect(gem_idx >= 0);
-    try std.testing.expectEqual(@as(c_int, @intFromEnum(Role.supervised)), coord_read_peer_role(gem_idx));
+    try std.testing.expectEqual(@as(c_int, @intFromEnum(Role.apprentice)), coord_read_peer_role(gem_idx));
 
-    // Tier 0 op from supervised: direct delivery.
+    // Tier 0 op from apprentice: direct delivery.
     const msg_low = "status-update";
     const t0_rc = coord_send_gated(&gem_tok, TOKEN_LEN, 0, msg_low.ptr, @intCast(msg_low.len), 0);
     try std.testing.expectEqual(@as(c_int, 1), t0_rc); // direct send: sent=1
 
-    // Tier 2 op from supervised: quarantined; returned value encodes request_id.
+    // Tier 2 op from apprentice: quarantined; returned value encodes request_id.
     const msg_high = "proposed-commit-a1b2c3d";
     const t2_rc = coord_send_gated(&gem_tok, TOKEN_LEN, 0, msg_high.ptr, @intCast(msg_high.len), 2);
     try std.testing.expect(t2_rc < -1000); // encoded request_id
@@ -2073,7 +2207,7 @@ test "gated send from supervised peer lands in quarantine" {
     const a_rc = coord_approve(&sup_tok, TOKEN_LEN, @intCast(request_id));
     try std.testing.expectEqual(@as(c_int, 0), a_rc);
 
-    // Recipient (index 0 — supervisor in this test) can receive the message.
+    // Recipient (index 0 — master in this test) can receive the message.
     var recv_buf: [512]u8 = undefined;
     // First message is msg_low from the Tier 0 send (it went direct).
     // The gated approved msg_high is now second in queue.
@@ -2086,14 +2220,14 @@ test "gated send from supervised peer lands in quarantine" {
     coord_reset();
 }
 
-test "supervisor rejects a quarantined entry" {
+test "master rejects a quarantined entry" {
     coord_reset();
     var sup_tok: [TOKEN_LEN]u8 = undefined;
     var gem_tok: [TOKEN_LEN]u8 = undefined;
     var suf: [4]u8 = undefined;
 
     _ = coord_register(0, 1, &sup_tok, &suf);
-    peers[0].role = .supervisor;
+    peers[0].role = .master;
     _ = coord_register(1, -1, &gem_tok, &suf);
 
     const msg = "sneaky-push";
@@ -2117,11 +2251,11 @@ test "supervisor rejects a quarantined entry" {
     coord_reset();
 }
 
-test "non-supervisor cannot review/approve/reject" {
+test "non-master cannot review/approve/reject" {
     coord_reset();
     var tok: [TOKEN_LEN]u8 = undefined;
     var suf: [4]u8 = undefined;
-    _ = coord_register(0, -1, &tok, &suf); // executor, not supervisor
+    _ = coord_register(0, -1, &tok, &suf); // journeyman, not master
 
     var out: [128]u8 = undefined;
     try std.testing.expectEqual(@as(c_int, -1), coord_review(&tok, TOKEN_LEN, &out, @intCast(out.len)));
@@ -2234,23 +2368,23 @@ test "restart replay restores peer, claim, inbox, quarantine" {
     // ── Phase 1: build up state under durable logging ─────────────────
     var sup_tok: [TOKEN_LEN]u8 = undefined;
     var sup_suf: [4]u8 = undefined;
-    const sup_idx = coord_register(0, 1, &sup_tok, &sup_suf); // claude as executor
+    const sup_idx = coord_register(0, 1, &sup_tok, &sup_suf); // claude as journeyman
     try std.testing.expect(sup_idx >= 0);
     // Promote directly via state mutation — avoids env-var gymnastics
     // in-test, and still gets persisted via the coord_set_role path below.
-    peers[@intCast(sup_idx)].role = .supervisor;
-    dur.logPeerRoleSet(@intCast(sup_idx), @intCast(@intFromEnum(Role.supervisor)));
+    peers[@intCast(sup_idx)].role = .master;
+    dur.logPeerRoleSet(@intCast(sup_idx), @intCast(@intFromEnum(Role.master)));
 
     var gem_tok: [TOKEN_LEN]u8 = undefined;
     var gem_suf: [4]u8 = undefined;
-    const gem_idx = coord_register(1, -1, &gem_tok, &gem_suf); // gemini → supervised
+    const gem_idx = coord_register(1, -1, &gem_tok, &gem_suf); // gemini → apprentice
     try std.testing.expect(gem_idx >= 0);
 
     // Remember identities for post-replay comparison.
     const sup_suf_copy = sup_suf;
     const gem_suf_copy = gem_suf;
 
-    // Set a context on the supervised peer.
+    // Set a context on the apprentice peer.
     const ctx = "007-lang";
     try std.testing.expectEqual(
         @as(c_int, 0),
@@ -2265,7 +2399,7 @@ test "restart replay restores peer, claim, inbox, quarantine" {
         coord_send(&sup_tok, TOKEN_LEN, gem_idx, pending_msg.ptr, @intCast(pending_msg.len)),
     );
 
-    // Claim a task as the supervisor.
+    // Claim a task as the master.
     const task = "restart-replay-task";
     try std.testing.expectEqual(
         @as(c_int, 0),
@@ -2292,11 +2426,11 @@ test "restart replay restores peer, claim, inbox, quarantine" {
     // Peers re-occupy their original slots with original suffixes.
     try std.testing.expect(peers[@intCast(sup_idx)].active);
     try std.testing.expectEqualSlices(u8, &sup_suf_copy, &peers[@intCast(sup_idx)].suffix);
-    try std.testing.expectEqual(Role.supervisor, peers[@intCast(sup_idx)].role);
+    try std.testing.expectEqual(Role.master, peers[@intCast(sup_idx)].role);
 
     try std.testing.expect(peers[@intCast(gem_idx)].active);
     try std.testing.expectEqualSlices(u8, &gem_suf_copy, &peers[@intCast(gem_idx)].suffix);
-    try std.testing.expectEqual(Role.supervised, peers[@intCast(gem_idx)].role);
+    try std.testing.expectEqual(Role.apprentice, peers[@intCast(gem_idx)].role);
 
     // Context survives replay.
     var ctx_buf: [MAX_CONTEXT]u8 = undefined;
@@ -2310,7 +2444,7 @@ test "restart replay restores peer, claim, inbox, quarantine" {
     try std.testing.expectEqual(@as(c_int, @intCast(pending_msg.len)), recv_len);
     try std.testing.expectEqualSlices(u8, pending_msg, recv_buf[0..@intCast(recv_len)]);
 
-    // Claim still held by supervisor — another peer can't grab it.
+    // Claim still held by master — another peer can't grab it.
     const steal_rc = coord_claim_task(&gem_tok, TOKEN_LEN, task.ptr, @intCast(task.len));
     try std.testing.expectEqual(@as(c_int, 1), steal_rc); // Held
 
@@ -2320,7 +2454,7 @@ test "restart replay restores peer, claim, inbox, quarantine" {
         coord_claim_task(&sup_tok, TOKEN_LEN, task.ptr, @intCast(task.len)),
     );
 
-    // Quarantine entry reappears for the supervisor to review.
+    // Quarantine entry reappears for the master to review.
     var review_buf: [512]u8 = undefined;
     const n = coord_review(&sup_tok, TOKEN_LEN, &review_buf, @intCast(review_buf.len));
     try std.testing.expectEqual(@as(c_int, 1), n);
@@ -2348,15 +2482,15 @@ test "approve then restart: quarantine gone, delivered message survives" {
     var sup_suf: [4]u8 = undefined;
     const sup_idx = coord_register(0, 1, &sup_tok, &sup_suf);
     try std.testing.expect(sup_idx >= 0);
-    peers[@intCast(sup_idx)].role = .supervisor;
-    dur.logPeerRoleSet(@intCast(sup_idx), @intCast(@intFromEnum(Role.supervisor)));
+    peers[@intCast(sup_idx)].role = .master;
+    dur.logPeerRoleSet(@intCast(sup_idx), @intCast(@intFromEnum(Role.master)));
 
     var gem_tok: [TOKEN_LEN]u8 = undefined;
     var gem_suf: [4]u8 = undefined;
     const gem_idx = coord_register(1, -1, &gem_tok, &gem_suf);
     try std.testing.expect(gem_idx >= 0);
 
-    // Supervised files, supervisor approves — approved message is now in
+    // Supervised files, master approves — approved message is now in
     // sup's inbox and the quarantine slot is freed.
     const msg = "gated-and-approved";
     const gated_rc = coord_send_gated(&gem_tok, TOKEN_LEN, sup_idx, msg.ptr, @intCast(msg.len), 3);
@@ -2397,8 +2531,8 @@ test "reject then restart: quarantine gone, message NOT delivered" {
     var sup_tok: [TOKEN_LEN]u8 = undefined;
     var sup_suf: [4]u8 = undefined;
     _ = coord_register(0, 1, &sup_tok, &sup_suf);
-    peers[0].role = .supervisor;
-    dur.logPeerRoleSet(0, @intCast(@intFromEnum(Role.supervisor)));
+    peers[0].role = .master;
+    dur.logPeerRoleSet(0, @intCast(@intFromEnum(Role.master)));
 
     var gem_tok: [TOKEN_LEN]u8 = undefined;
     var gem_suf: [4]u8 = undefined;
@@ -2573,7 +2707,7 @@ test "scan flags overclaim: high confidence + low effective_affinity" {
         _ = coord_report_outcome(&tok, TOKEN_LEN, tag.ptr, @intCast(tag.len), 0, 100, 2, 90);
     }
 
-    // No supervisor registered — scan still runs.
+    // No master registered — scan still runs.
     const n = coord_scan_suggestions(&tok, TOKEN_LEN);
     try std.testing.expect(n >= 1);
 
