@@ -30,6 +30,11 @@ import {
   invokeCartridge,
 } from "./lib/api-clients.js";
 import { buildToolList } from "./lib/tools.js";
+import {
+  initValidator,
+  tryParseEnvelope,
+  validateEnvelope,
+} from "./lib/nickel-validator.js";
 import { info, warn, error as logError } from "./lib/logger.js";
 
 const BOJ_BASE = process.env.BOJ_URL || "http://localhost:7700";
@@ -257,7 +262,34 @@ async function dispatchTool(toolName, args) {
 
 const LOCAL_COORD_URL = process.env.COORD_BACKEND_URL || "http://127.0.0.1:7745";
 
+// Nickel contracts run on coord_send / coord_send_gated only — those
+// are the two tools whose `message` argument carries an A2ML envelope.
+// Other coord_* calls are RPC-shaped (register/list/review/approve/...)
+// and bypass contract validation. Expansion to more tools is a roadmap
+// item — see Appendix K of COORD-MCP-DESIGN-LOG.md (Task #17 extension).
+const ENVELOPE_CARRYING_TOOLS = new Set(["coord_send", "coord_send_gated"]);
+
+initValidator();
+
 async function dispatchLocalCoord(toolName, args) {
+  // Runtime envelope validation (Task #17) — BEFORE the HTTP forward.
+  if (ENVELOPE_CARRYING_TOOLS.has(toolName) && args && typeof args.message === "string") {
+    const env = tryParseEnvelope(args.message);
+    if (env && typeof env === "object") {
+      const senderRole = env._meta?.sender_role || args.sender_role;
+      const result = validateEnvelope(env, senderRole);
+      if (!result.ok) {
+        return {
+          success: false,
+          error: `envelope validation failed: ${result.error}`,
+          hint: "See cartridges/local-coord-mcp/schemas/coord-messages-contracts.ncl for the active contracts",
+        };
+      }
+    }
+    // Plain-string messages (non-JSON) skip validation — they're not
+    // A2ML envelopes. The Zig adapter still enforces shape + gating.
+  }
+
   try {
     const res = await fetch(`${LOCAL_COORD_URL}/tools/${toolName}`, {
       method: "POST",
