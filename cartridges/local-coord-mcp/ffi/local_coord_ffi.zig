@@ -60,6 +60,12 @@ pub const ClaimResult = enum(c_int) {
 // Peer Registry
 // ═══════════════════════════════════════════════════════════════════════
 
+/// Per-window context disambiguator. Short label (e.g. repo name, tty-hash)
+/// appended to peer_id as `<kind>-<4hex>@<context>`. Optional — empty means
+/// the old `<kind>-<4hex>` form. Alphanumeric + hyphens only; enforced in
+/// coord_set_context.
+const MAX_CONTEXT: usize = 32;
+
 const Peer = struct {
     active: bool,
     kind: ClientKind,
@@ -75,6 +81,9 @@ const Peer = struct {
     // Status string
     status: [256]u8,
     status_len: u16,
+    // Context disambiguator (repo / tty / window label)
+    context: [MAX_CONTEXT]u8,
+    context_len: u8,
 };
 
 const empty_peer = Peer{
@@ -90,6 +99,8 @@ const empty_peer = Peer{
     .inbox_count = 0,
     .status = [_]u8{0} ** 256,
     .status_len = 0,
+    .context = [_]u8{0} ** MAX_CONTEXT,
+    .context_len = 0,
 };
 
 var peers: [MAX_PEERS]Peer = [_]Peer{empty_peer} ** MAX_PEERS;
@@ -211,6 +222,7 @@ pub export fn coord_register(kind: c_int, token_out: [*]u8, suffix_out: [*]u8) c
             p.inbox_tail = 0;
             p.inbox_count = 0;
             p.status_len = 0;
+            p.context_len = 0; // reset on slot reuse
 
             // Copy token and suffix to caller
             @memcpy(token_out[0..TOKEN_LEN], &p.token);
@@ -220,6 +232,51 @@ pub export fn coord_register(kind: c_int, token_out: [*]u8, suffix_out: [*]u8) c
         }
     }
     return -1; // registry full
+}
+
+/// Set a context disambiguator for this peer (repo name, tty hash, window
+/// label). Must be alphanumeric or hyphen, max MAX_CONTEXT bytes — anything
+/// else returns -2 and the existing context is untouched.
+pub export fn coord_set_context(
+    token_ptr: [*]const u8,
+    token_len: c_int,
+    ctx_ptr: [*]const u8,
+    ctx_len: c_int,
+) c_int {
+    mutex.lock();
+    defer mutex.unlock();
+
+    const idx = findPeerByToken(token_ptr, @intCast(token_len)) orelse return -1;
+    const clen: usize = @intCast(ctx_len);
+    if (clen > MAX_CONTEXT) return -2;
+
+    // Validate: alphanum + hyphen + underscore only.
+    var k: usize = 0;
+    while (k < clen) : (k += 1) {
+        const c = ctx_ptr[k];
+        const ok = (c >= '0' and c <= '9') or (c >= 'a' and c <= 'z') or
+            (c >= 'A' and c <= 'Z') or c == '-' or c == '_';
+        if (!ok) return -2;
+    }
+
+    if (clen > 0) @memcpy(peers[idx].context[0..clen], ctx_ptr[0..clen]);
+    peers[idx].context_len = @intCast(clen);
+    return 0;
+}
+
+/// Read a peer's context disambiguator. Writes up to out_cap bytes into out.
+/// Returns context length on success, 0 if unset, -1 if peer index out of
+/// range / inactive. Caller token is not required — context is broadcast-
+/// visible by design (it's how other peers identify which window this is).
+pub export fn coord_read_peer_context(peer_idx: c_int, out: [*]u8, out_cap: c_int) c_int {
+    mutex.lock();
+    defer mutex.unlock();
+    if (peer_idx < 0 or peer_idx >= MAX_PEERS) return -1;
+    const p = &peers[@intCast(peer_idx)];
+    if (!p.active) return -1;
+    const clen: usize = @min(@as(usize, p.context_len), @as(usize, @intCast(out_cap)));
+    if (clen > 0) @memcpy(out[0..clen], p.context[0..clen]);
+    return @intCast(clen);
 }
 
 /// Deregister a peer. Releases any claims it holds.
@@ -438,7 +495,7 @@ pub export fn boj_cartridge_name() [*:0]const u8 {
 }
 
 pub export fn boj_cartridge_version() [*:0]const u8 {
-    return "0.1.0";
+    return "0.2.0";
 }
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -632,6 +689,67 @@ test "broadcast message" {
     // Sender should NOT have the message
     const r1 = coord_receive(&tok1, TOKEN_LEN, &buf, 512);
     try std.testing.expectEqual(@as(c_int, 0), r1);
+
+    coord_reset();
+}
+
+test "set and read peer context" {
+    coord_reset();
+    var tok: [TOKEN_LEN]u8 = undefined;
+    var suf: [4]u8 = undefined;
+    const idx = coord_register(0, &tok, &suf);
+    try std.testing.expect(idx >= 0);
+
+    // Initially empty
+    var ctx_buf: [MAX_CONTEXT]u8 = undefined;
+    const empty = coord_read_peer_context(idx, &ctx_buf, @intCast(ctx_buf.len));
+    try std.testing.expectEqual(@as(c_int, 0), empty);
+
+    // Set a valid context
+    const ctx = "007-lang";
+    const set_ok = coord_set_context(&tok, TOKEN_LEN, ctx.ptr, @intCast(ctx.len));
+    try std.testing.expectEqual(@as(c_int, 0), set_ok);
+
+    // Read it back
+    const read_len = coord_read_peer_context(idx, &ctx_buf, @intCast(ctx_buf.len));
+    try std.testing.expectEqual(@as(c_int, @intCast(ctx.len)), read_len);
+    try std.testing.expect(std.mem.eql(u8, ctx_buf[0..ctx.len], ctx));
+
+    // Bad context (spaces) rejected
+    const bad = "has space";
+    const rc_bad = coord_set_context(&tok, TOKEN_LEN, bad.ptr, @intCast(bad.len));
+    try std.testing.expectEqual(@as(c_int, -2), rc_bad);
+
+    // Original context untouched after rejection
+    const reread = coord_read_peer_context(idx, &ctx_buf, @intCast(ctx_buf.len));
+    try std.testing.expectEqual(@as(c_int, @intCast(ctx.len)), reread);
+
+    // Slot reuse clears context
+    _ = coord_deregister(&tok, TOKEN_LEN);
+    var tok2: [TOKEN_LEN]u8 = undefined;
+    const idx2 = coord_register(0, &tok2, &suf);
+    // Same slot likely re-used; context should be zeroed
+    const after = coord_read_peer_context(idx2, &ctx_buf, @intCast(ctx_buf.len));
+    try std.testing.expectEqual(@as(c_int, 0), after);
+
+    coord_reset();
+}
+
+test "find peer by suffix" {
+    coord_reset();
+    var tok: [TOKEN_LEN]u8 = undefined;
+    var suf: [4]u8 = undefined;
+    const idx = coord_register(0, &tok, &suf);
+    try std.testing.expect(idx >= 0);
+
+    // Lookup should find it
+    const found = coord_find_peer_by_suffix(&suf);
+    try std.testing.expectEqual(@as(c_int, idx), found);
+
+    // Unknown suffix returns -1
+    const miss = [4]u8{ 'z', 'z', 'z', 'z' };
+    const not_found = coord_find_peer_by_suffix(&miss);
+    try std.testing.expectEqual(@as(c_int, -1), not_found);
 
     coord_reset();
 }

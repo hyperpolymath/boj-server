@@ -43,6 +43,28 @@ fn parseToken(token_hex: []const u8, out: *[16]u8) bool {
     return true;
 }
 
+/// Render a peer_id into the caller buffer. Format is `<kind>-<4hex>` when
+/// ctx is empty, `<kind>-<4hex>@<context>` when set. Returns the slice of
+/// buf actually used.
+fn renderPeerId(buf: []u8, kind_str: []const u8, suffix: []const u8, ctx: []const u8) ![]u8 {
+    if (ctx.len == 0) {
+        return try std.fmt.bufPrint(buf, "{s}-{s}", .{ kind_str, suffix });
+    }
+    return try std.fmt.bufPrint(buf, "{s}-{s}@{s}", .{ kind_str, suffix, ctx });
+}
+
+/// Extract the 4-char hex suffix from a target peer_id string. Format is
+/// `<kind>-<4hex>` or `<kind>-<4hex>@<context>`. Returns null if malformed.
+fn extractSuffix(target: []const u8) ?[]const u8 {
+    // Find the last '-' before any '@' — the 4 hex chars follow it.
+    const at_pos = std.mem.indexOfScalar(u8, target, '@') orelse target.len;
+    const left = target[0..at_pos];
+    const dash_pos = std.mem.lastIndexOfScalar(u8, left, '-') orelse return null;
+    const suffix = left[dash_pos + 1 ..];
+    if (suffix.len != 4) return null;
+    return suffix;
+}
+
 fn dispatch(tool: []const u8, body: []const u8, resp: []u8, allocator: std.mem.Allocator) Response {
     if (std.mem.eql(u8, tool, "coord_register")) {
         const parsed = std.json.parseFromSlice(std.json.Value, allocator, body, .{}) catch return .{ .status = 400, .body = errJson(resp, "invalid json") };
@@ -55,10 +77,25 @@ fn dispatch(tool: []const u8, body: []const u8, resp: []u8, allocator: std.mem.A
         if (std.mem.eql(u8, kind_str, "gemini")) kind = 1;
         if (std.mem.eql(u8, kind_str, "copilot")) kind = 2;
 
+        // Optional context for per-window disambiguation.
+        const ctx_str: []const u8 = blk: {
+            const ctx_val = parsed.value.object.get("context") orelse break :blk "";
+            break :blk ctx_val.string;
+        };
+
         var token: [16]u8 = undefined;
         var suffix: [4]u8 = undefined;
         const idx = ffi.coord_register(kind, &token, &suffix);
         if (idx < 0) return .{ .status = 500, .body = errJson(resp, "registry full") };
+
+        if (ctx_str.len > 0) {
+            const set_rc = ffi.coord_set_context(&token, 16, ctx_str.ptr, @intCast(ctx_str.len));
+            if (set_rc < 0) {
+                // Rollback: deregister the half-registered peer so the caller can retry cleanly.
+                _ = ffi.coord_deregister(&token, 16);
+                return .{ .status = 400, .body = errJson(resp, "invalid context (alphanumeric/hyphen/underscore only, max 32 bytes)") };
+            }
+        }
 
         var token_hex: [32]u8 = undefined;
         const hex_chars = "0123456789abcdef";
@@ -67,7 +104,10 @@ fn dispatch(tool: []const u8, body: []const u8, resp: []u8, allocator: std.mem.A
             token_hex[i * 2 + 1] = hex_chars[b & 0x0f];
         }
 
-        const body_out = std.fmt.bufPrint(resp, "{{\"success\":true,\"peer_id\":\"{s}-{s}\",\"token\":\"{s}\"}}", .{ kind_str, suffix, token_hex }) catch return .{ .status = 500, .body = errJson(resp, "buffer overflow") };
+        var peer_id_buf: [96]u8 = undefined;
+        const peer_id = renderPeerId(&peer_id_buf, kind_str, &suffix, ctx_str) catch return .{ .status = 500, .body = errJson(resp, "peer_id render overflow") };
+
+        const body_out = std.fmt.bufPrint(resp, "{{\"success\":true,\"peer_id\":\"{s}\",\"token\":\"{s}\"}}", .{ peer_id, token_hex }) catch return .{ .status = 500, .body = errJson(resp, "buffer overflow") };
         return .{ .status = 200, .body = body_out };
     }
 
@@ -108,9 +148,16 @@ fn dispatch(tool: []const u8, body: []const u8, resp: []u8, allocator: std.mem.A
             const status_len = ffi.coord_read_peer_status(i, &status_buf, @intCast(status_buf.len));
             const status_slice: []const u8 = if (status_len > 0) status_buf[0..@intCast(status_len)] else "";
 
+            var ctx_buf: [32]u8 = undefined;
+            const ctx_len = ffi.coord_read_peer_context(i, &ctx_buf, @intCast(ctx_buf.len));
+            const ctx_slice: []const u8 = if (ctx_len > 0) ctx_buf[0..@intCast(ctx_len)] else "";
+
+            var peer_id_buf: [96]u8 = undefined;
+            const peer_id = renderPeerId(&peer_id_buf, kindName(kind_val), suffix, ctx_slice) catch return .{ .status = 500, .body = errJson(resp, "peer_id render overflow") };
+
             if (written_idx > 0) w.writeAll(",") catch return .{ .status = 500, .body = errJson(resp, "buffer overflow") };
-            std.fmt.format(w, "{{\"peer_id\":\"{s}-{s}\",\"kind\":\"{s}\",\"state\":\"{s}\",\"status\":\"{s}\"}}", .{
-                kindName(kind_val), suffix, kindName(kind_val), stateName(state), status_slice,
+            std.fmt.format(w, "{{\"peer_id\":\"{s}\",\"kind\":\"{s}\",\"state\":\"{s}\",\"context\":\"{s}\",\"status\":\"{s}\"}}", .{
+                peer_id, kindName(kind_val), stateName(state), ctx_slice, status_slice,
             }) catch return .{ .status = 500, .body = errJson(resp, "buffer overflow") };
             written_idx += 1;
         }
@@ -132,9 +179,8 @@ fn dispatch(tool: []const u8, body: []const u8, resp: []u8, allocator: std.mem.A
         const target_str = target_val.string;
         var target_idx: i32 = -1;
         if (!std.mem.eql(u8, target_str, "*")) {
-            // Peer ID format: "<kind>-<suffix>". Extract suffix (last 4 chars).
-            if (target_str.len < 5) return .{ .status = 400, .body = errJson(resp, "invalid target format") };
-            const suffix = target_str[target_str.len - 4 ..];
+            // Peer ID format: "<kind>-<4hex>" or "<kind>-<4hex>@<context>".
+            const suffix = extractSuffix(target_str) orelse return .{ .status = 400, .body = errJson(resp, "invalid target format — expected <kind>-<4hex>[@<context>]") };
             target_idx = ffi.coord_find_peer_by_suffix(suffix.ptr);
             if (target_idx < 0) return .{ .status = 404, .body = errJson(resp, "target peer not found") };
         }

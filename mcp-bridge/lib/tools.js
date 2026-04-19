@@ -267,11 +267,12 @@ function buildToolList() {
   // Local coordination (localhost multi-instance AI coordination — local-coord-mcp cartridge)
   tools.push({
     name: "coord_register",
-    description: "Register this AI instance as a coordination peer on localhost. Returns a hybrid peer ID (e.g. claude-7f3a) and a session token for all subsequent calls. Loopback-only, never exposed beyond 127.0.0.1.",
+    description: "Register this AI instance as a coordination peer on localhost. Returns a peer ID and a session token for all subsequent calls. Loopback-only, never exposed beyond 127.0.0.1. Pass the optional `context` (repo name, tty tag, or similar) to disambiguate multiple windows of the same client_kind on one machine — peer_id becomes <kind>-<4hex>@<context> rather than just <kind>-<4hex>.",
     inputSchema: {
       type: "object",
       properties: {
         client_kind: { type: "string", enum: ["claude", "gemini", "copilot", "custom"], description: "Client type prefix for the peer ID" },
+        context: { type: "string", description: "Optional disambiguator, e.g. current repo name. Alphanumeric + hyphen/underscore, max 32 bytes. Absent = old <kind>-<4hex> form.", maxLength: 32 },
       },
       required: ["client_kind"],
     },

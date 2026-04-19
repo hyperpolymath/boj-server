@@ -28,7 +28,7 @@
   "tier": "Ayo",
   "tools": [
     {
-      "description": "Register this instance as a coordination peer. Returns a hybrid peer ID (e.g. claude-7f3a) and a session token for all subsequent calls.",
+      "description": "Register this instance as a coordination peer. Returns a peer ID and a session token for all subsequent calls. Optional `context` (alphanumeric + hyphen/underscore, max 32 bytes) disambiguates multiple windows of the same client_kind — peer_id becomes <kind>-<4hex>@<context>.",
       "inputSchema": {
         "properties": {
           "client_kind": {
@@ -39,6 +39,10 @@
               "copilot",
               "custom"
             ],
+            "type": "string"
+          },
+          "context": {
+            "description": "Optional per-window disambiguator (repo name, tty label). Alphanumeric/hyphen/underscore only, max 32 chars.",
             "type": "string"
           }
         },
@@ -150,5 +154,5 @@
       "name": "coord_status"
     }
   ],
-  "version": "0.1.0"
+  "version": "0.2.0"
 }

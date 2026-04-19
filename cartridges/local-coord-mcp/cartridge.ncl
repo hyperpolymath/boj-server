@@ -11,7 +11,7 @@
   spdx = "PMPL-1.0-or-later",
   copyright = "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>",
   name = "local-coord-mcp",
-  version = "0.1.0",
+  version = "0.2.0",
   description = "Localhost multi-instance coordination — peer discovery, message passing, and task claiming for parallel AI sessions on the same machine",
   domain = "ai",
   tier = "Ayo",
@@ -35,7 +35,7 @@
   tools = [
     {
       name = "coord_register",
-      description = "Register this instance as a coordination peer. Returns a hybrid peer ID (e.g. claude-7f3a) and a session token for all subsequent calls.",
+      description = "Register this instance as a coordination peer. Returns a peer ID and a session token for all subsequent calls. Optional `context` (alphanumeric + hyphen/underscore, max 32 bytes) disambiguates multiple windows of the same client_kind — peer_id becomes <kind>-<4hex>@<context>.",
       inputSchema = {
         type = "object",
         properties = {
@@ -43,6 +43,10 @@
             type = "string",
             description = "Client type: claude, gemini, copilot, or custom",
             enum = ["claude", "gemini", "copilot", "custom"],
+          },
+          context = {
+            type = "string",
+            description = "Optional per-window disambiguator (repo name, tty label). Alphanumeric/hyphen/underscore only, max 32 chars.",
           },
         },
         required = ["client_kind"],
