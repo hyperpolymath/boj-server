@@ -549,7 +549,7 @@ fn handleConnection(stream: std.net.Stream, allocator: std.mem.Allocator) void {
 
     var http_resp: [512]u8 = undefined;
     const http = std.fmt.bufPrint(&http_resp,
-        "HTTP/1.1 {d} OK\r\nContent-Length: {d}\r\nContent-Type: application/json\r\n\r\n",
+        "HTTP/1.1 {d} OK\r\nContent-Length: {d}\r\nContent-Type: application/json\r\nConnection: close\r\n\r\n",
         .{ result.status, result.body.len }) catch return;
     _ = stream.write(http) catch {};
     _ = stream.write(result.body) catch {};
