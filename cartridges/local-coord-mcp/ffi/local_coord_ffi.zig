@@ -39,6 +39,8 @@ pub const ClientKind = enum(c_int) {
     gemini = 1,
     copilot = 2,
     custom = 3,
+    openai = 4,
+    mistral = 5,
 };
 
 pub const PeerState = enum(c_int) {
@@ -96,6 +98,19 @@ const MAX_CONTEXT: usize = 32;
 /// overclaims. Stored as the raw CSV string so comparison is cheap.
 const MAX_DECLARED: usize = 256;
 
+/// Variant label — free-form model/variant identifier (e.g. "opus-4.7",
+/// "flash-2.5", "leanstral"). Task #33. Alphanumeric + `.`/`-`/`_` only.
+const MAX_VARIANT: usize = 32;
+
+/// Capability class CSV — e.g. "reasoning,coding,proof". Task #34.
+const MAX_CLASS: usize = 128;
+
+/// Prover-strengths CSV — e.g. "coq,isabelle,lean,tlaps". Task #34.
+const MAX_PROVERS: usize = 256;
+
+/// Sentinel for unset capability tier. Valid advertised tiers are 1..5.
+const TIER_UNSET: u8 = 0;
+
 const Peer = struct {
     active: bool,
     kind: ClientKind,
@@ -118,6 +133,15 @@ const Peer = struct {
     // Declared affinities (CSV of tag names)
     declared_affinities: [MAX_DECLARED]u8,
     declared_affinities_len: u16,
+    // Task #33 — model/variant label (e.g. "opus-4.7", "flash-2.5")
+    variant: [MAX_VARIANT]u8,
+    variant_len: u8,
+    // Task #34 — capability advertisement
+    class_csv: [MAX_CLASS]u8,
+    class_csv_len: u16,
+    tier: u8, // 0 = unset (TIER_UNSET), 1..5 = advertised tier
+    prover_strengths: [MAX_PROVERS]u8,
+    prover_strengths_len: u16,
 };
 
 const empty_peer = Peer{
@@ -138,6 +162,13 @@ const empty_peer = Peer{
     .context_len = 0,
     .declared_affinities = [_]u8{0} ** MAX_DECLARED,
     .declared_affinities_len = 0,
+    .variant = [_]u8{0} ** MAX_VARIANT,
+    .variant_len = 0,
+    .class_csv = [_]u8{0} ** MAX_CLASS,
+    .class_csv_len = 0,
+    .tier = TIER_UNSET,
+    .prover_strengths = [_]u8{0} ** MAX_PROVERS,
+    .prover_strengths_len = 0,
 };
 
 var peers: [MAX_PEERS]Peer = [_]Peer{empty_peer} ** MAX_PEERS;
@@ -372,7 +403,7 @@ pub export fn coord_read_peer_kind(peer_idx: c_int) c_int {
 
 /// Default role for a client_kind when no explicit hint is given.
 /// claude -> journeyman (trusted to act solo on Tier 2)
-/// everything else -> apprentice (Tier 2+ gated by master)
+/// everything else (gemini, copilot, custom, openai, mistral) -> apprentice
 fn defaultRoleForKind(kind: ClientKind) Role {
     return switch (kind) {
         .claude => .journeyman,
@@ -424,6 +455,11 @@ pub export fn coord_register(kind: c_int, role_hint: c_int, token_out: [*]u8, su
             p.inbox_count = 0;
             p.status_len = 0;
             p.context_len = 0; // reset on slot reuse
+            p.declared_affinities_len = 0;
+            p.variant_len = 0;
+            p.class_csv_len = 0;
+            p.tier = TIER_UNSET;
+            p.prover_strengths_len = 0;
 
             @memcpy(token_out[0..TOKEN_LEN], &p.token);
             @memcpy(suffix_out[0..4], &p.suffix);
@@ -650,6 +686,160 @@ pub export fn coord_read_peer_context(peer_idx: c_int, out: [*]u8, out_cap: c_in
     return @intCast(clen);
 }
 
+// ═══════════════════════════════════════════════════════════════════════
+// Task #33 — variant label (model / variant identifier)
+// ═══════════════════════════════════════════════════════════════════════
+
+/// Set a free-form model/variant label for this peer (e.g. "opus-4.7",
+/// "flash-2.5", "leanstral"). Alphanumeric + `.`/`-`/`_` only, max
+/// MAX_VARIANT bytes; anything else returns -2 and the existing variant
+/// is untouched. Empty (len=0) clears the variant.
+pub export fn coord_set_variant(
+    token_ptr: [*]const u8,
+    token_len: c_int,
+    variant_ptr: [*]const u8,
+    variant_len: c_int,
+) c_int {
+    mutex.lock();
+    defer mutex.unlock();
+
+    const idx = findPeerByToken(token_ptr, @intCast(token_len)) orelse return -1;
+    const vlen: usize = @intCast(variant_len);
+    if (vlen > MAX_VARIANT) return -2;
+
+    var k: usize = 0;
+    while (k < vlen) : (k += 1) {
+        const c = variant_ptr[k];
+        const ok = (c >= '0' and c <= '9') or (c >= 'a' and c <= 'z') or
+            (c >= 'A' and c <= 'Z') or c == '-' or c == '_' or c == '.';
+        if (!ok) return -2;
+    }
+
+    if (vlen > 0) @memcpy(peers[idx].variant[0..vlen], variant_ptr[0..vlen]);
+    peers[idx].variant_len = @intCast(vlen);
+    dur.logPeerVariantSet(@intCast(idx), variant_ptr[0..vlen]);
+    return 0;
+}
+
+/// Read a peer's variant label. Writes up to out_cap bytes into out.
+/// Returns variant length on success, 0 if unset, -1 if peer index out of
+/// range / inactive. Caller token is not required — variant is broadcast-
+/// visible by design (other peers use it for cold-start routing).
+pub export fn coord_read_peer_variant(peer_idx: c_int, out: [*]u8, out_cap: c_int) c_int {
+    mutex.lock();
+    defer mutex.unlock();
+    if (peer_idx < 0 or peer_idx >= MAX_PEERS) return -1;
+    const p = &peers[@intCast(peer_idx)];
+    if (!p.active) return -1;
+    const vlen: usize = @min(@as(usize, p.variant_len), @as(usize, @intCast(out_cap)));
+    if (vlen > 0) @memcpy(out[0..vlen], p.variant[0..vlen]);
+    return @intCast(vlen);
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// Task #34 — capability advertisement (class / tier / prover_strengths)
+// ═══════════════════════════════════════════════════════════════════════
+
+/// Set this peer's advertised capabilities in one shot.
+///   class       — CSV of capability classes (e.g. "reasoning,coding").
+///                 Max MAX_CLASS bytes. Empty clears.
+///   tier        — 0 (unset) or 1..5 (advertised tier). >5 is clamped-reject (-2).
+///   provers     — CSV of prover strengths (e.g. "coq,lean"). Max MAX_PROVERS bytes.
+///
+/// Validation is minimal (length + tier range) so the engine can treat
+/// the fields as opaque hints; the reassignment loop does the semantic
+/// cross-check against track_record later.
+///
+/// Returns 0 on success, -1 on bad token, -2 on range/length violation.
+pub export fn coord_set_capabilities(
+    token_ptr: [*]const u8,
+    token_len: c_int,
+    class_ptr: [*]const u8,
+    class_len: c_int,
+    tier: c_int,
+    provers_ptr: [*]const u8,
+    provers_len: c_int,
+) c_int {
+    mutex.lock();
+    defer mutex.unlock();
+
+    const idx = findPeerByToken(token_ptr, @intCast(token_len)) orelse return -1;
+    const clen: usize = @intCast(class_len);
+    const plen: usize = @intCast(provers_len);
+    if (clen > MAX_CLASS) return -2;
+    if (plen > MAX_PROVERS) return -2;
+    if (tier < 0 or tier > 5) return -2;
+
+    // Reject bytes that would break CSV or JSON rendering. Allow the
+    // union of [A-Za-z0-9], `.`, `-`, `_`, `+`, `/`, and `,` (the CSV
+    // separator itself).
+    var k: usize = 0;
+    while (k < clen) : (k += 1) {
+        const c = class_ptr[k];
+        const ok = (c >= '0' and c <= '9') or (c >= 'a' and c <= 'z') or
+            (c >= 'A' and c <= 'Z') or c == '-' or c == '_' or c == '.' or
+            c == '+' or c == '/' or c == ',';
+        if (!ok) return -2;
+    }
+    k = 0;
+    while (k < plen) : (k += 1) {
+        const c = provers_ptr[k];
+        const ok = (c >= '0' and c <= '9') or (c >= 'a' and c <= 'z') or
+            (c >= 'A' and c <= 'Z') or c == '-' or c == '_' or c == '.' or
+            c == '+' or c == '/' or c == ',';
+        if (!ok) return -2;
+    }
+
+    const p = &peers[idx];
+    if (clen > 0) @memcpy(p.class_csv[0..clen], class_ptr[0..clen]);
+    p.class_csv_len = @intCast(clen);
+    p.tier = @intCast(tier);
+    if (plen > 0) @memcpy(p.prover_strengths[0..plen], provers_ptr[0..plen]);
+    p.prover_strengths_len = @intCast(plen);
+
+    dur.logPeerCapabilitiesSet(
+        @intCast(idx),
+        p.tier,
+        class_ptr[0..clen],
+        provers_ptr[0..plen],
+    );
+    return 0;
+}
+
+/// Read a peer's class CSV. Returns length, 0 if unset, -1 if idx invalid.
+pub export fn coord_read_peer_class(peer_idx: c_int, out: [*]u8, out_cap: c_int) c_int {
+    mutex.lock();
+    defer mutex.unlock();
+    if (peer_idx < 0 or peer_idx >= MAX_PEERS) return -1;
+    const p = &peers[@intCast(peer_idx)];
+    if (!p.active) return -1;
+    const clen: usize = @min(@as(usize, p.class_csv_len), @as(usize, @intCast(out_cap)));
+    if (clen > 0) @memcpy(out[0..clen], p.class_csv[0..clen]);
+    return @intCast(clen);
+}
+
+/// Read a peer's advertised tier. Returns 0 (unset) or 1..5, or -1 if idx invalid.
+pub export fn coord_read_peer_tier(peer_idx: c_int) c_int {
+    mutex.lock();
+    defer mutex.unlock();
+    if (peer_idx < 0 or peer_idx >= MAX_PEERS) return -1;
+    const p = &peers[@intCast(peer_idx)];
+    if (!p.active) return -1;
+    return @intCast(p.tier);
+}
+
+/// Read a peer's prover-strengths CSV. Returns length, 0 if unset, -1 if idx invalid.
+pub export fn coord_read_peer_provers(peer_idx: c_int, out: [*]u8, out_cap: c_int) c_int {
+    mutex.lock();
+    defer mutex.unlock();
+    if (peer_idx < 0 or peer_idx >= MAX_PEERS) return -1;
+    const p = &peers[@intCast(peer_idx)];
+    if (!p.active) return -1;
+    const plen: usize = @min(@as(usize, p.prover_strengths_len), @as(usize, @intCast(out_cap)));
+    if (plen > 0) @memcpy(out[0..plen], p.prover_strengths[0..plen]);
+    return @intCast(plen);
+}
+
 /// Deregister a peer. Releases any claims it holds.
 pub export fn coord_deregister(token_ptr: [*]const u8, token_len: c_int) c_int {
     mutex.lock();
@@ -788,8 +978,9 @@ const REJECT_LIMIT: usize = 5;
 const COOLDOWN_MS: u64 = 30 * 1000;
 
 // Timestamps of the most recent rejections per client_kind, as a small
-// ring. ClientKind enum has 4 variants — one slot each.
-const KIND_COUNT: usize = 4;
+// ring. ClientKind enum has 6 variants — one slot each.
+// (Task #33: extended from 4 → 6 for openai + mistral.)
+const KIND_COUNT: usize = 6;
 var reject_ring: [KIND_COUNT][REJECT_LIMIT]u64 = [_][REJECT_LIMIT]u64{[_]u64{0} ** REJECT_LIMIT} ** KIND_COUNT;
 var reject_head: [KIND_COUNT]usize = [_]usize{0} ** KIND_COUNT;
 
@@ -1680,6 +1871,11 @@ fn replayDispatch(event: dur.EventType, payload: []const u8) void {
             p.inbox_count = 0;
             p.status_len = 0;
             p.context_len = 0;
+            p.declared_affinities_len = 0;
+            p.variant_len = 0;
+            p.class_csv_len = 0;
+            p.tier = TIER_UNSET;
+            p.prover_strengths_len = 0;
         },
         .peer_remove => {
             const idx = dur.decodeSlotIdx(payload) orelse return;
@@ -1792,6 +1988,25 @@ fn replayDispatch(event: dur.EventType, payload: []const u8) void {
             const d = dur.decodeTrackUpdate(payload) orelse return;
             recordTrackReplay(d.client_kind, d.outcome, d.risk_tier, d.duration_ms, d.timestamp_ms, d.tag, d.confidence_pct);
         },
+        .peer_variant_set => {
+            const d = dur.decodePeerVariantSet(payload) orelse return;
+            if (d.slot_idx >= MAX_PEERS) return;
+            const p = &peers[d.slot_idx];
+            if (d.variant.len > MAX_VARIANT) return;
+            if (d.variant.len > 0) @memcpy(p.variant[0..d.variant.len], d.variant);
+            p.variant_len = @intCast(d.variant.len);
+        },
+        .peer_capabilities_set => {
+            const d = dur.decodePeerCapabilitiesSet(payload) orelse return;
+            if (d.slot_idx >= MAX_PEERS) return;
+            const p = &peers[d.slot_idx];
+            if (d.class.len > MAX_CLASS or d.provers.len > MAX_PROVERS) return;
+            if (d.class.len > 0) @memcpy(p.class_csv[0..d.class.len], d.class);
+            p.class_csv_len = @intCast(d.class.len);
+            p.tier = d.tier;
+            if (d.provers.len > 0) @memcpy(p.prover_strengths[0..d.provers.len], d.provers);
+            p.prover_strengths_len = @intCast(d.provers.len);
+        },
         else => {},
     }
 }
@@ -1801,7 +2016,7 @@ pub export fn boj_cartridge_name() [*:0]const u8 {
 }
 
 pub export fn boj_cartridge_version() [*:0]const u8 {
-    return "0.2.0";
+    return "0.7.0";
 }
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -2076,6 +2291,102 @@ test "default role derives from client_kind" {
     const x_idx = coord_register(3, -1, &tok, &suf);
     try std.testing.expect(x_idx >= 0);
     try std.testing.expectEqual(@as(c_int, @intFromEnum(Role.apprentice)), coord_read_peer_role(x_idx));
+
+    // openai -> apprentice (Task #33)
+    const o_idx = coord_register(4, -1, &tok, &suf);
+    try std.testing.expect(o_idx >= 0);
+    try std.testing.expectEqual(@as(c_int, @intFromEnum(Role.apprentice)), coord_read_peer_role(o_idx));
+    try std.testing.expectEqual(@as(c_int, 4), coord_read_peer_kind(o_idx));
+
+    // mistral -> apprentice (Task #33)
+    const m_idx = coord_register(5, -1, &tok, &suf);
+    try std.testing.expect(m_idx >= 0);
+    try std.testing.expectEqual(@as(c_int, @intFromEnum(Role.apprentice)), coord_read_peer_role(m_idx));
+    try std.testing.expectEqual(@as(c_int, 5), coord_read_peer_kind(m_idx));
+
+    coord_reset();
+}
+
+test "set and read peer variant (Task #33)" {
+    coord_reset();
+    var tok: [TOKEN_LEN]u8 = undefined;
+    var suf: [4]u8 = undefined;
+    const idx = coord_register(4, -1, &tok, &suf); // openai
+    try std.testing.expect(idx >= 0);
+
+    // Initially empty.
+    var vbuf: [MAX_VARIANT]u8 = undefined;
+    try std.testing.expectEqual(@as(c_int, 0), coord_read_peer_variant(idx, &vbuf, @intCast(vbuf.len)));
+
+    // Valid variant.
+    const v = "opus-4.7";
+    try std.testing.expectEqual(@as(c_int, 0), coord_set_variant(&tok, TOKEN_LEN, v.ptr, @intCast(v.len)));
+    const n = coord_read_peer_variant(idx, &vbuf, @intCast(vbuf.len));
+    try std.testing.expectEqual(@as(c_int, @intCast(v.len)), n);
+    try std.testing.expect(std.mem.eql(u8, vbuf[0..v.len], v));
+
+    // Reject spaces.
+    const bad = "has space";
+    try std.testing.expectEqual(@as(c_int, -2), coord_set_variant(&tok, TOKEN_LEN, bad.ptr, @intCast(bad.len)));
+
+    // Slot reuse clears variant.
+    _ = coord_deregister(&tok, TOKEN_LEN);
+    var tok2: [TOKEN_LEN]u8 = undefined;
+    const idx2 = coord_register(4, -1, &tok2, &suf);
+    try std.testing.expectEqual(@as(c_int, 0), coord_read_peer_variant(idx2, &vbuf, @intCast(vbuf.len)));
+
+    coord_reset();
+}
+
+test "set and read peer capabilities (Task #34)" {
+    coord_reset();
+    var tok: [TOKEN_LEN]u8 = undefined;
+    var suf: [4]u8 = undefined;
+    const idx = coord_register(0, -1, &tok, &suf); // claude
+    try std.testing.expect(idx >= 0);
+
+    const class = "reasoning,coding,proof";
+    const provers = "coq,lean,tlaps";
+    const rc = coord_set_capabilities(
+        &tok, TOKEN_LEN,
+        class.ptr, @intCast(class.len),
+        5,
+        provers.ptr, @intCast(provers.len),
+    );
+    try std.testing.expectEqual(@as(c_int, 0), rc);
+
+    try std.testing.expectEqual(@as(c_int, 5), coord_read_peer_tier(idx));
+
+    var cbuf: [MAX_CLASS]u8 = undefined;
+    const cn = coord_read_peer_class(idx, &cbuf, @intCast(cbuf.len));
+    try std.testing.expectEqual(@as(c_int, @intCast(class.len)), cn);
+    try std.testing.expect(std.mem.eql(u8, cbuf[0..class.len], class));
+
+    var pbuf: [MAX_PROVERS]u8 = undefined;
+    const pn = coord_read_peer_provers(idx, &pbuf, @intCast(pbuf.len));
+    try std.testing.expectEqual(@as(c_int, @intCast(provers.len)), pn);
+    try std.testing.expect(std.mem.eql(u8, pbuf[0..provers.len], provers));
+
+    // tier out of range rejected.
+    const rc_bad_tier = coord_set_capabilities(
+        &tok, TOKEN_LEN,
+        class.ptr, @intCast(class.len),
+        99,
+        provers.ptr, @intCast(provers.len),
+    );
+    try std.testing.expectEqual(@as(c_int, -2), rc_bad_tier);
+    // Prior value retained on rejection.
+    try std.testing.expectEqual(@as(c_int, 5), coord_read_peer_tier(idx));
+
+    // Bad char (quote) in class CSV rejected.
+    const bad_class = "a\",b";
+    const rc_bad_char = coord_set_capabilities(
+        &tok, TOKEN_LEN,
+        bad_class.ptr, @intCast(bad_class.len),
+        3,
+        provers.ptr, @intCast(provers.len),
+    );
+    try std.testing.expectEqual(@as(c_int, -2), rc_bad_char);
 
     coord_reset();
 }

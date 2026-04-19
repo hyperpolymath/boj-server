@@ -24,8 +24,40 @@ fn kindName(kind: i32) []const u8 {
         0 => "claude",
         1 => "gemini",
         2 => "copilot",
+        4 => "openai",
+        5 => "mistral",
         else => "custom",
     };
+}
+
+/// Map the client_kind JSON string to the FFI integer. Unknown names
+/// fall through to `custom` (3) — matches the enum's catch-all.
+fn kindFromString(s: []const u8) i32 {
+    if (std.mem.eql(u8, s, "claude")) return 0;
+    if (std.mem.eql(u8, s, "gemini")) return 1;
+    if (std.mem.eql(u8, s, "copilot")) return 2;
+    if (std.mem.eql(u8, s, "openai")) return 4;
+    if (std.mem.eql(u8, s, "mistral")) return 5;
+    return 3; // custom
+}
+
+/// Fold a JSON array of strings into a CSV, respecting `cap`. Items that
+/// are not strings are skipped. Used for declared_affinities, class, and
+/// prover_strengths at register time.
+fn arrayToCsv(items: []const std.json.Value, buf: []u8) usize {
+    var len: usize = 0;
+    for (items) |item| {
+        if (item != .string) continue;
+        const s = item.string;
+        if (len > 0 and len < buf.len) {
+            buf[len] = ',';
+            len += 1;
+        }
+        const to_copy: usize = @min(s.len, buf.len - len);
+        if (to_copy > 0) @memcpy(buf[len .. len + to_copy], s[0..to_copy]);
+        len += to_copy;
+    }
+    return len;
 }
 
 fn stateName(state: i32) []const u8 {
@@ -72,10 +104,7 @@ fn dispatch(tool: []const u8, body: []const u8, resp: []u8, allocator: std.mem.A
 
         const kind_val = parsed.value.object.get("client_kind") orelse return .{ .status = 400, .body = errJson(resp, "missing client_kind") };
         const kind_str = kind_val.string;
-        var kind: i32 = 3;
-        if (std.mem.eql(u8, kind_str, "claude")) kind = 0;
-        if (std.mem.eql(u8, kind_str, "gemini")) kind = 1;
-        if (std.mem.eql(u8, kind_str, "copilot")) kind = 2;
+        const kind: i32 = kindFromString(kind_str);
 
         // Optional context for per-window disambiguation.
         const ctx_str: []const u8 = blk: {
@@ -117,20 +146,61 @@ fn dispatch(tool: []const u8, body: []const u8, resp: []u8, allocator: std.mem.A
         if (parsed.value.object.get("declared_affinities")) |decl_val| {
             if (decl_val == .array) {
                 var csv_buf: [256]u8 = undefined;
-                var csv_len: usize = 0;
-                for (decl_val.array.items) |item| {
-                    if (item != .string) continue;
-                    const s = item.string;
-                    if (csv_len > 0 and csv_len < csv_buf.len) {
-                        csv_buf[csv_len] = ',';
-                        csv_len += 1;
-                    }
-                    const to_copy: usize = @min(s.len, csv_buf.len - csv_len);
-                    if (to_copy > 0) @memcpy(csv_buf[csv_len .. csv_len + to_copy], s[0..to_copy]);
-                    csv_len += to_copy;
-                }
+                const csv_len = arrayToCsv(decl_val.array.items, &csv_buf);
                 if (csv_len > 0) {
                     _ = ffi.coord_set_declared_affinities(&token, 16, &csv_buf, @intCast(csv_len));
+                }
+            }
+        }
+
+        // Task #33 — optional free-form variant label (e.g. "opus-4.7").
+        // Invalid chars / oversize → rollback so the caller sees a clear 400.
+        if (parsed.value.object.get("variant")) |var_val| {
+            if (var_val == .string) {
+                const vs = var_val.string;
+                if (vs.len > 0) {
+                    const rc = ffi.coord_set_variant(&token, 16, vs.ptr, @intCast(vs.len));
+                    if (rc < 0) {
+                        _ = ffi.coord_deregister(&token, 16);
+                        return .{ .status = 400, .body = errJson(resp, "invalid variant (alphanum / . / - / _ only, max 32 bytes)") };
+                    }
+                }
+            }
+        }
+
+        // Task #34 — optional capability advertisement block:
+        //   "capabilities": { "class": [...], "tier": 1..5, "prover_strengths": [...] }
+        // All three keys are individually optional. Oversized / bad tier → 400 + rollback.
+        if (parsed.value.object.get("capabilities")) |caps_val| {
+            if (caps_val == .object) {
+                var class_buf: [128]u8 = undefined;
+                var class_len: usize = 0;
+                if (caps_val.object.get("class")) |cv| {
+                    if (cv == .array) class_len = arrayToCsv(cv.array.items, &class_buf);
+                }
+
+                var tier: i32 = 0;
+                if (caps_val.object.get("tier")) |tv| {
+                    if (tv == .integer) tier = @intCast(tv.integer);
+                }
+
+                var pro_buf: [256]u8 = undefined;
+                var pro_len: usize = 0;
+                if (caps_val.object.get("prover_strengths")) |pv| {
+                    if (pv == .array) pro_len = arrayToCsv(pv.array.items, &pro_buf);
+                }
+
+                if (class_len != 0 or tier != 0 or pro_len != 0) {
+                    const rc = ffi.coord_set_capabilities(
+                        &token, 16,
+                        &class_buf, @intCast(class_len),
+                        tier,
+                        &pro_buf, @intCast(pro_len),
+                    );
+                    if (rc < 0) {
+                        _ = ffi.coord_deregister(&token, 16);
+                        return .{ .status = 400, .body = errJson(resp, "invalid capabilities (tier 0..5, class ≤128B, prover_strengths ≤256B)") };
+                    }
                 }
             }
         }
@@ -190,12 +260,16 @@ fn dispatch(tool: []const u8, body: []const u8, resp: []u8, allocator: std.mem.A
             const ctx_len = ffi.coord_read_peer_context(i, &ctx_buf, @intCast(ctx_buf.len));
             const ctx_slice: []const u8 = if (ctx_len > 0) ctx_buf[0..@intCast(ctx_len)] else "";
 
+            var variant_buf: [32]u8 = undefined;
+            const v_len = ffi.coord_read_peer_variant(i, &variant_buf, @intCast(variant_buf.len));
+            const variant_slice: []const u8 = if (v_len > 0) variant_buf[0..@intCast(v_len)] else "";
+
             var peer_id_buf: [96]u8 = undefined;
             const peer_id = renderPeerId(&peer_id_buf, kindName(kind_val), suffix, ctx_slice) catch return .{ .status = 500, .body = errJson(resp, "peer_id render overflow") };
 
             if (written_idx > 0) w.writeAll(",") catch return .{ .status = 500, .body = errJson(resp, "buffer overflow") };
-            std.fmt.format(w, "{{\"peer_id\":\"{s}\",\"kind\":\"{s}\",\"state\":\"{s}\",\"context\":\"{s}\",\"status\":\"{s}\"}}", .{
-                peer_id, kindName(kind_val), stateName(state), ctx_slice, status_slice,
+            std.fmt.format(w, "{{\"peer_id\":\"{s}\",\"kind\":\"{s}\",\"state\":\"{s}\",\"context\":\"{s}\",\"variant\":\"{s}\",\"status\":\"{s}\"}}", .{
+                peer_id, kindName(kind_val), stateName(state), ctx_slice, variant_slice, status_slice,
             }) catch return .{ .status = 500, .body = errJson(resp, "buffer overflow") };
             written_idx += 1;
         }
@@ -631,7 +705,137 @@ fn dispatch(tool: []const u8, body: []const u8, resp: []u8, allocator: std.mem.A
         return .{ .status = 500, .body = errJson(resp, "reject failed") };
     }
 
+    if (std.mem.eql(u8, tool, "coord_set_variant")) {
+        const parsed = std.json.parseFromSlice(std.json.Value, allocator, body, .{}) catch return .{ .status = 400, .body = errJson(resp, "invalid json") };
+        defer parsed.deinit();
+        const token_val = parsed.value.object.get("token") orelse return .{ .status = 400, .body = errJson(resp, "missing token") };
+        const variant_val = parsed.value.object.get("variant") orelse return .{ .status = 400, .body = errJson(resp, "missing variant") };
+        if (variant_val != .string) return .{ .status = 400, .body = errJson(resp, "variant must be a string") };
+
+        var token: [16]u8 = undefined;
+        if (!parseToken(token_val.string, &token)) return .{ .status = 400, .body = errJson(resp, "invalid token hex") };
+
+        const vs = variant_val.string;
+        const rc = ffi.coord_set_variant(&token, 16, vs.ptr, @intCast(vs.len));
+        if (rc == 0) return .{ .status = 200, .body = okJson(resp, "set") };
+        if (rc == -1) return .{ .status = 401, .body = errJson(resp, "unauthenticated") };
+        if (rc == -2) return .{ .status = 400, .body = errJson(resp, "invalid variant (alphanum / . / - / _ only, max 32 bytes)") };
+        return .{ .status = 500, .body = errJson(resp, "set_variant failed") };
+    }
+
+    if (std.mem.eql(u8, tool, "coord_set_capabilities")) {
+        const parsed = std.json.parseFromSlice(std.json.Value, allocator, body, .{}) catch return .{ .status = 400, .body = errJson(resp, "invalid json") };
+        defer parsed.deinit();
+        const token_val = parsed.value.object.get("token") orelse return .{ .status = 400, .body = errJson(resp, "missing token") };
+        var token: [16]u8 = undefined;
+        if (!parseToken(token_val.string, &token)) return .{ .status = 400, .body = errJson(resp, "invalid token hex") };
+
+        var class_buf: [128]u8 = undefined;
+        var class_len: usize = 0;
+        if (parsed.value.object.get("class")) |cv| {
+            if (cv == .array) class_len = arrayToCsv(cv.array.items, &class_buf);
+        }
+
+        var tier: i32 = 0;
+        if (parsed.value.object.get("tier")) |tv| {
+            if (tv == .integer) tier = @intCast(tv.integer);
+        }
+
+        var pro_buf: [256]u8 = undefined;
+        var pro_len: usize = 0;
+        if (parsed.value.object.get("prover_strengths")) |pv| {
+            if (pv == .array) pro_len = arrayToCsv(pv.array.items, &pro_buf);
+        }
+
+        const rc = ffi.coord_set_capabilities(
+            &token, 16,
+            &class_buf, @intCast(class_len),
+            tier,
+            &pro_buf, @intCast(pro_len),
+        );
+        if (rc == 0) return .{ .status = 200, .body = okJson(resp, "set") };
+        if (rc == -1) return .{ .status = 401, .body = errJson(resp, "unauthenticated") };
+        if (rc == -2) return .{ .status = 400, .body = errJson(resp, "invalid capabilities (tier 0..5, class ≤128B, prover_strengths ≤256B)") };
+        return .{ .status = 500, .body = errJson(resp, "set_capabilities failed") };
+    }
+
+    if (std.mem.eql(u8, tool, "coord_get_peer_capabilities")) {
+        const parsed = std.json.parseFromSlice(std.json.Value, allocator, body, .{}) catch return .{ .status = 400, .body = errJson(resp, "invalid json") };
+        defer parsed.deinit();
+        const token_val = parsed.value.object.get("token") orelse return .{ .status = 400, .body = errJson(resp, "missing token") };
+        const target_val = parsed.value.object.get("peer_id") orelse return .{ .status = 400, .body = errJson(resp, "missing peer_id") };
+
+        var token: [16]u8 = undefined;
+        if (!parseToken(token_val.string, &token)) return .{ .status = 400, .body = errJson(resp, "invalid token hex") };
+
+        // Validate caller token by calling any authenticated read; the cheapest
+        // is coord_list_peers with a zero-cap buffer (returns -1 on bad token).
+        var probe: [1]u8 = undefined;
+        if (ffi.coord_list_peers(&token, 16, &probe, 0) < 0) {
+            return .{ .status = 401, .body = errJson(resp, "unauthenticated") };
+        }
+
+        const target_str = target_val.string;
+        const suffix = extractSuffix(target_str) orelse return .{ .status = 400, .body = errJson(resp, "invalid peer_id format — expected <kind>-<4hex>[@<context>]") };
+        const peer_idx = ffi.coord_find_peer_by_suffix(suffix.ptr);
+        if (peer_idx < 0) return .{ .status = 404, .body = errJson(resp, "peer not found") };
+
+        // Read each component separately; renderJSON arrays from CSVs.
+        var class_buf: [128]u8 = undefined;
+        const class_n = ffi.coord_read_peer_class(peer_idx, &class_buf, @intCast(class_buf.len));
+        const class_slice: []const u8 = if (class_n > 0) class_buf[0..@intCast(class_n)] else "";
+
+        const tier_val = ffi.coord_read_peer_tier(peer_idx);
+
+        var pro_buf: [256]u8 = undefined;
+        const pro_n = ffi.coord_read_peer_provers(peer_idx, &pro_buf, @intCast(pro_buf.len));
+        const pro_slice: []const u8 = if (pro_n > 0) pro_buf[0..@intCast(pro_n)] else "";
+
+        var variant_buf: [32]u8 = undefined;
+        const v_n = ffi.coord_read_peer_variant(peer_idx, &variant_buf, @intCast(variant_buf.len));
+        const variant_slice: []const u8 = if (v_n > 0) variant_buf[0..@intCast(v_n)] else "";
+
+        const kind_val = ffi.coord_read_peer_kind(peer_idx);
+
+        // Reconstruct the canonical peer_id from server-side state rather than
+        // echoing user input. Avoids reflecting any unvalidated chars into JSON.
+        var ctx_buf2: [32]u8 = undefined;
+        const ctx_n = ffi.coord_read_peer_context(peer_idx, &ctx_buf2, @intCast(ctx_buf2.len));
+        const ctx_slice2: []const u8 = if (ctx_n > 0) ctx_buf2[0..@intCast(ctx_n)] else "";
+        var canon_id_buf: [96]u8 = undefined;
+        const canon_id = renderPeerId(&canon_id_buf, kindName(kind_val), suffix, ctx_slice2) catch return .{ .status = 500, .body = errJson(resp, "peer_id render overflow") };
+
+        var stream = std.io.fixedBufferStream(resp);
+        const w = stream.writer();
+        std.fmt.format(w,
+            "{{\"success\":true,\"peer_id\":\"{s}\",\"kind\":\"{s}\",\"variant\":\"{s}\",\"tier\":{d},\"class\":[",
+            .{ canon_id, kindName(kind_val), variant_slice, tier_val },
+        ) catch return .{ .status = 500, .body = errJson(resp, "buffer overflow") };
+        writeCsvAsJsonStrings(w, class_slice) catch return .{ .status = 500, .body = errJson(resp, "buffer overflow") };
+        w.writeAll("],\"prover_strengths\":[") catch return .{ .status = 500, .body = errJson(resp, "buffer overflow") };
+        writeCsvAsJsonStrings(w, pro_slice) catch return .{ .status = 500, .body = errJson(resp, "buffer overflow") };
+        w.writeAll("]}") catch return .{ .status = 500, .body = errJson(resp, "buffer overflow") };
+        return .{ .status = 200, .body = resp[0..stream.pos] };
+    }
+
     return .{ .status = 404, .body = errJson(resp, "not implemented") };
+}
+
+/// Emit a CSV (comma-separated, no quoting) as a JSON array of strings
+/// into the writer. Empty CSV → empty output. Caller supplies surrounding
+/// `[` and `]`.
+fn writeCsvAsJsonStrings(w: anytype, csv: []const u8) !void {
+    if (csv.len == 0) return;
+    var it = std.mem.splitScalar(u8, csv, ',');
+    var first = true;
+    while (it.next()) |part| {
+        if (part.len == 0) continue;
+        if (!first) try w.writeAll(",");
+        first = false;
+        try w.writeAll("\"");
+        try w.writeAll(part);
+        try w.writeAll("\"");
+    }
 }
 
 fn handleConnection(stream: std.net.Stream, allocator: std.mem.Allocator) void {

@@ -11,7 +11,7 @@
   spdx = "PMPL-1.0-or-later",
   copyright = "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>",
   name = "local-coord-mcp",
-  version = "0.3.0",
+  version = "0.7.0",
   description = "Localhost multi-instance coordination — peer discovery, message passing, and task claiming for parallel AI sessions on the same machine",
   domain = "ai",
   tier = "Ayo",
@@ -35,14 +35,14 @@
   tools = [
     {
       name = "coord_register",
-      description = "Register this instance as a coordination peer. Returns a peer ID and a session token for all subsequent calls. Optional `context` (alphanumeric + hyphen/underscore, max 32 bytes) disambiguates multiple windows of the same client_kind — peer_id becomes <kind>-<4hex>@<context>.",
+      description = "Register this instance as a coordination peer. Returns a peer ID and a session token for all subsequent calls. Optional `context` (alphanumeric + hyphen/underscore, max 32 bytes) disambiguates multiple windows of the same client_kind — peer_id becomes <kind>-<4hex>@<context>. Optional `variant` is a free-form model identifier (e.g. `opus-4.7`, `flash-2.5`, `leanstral`). Optional `capabilities` advertises class / tier / prover_strengths for cold-start routing (Task #34).",
       inputSchema = {
         type = "object",
         properties = {
           client_kind = {
             type = "string",
-            description = "Client type: claude, gemini, copilot, or custom",
-            enum = ["claude", "gemini", "copilot", "custom"],
+            description = "Client family: claude, gemini, copilot, openai, mistral, or custom (Task #33).",
+            enum = ["claude", "gemini", "copilot", "custom", "openai", "mistral"],
           },
           context = {
             type = "string",
@@ -52,6 +52,32 @@
             type = "string",
             description = "Optional requested role (DD-32). master is ALWAYS rejected here — promote via coord_promote_to_master. Default derived from client_kind (claude->journeyman, others->apprentice). Old names (executor, supervised) accepted as aliases for one release.",
             enum = ["journeyman", "apprentice", "executor", "supervised"],
+          },
+          variant = {
+            type = "string",
+            description = "Free-form model/variant label (Task #33). Alphanumeric + `.`/`-`/`_` only, max 32 bytes. e.g. `opus-4.7`, `flash-2.5`, `leanstral`.",
+          },
+          capabilities = {
+            type = "object",
+            description = "Capability advertisement used for cold-start routing (Task #34). All three keys are individually optional.",
+            properties = {
+              class = {
+                type = "array",
+                description = "Capability classes (e.g. `reasoning`, `coding`, `proof`, `grammar`). Joined as CSV internally, max 128 bytes total.",
+                items = { type = "string" },
+              },
+              tier = {
+                type = "integer",
+                description = "Advertised capability tier 1..5 (0 = unset).",
+                minimum = 0,
+                maximum = 5,
+              },
+              prover_strengths = {
+                type = "array",
+                description = "Prover names this peer claims strength in (e.g. `coq`, `lean`, `tlaps`). CSV internally, max 256 bytes total.",
+                items = { type = "string" },
+              },
+            },
           },
         },
         required = ["client_kind"],
@@ -216,6 +242,57 @@
           reason = { type = "string", description = "Reason for rejection (surfaces in audit log)" },
         },
         required = ["token", "request_id", "reason"],
+      },
+    },
+    {
+      name = "coord_set_variant",
+      description = "Set or update this peer's free-form model/variant label after registration (Task #33). Alphanumeric + `.`/`-`/`_` only, max 32 bytes. Empty clears.",
+      inputSchema = {
+        type = "object",
+        properties = {
+          token = { type = "string", description = "Session token from coord_register" },
+          variant = { type = "string", description = "Variant label (e.g. `opus-4.7`, `flash-2.5`, `leanstral`)" },
+        },
+        required = ["token", "variant"],
+      },
+    },
+    {
+      name = "coord_set_capabilities",
+      description = "Set or update this peer's advertised capabilities (Task #34). Any omitted key is cleared.",
+      inputSchema = {
+        type = "object",
+        properties = {
+          token = { type = "string", description = "Session token from coord_register" },
+          class = {
+            type = "array",
+            description = "Capability classes (CSV internally, max 128 bytes).",
+            items = { type = "string" },
+          },
+          tier = {
+            type = "integer",
+            description = "Advertised capability tier 1..5 (0 = unset).",
+            minimum = 0,
+            maximum = 5,
+          },
+          prover_strengths = {
+            type = "array",
+            description = "Prover strengths (CSV internally, max 256 bytes).",
+            items = { type = "string" },
+          },
+        },
+        required = ["token"],
+      },
+    },
+    {
+      name = "coord_get_peer_capabilities",
+      description = "Read another peer's advertised capabilities (Task #34). Used by the routing layer for cold-start dispatch when track_record is thin.",
+      inputSchema = {
+        type = "object",
+        properties = {
+          token = { type = "string", description = "Own session token" },
+          peer_id = { type = "string", description = "Target peer_id (<kind>-<4hex>[@<context>])" },
+        },
+        required = ["token", "peer_id"],
       },
     },
   ],
