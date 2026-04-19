@@ -818,6 +818,86 @@ fn dispatch(tool: []const u8, body: []const u8, resp: []u8, allocator: std.mem.A
         return .{ .status = 200, .body = resp[0..stream.pos] };
     }
 
+    if (std.mem.eql(u8, tool, "coord_health")) {
+        const parsed = std.json.parseFromSlice(std.json.Value, allocator, body, .{}) catch return .{ .status = 400, .body = errJson(resp, "invalid json") };
+        defer parsed.deinit();
+        const token_val = parsed.value.object.get("token") orelse return .{ .status = 400, .body = errJson(resp, "missing token") };
+        var token: [16]u8 = undefined;
+        if (!parseToken(token_val.string, &token)) return .{ .status = 400, .body = errJson(resp, "invalid token hex") };
+
+        // Gather per-peer counts by scanning the 16 slots directly.
+        var peer_active: u8 = 0;
+        var by_kind = [_]u8{ 0, 0, 0, 0, 0, 0 }; // claude/gemini/copilot/custom/openai/mistral
+        var by_role = [_]u8{ 0, 0, 0 }; // master / journeyman / apprentice
+        var i: c_int = 0;
+        while (i < 16) : (i += 1) {
+            const k = ffi.coord_read_peer_kind(i);
+            if (k < 0) continue;
+            peer_active += 1;
+            if (k >= 0 and k < 6) by_kind[@intCast(k)] += 1;
+            const r = ffi.coord_read_peer_role(i);
+            if (r >= 0 and r < 3) by_role[@intCast(r)] += 1;
+        }
+
+        // Per-kind reject window counts + cooldown flags.
+        var reject_counts = [_]c_int{ 0, 0, 0, 0, 0, 0 };
+        var cooldown_flags = [_]c_int{ 0, 0, 0, 0, 0, 0 };
+        var kind_valid = [_]bool{ false, false, false, false, false, false };
+        var ki: c_int = 0;
+        while (ki < 6) : (ki += 1) {
+            const rc = ffi.coord_count_rejects_recent(&token, 16, ki);
+            if (rc < 0) {
+                // First bad-token return short-circuits to 401 — otherwise we'd
+                // silently emit {success:true, ...0s}.
+                if (ki == 0 and rc == -1) return .{ .status = 401, .body = errJson(resp, "unauthenticated") };
+                continue;
+            }
+            reject_counts[@intCast(ki)] = rc;
+            kind_valid[@intCast(ki)] = true;
+            const cd = ffi.coord_kind_in_cooldown(&token, 16, ki);
+            if (cd >= 0) cooldown_flags[@intCast(ki)] = cd;
+        }
+
+        const quar = ffi.coord_count_quarantine(&token, 16);
+        const clm = ffi.coord_count_claims(&token, 16);
+        const trk = ffi.coord_count_track(&token, 16);
+
+        var stream = std.io.fixedBufferStream(resp);
+        const w = stream.writer();
+        std.fmt.format(w,
+            "{{\"success\":true,\"peers\":{{\"active\":{d},\"max\":16," ++
+            "\"by_kind\":{{\"claude\":{d},\"gemini\":{d},\"copilot\":{d},\"custom\":{d},\"openai\":{d},\"mistral\":{d}}}," ++
+            "\"by_role\":{{\"master\":{d},\"journeyman\":{d},\"apprentice\":{d}}}}}," ++
+            "\"quarantine\":{{\"pending\":{d},\"max\":32}}," ++
+            "\"claims\":{{\"active\":{d},\"max\":64}}," ++
+            "\"track\":{{\"entries\":{d},\"max\":512}}," ++
+            "\"rejects\":{{\"window_ms\":600000,\"cooldown_ms\":30000," ++
+            "\"recent_by_kind\":{{\"claude\":{d},\"gemini\":{d},\"copilot\":{d},\"custom\":{d},\"openai\":{d},\"mistral\":{d}}}," ++
+            "\"in_cooldown\":[",
+            .{
+                peer_active,
+                by_kind[0], by_kind[1], by_kind[2], by_kind[3], by_kind[4], by_kind[5],
+                by_role[0], by_role[1], by_role[2],
+                quar, clm, trk,
+                reject_counts[0], reject_counts[1], reject_counts[2], reject_counts[3], reject_counts[4], reject_counts[5],
+            },
+        ) catch return .{ .status = 500, .body = errJson(resp, "buffer overflow") };
+
+        var wrote_cd: bool = false;
+        ki = 0;
+        while (ki < 6) : (ki += 1) {
+            if (cooldown_flags[@intCast(ki)] == 1) {
+                if (wrote_cd) w.writeAll(",") catch return .{ .status = 500, .body = errJson(resp, "buffer overflow") };
+                wrote_cd = true;
+                w.writeAll("\"") catch return .{ .status = 500, .body = errJson(resp, "buffer overflow") };
+                w.writeAll(kindName(ki)) catch return .{ .status = 500, .body = errJson(resp, "buffer overflow") };
+                w.writeAll("\"") catch return .{ .status = 500, .body = errJson(resp, "buffer overflow") };
+            }
+        }
+        w.writeAll("]}}") catch return .{ .status = 500, .body = errJson(resp, "buffer overflow") };
+        return .{ .status = 200, .body = resp[0..stream.pos] };
+    }
+
     return .{ .status = 404, .body = errJson(resp, "not implemented") };
 }
 
