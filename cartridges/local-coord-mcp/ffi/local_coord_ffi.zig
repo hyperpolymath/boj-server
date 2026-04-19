@@ -1127,6 +1127,8 @@ pub export fn coord_reset() void {
     defer mutex.unlock();
     peers = [_]Peer{empty_peer} ** MAX_PEERS;
     claims = [_]Claim{empty_claim} ** MAX_CLAIMS;
+    quarantine = [_]QuarantineEntry{empty_quar} ** MAX_QUARANTINE;
+    next_request_id = 1;
 }
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -1556,4 +1558,231 @@ test "invoke: buffer too small returns -3" {
     const rc = boj_cartridge_invoke("coord_register", "{}", &buf, &len);
     try std.testing.expectEqual(@as(i32, -3), rc);
     try std.testing.expect(len > 4);
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// Durability integration tests — restart-preserves-state
+// ═══════════════════════════════════════════════════════════════════════
+
+fn tmpCoordDir(buf: []u8) ![]u8 {
+    return std.fmt.bufPrint(buf, "/tmp/boj-coord-integ-{d}-{d}", .{
+        std.time.milliTimestamp(),
+        std.crypto.random.int(u32),
+    });
+}
+
+test "restart replay restores peer, claim, inbox, quarantine" {
+    coord_reset();
+    dur.close();
+
+    var path_buf: [256]u8 = undefined;
+    const dir = try tmpCoordDir(&path_buf);
+    defer std.fs.cwd().deleteTree(dir) catch {};
+
+    try std.testing.expect(dur.openWithDir(dir));
+    dur.truncate();
+
+    // ── Phase 1: build up state under durable logging ─────────────────
+    var sup_tok: [TOKEN_LEN]u8 = undefined;
+    var sup_suf: [4]u8 = undefined;
+    const sup_idx = coord_register(0, 1, &sup_tok, &sup_suf); // claude as executor
+    try std.testing.expect(sup_idx >= 0);
+    // Promote directly via state mutation — avoids env-var gymnastics
+    // in-test, and still gets persisted via the coord_set_role path below.
+    peers[@intCast(sup_idx)].role = .supervisor;
+    dur.logPeerRoleSet(@intCast(sup_idx), @intCast(@intFromEnum(Role.supervisor)));
+
+    var gem_tok: [TOKEN_LEN]u8 = undefined;
+    var gem_suf: [4]u8 = undefined;
+    const gem_idx = coord_register(1, -1, &gem_tok, &gem_suf); // gemini → supervised
+    try std.testing.expect(gem_idx >= 0);
+
+    // Remember identities for post-replay comparison.
+    const sup_suf_copy = sup_suf;
+    const gem_suf_copy = gem_suf;
+
+    // Set a context on the supervised peer.
+    const ctx = "007-lang";
+    try std.testing.expectEqual(
+        @as(c_int, 0),
+        coord_set_context(&gem_tok, TOKEN_LEN, ctx.ptr, @intCast(ctx.len)),
+    );
+
+    // Send a direct message sup → gem; leave it unreceived so it must
+    // come back from replay.
+    const pending_msg = "pending-direct-message";
+    try std.testing.expectEqual(
+        @as(c_int, 1),
+        coord_send(&sup_tok, TOKEN_LEN, gem_idx, pending_msg.ptr, @intCast(pending_msg.len)),
+    );
+
+    // Claim a task as the supervisor.
+    const task = "restart-replay-task";
+    try std.testing.expectEqual(
+        @as(c_int, 0),
+        coord_claim_task(&sup_tok, TOKEN_LEN, task.ptr, @intCast(task.len)),
+    );
+
+    // Gemini files a Tier 3 gated op — lands in quarantine.
+    const gated_msg = "proposed-commit";
+    const gated_rc = coord_send_gated(&gem_tok, TOKEN_LEN, sup_idx, gated_msg.ptr, @intCast(gated_msg.len), 3);
+    try std.testing.expect(gated_rc < -1000);
+    const request_id: u32 = @intCast(-(gated_rc + 1000));
+
+    // ── Phase 2: simulate adapter restart — close log, wipe memory, reopen, replay ──
+    dur.close();
+    coord_reset();
+    try std.testing.expect(dur.openWithDir(dir));
+    dur.replay(replayDispatch);
+    defer {
+        dur.close();
+    }
+
+    // ── Phase 3: verify state reconstructed ───────────────────────────
+
+    // Peers re-occupy their original slots with original suffixes.
+    try std.testing.expect(peers[@intCast(sup_idx)].active);
+    try std.testing.expectEqualSlices(u8, &sup_suf_copy, &peers[@intCast(sup_idx)].suffix);
+    try std.testing.expectEqual(Role.supervisor, peers[@intCast(sup_idx)].role);
+
+    try std.testing.expect(peers[@intCast(gem_idx)].active);
+    try std.testing.expectEqualSlices(u8, &gem_suf_copy, &peers[@intCast(gem_idx)].suffix);
+    try std.testing.expectEqual(Role.supervised, peers[@intCast(gem_idx)].role);
+
+    // Context survives replay.
+    var ctx_buf: [MAX_CONTEXT]u8 = undefined;
+    const ctx_len = coord_read_peer_context(gem_idx, &ctx_buf, @intCast(ctx_buf.len));
+    try std.testing.expectEqual(@as(c_int, @intCast(ctx.len)), ctx_len);
+    try std.testing.expectEqualSlices(u8, ctx, ctx_buf[0..@intCast(ctx_len)]);
+
+    // Pending inbox message delivers to gemini on receive.
+    var recv_buf: [512]u8 = undefined;
+    const recv_len = coord_receive(&gem_tok, TOKEN_LEN, &recv_buf, @intCast(recv_buf.len));
+    try std.testing.expectEqual(@as(c_int, @intCast(pending_msg.len)), recv_len);
+    try std.testing.expectEqualSlices(u8, pending_msg, recv_buf[0..@intCast(recv_len)]);
+
+    // Claim still held by supervisor — another peer can't grab it.
+    const steal_rc = coord_claim_task(&gem_tok, TOKEN_LEN, task.ptr, @intCast(task.len));
+    try std.testing.expectEqual(@as(c_int, 1), steal_rc); // Held
+
+    // Supervisor's own re-claim is idempotent.
+    try std.testing.expectEqual(
+        @as(c_int, 0),
+        coord_claim_task(&sup_tok, TOKEN_LEN, task.ptr, @intCast(task.len)),
+    );
+
+    // Quarantine entry reappears for the supervisor to review.
+    var review_buf: [512]u8 = undefined;
+    const n = coord_review(&sup_tok, TOKEN_LEN, &review_buf, @intCast(review_buf.len));
+    try std.testing.expectEqual(@as(c_int, 1), n);
+
+    var body_buf: [512]u8 = undefined;
+    const body_len = coord_review_entry(&sup_tok, TOKEN_LEN, @intCast(request_id), &body_buf, @intCast(body_buf.len));
+    try std.testing.expectEqual(@as(c_int, @intCast(gated_msg.len)), body_len);
+    try std.testing.expectEqualSlices(u8, gated_msg, body_buf[0..@intCast(body_len)]);
+
+    coord_reset();
+}
+
+test "approve then restart: quarantine gone, delivered message survives" {
+    coord_reset();
+    dur.close();
+
+    var path_buf: [256]u8 = undefined;
+    const dir = try tmpCoordDir(&path_buf);
+    defer std.fs.cwd().deleteTree(dir) catch {};
+
+    try std.testing.expect(dur.openWithDir(dir));
+    dur.truncate();
+
+    var sup_tok: [TOKEN_LEN]u8 = undefined;
+    var sup_suf: [4]u8 = undefined;
+    const sup_idx = coord_register(0, 1, &sup_tok, &sup_suf);
+    try std.testing.expect(sup_idx >= 0);
+    peers[@intCast(sup_idx)].role = .supervisor;
+    dur.logPeerRoleSet(@intCast(sup_idx), @intCast(@intFromEnum(Role.supervisor)));
+
+    var gem_tok: [TOKEN_LEN]u8 = undefined;
+    var gem_suf: [4]u8 = undefined;
+    const gem_idx = coord_register(1, -1, &gem_tok, &gem_suf);
+    try std.testing.expect(gem_idx >= 0);
+
+    // Supervised files, supervisor approves — approved message is now in
+    // sup's inbox and the quarantine slot is freed.
+    const msg = "gated-and-approved";
+    const gated_rc = coord_send_gated(&gem_tok, TOKEN_LEN, sup_idx, msg.ptr, @intCast(msg.len), 3);
+    try std.testing.expect(gated_rc < -1000);
+    const rid: u32 = @intCast(-(gated_rc + 1000));
+    try std.testing.expectEqual(@as(c_int, 0), coord_approve(&sup_tok, TOKEN_LEN, @intCast(rid)));
+
+    dur.close();
+    coord_reset();
+    try std.testing.expect(dur.openWithDir(dir));
+    dur.replay(replayDispatch);
+    defer dur.close();
+
+    // Quarantine empty after replay (add + approve cancel out).
+    var review_buf: [256]u8 = undefined;
+    try std.testing.expectEqual(@as(c_int, 0), coord_review(&sup_tok, TOKEN_LEN, &review_buf, @intCast(review_buf.len)));
+
+    // Approved message remains in sup's inbox.
+    var recv_buf: [512]u8 = undefined;
+    const n = coord_receive(&sup_tok, TOKEN_LEN, &recv_buf, @intCast(recv_buf.len));
+    try std.testing.expectEqual(@as(c_int, @intCast(msg.len)), n);
+    try std.testing.expectEqualSlices(u8, msg, recv_buf[0..@intCast(n)]);
+
+    coord_reset();
+}
+
+test "reject then restart: quarantine gone, message NOT delivered" {
+    coord_reset();
+    dur.close();
+
+    var path_buf: [256]u8 = undefined;
+    const dir = try tmpCoordDir(&path_buf);
+    defer std.fs.cwd().deleteTree(dir) catch {};
+
+    try std.testing.expect(dur.openWithDir(dir));
+    dur.truncate();
+
+    var sup_tok: [TOKEN_LEN]u8 = undefined;
+    var sup_suf: [4]u8 = undefined;
+    _ = coord_register(0, 1, &sup_tok, &sup_suf);
+    peers[0].role = .supervisor;
+    dur.logPeerRoleSet(0, @intCast(@intFromEnum(Role.supervisor)));
+
+    var gem_tok: [TOKEN_LEN]u8 = undefined;
+    var gem_suf: [4]u8 = undefined;
+    _ = coord_register(1, -1, &gem_tok, &gem_suf);
+
+    const msg = "gated-and-rejected";
+    const gated_rc = coord_send_gated(&gem_tok, TOKEN_LEN, 0, msg.ptr, @intCast(msg.len), 3);
+    try std.testing.expect(gated_rc < -1000);
+    const rid: u32 = @intCast(-(gated_rc + 1000));
+    const reason = "confabulated-path";
+    try std.testing.expectEqual(
+        @as(c_int, 0),
+        coord_reject(&sup_tok, TOKEN_LEN, @intCast(rid), reason.ptr, @intCast(reason.len)),
+    );
+
+    dur.close();
+    coord_reset();
+    try std.testing.expect(dur.openWithDir(dir));
+    dur.replay(replayDispatch);
+    defer dur.close();
+
+    // Supervisor inbox empty — rejected msg not delivered across restart.
+    var recv_buf: [256]u8 = undefined;
+    try std.testing.expectEqual(
+        @as(c_int, 0),
+        coord_receive(&sup_tok, TOKEN_LEN, &recv_buf, @intCast(recv_buf.len)),
+    );
+
+    // Quarantine empty too.
+    try std.testing.expectEqual(
+        @as(c_int, 0),
+        coord_review(&sup_tok, TOKEN_LEN, &recv_buf, @intCast(recv_buf.len)),
+    );
+
+    coord_reset();
 }
