@@ -122,6 +122,11 @@
 
       tier_override_reason = { type = "string", maxLength = 200, description = "Required when declared risk_tier differs from op_kinds.<op>.tier_default. Sanity gate may reject. Server records." },
 
+      # ── Dispatch hints (Tasks #15, #36) ───────────────────────────
+      dispatch_preference = { type = "string", enum = ["deliberate", "broadcast", "auto"], description = "Routing hint (DD-30). 'auto' lets the server derive from task_difficulty." },
+      task_difficulty     = { type = "string", enum = ["trivial", "routine", "challenging", "novel"], description = "Difficulty level (DD-30). Drives default dispatch_preference." },
+      difficulty_hint     = { type = "string", enum = ["low", "medium", "high"], description = "Task #36 — how hard to get right, orthogonal to risk_tier (how bad if wrong). Drives model-class routing (DD-36)." },
+
       # ── User-interaction flags ────────────────────────────────────
       urgent_direct     = { type = "boolean", default = false, description = "Requests inline interrupt in master terminal. Only role ∈ {master, journeyman} may set true — schema rejects for apprentice." },
       ack_required      = { type = "boolean", default = false },

@@ -53,8 +53,10 @@
             "type": "array"
           },
           "role": {
-            "description": "Optional requested role. supervisor is ALWAYS rejected here — promote via coord_promote_to_supervisor. Default derived from client_kind (claude->executor, others->supervised).",
+            "description": "Optional requested role (DD-32). master is ALWAYS rejected here — promote via coord_promote_to_master. Default: claude->journeyman, others->apprentice. Old aliases (executor, supervised) accepted for one release.",
             "enum": [
+              "journeyman",
+              "apprentice",
               "executor",
               "supervised"
             ],
@@ -194,11 +196,11 @@
       "name": "coord_status"
     },
     {
-      "description": "Promote this peer to the supervisor role. Requires the BOJ_SUPERVISOR_TOKEN env-var to be set on the server and the presented secret to match. At most one supervisor at a time. Intended for the Opus-tier Claude that holds the veto.",
+      "description": "Promote this peer to the master role (DD-32, renamed from supervisor). Requires BOJ_MASTER_TOKEN env-var (BOJ_SUPERVISOR_TOKEN accepted as fallback for one release) and the presented secret to match. At most one master at a time. The old tool name `coord_promote_to_supervisor` is accepted as an alias.",
       "inputSchema": {
         "properties": {
           "secret": {
-            "description": "Must match BOJ_SUPERVISOR_TOKEN env var on the server",
+            "description": "Must match BOJ_MASTER_TOKEN env var on the server (BOJ_SUPERVISOR_TOKEN fallback)",
             "type": "string"
           },
           "token": {
@@ -212,10 +214,10 @@
         ],
         "type": "object"
       },
-      "name": "coord_promote_to_supervisor"
+      "name": "coord_promote_to_master"
     },
     {
-      "description": "Send a message with a declared risk_tier. Tier 2+ from role=supervised peers is quarantined for supervisor review; everything else delivers directly. Returns status:quarantined + request_id when gated.",
+      "description": "Send a message with a declared risk_tier. Tier 2+ from role=apprentice peers is quarantined for master review; everything else delivers directly. Returns status:quarantined + request_id when gated.",
       "inputSchema": {
         "properties": {
           "message": {
@@ -248,11 +250,11 @@
       "name": "coord_send_gated"
     },
     {
-      "description": "List all currently quarantined messages awaiting supervisor decision. Supervisor role only.",
+      "description": "List all currently quarantined messages awaiting master decision. Master role only.",
       "inputSchema": {
         "properties": {
           "token": {
-            "description": "Supervisor session token",
+            "description": "Master session token",
             "type": "string"
           }
         },
@@ -264,7 +266,7 @@
       "name": "coord_review"
     },
     {
-      "description": "Read the full message body of a specific quarantined entry. Supervisor role only.",
+      "description": "Read the full message body of a specific quarantined entry. Master role only.",
       "inputSchema": {
         "properties": {
           "request_id": {
@@ -272,7 +274,7 @@
             "type": "integer"
           },
           "token": {
-            "description": "Supervisor session token",
+            "description": "Master session token",
             "type": "string"
           }
         },
@@ -285,7 +287,7 @@
       "name": "coord_review_entry"
     },
     {
-      "description": "Approve a quarantined message — delivers to target and removes from queue. Supervisor role only.",
+      "description": "Approve a quarantined message — delivers to target and removes from queue. Master role only.",
       "inputSchema": {
         "properties": {
           "request_id": {
@@ -293,7 +295,7 @@
             "type": "integer"
           },
           "token": {
-            "description": "Supervisor session token",
+            "description": "Master session token",
             "type": "string"
           }
         },
@@ -306,7 +308,7 @@
       "name": "coord_approve"
     },
     {
-      "description": "Reject a quarantined message with a reason — removes from queue without delivery. Supervisor role only. Reason logged for audit.",
+      "description": "Reject a quarantined message with a reason — removes from queue without delivery. Master role only. Reason logged for audit.",
       "inputSchema": {
         "properties": {
           "reason": {
@@ -318,7 +320,7 @@
             "type": "integer"
           },
           "token": {
-            "description": "Supervisor session token",
+            "description": "Master session token",
             "type": "string"
           }
         },
@@ -421,7 +423,7 @@
       "name": "coord_set_declared_affinities"
     },
     {
-      "description": "Run the reassignment-suggestion scanner (Task #14). Scans track-record aggregates vs declared_affinities; enqueues candidate envelopes in the quarantine for supervisor review. Rules: overclaim (high avg_confidence + low effective_affinity), promote (high effective_affinity on undeclared tag), remove (low effective_affinity with >=5 attempts). Supervisor reviews via coord_review / approves via coord_approve / rejects via coord_reject — never auto-modifies.",
+      "description": "Run the reassignment-suggestion scanner (Task #14). Scans track-record aggregates vs declared_affinities; enqueues candidate envelopes in the quarantine for master review. Rules: overclaim (high avg_confidence + low effective_affinity), promote (high effective_affinity on undeclared tag), remove (low effective_affinity with >=5 attempts). Master reviews via coord_review / approves via coord_approve / rejects via coord_reject — never auto-modifies.",
       "inputSchema": {
         "properties": {
           "token": {

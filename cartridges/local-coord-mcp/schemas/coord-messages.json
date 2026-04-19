@@ -10,7 +10,7 @@
         "type": "boolean"
       },
       "attestation_refs": {
-        "description": "Cosigner attestations. REQUIRED for Tier 2+ envelopes from role=supervised peers. Empty otherwise.",
+        "description": "Cosigner attestations. REQUIRED for Tier 2+ envelopes from role=apprentice peers. Empty otherwise.",
         "items": {
           "additionalProperties": false,
           "properties": {
@@ -56,6 +56,24 @@
         "maxLength": 64,
         "type": "string"
       },
+      "difficulty_hint": {
+        "description": "Task #36 — how hard to get right, orthogonal to risk_tier (how bad if wrong). Drives model-class routing (DD-36).",
+        "enum": [
+          "low",
+          "medium",
+          "high"
+        ],
+        "type": "string"
+      },
+      "dispatch_preference": {
+        "description": "Routing hint (DD-30). 'auto' lets the server derive from task_difficulty.",
+        "enum": [
+          "deliberate",
+          "broadcast",
+          "auto"
+        ],
+        "type": "string"
+      },
       "msg_id": {
         "description": "12-char lowercase hex, unique per sender. Sender-generated.",
         "pattern": "^[0-9a-f]{12}$",
@@ -98,6 +116,16 @@
         "maxLength": 200,
         "type": "string"
       },
+      "task_difficulty": {
+        "description": "Difficulty level (DD-30). Drives default dispatch_preference.",
+        "enum": [
+          "trivial",
+          "routine",
+          "challenging",
+          "novel"
+        ],
+        "type": "string"
+      },
       "tier_override_reason": {
         "description": "Required when declared risk_tier differs from op_kinds.<op>.tier_default. Sanity gate may reject. Server records.",
         "maxLength": 200,
@@ -116,7 +144,7 @@
       },
       "urgent_direct": {
         "default": false,
-        "description": "Requests inline interrupt in supervisor terminal. Only role ∈ {supervisor, executor} may set true — schema rejects for supervised.",
+        "description": "Requests inline interrupt in master terminal. Only role ∈ {master, journeyman} may set true — schema rejects for apprentice.",
         "type": "boolean"
       },
       "version": {
@@ -140,15 +168,15 @@
   },
   "op_kinds": {
     "attest_req": {
-      "description": "Server asks a second executor for independent attestation on a Tier 2+ op from a supervised peer (BFT f=1).",
+      "description": "Server asks a second journeyman for independent attestation on a Tier 2+ op from an apprentice peer (BFT f=1).",
       "tier_default": 0
     },
     "attest_resp": {
-      "description": "Executor responds with attest/reject + reason.",
+      "description": "Journeyman responds with attest/reject + reason.",
       "tier_default": 0
     },
     "blocker": {
-      "description": "Peer cannot proceed without user input. Surfaces inline in supervisor terminal.",
+      "description": "Peer cannot proceed without user input. Surfaces inline in master terminal.",
       "tier_default": 3
     },
     "claim": {
@@ -156,7 +184,7 @@
       "tier_default": 2
     },
     "clarify": {
-      "description": "Question for the user, batched through supervisor. Only executor + supervisor peers may set urgent_direct=true.",
+      "description": "Question for the user, batched through master. Only journeyman + master peers may set urgent_direct=true.",
       "tier_default": 2
     },
     "context_query": {
@@ -196,11 +224,11 @@
       "tier_default": 0
     },
     "supervise_req": {
-      "description": "Supervised peer requests authorisation for a gated op; embeds the original envelope.",
+      "description": "Apprentice peer requests authorisation for a gated op; embeds the original envelope.",
       "tier_default": 0
     },
     "supervise_resp": {
-      "description": "Supervisor responds with approve/reject + reason.",
+      "description": "Master responds with approve/reject + reason.",
       "tier_default": 0
     },
     "warn_drift": {
@@ -372,8 +400,11 @@
           "type": "string"
         },
         "summarise_for": {
-          "description": "Determines summary depth. Supervised gets summary; executor/supervisor get raw on request.",
+          "description": "Determines summary depth. Apprentice (ex-supervised) gets summary; journeyman/master (ex-executor/supervisor) get raw on request. Old names accepted as aliases per DD-32.",
           "enum": [
+            "apprentice",
+            "journeyman",
+            "master",
             "supervised",
             "executor",
             "supervisor"
@@ -392,7 +423,7 @@
           "type": "string"
         },
         "raw": {
-          "description": "Full structured context, only for executor/supervisor.",
+          "description": "Full structured context, only for journeyman/master.",
           "type": "object"
         },
         "summary": {
@@ -645,8 +676,11 @@
       "type": "array"
     },
     "role": {
-      "description": "Trust tier. Defaults: client_kind=claude -> executor; non-claude -> supervised. supervisor must be requested explicitly and the server SHOULD restrict to Opus-tier clients.",
+      "description": "Trust tier (DD-32). master (ex-supervisor) = approval authority; journeyman (ex-executor) = trusted to act solo on Tier 2; apprentice (ex-supervised) = Tier 2+ quarantined. Defaults: client_kind=claude -> journeyman; non-claude -> apprentice. master must be requested explicitly via coord_promote_to_master with BOJ_MASTER_TOKEN. Old enum values accepted as aliases for one release.",
       "enum": [
+        "master",
+        "journeyman",
+        "apprentice",
         "supervisor",
         "executor",
         "supervised"
@@ -687,7 +721,7 @@
     }
   ],
   "spdx": "PMPL-1.0-or-later",
-  "tier_4_forbidden_for_supervised": [
+  "tier_4_forbidden_for_apprentice": [
     {
       "description": "Force-push (raw or wrapped).",
       "match_kind": "payload_contains",
