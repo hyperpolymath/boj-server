@@ -298,7 +298,66 @@
         "type": "object"
       },
       "name": "coord_reject"
+    },
+    {
+      "description": "Report the outcome of a claim or attempted op against an affinity tag. Aggregated into the track record keyed on client_kind (survives peer restart). Feeds effective_affinity + reassignment suggestions.",
+      "inputSchema": {
+        "properties": {
+          "duration_ms": {
+            "description": "Wall-time duration of the op in ms (optional, default 0)",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "outcome": {
+            "description": "'success' or 'fail' (or 1/0)",
+            "enum": [
+              "success",
+              "fail"
+            ],
+            "type": "string"
+          },
+          "risk_tier": {
+            "description": "Risk tier of the op (0-4)",
+            "maximum": 4,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "tag": {
+            "description": "Affinity tag the op belongs to (e.g. 'proof-analysis', 'routine-edit')",
+            "maxLength": 64,
+            "type": "string"
+          },
+          "token": {
+            "description": "Session token from coord_register",
+            "type": "string"
+          }
+        },
+        "required": [
+          "token",
+          "tag",
+          "outcome",
+          "risk_tier"
+        ],
+        "type": "object"
+      },
+      "name": "coord_report_outcome"
+    },
+    {
+      "description": "Return per-(client_kind, tag) effective_affinity computed over the last 20 attempts OR last 7 days (whichever is larger). Used by Opus to drive attester selection (DD-27) and reassignment suggestions (DD-28).",
+      "inputSchema": {
+        "properties": {
+          "token": {
+            "description": "Session token from coord_register",
+            "type": "string"
+          }
+        },
+        "required": [
+          "token"
+        ],
+        "type": "object"
+      },
+      "name": "coord_get_affinities"
     }
   ],
-  "version": "0.3.0"
+  "version": "0.4.0"
 }

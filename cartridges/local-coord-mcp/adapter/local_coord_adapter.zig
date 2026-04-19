@@ -385,6 +385,93 @@ fn dispatch(tool: []const u8, body: []const u8, resp: []u8, allocator: std.mem.A
         return .{ .status = 500, .body = errJson(resp, "approve failed") };
     }
 
+    if (std.mem.eql(u8, tool, "coord_report_outcome")) {
+        const parsed = std.json.parseFromSlice(std.json.Value, allocator, body, .{}) catch return .{ .status = 400, .body = errJson(resp, "invalid json") };
+        defer parsed.deinit();
+        const token_val = parsed.value.object.get("token") orelse return .{ .status = 400, .body = errJson(resp, "missing token") };
+        const tag_val = parsed.value.object.get("tag") orelse return .{ .status = 400, .body = errJson(resp, "missing tag") };
+        const outcome_val = parsed.value.object.get("outcome") orelse return .{ .status = 400, .body = errJson(resp, "missing outcome") };
+        const tier_val = parsed.value.object.get("risk_tier") orelse return .{ .status = 400, .body = errJson(resp, "missing risk_tier") };
+        // duration_ms is optional; default 0.
+        const duration_val: i64 = blk: {
+            const v = parsed.value.object.get("duration_ms") orelse break :blk 0;
+            break :blk v.integer;
+        };
+
+        var token: [16]u8 = undefined;
+        if (!parseToken(token_val.string, &token)) return .{ .status = 400, .body = errJson(resp, "invalid token hex") };
+
+        const tag_str = tag_val.string;
+        if (tag_str.len > 64) return .{ .status = 400, .body = errJson(resp, "tag exceeds 64 bytes") };
+
+        // outcome may arrive as string ("success"/"fail") or integer (0/1).
+        var outcome: i32 = -1;
+        switch (outcome_val) {
+            .string => |s| {
+                if (std.mem.eql(u8, s, "success")) outcome = 1;
+                if (std.mem.eql(u8, s, "fail")) outcome = 0;
+            },
+            .integer => |i| outcome = @intCast(i),
+            else => {},
+        }
+        if (outcome != 0 and outcome != 1) return .{ .status = 400, .body = errJson(resp, "outcome must be 'success'/'fail' or 0/1") };
+
+        const tier: i32 = @intCast(tier_val.integer);
+        const duration: i32 = @intCast(duration_val);
+        const rc = ffi.coord_report_outcome(&token, 16, tag_str.ptr, @intCast(tag_str.len), outcome, duration, tier);
+        if (rc == 0) return .{ .status = 200, .body = okJson(resp, "recorded") };
+        if (rc == -1) return .{ .status = 401, .body = errJson(resp, "unauthenticated") };
+        if (rc == -2) return .{ .status = 400, .body = errJson(resp, "invalid args") };
+        return .{ .status = 500, .body = errJson(resp, "report failed") };
+    }
+
+    if (std.mem.eql(u8, tool, "coord_get_affinities")) {
+        const parsed = std.json.parseFromSlice(std.json.Value, allocator, body, .{}) catch return .{ .status = 400, .body = errJson(resp, "invalid json") };
+        defer parsed.deinit();
+        const token_val = parsed.value.object.get("token") orelse return .{ .status = 400, .body = errJson(resp, "missing token") };
+        var token: [16]u8 = undefined;
+        if (!parseToken(token_val.string, &token)) return .{ .status = 400, .body = errJson(resp, "invalid token hex") };
+
+        // Up to 64 aggregates * 64 bytes = 4096 bytes.
+        var raw: [4096]u8 = undefined;
+        const n = ffi.coord_get_affinities(&token, 16, &raw, @intCast(raw.len));
+        if (n == -1) return .{ .status = 401, .body = errJson(resp, "unauthenticated") };
+        if (n < -1000) return .{ .status = 500, .body = errJson(resp, "affinity buffer overflow — too many distinct (kind, tag) pairs") };
+        if (n < 0) return .{ .status = 500, .body = errJson(resp, "affinity query failed") };
+
+        var stream = std.io.fixedBufferStream(resp);
+        const w = stream.writer();
+        w.writeAll("{\"success\":true,\"affinities\":[") catch return .{ .status = 500, .body = errJson(resp, "buffer overflow") };
+
+        const REC_SIZE: usize = 64;
+        const cnt: usize = @intCast(n);
+        var i: usize = 0;
+        while (i < cnt) : (i += 1) {
+            const rec = raw[i * REC_SIZE ..][0..REC_SIZE];
+            const kind: u8 = rec[0];
+            const attempts: u16 = @bitCast([2]u8{ rec[1], rec[2] });
+            const successes: u16 = @bitCast([2]u8{ rec[3], rec[4] });
+            const pct: u8 = rec[5];
+            const tag_len: u8 = rec[6];
+            const tag = rec[7 .. 7 + @min(@as(usize, tag_len), 57)];
+
+            if (i > 0) w.writeAll(",") catch return .{ .status = 500, .body = errJson(resp, "buffer overflow") };
+
+            // affinity as decimal; 255 sentinel means no data.
+            if (pct == 255) {
+                std.fmt.format(w,
+                    "{{\"client_kind\":\"{s}\",\"tag\":\"{s}\",\"attempts\":{d},\"successes\":{d},\"effective_affinity\":null}}",
+                    .{ kindName(@intCast(kind)), tag, attempts, successes }) catch return .{ .status = 500, .body = errJson(resp, "buffer overflow") };
+            } else {
+                std.fmt.format(w,
+                    "{{\"client_kind\":\"{s}\",\"tag\":\"{s}\",\"attempts\":{d},\"successes\":{d},\"effective_affinity\":{d}.{d:0>2}}}",
+                    .{ kindName(@intCast(kind)), tag, attempts, successes, pct / 100, pct % 100 }) catch return .{ .status = 500, .body = errJson(resp, "buffer overflow") };
+            }
+        }
+        w.writeAll("]}") catch return .{ .status = 500, .body = errJson(resp, "buffer overflow") };
+        return .{ .status = 200, .body = resp[0..stream.pos] };
+    }
+
     if (std.mem.eql(u8, tool, "coord_reject")) {
         const parsed = std.json.parseFromSlice(std.json.Value, allocator, body, .{}) catch return .{ .status = 400, .body = errJson(resp, "invalid json") };
         defer parsed.deinit();

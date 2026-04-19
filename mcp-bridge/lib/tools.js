@@ -423,6 +423,35 @@ function buildToolList() {
     },
   });
 
+  // ── Track record / affinity tools (Task #13) ───────────────────
+  tools.push({
+    name: "coord_report_outcome",
+    description: "Report outcome of a claim or attempted op against an affinity tag. Track record is keyed on client_kind (DD-29) so it survives peer restart. Drives effective_affinity + reassignment suggestions.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        token: { type: "string", description: "Session token from coord_register" },
+        tag: { type: "string", description: "Affinity tag (e.g. 'proof-analysis', 'routine-edit'). Max 64 bytes.", maxLength: 64 },
+        outcome: { type: "string", enum: ["success", "fail"], description: "'success' or 'fail'" },
+        risk_tier: { type: "integer", minimum: 0, maximum: 4, description: "Risk tier of the op" },
+        duration_ms: { type: "integer", minimum: 0, description: "Wall-time duration in ms (optional)" },
+      },
+      required: ["token", "tag", "outcome", "risk_tier"],
+    },
+  });
+
+  tools.push({
+    name: "coord_get_affinities",
+    description: "Return per-(client_kind, tag) effective_affinity over the last 20 attempts OR last 7 days (whichever is larger). Use for attester selection (DD-27) and reassignment-suggestion review (DD-28).",
+    inputSchema: {
+      type: "object",
+      properties: {
+        token: { type: "string", description: "Session token from coord_register" },
+      },
+      required: ["token"],
+    },
+  });
+
   return tools;
 }
 

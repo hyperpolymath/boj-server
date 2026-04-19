@@ -183,6 +183,96 @@ const empty_quar = QuarantineEntry{
 var quarantine: [MAX_QUARANTINE]QuarantineEntry = [_]QuarantineEntry{empty_quar} ** MAX_QUARANTINE;
 var next_request_id: u32 = 1;
 
+// ═══════════════════════════════════════════════════════════════════════
+// Track Record — per (client_kind, tag) outcome history used to compute
+// `effective_affinity`. DD-29: keyed on client_kind not peer_id so the
+// record survives peer crash+restart.
+//
+// Ring buffer; oldest entry overwritten when full. Window for affinity
+// aggregation: last 20 attempts for that (kind, tag) OR all attempts
+// within the last 7 days, whichever is larger (DD-28).
+// ═══════════════════════════════════════════════════════════════════════
+
+const MAX_TRACK: usize = 512;
+const MAX_TAG: usize = 64;
+const WINDOW_ATTEMPTS: usize = 20;
+const WINDOW_MS: u64 = 7 * 24 * 60 * 60 * 1000; // 7 days in ms
+
+const TrackEntry = struct {
+    active: bool,
+    client_kind: u8,
+    outcome: u8, // 0 = fail, 1 = success
+    risk_tier: u8,
+    duration_ms: u32,
+    timestamp_ms: u64,
+    tag_len: u8,
+    tag: [MAX_TAG]u8,
+};
+
+const empty_track = TrackEntry{
+    .active = false,
+    .client_kind = 0,
+    .outcome = 0,
+    .risk_tier = 0,
+    .duration_ms = 0,
+    .timestamp_ms = 0,
+    .tag_len = 0,
+    .tag = [_]u8{0} ** MAX_TAG,
+};
+
+var track: [MAX_TRACK]TrackEntry = [_]TrackEntry{empty_track} ** MAX_TRACK;
+var track_head: usize = 0; // next write slot
+var track_count: usize = 0; // active entries (saturates at MAX_TRACK)
+
+/// Push a track-record entry into the ring. Caller-visible timestamp is
+/// always std.time.milliTimestamp() at insertion. Oldest record is
+/// overwritten when the ring is full.
+fn recordTrack(
+    client_kind: u8,
+    outcome: u8,
+    risk_tier: u8,
+    duration_ms: u32,
+    tag: []const u8,
+) void {
+    const t: *TrackEntry = &track[track_head];
+    t.active = true;
+    t.client_kind = client_kind;
+    t.outcome = outcome;
+    t.risk_tier = risk_tier;
+    t.duration_ms = duration_ms;
+    t.timestamp_ms = @intCast(std.time.milliTimestamp());
+    const tl: usize = @min(tag.len, MAX_TAG);
+    if (tl > 0) @memcpy(t.tag[0..tl], tag[0..tl]);
+    t.tag_len = @intCast(tl);
+    track_head = (track_head + 1) % MAX_TRACK;
+    if (track_count < MAX_TRACK) track_count += 1;
+}
+
+/// Re-insert a replayed track entry without clobbering its original
+/// timestamp. Used by replayDispatch so aggregations after restart
+/// reflect real event time, not replay time.
+fn recordTrackReplay(
+    client_kind: u8,
+    outcome: u8,
+    risk_tier: u8,
+    duration_ms: u32,
+    timestamp_ms: u64,
+    tag: []const u8,
+) void {
+    const t: *TrackEntry = &track[track_head];
+    t.active = true;
+    t.client_kind = client_kind;
+    t.outcome = outcome;
+    t.risk_tier = risk_tier;
+    t.duration_ms = duration_ms;
+    t.timestamp_ms = timestamp_ms;
+    const tl: usize = @min(tag.len, MAX_TAG);
+    if (tl > 0) @memcpy(t.tag[0..tl], tag[0..tl]);
+    t.tag_len = @intCast(tl);
+    track_head = (track_head + 1) % MAX_TRACK;
+    if (track_count < MAX_TRACK) track_count += 1;
+}
+
 // ��══════════════════════════════════════════════════════════════════════
 // Token Generation (CSPRNG from OS)
 // ═══════════════════════════════════════════════════════════════════════
@@ -921,6 +1011,220 @@ pub export fn coord_set_status(
 }
 
 // ═══════════════════════════════════════════════════════════════════════
+// Track Record FFI (Task #13)
+// ═══════════════════════════════════════════════════════════════════════
+
+/// Report the outcome of a claim or attempted op. The peer's client_kind
+/// (derived from its token) is the aggregation key per DD-29 — the record
+/// survives peer crash+restart.
+///
+/// outcome: 0 = fail, 1 = success
+/// duration_ms: wall-time cost of the op in ms (0 if unknown)
+/// risk_tier: tier of the op the outcome belongs to (0-4)
+/// tag: affinity tag (e.g. "proof-analysis", "routine-edit"); max 64 bytes
+///
+/// Returns 0 on success, -1 on bad token, -2 on bad args.
+pub export fn coord_report_outcome(
+    token_ptr: [*]const u8,
+    token_len: c_int,
+    tag_ptr: [*]const u8,
+    tag_len: c_int,
+    outcome: c_int,
+    duration_ms: c_int,
+    risk_tier: c_int,
+) c_int {
+    mutex.lock();
+    defer mutex.unlock();
+
+    const idx = findPeerByToken(token_ptr, @intCast(token_len)) orelse return -1;
+    if (tag_len < 0 or tag_len > @as(c_int, @intCast(MAX_TAG))) return -2;
+    if (outcome < 0 or outcome > 1) return -2;
+    if (risk_tier < 0 or risk_tier > 4) return -2;
+    if (duration_ms < 0) return -2;
+
+    const tlen: usize = @intCast(tag_len);
+    const tag = tag_ptr[0..tlen];
+
+    const kind_u: u8 = @intCast(@intFromEnum(peers[idx].kind));
+    const outcome_u: u8 = @intCast(outcome);
+    const tier_u: u8 = @intCast(risk_tier);
+    const dur_u: u32 = @intCast(duration_ms);
+
+    recordTrack(kind_u, outcome_u, tier_u, dur_u, tag);
+    dur.logTrackUpdate(kind_u, outcome_u, tier_u, dur_u, @intCast(std.time.milliTimestamp()), tag);
+    return 0;
+}
+
+const Aggregate = struct {
+    client_kind: u8,
+    attempts: u16,
+    successes: u16,
+    tag_len: u8,
+    tag: [MAX_TAG]u8,
+};
+
+fn tagEql(a: []const u8, b: []const u8) bool {
+    if (a.len != b.len) return false;
+    return std.mem.eql(u8, a, b);
+}
+
+/// Compute per-(client_kind, tag) aggregates over the active window.
+/// Window: an entry counts toward its (kind, tag) if it is within the
+/// last 7 days OR among the 20 most recent attempts for that (kind, tag)
+/// — whichever set is larger (DD-28). Writes up to `out_cap` aggregates
+/// into `out`. Returns the number of aggregates written.
+fn buildAggregates(out: []Aggregate) usize {
+    var n: usize = 0;
+    if (track_count == 0) return 0;
+
+    const now: u64 = @intCast(std.time.milliTimestamp());
+    const cutoff: u64 = if (now > WINDOW_MS) now - WINDOW_MS else 0;
+
+    // Iterate track ring in insertion order (oldest first).
+    const start: usize = if (track_count < MAX_TRACK) 0 else track_head;
+    var step: usize = 0;
+    while (step < track_count) : (step += 1) {
+        const src_i: usize = (start + step) % MAX_TRACK;
+        const t = &track[src_i];
+        if (!t.active) continue;
+
+        const tag_slice: []const u8 = t.tag[0..t.tag_len];
+
+        // Find existing aggregate or append.
+        var agg_i: usize = 0;
+        var found: bool = false;
+        while (agg_i < n) : (agg_i += 1) {
+            if (out[agg_i].client_kind == t.client_kind and
+                tagEql(out[agg_i].tag[0..out[agg_i].tag_len], tag_slice))
+            {
+                found = true;
+                break;
+            }
+        }
+        if (!found) {
+            if (n >= out.len) continue;
+            out[n] = .{
+                .client_kind = t.client_kind,
+                .attempts = 0,
+                .successes = 0,
+                .tag_len = t.tag_len,
+                .tag = [_]u8{0} ** MAX_TAG,
+            };
+            if (t.tag_len > 0) @memcpy(out[n].tag[0..t.tag_len], tag_slice);
+            agg_i = n;
+            n += 1;
+        }
+        // Provisional include — we'll filter per (kind, tag) below.
+        out[agg_i].attempts += 1;
+        if (t.outcome == 1) out[agg_i].successes += 1;
+    }
+
+    // Second pass: for each aggregate, apply the window rule.
+    // The simple counts above treat every entry as eligible. Replace
+    // them with a window-filtered recount.
+    var i: usize = 0;
+    while (i < n) : (i += 1) {
+        const tgt_kind = out[i].client_kind;
+        const tgt_tag: []const u8 = out[i].tag[0..out[i].tag_len];
+
+        // Collect indices of matching entries, newest first (scan ring
+        // in reverse insertion order).
+        var matches_attempts: u16 = 0;
+        var matches_successes: u16 = 0;
+
+        var seen_for_kind_tag: u16 = 0; // newest-first counter
+        var k: usize = 0;
+        while (k < track_count) : (k += 1) {
+            // Traverse newest-first: head - 1 - k (mod MAX_TRACK).
+            const raw_i: isize = @as(isize, @intCast(track_head)) - 1 - @as(isize, @intCast(k));
+            const src_i: usize = @intCast(@mod(raw_i, @as(isize, @intCast(MAX_TRACK))));
+            const t = &track[src_i];
+            if (!t.active) continue;
+            if (t.client_kind != tgt_kind) continue;
+            if (!tagEql(t.tag[0..t.tag_len], tgt_tag)) continue;
+
+            seen_for_kind_tag += 1;
+            const within_time = t.timestamp_ms >= cutoff;
+            const within_count = seen_for_kind_tag <= @as(u16, @intCast(WINDOW_ATTEMPTS));
+
+            if (within_time or within_count) {
+                matches_attempts += 1;
+                if (t.outcome == 1) matches_successes += 1;
+            } else {
+                // Outside both windows; older entries will also be outside.
+                break;
+            }
+        }
+        out[i].attempts = matches_attempts;
+        out[i].successes = matches_successes;
+    }
+
+    return n;
+}
+
+/// Return per-(client_kind, tag) affinity aggregates in `out`. Each
+/// record is 64 bytes packed little-endian:
+///
+///   client_kind : u8
+///   attempts    : u16
+///   successes   : u16
+///   affinity_pct: u8   (0..100, 255 = no data)
+///   tag_len     : u8
+///   tag         : [57]u8 (only first tag_len bytes valid)
+///
+/// Returns the number of records written, or -1 on bad token, or the
+/// required number of records if `out_cap` is too small (in that case
+/// return = -(required + 1000), matching the coord_send_gated idiom).
+pub export fn coord_get_affinities(
+    token_ptr: [*]const u8,
+    token_len: c_int,
+    out: [*]u8,
+    out_cap: c_int,
+) c_int {
+    mutex.lock();
+    defer mutex.unlock();
+
+    if (findPeerByToken(token_ptr, @intCast(token_len)) == null) return -1;
+
+    // Computed aggregates live on the stack; MAX_TRACK worst-case upper
+    // bound on distinct (kind, tag) pairs.
+    var aggs: [MAX_TRACK]Aggregate = undefined;
+    const n = buildAggregates(aggs[0..]);
+
+    const REC_SIZE: usize = 64;
+    const cap: usize = @intCast(out_cap);
+    const required: usize = n * REC_SIZE;
+    if (required > cap) {
+        const encoded: i64 = -(@as(i64, @intCast(n)) + 1000);
+        return @intCast(encoded);
+    }
+
+    var written: usize = 0;
+    var i: usize = 0;
+    while (i < n) : (i += 1) {
+        const rec = out[written .. written + REC_SIZE];
+        rec[0] = aggs[i].client_kind;
+        std.mem.writeInt(u16, rec[1..3], aggs[i].attempts, .little);
+        std.mem.writeInt(u16, rec[3..5], aggs[i].successes, .little);
+        const pct: u8 = if (aggs[i].attempts == 0)
+            255
+        else
+            @intCast(@min(
+                @as(u32, 100),
+                (@as(u32, aggs[i].successes) * 100) / @as(u32, aggs[i].attempts),
+            ));
+        rec[5] = pct;
+        rec[6] = aggs[i].tag_len;
+        // Tag into bytes 7..64 (57 bytes). Zero-pad trailing.
+        const tl: usize = @min(aggs[i].tag_len, 57);
+        if (tl > 0) @memcpy(rec[7 .. 7 + tl], aggs[i].tag[0..tl]);
+        if (tl < 57) @memset(rec[7 + tl .. 64], 0);
+        written += REC_SIZE;
+    }
+    return @intCast(n);
+}
+
+// ═══════════════════════════════════════════════════════════════════════
 // Standard Cartridge Interface (loader expects these 4 C-ABI symbols)
 // ═══════════════════════════════════════════════════════════════════════
 
@@ -1067,9 +1371,12 @@ fn replayDispatch(event: dur.EventType, payload: []const u8) void {
                 }
             }
         },
-        .audit, .track_update => {
+        .audit => {
             // Append-only by design — nothing to reconstruct in live memory.
-            // Track-record aggregation lands in Task #13 (effective_affinity).
+        },
+        .track_update => {
+            const d = dur.decodeTrackUpdate(payload) orelse return;
+            recordTrackReplay(d.client_kind, d.outcome, d.risk_tier, d.duration_ms, d.timestamp_ms, d.tag);
         },
         else => {},
     }
@@ -1112,6 +1419,10 @@ export fn boj_cartridge_invoke(
         "{\"result\":{\"status\":\"stub\"}}"
     else if (shim.toolIs(tool_name, "coord_status"))
         "{\"result\":{\"metadata\":{},\"status\":\"stub\"}}"
+    else if (shim.toolIs(tool_name, "coord_report_outcome"))
+        "{\"result\":{\"status\":\"stub\"}}"
+    else if (shim.toolIs(tool_name, "coord_get_affinities"))
+        "{\"result\":{\"affinities\":[],\"status\":\"stub\"}}"
 else
     return shim.RC_UNKNOWN_TOOL;
 
@@ -1129,6 +1440,9 @@ pub export fn coord_reset() void {
     claims = [_]Claim{empty_claim} ** MAX_CLAIMS;
     quarantine = [_]QuarantineEntry{empty_quar} ** MAX_QUARANTINE;
     next_request_id = 1;
+    track = [_]TrackEntry{empty_track} ** MAX_TRACK;
+    track_head = 0;
+    track_count = 0;
 }
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -1783,6 +2097,166 @@ test "reject then restart: quarantine gone, message NOT delivered" {
         @as(c_int, 0),
         coord_review(&sup_tok, TOKEN_LEN, &recv_buf, @intCast(recv_buf.len)),
     );
+
+    coord_reset();
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// Track Record tests (Task #13)
+// ═══════════════════════════════════════════════════════════════════════
+
+fn findAggByTag(out: []const u8, n: usize, kind: u8, tag: []const u8) ?usize {
+    const REC_SIZE: usize = 64;
+    var i: usize = 0;
+    while (i < n) : (i += 1) {
+        const rec = out[i * REC_SIZE ..][0..REC_SIZE];
+        if (rec[0] != kind) continue;
+        const tl: usize = rec[6];
+        if (tl != tag.len) continue;
+        if (std.mem.eql(u8, rec[7 .. 7 + tl], tag)) return i;
+    }
+    return null;
+}
+
+test "report outcome and compute affinity" {
+    coord_reset();
+    var tok: [TOKEN_LEN]u8 = undefined;
+    var suf: [4]u8 = undefined;
+    _ = coord_register(0, -1, &tok, &suf); // claude
+
+    const tag = "proof-analysis";
+    // 3 successes + 1 failure → 75%.
+    for (0..3) |_| {
+        try std.testing.expectEqual(
+            @as(c_int, 0),
+            coord_report_outcome(&tok, TOKEN_LEN, tag.ptr, @intCast(tag.len), 1, 500, 2),
+        );
+    }
+    try std.testing.expectEqual(
+        @as(c_int, 0),
+        coord_report_outcome(&tok, TOKEN_LEN, tag.ptr, @intCast(tag.len), 0, 500, 2),
+    );
+
+    var buf: [64 * 8]u8 = undefined;
+    const n = coord_get_affinities(&tok, TOKEN_LEN, &buf, @intCast(buf.len));
+    try std.testing.expect(n >= 1);
+
+    const n_usize: usize = @intCast(n);
+    const idx = findAggByTag(&buf, n_usize, 0, tag) orelse return error.AggregateMissing;
+    const rec = buf[idx * 64 ..][0..64];
+    const attempts = std.mem.readInt(u16, rec[1..3], .little);
+    const successes = std.mem.readInt(u16, rec[3..5], .little);
+    try std.testing.expectEqual(@as(u16, 4), attempts);
+    try std.testing.expectEqual(@as(u16, 3), successes);
+    try std.testing.expectEqual(@as(u8, 75), rec[5]);
+
+    coord_reset();
+}
+
+test "affinity keyed on client_kind, survives peer restart" {
+    coord_reset();
+
+    // Two claude peers in sequence (deregister + re-register simulates restart).
+    var tok1: [TOKEN_LEN]u8 = undefined;
+    var suf1: [4]u8 = undefined;
+    _ = coord_register(0, -1, &tok1, &suf1); // claude #1
+    const tag = "routine-edit";
+    _ = coord_report_outcome(&tok1, TOKEN_LEN, tag.ptr, @intCast(tag.len), 1, 100, 1);
+    _ = coord_report_outcome(&tok1, TOKEN_LEN, tag.ptr, @intCast(tag.len), 1, 100, 1);
+    _ = coord_deregister(&tok1, TOKEN_LEN);
+
+    // New peer, same client_kind. Track record should aggregate together.
+    var tok2: [TOKEN_LEN]u8 = undefined;
+    var suf2: [4]u8 = undefined;
+    _ = coord_register(0, -1, &tok2, &suf2); // claude #2
+    _ = coord_report_outcome(&tok2, TOKEN_LEN, tag.ptr, @intCast(tag.len), 0, 100, 1);
+
+    var buf: [64 * 8]u8 = undefined;
+    const n = coord_get_affinities(&tok2, TOKEN_LEN, &buf, @intCast(buf.len));
+    try std.testing.expect(n >= 1);
+    const idx = findAggByTag(&buf, @intCast(n), 0, tag) orelse return error.AggregateMissing;
+    const rec = buf[idx * 64 ..][0..64];
+    try std.testing.expectEqual(@as(u16, 3), std.mem.readInt(u16, rec[1..3], .little));
+    try std.testing.expectEqual(@as(u16, 2), std.mem.readInt(u16, rec[3..5], .little));
+
+    coord_reset();
+}
+
+test "affinity window cap — last 20 attempts when no 7-day-older entries" {
+    coord_reset();
+    var tok: [TOKEN_LEN]u8 = undefined;
+    var suf: [4]u8 = undefined;
+    _ = coord_register(0, -1, &tok, &suf);
+
+    const tag = "doc-writing";
+    // 25 successes — window caps at 20 (all newer than 7 days, count-rule wins).
+    var i: usize = 0;
+    while (i < 25) : (i += 1) {
+        _ = coord_report_outcome(&tok, TOKEN_LEN, tag.ptr, @intCast(tag.len), 1, 50, 1);
+    }
+
+    var buf: [64 * 4]u8 = undefined;
+    const n = coord_get_affinities(&tok, TOKEN_LEN, &buf, @intCast(buf.len));
+    const idx = findAggByTag(&buf, @intCast(n), 0, tag) orelse return error.AggregateMissing;
+    const rec = buf[idx * 64 ..][0..64];
+    // All 25 are within last 7 days, so time-window rule > 20-count rule.
+    // "whichever is larger" means we use 25 attempts.
+    try std.testing.expectEqual(@as(u16, 25), std.mem.readInt(u16, rec[1..3], .little));
+
+    coord_reset();
+}
+
+test "affinity bad token rejected" {
+    coord_reset();
+    var bad_tok = [_]u8{0xFF} ** TOKEN_LEN;
+    var buf: [64]u8 = undefined;
+    try std.testing.expectEqual(
+        @as(c_int, -1),
+        coord_get_affinities(&bad_tok, TOKEN_LEN, &buf, @intCast(buf.len)),
+    );
+    try std.testing.expectEqual(
+        @as(c_int, -1),
+        coord_report_outcome(&bad_tok, TOKEN_LEN, "x".ptr, 1, 1, 0, 0),
+    );
+    coord_reset();
+}
+
+test "affinity replay after restart" {
+    coord_reset();
+    dur.close();
+
+    var path_buf: [256]u8 = undefined;
+    const dir = try tmpCoordDir(&path_buf);
+    defer std.fs.cwd().deleteTree(dir) catch {};
+
+    try std.testing.expect(dur.openWithDir(dir));
+    dur.truncate();
+
+    var tok: [TOKEN_LEN]u8 = undefined;
+    var suf: [4]u8 = undefined;
+    _ = coord_register(0, -1, &tok, &suf);
+
+    const tag = "test-writing";
+    _ = coord_report_outcome(&tok, TOKEN_LEN, tag.ptr, @intCast(tag.len), 1, 200, 1);
+    _ = coord_report_outcome(&tok, TOKEN_LEN, tag.ptr, @intCast(tag.len), 0, 200, 1);
+
+    dur.close();
+    coord_reset();
+    try std.testing.expect(dur.openWithDir(dir));
+    dur.replay(replayDispatch);
+    defer dur.close();
+
+    // Re-register so we have a token to query with.
+    var tok2: [TOKEN_LEN]u8 = undefined;
+    var suf2: [4]u8 = undefined;
+    _ = coord_register(0, -1, &tok2, &suf2);
+
+    var buf: [64 * 4]u8 = undefined;
+    const n = coord_get_affinities(&tok2, TOKEN_LEN, &buf, @intCast(buf.len));
+    const idx = findAggByTag(&buf, @intCast(n), 0, tag) orelse return error.AggregateMissing;
+    const rec = buf[idx * 64 ..][0..64];
+    try std.testing.expectEqual(@as(u16, 2), std.mem.readInt(u16, rec[1..3], .little));
+    try std.testing.expectEqual(@as(u16, 1), std.mem.readInt(u16, rec[3..5], .little));
 
     coord_reset();
 }

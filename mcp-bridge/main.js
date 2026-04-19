@@ -240,6 +240,8 @@ async function dispatchTool(toolName, args) {
     case "coord_review_entry":
     case "coord_approve":
     case "coord_reject":
+    case "coord_report_outcome":
+    case "coord_get_affinities":
       return dispatchLocalCoord(toolName, args);
 
     default:
