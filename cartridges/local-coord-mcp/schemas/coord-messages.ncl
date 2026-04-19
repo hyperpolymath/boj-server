@@ -371,4 +371,12 @@
     { pattern = "SET secret", min_tier = 3, reason = "Secret modification" },
     { pattern = "--no-verify", min_tier = 3, reason = "Hook bypass" },
   ],
+
+  # Note on validation layers:
+  # - This file (JSON-Schema-style) is the PORTABLE interface. Exports
+  #   to coord-messages.json for any JSON Schema validator.
+  # - Rich dependent-constraint validation lives in sibling file
+  #   schemas/coord-messages-contracts.ncl — use that for server-side
+  #   checks via the Deno shim (Task #17). It expresses rules that JSON
+  #   Schema can't cleanly say (Tier 2+ requires context_fetch_id, etc.)
 }
