@@ -6,9 +6,12 @@ tracked in version control.
 
 | File | Scope |
 |------|-------|
-| `COORD-MCP-DESIGN-LOG.md`            | Master design log — rationale + Part 1/2 ledger of landed tasks |
-| `COORD-MCP-HANDOFF-PROMPTS.md`       | Prompt matrix — which prompt to use when |
-| `COORD-MCP-PROMPT3-HANDOVER-2026-04-20.md` | Prompt 3 (coord finishers) handover — 11 tasks, 10 commits, shipped |
+| **`COORD-MCP-TODO.md`**              | **Tight actionable backlog, P0→P4, with agreed decisions D1–D4.** Start here. |
+| **`COORD-MCP-STATE.md`**             | **Where we are now vs the forward vision — per-layer status + 38 decision summary.** |
+| `COORD-MCP-DESIGN-LOG.md`            | Full design log — rationale + DD-1..DD-38 + appendices A–M. Reference for the two summaries above. |
+| `COORD-MCP-HANDOFF-PROMPTS.md`       | Ready-to-paste prompts to re-seat a new Claude session |
+| `COORD-MCP-PROMPT3-HANDOVER-2026-04-20.md` | Prompt 3 (coord finishers) handover — 11 tasks shipped |
+| `COORD-DESIGN-ORIGIN-CONVERSATION.txt` | Raw conversation that seeded the design (BFT safety, affinity routing, adaptive horizon, chief-of-staff model). Historical. |
 
 ## Source of truth
 

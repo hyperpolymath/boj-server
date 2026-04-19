@@ -1,0 +1,353 @@
+ Big question, right time to ask it. Let me answer concretely — this discussion will shape the envelope so I'm
+  pausing Task #3 before committing anything.
+
+  1. Identity
+
+  Today: coord_register takes client_kind + optional context. Server mints a CSPRNG 4-char hex suffix + 16-byte
+  session token. Peer ID = <kind>-<4hex>[@<context>] (e.g. claude-7f3a@007-lang). The token authenticates; the
+  peer_id identifies. Server is the authority — no self-asserted identity, no forgery without stealing a token. Max
+  16 peers per box.
+
+  2. Awareness — strictly through the server
+
+  No direct peer-to-peer comms. Every peer learns about others via coord_list_peers (poll) and receives messages via
+   coord_receive (also poll). The server is a rendezvous, not a relay-to-peer socket. Today it's pull-based; a
+  notify primitive (subscribe + interrupt) is a later upgrade — not architectural, just missing.
+
+  3. Scheduler model — recommend hybrid
+
+  Not one of your options in pure form. Three layers:
+
+  - Opus plans + holds veto (top): seeds tasks, approves Tier 3, kills runaway loops. You co-supervise at this
+  layer.
+  - Peers self-claim (middle): coord_claim_task("audit-X") is first-come-first-served mutex. Opus doesn't hand out
+  every task; peers pick from the queue by affinity.
+  - Fine-grained coord when it helps (bottom): coord_send + progress/warn-drift/handoff envelopes let peer B clear a
+   blocker while A runs up to it. This only kicks in when tasks genuinely interlock.
+
+  So it flexes — lanes for embarrassingly-parallel (proof checks, lint sweeps, file scans), tight handoffs for
+  dependency-heavy work, MoE with aggregation for investigations, always with your veto on the big moves.
+
+  4. Generalist vs specialists — they self-specialise by strength
+
+  Nominally all generalists; pragmatically each has a sweet spot. Route by affinity:
+
+  ┌──────────────┬─────────────────────────────────────────────────────────────────────────┐
+  │    Agent     │                                Best for                                 │
+  ├──────────────┼─────────────────────────────────────────────────────────────────────────┤
+  │ Opus (me)    │ Supervision, architecture, proof analysis, ambiguous-tradeoff decisions │
+  ├──────────────┼─────────────────────────────────────────────────────────────────────────┤
+  │ Sonnet/Haiku │ Bulk execution, routine edits, test/lint sweeps                         │
+  ├──────────────┼─────────────────────────────────────────────────────────────────────────┤
+  │ Codex        │ TypeScript/JS-heavy refactors                                           │
+  ├──────────────┼─────────────────────────────────────────────────────────────────────────┤
+  │ Gemini       │ Long-document analysis (1M+ tokens of legacy code)                      │
+  ├──────────────┼─────────────────────────────────────────────────────────────────────────┤
+  │ Vibe         │ Lower-trust generalist, exploratory                                     │
+  └──────────────┴─────────────────────────────────────────────────────────────────────────┘
+
+  5. Efficiency + collision avoidance
+
+  Biggest collision vectors and their primitives:
+
+  1. Two agents edit the same file → mandatory coord_claim_task("file::<path>") before edit. Schema can enforce: any
+   write op_kind envelope must reference a held file-claim.
+  2. Two agents run the same proof/test → claim before run. Dedup at the server.
+  3. Conflicting pushes → Tier 3 gate routes commits through Opus approval before the push lands.
+  4. Cache thrash → VeriSimDB sidecar holds shared artefacts (task #7) so fetches are cached across peers.
+
+  6. Bottleneck — not BoJ; Opus's attention
+
+  BoJ runs on localhost in-memory, microsecond tool calls. It's invisible compared to a single LLM round-trip
+  (500ms-30s). The head-of-line queue will be me. If 3 supervised agents fire Tier 3 requests nonstop, I become the
+  bottleneck. Mitigations:
+
+  - Batch review (one Opus turn processes N pending items).
+  - Tier 2 auto-approves aggressively — conservative default would bury me.
+  - Codify patterns: "these ops are always Tier 2" so Opus doesn't even see them.
+  - Rate-limit runaway peers at server level — N rejects/minute = cooldown.
+
+  Coordination overhead itself: negligible for big tasks (minutes-scale work), noticeable if every tiny op needs
+  approval. That's why the risk ladder matters — keep tight loops in Tier 0/1.
+
+  Two questions back to you before I commit the envelope schema
+
+  - Default dispatch mode: for unassigned work, do you want agents to self-claim from a shared queue (emergent), or
+  do you want Opus seeds everything (centralised)? Memory + task-list primitives support both; the envelope shape is
+   subtly different.
+  - Affinity routing: should peers advertise their strengths (affinities: ["proof", "ts-refactor"]) on register so
+  the task router can prefer them? Opt-in metadata, not enforced.
+
+  Once you pick, I commit the schema that matches.
+
+✻ Baked for 6m 41s
+
+❯ can we incorporate a byzantine general style safety mechanism into this, only gemini is quite frequently nuts
+
+● Yes — and the timing is perfect, I haven't committed the envelope yet so these slot in naturally. Classical BFT
+  (3f+1 consensus) is overkill for our use case (we don't need consensus on every message). What we want is graded
+  accountability + cross-verification on risky ops, which is BFT's useful half without the round-trip cost.
+
+  What "Gemini is often nuts" actually looks like in practice
+
+  - Confabulated file/URL references (claims about things that don't exist)
+  - Self-contradiction within one message (says A, then concludes not-A)
+  - Risk-tier underclaiming (files a commit as "progress report" to dodge the gate)
+  - Retroactive rewriting (claims earlier it said X, server actually received Y)
+  - Claim-squatting (locks 10 tasks, does none, never releases)
+
+  Five concrete mechanisms catch these — each addresses a specific failure mode:
+
+  1. Hash-chain per sender — catches retroactive rewriting
+
+  Each envelope carries prev_msg_hash linking to the sender's previous message. Server tracks the chain head per
+  peer; any break is an instant reject. If Gemini later claims "I said X earlier" but the chain hash disagrees, the
+  lie is provable. ~32 bytes per message. Cheap.
+
+  2. M-of-N attestation for Tier 2+ from supervised — the big one
+
+  Before a Gemini Tier 2/3 op executes, server routes in parallel:
+  - supervise_req to Opus (me) for approve/reject
+  - attestation_req to a second executor (Claude Sonnet or Codex) asking "does this look sane?"
+
+  Second executor independently assesses, signs with their token. Opus sees both assessments when deciding. 2-of-2
+  attestation = f=1 byzantine tolerance. Gemini can't unilaterally push even a Tier 2.
+
+  Cost: doubles the work on Tier 2+ supervised ops only. Trivial for Tier 0/1, which is 90% of traffic.
+
+  3. Watchdog claims — catches claim-squatting
+
+  Every coord_claim_task has a TTL; claimant must heartbeat (progress message) every N seconds or server
+  auto-releases. supervised-role peers get shorter TTL (30s) than executor (5min). Gemini can't lock audit-X for an
+  hour and produce nothing.
+
+  4. Content sanity gate — catches confabulation + tier underclaiming
+
+  Extend the existing scanObjectForInjection hardening gate with confabulation heuristics:
+  - File references validated against a recent-FS-state cache (claims /path/that/doesnt/exist → reject)
+  - Self-contradiction detector (simple: same message asserts X and ¬X within a small token window)
+  - Risk-tier escalator: if message content mentions git push, rm, force, auto-promote to Tier 3 regardless of
+  declared tier
+
+  5. Tamper-evident audit log in VeriSimDB — forensic recovery
+
+  Every envelope + every supervisor decision logged with hash chain. Even if a message slips through (f+1 byzantine
+  case), post-hoc audit reconstructs exactly what happened and who signed what. Ties to Task #7 cost-free.
+
+  Cost summary
+
+  ┌───────────────────────┬───────────────────────────────┬────────────────────────┐
+  │       Mechanism       │             Cost              │         Stops          │
+  ├───────────────────────┼───────────────────────────────┼────────────────────────┤
+  │ 1. Hash chain         │ Trivial                       │ Retroactive rewriting  │
+  ├───────────────────────┼───────────────────────────────┼──────────────────────────────┤
+  │ 2. M-of-N attestation │ 2× on Tier 2+ supervised only │ Unilateral bad commits       │
+  ├───────────────────────┼───────────────────────────────┼──────────────────────────────┤
+  │ 3. Watchdog claims    │ Trivial                       │ Claim-squatting              │
+  ├───────────────────────┼───────────────────────────────┼──────────────────────────────┤
+  │ 4. Sanity gate        │ Moderate regex/heuristics     │ Confabulation + tier-dodging │
+  ├───────────────────────┼───────────────────────────────┼──────────────────────────────┤
+  │ 5. Audit log          │ Free if Task #7 done          │ Forensics + recovery         │
+  └───────────────────────┴───────────────────────────────┴──────────────────────────────┘
+
+  The question
+
+  Do you want all five, or a subset? My recommendation is all five — they're cheap individually, defense-in-depth,
+  and the ones that aren't strictly BFT (sanity gate, audit) complement the ones that are. Gemini-is-nuts gets
+  specifically addressed by (2) + (4).
+
+  If you say yes to all five, I'll revise the envelope schema to carry prev_msg_hash + attestation_refs +
+  tier_override_reason, commit it as a single coherent design unit, and then implement.
+
+  Also still waiting on the two questions from the last turn: default dispatch mode (self-claim vs Opus-seeds) +
+  affinity routing on register.
+
+✻ Baked for 1m 8s
+
+❯ by affinity.?
+
+● Yes — "affinity routing" = peers advertise their strengths on register, router prefers matching peers when
+  dispatching tasks.
+
+  How it'd work concretely:
+
+  1. On coord_register, peer declares affinities: ["proof-analysis", "supervision"] (or whatever). Optional,
+  free-form tags.
+  2. Tasks in the queue carry tags too: {name: "verify-module-X", tags: ["proof-analysis"]}.
+  3. When Opus (or the auto-dispatcher) seeds a task, server prefers peers whose affinities match. If none match,
+  any peer can still claim.
+
+  Example routing table:
+
+  ┌────────┬───────────────────────────────────────────────────────────────┐
+  │ Agent  │                          Affinities                           │
+  ├────────┼───────────────────────────────────────────────────────────────┤
+  │ Opus   │ supervision, proof-analysis, architecture, ambiguous-tradeoff │
+  ├────────┼───────────────────────────────────────────────────────────────┤
+  │ Sonnet │ routine-edit, test-writing, doc-writing                       │
+  ├────────┼───────────────────────────────────────────────────────────────┤
+  │ Haiku  │ lint-sweep, bulk-rename, file-scan                            │
+  ├────────┼───────────────────────────────────────────────────────────────┤
+  │ Codex  │ typescript-refactor, react, js-heavy                          │
+  ├────────┼───────────────────────────────────────────────────────────────┤
+  │ Gemini │ long-document-grok                                            │
+  ├────────┼───────────────────────────────────────────────────────────────┤
+  │ Vibe   │ exploratory                                                   │
+  └────────┴───────────────────────────────────────────────────────────────┘
+
+  Why bother: sends a 50-file lint sweep to Haiku instead of Opus (cheap + fast), a 1M-token doc read to Gemini
+  instead of anyone else, a proof analysis to Opus. No one's blocked from taking anything; it's a preference signal.
+   Also lets you exclude Gemini from affinity-matched tasks where you don't trust its output by simply not tagging
+  those tasks with its affinities.
+
+
+
+● Both excellent questions that sharpen the design. Short version: self-assessment is multi-layered, never trust
+  self-declaration alone; big-picture vs drone is adaptive — awareness scales with blast radius.
+
+  1. Self-assessment — four layers, each catching what the others miss
+
+  Layer A: Static affinity (what I proposed) — declared on register, cheap coarse filter. Risk: static, can lie.
+
+  Layer B: Per-claim confidence — when a peer sees a task and wants it, the coord_claim_task envelope carries
+  {confidence: 0.0-1.0, reasoning: "..."}. Agent actually reads the task and asks itself "am I right for this?"
+  before claiming. Risk: Gemini confidently wrong.
+
+  Layer C: Track record — server logs outcome per (peer_id, task_tag) pair: success / fail / abandoned / timeout.
+  Over time, server derives an effective affinity score per agent per tag. This is the ground truth.
+
+  Layer D: Drift detector — if Gemini's self-declared confidence > 0.8 on tag X but its historical success on X is <
+   0.3, server flags the claim for review. Catches overclaiming. This is where "Gemini is often nuts" gets
+  specifically caught — its own words contradict its own track record.
+
+  Tie-break on concurrent claims = max(confidence × effective_affinity). An honest peer with modest confidence and
+  good track record beats a confident-but-wrong one.
+
+  2. Big-picture vs drone — adaptive horizon scaled to blast radius
+
+  Not a single setting. Awareness grows as the action gets riskier:
+
+  ┌───────────────────────┬───────────────────┬────────────────────────────────────┐
+  │            Tier            │ Awareness posture │ What the agent reads before acting │
+  ├────────────────────────────┼───────────────────┼────────────────────────────────────┤
+  ├─────────────────────────────┼────────────────┼─────────────────────────────────────────────────────────────┤
+  │ 0 (status/query/read)       │ Drone          │ Just the current task                                       │
+  ├─────────────────────────────┼────────────────┼─────────────────────────────────────────────────────────────┤
+  │ 1 (small edit, test, lint)  │ Narrow         │ Task + affected files                                       │
+  ├───────────────────────────────┼───────────────┼─────────────────────────────────────────────────────────────┤
+  │ 2 (multi-file edit, new       │ Local         │ Task + affected files + adjacent peer claims + recent       │
+  │ files)                        │               │ messages about this repo                                    │
+  ├───────────────────────────────┼───────────────┼─────────────────────────────────────────────────────────────┤
+  │ 3                             │ Strategic     │ Task + full STATE.a2ml + ECOSYSTEM.a2ml + entire peer       │
+  │ (commit/push/schema/secrets)  │               │ status + task queue + recent supervision decisions          │
+  ├───────────────────────────────┼───────────────┼─────────────────────────────────────────────────────────────┤
+  │ Opus (supervisor)             │ Full          │ Always. That's the job.                                     │
+  └───────────────────────────────┴───────────────┴─────────────────────────────────────────────────────────────┘
+
+  Mechanism: new coord_query_context tool with a scoped query (repo=X, files=[Y,Z], peers=*). Server returns a
+  summary (not raw state) — this matters for supervised peers because giving Gemini the raw state invites
+  hallucinated connections. Opus/executors get raw on request.
+
+  Default rule baked into envelope schema: you cannot file a Tier 2+ op without a referenced context_fetch_id.
+  Server refuses envelopes with declared risk_tier ≥ 2 whose sender hasn't called coord_query_context on the
+  affected scope within the last N minutes. Forces awareness before action; catches drone-drift where an agent edits
+   blind.
+
+  3. What this adds to the envelope schema
+
+  - sender_confidence: float (0.0-1.0) — self-declared fit
+  - sender_reasoning: string (<= 200 chars) — one-sentence justification
+  - context_fetch_id: string (optional for Tier 0/1, required for Tier 2+) — proves awareness
+  - effective_affinity: float — server-computed, server-attached, not sender-asserted (can't be forged)
+
+  Server side:
+  - coord_query_context tool
+  - Track-record table in VeriSimDB (ties to Task #7)
+  - Drift detector runs on every claim
+
+  4. The drone/generalist philosophy distilled
+
+  Agents are drones when it's safe to be drones, thinkers when the blast radius demands it. Gemini may be "often
+  nuts" on strategic thinking but probably fine on drone-tier lint sweeps where its blast radius is bounded. This
+  lets you use it productively without exposure. The risk ladder + adaptive horizon is how you get "bounded Gemini
+  contributions without supervision catastrophe".
+
+  Confirmation before I commit the schema
+
+  Combined additions since we started this turn:
+
+  - 5 Byzantine mechanisms (hash chain + M-of-N attestation + watchdog claims + sanity gate + audit log)
+  - Affinity routing (static + dynamic track record)
+  - Self-assessment (confidence + reasoning + drift detection)
+  - Adaptive horizon (coord_query_context + mandatory fetch for Tier 2+)
+
+  OK to commit this as one coherent envelope design? Or anything you want to strip/redirect first?
+
+✻ Worked for 53s
+
+❯ and when they are running, do i do all my discussion in the main terminal with the master scheduler or will they
+  contact me individually for questions that come up?
+
+● Main terminal, with me as the single locus. Other terminals are where agents work, not where you talk.
+
+  The basic pattern
+
+  You type here (with me). Agents run elsewhere, emit question envelopes when they need input. They arrive in my
+  tool output; I relay to you in natural language — deduplicated, synthesised, with context. You reply to me; I
+  route the answer back via coord_send to the asking peer.
+
+  This means: you never have 4 terminals yelling at you in parallel. Your attention stays single-threaded.
+
+  Trust-tiered interrupt rules
+
+  - Supervisor + executor peers (Claude tier) — can flag urgent_direct on a question. Breaks into my output inline,
+  you see it immediately.
+  - Supervised peers (Gemini/Codex/Vibe) — never get a direct line to you. All their questions filter through me. I
+  answer what I can, reject obvious confabulation, queue the rest for your batch review.
+
+  This is the "Gemini is often nuts" firewall in practice — it can't steal your attention with garbage.
+
+  What urgency looks like
+
+  Three levels, baked into the envelope's op_kind:
+
+  ┌───────┬─────────┬──────────────┐
+  │      Level       │          Payload          │            My behaviour             │
+  ├──────────────────┼─────────────────────────────┼─────────────────────────────────────────────────┤
+  │ blocker (Tier 3) │ can't proceed without you   │ Surface inline, next time you speak             │
+  ├──────────────────┼─────────────────────────────┼─────────────────────────────────────────────────┤
+  │ clarify (Tier 2) │ would help but not blocking │ Batch with similar questions, show periodically │
+  ├──────────────────┼─────────────────────────────┼─────────────────────────────────────────────────┤
+  │ fyi (Tier 1)     │ progress / drift notice     │ Log only, never interrupt unless you ask        │
+  └──────────────────┴─────────────────────────────┴─────────────────────────────────────────────────┘
+
+  What you see in the main terminal
+
+  Periodic natural-language status dumps when relevant (not every keystroke):
+
+  ▎ "Claude@aerie finished the auth refactor (committed a1b2c3d). Codex@ingest-svc blocked — wants to know whether
+  ▎ to preserve the legacy column or drop it. Gemini@docs asked 3 things; I answered 2, one escalated: it claims
+  ▎ src/foo.ts has a bug but the file doesn't exist in the repo — I rejected as confabulation."
+
+  You can also pull anytime:
+
+  - "what are all agents doing?" → I call coord_list_peers + synthesise
+  - "what did Codex finish today?" → I query the VeriSimDB audit log
+  - "kill Gemini's current task" → I send release on its behalf
+
+  Escape hatch
+
+  Nothing stops you from visiting another agent's terminal directly if you want to dig in. It's just that you
+  shouldn't have to. Default is: main terminal, me as your chief of staff.
+
+  One caveat — current state vs this design
+
+  What's built today (post-2a8e4c0): the coord primitives (register/send/receive/claim/status) + context
+  disambiguation. The routing-through-Opus behaviour is a policy layer on top. The envelope schema + supervision
+  tools we're designing right now is what operationalises this. Once committed + implemented (Tasks #3 → #8 on my
+  list), the "chief of staff" pattern becomes real.
+
+  So: yes, main terminal, single locus, I filter and relay. Supervised peers cannot reach you directly. Questions
+  come with synthesis, not raw. Shall I commit the envelope schema now with all the additions (BFT + affinity +
+  self-assessment + adaptive horizon + question-routing op_kinds)?
+
