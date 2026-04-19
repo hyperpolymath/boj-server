@@ -27,7 +27,7 @@ The envelope defined here:
   interrupting free ones.
 * Uses Byzantine-style cross-verification to catch the specifically
   dangerous failure modes of a low-trust peer.
-* Keeps the supervisor (Opus + user) as the single locus of attention
+* Keeps the master (Opus + user) as the single locus of attention
   while the other agents work in parallel.
 
 == Design principles
@@ -40,25 +40,32 @@ The envelope defined here:
   `context_fetch_id` on Tier 2+.
 . *Never trust self-assessment alone.* Self-declared confidence is a
   signal, never a decision. Server cross-checks against track record
-  and, for Tier 2+ from supervised peers, requires an independent
+  and, for Tier 2+ from apprentice peers, requires an independent
   attester.
 . *Supervision without bottleneck.* Auto-approve where safe, batch
   where feasible, preserve Opus attention for genuine judgement calls.
 . *Single user locus.* All agent-to-user traffic filters through the
-  supervisor terminal. Supervised peers never reach the user directly.
+  master terminal. Apprentice peers never reach the user directly.
 
 == Trust tiers
+
+NOTE: DD-32 (2026-04-20) renamed the three trust roles from
+supervisor/executor/supervised to `master`/`journeyman`/`apprentice`.
+Integer ordinals preserved so existing durable logs replay unchanged.
+Old names accepted as aliases for one release.
 
 |===
 | Role | Assigned to | Default for client_kind
 
-| `supervisor` | Opus | (explicit only)
-| `executor` | Claude Sonnet / Haiku | `claude`
-| `supervised` | vibe, codex, gemini | `gemini`, `copilot`, `custom`
+| `master` (was: supervisor) | Opus | (explicit only)
+| `journeyman` (was: executor) | Claude Sonnet / Haiku | `claude`
+| `apprentice` (was: supervised) | vibe, codex, gemini | `gemini`, `copilot`, `custom`, `openai`, `mistral`
 |===
 
-`supervisor` must be requested explicitly on register; the server
-SHOULD restrict the role to Opus-tier Claude clients.
+`master` must be requested explicitly via `coord_promote_to_master`
+(old alias `coord_promote_to_supervisor` still accepted) with the
+`BOJ_MASTER_TOKEN` env secret. `BOJ_SUPERVISOR_TOKEN` is read as
+fallback for one release.
 
 == Risk ladder
 
@@ -68,8 +75,8 @@ SHOULD restrict the role to Opus-tier Claude clients.
 | 0 | status, query, read, peer discovery, context_query | none
 | 1 | single-file edit (non-critical), test, lint, fyi, release | logged
 | 2 | multi-file edit, dep bump, new file, claim (local/repo) | auto-approve 60s
-| 3 | commit, push, mirror, secret-adjacent, deletion, schema migration | supervisor approval, no timeout
-| 4 | force-push, branch delete, public-repo create, license change, always-private-repo touch | schema-level reject for `supervised`
+| 3 | commit, push, mirror, secret-adjacent, deletion, schema migration | master approval, no timeout
+| 4 | force-push, branch delete, public-repo create, license change, always-private-repo touch | schema-level reject for `apprentice`
 |===
 
 == Byzantine safety mechanisms
@@ -84,9 +91,9 @@ peer; any break is an instant reject. Cost: 32 bytes per message.
 
 === 2. M-of-N attestation — catches unilateral bad Tier 2+ ops
 
-Before a Tier 2+ envelope from `role=supervised` executes, server routes
-`attest_req` in parallel to a second executor (Sonnet or Codex). That
-executor independently reads the payload, HMAC-signs the envelope with
+Before a Tier 2+ envelope from `role=apprentice` executes, server routes
+`attest_req` in parallel to a second journeyman (Sonnet or Codex). That
+journeyman independently reads the payload, HMAC-signs the envelope with
 its session token, and returns `attest_resp`. Opus sees both the
 supervise_req and the attestation when deciding.
 
@@ -97,9 +104,9 @@ This is PBFT-lite for *f=1* byzantine tolerance.
 Every `claim` op has a TTL. Claimant must emit `progress` or `release`
 before expiry or server auto-releases the claim.
 
-* `supervised`: 30s TTL
-* `executor`: 5min TTL
-* `supervisor`: unlimited
+* `apprentice`: 30s TTL
+* `journeyman`: 5min TTL
+* `master`: unlimited
 
 === 4. Content sanity gate — catches confabulation + tier underclaiming
 
@@ -140,10 +147,10 @@ high-risk action to be preceded by a context read.
 
 Context summary depth scales with requester role:
 
-* `supervised` → summary only (never raw state — prevents hallucinated
+* `apprentice` → summary only (never raw state — prevents hallucinated
   connections).
-* `executor` → summary by default, raw on request.
-* `supervisor` → full raw on request, always.
+* `journeyman` → summary by default, raw on request.
+* `master` → full raw on request, always.
 
 == User-interaction routing
 
@@ -154,13 +161,13 @@ Three op_kinds for agent-to-user communication:
 | op_kind | Behaviour | Allowed setters
 
 | `fyi` | Log-only. Never interrupts. | any role
-| `clarify` | Batch through supervisor terminal. `urgent_direct` breakout allowed for executor/supervisor. | any role (supervised can't set urgent_direct)
-| `blocker` | Inline interrupt on supervisor terminal. Stops the task. | any role
+| `clarify` | Batch through master terminal. `urgent_direct` breakout allowed for journeyman/master. | any role (apprentice can't set urgent_direct)
+| `blocker` | Inline interrupt on master terminal. Stops the task. | any role
 |===
 
-The supervisor (Opus) deduplicates near-identical questions from multiple
+The master (Opus) deduplicates near-identical questions from multiple
 peers, synthesises with context, and relays to the user in natural
-language. Rejected confabulated questions from supervised peers never
+language. Rejected confabulated questions from apprentice peers never
 reach the user.
 
 == op_kind quick reference
@@ -173,10 +180,10 @@ reach the user.
 | query | 0 | Read-only Q&A between peers
 | context_query | 0 | Request big-picture context (required for Tier 2+)
 | context_reply | 0 | Response to context_query
-| supervise_req | 0 | Supervised peer requests gated-op approval
-| supervise_resp | 0 | Supervisor decides approve/reject
+| supervise_req | 0 | Apprentice peer requests gated-op approval
+| supervise_resp | 0 | Master decides approve/reject
 | attest_req | 0 | Server requests independent attestation (BFT)
-| attest_resp | 0 | Executor attests/rejects
+| attest_resp | 0 | Journeyman attests/rejects
 | fyi | 1 | Log-only observation
 | progress | 1 | Task percent + note
 | warn_drift | 1 | Rule / invariant / expected-state drift
@@ -187,6 +194,85 @@ reach the user.
 | blocker | 3 | Peer cannot proceed without user
 | gated_op | 3 | Wrapper for arbitrary high-risk action
 |===
+
+== Prover tag convention (Task #37 — DD-37)
+
+Zero-code convention for routing proof-sized tasks to the right peer.
+Task tags prefixed `proof:<prover>` ask the scheduler to prefer a peer
+whose declared affinities cover that prover. Canonical prover names:
+
+[cols="1,3",options="header"]
+|===
+| Tag | Target
+
+| `proof:lean4`    | Lean 4 proofs (mathlib4, std4)
+| `proof:agda`     | Agda (cubical, stdlib, agda-mode)
+| `proof:idris2`   | Idris 2 (dependent types, totality proofs)
+| `proof:rocq`     | Rocq / Coq (formal verification, Coquelicot, mathcomp)
+| `proof:tla`      | TLA+ (concurrent/distributed specs)
+| `proof:echidna`  | ECHIDNA property-based fuzzing
+| `proof:spark`    | SPARK / Ada formal subset
+|===
+
+=== How peers advertise a prover
+
+Peers pass an array of prover tags to `coord_register`'s
+`declared_affinities` field. Example (Node/Deno over MCP):
+
+[source,json]
+----
+{
+  "client_kind": "claude",
+  "context": "boj-server",
+  "declared_affinities": ["proof:rocq", "proof:idris2", "proof-analysis"]
+}
+----
+
+=== How the scheduler picks a prover
+
+When a task is filed with `tag = "proof:agda"`:
+
+. The scheduler calls `coord_get_affinities` to read per-(kind, tag)
+  effective_affinity over the active window (last 20 attempts OR last
+  7 days, whichever larger — DD-28).
+. It filters to peers whose `declared_affinities` include `proof:agda`.
+. It tie-breaks on `max(confidence × effective_affinity)` per DD-9 so
+  honest-modest peers with solid track records beat overclaimers.
+. Falls back to generic `proof-analysis` if no specialist peer is
+  available.
+
+=== Envelope example
+
+[source,json]
+----
+{
+  "version": 1,
+  "msg_id": "7f3a92b4c1d0",
+  "prev_msg_hash": "00...00",
+  "sender": "claude-7f3a@boj-server",
+  "recipient": "*",
+  "timestamp": "2026-04-20T10:15:00Z",
+  "op_kind": "claim",
+  "risk_tier": 2,
+  "payload": { "task": "proof:agda/category-pullback-universal" },
+  "context_fetch_id": "ctx-b1c2",
+  "sender_confidence": 0.8,
+  "difficulty_hint": "high",
+  "task_difficulty": "novel"
+}
+----
+
+The `claim` envelope's `payload.task` uses the `proof:<prover>/<what>`
+form so the scheduler can strip the prefix when dispatching and keep
+the specifier for logs / track-record aggregation.
+
+=== Why no new code
+
+The affinity machinery (Task #13 effective_affinity, Task #14
+reassignment engine, `coord_set_declared_affinities`) already does all
+the work — prover tags are just a naming convention on top. If a new
+prover appears, coin a tag and peers start advertising; no cartridge
+change needed.
 
 == What this does NOT cover
 
@@ -204,7 +290,7 @@ reach the user.
 . Supervision tier + role field in FFI (Task #5).
 . Supervisor tools: coord_review / coord_approve / coord_reject (Task #6).
 . VeriSimDB sidecar for durable state + track record (Task #7).
-. E2E test: 2-instance with supervisor gate + durability (Task #8).
+. E2E test: 2-instance with master gate + durability (Task #8).
 
 Only after those land do we wire the full envelope into the FFI's
 coord_send path. Today's coord_send accepts raw strings; in the
