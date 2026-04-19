@@ -242,6 +242,8 @@ async function dispatchTool(toolName, args) {
     case "coord_reject":
     case "coord_report_outcome":
     case "coord_get_affinities":
+    case "coord_set_declared_affinities":
+    case "coord_scan_suggestions":
       return dispatchLocalCoord(toolName, args);
 
     default:

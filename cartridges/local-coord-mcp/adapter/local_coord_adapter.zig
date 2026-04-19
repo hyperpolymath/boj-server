@@ -109,6 +109,30 @@ fn dispatch(tool: []const u8, body: []const u8, resp: []u8, allocator: std.mem.A
             }
         }
 
+        // Optional declared_affinities — an array of tag strings that the
+        // peer self-reports as strengths. Stored as a CSV internally so the
+        // reassignment engine (Task #14) can diff against track record.
+        if (parsed.value.object.get("declared_affinities")) |decl_val| {
+            if (decl_val == .array) {
+                var csv_buf: [256]u8 = undefined;
+                var csv_len: usize = 0;
+                for (decl_val.array.items) |item| {
+                    if (item != .string) continue;
+                    const s = item.string;
+                    if (csv_len > 0 and csv_len < csv_buf.len) {
+                        csv_buf[csv_len] = ',';
+                        csv_len += 1;
+                    }
+                    const to_copy: usize = @min(s.len, csv_buf.len - csv_len);
+                    if (to_copy > 0) @memcpy(csv_buf[csv_len .. csv_len + to_copy], s[0..to_copy]);
+                    csv_len += to_copy;
+                }
+                if (csv_len > 0) {
+                    _ = ffi.coord_set_declared_affinities(&token, 16, &csv_buf, @intCast(csv_len));
+                }
+            }
+        }
+
         var token_hex: [32]u8 = undefined;
         const hex_chars = "0123456789abcdef";
         for (token, 0..) |b, i| {
@@ -374,8 +398,11 @@ fn dispatch(tool: []const u8, body: []const u8, resp: []u8, allocator: std.mem.A
             const preview = rec[9 .. 9 + preview_n];
 
             if (i > 0) w.writeAll(",") catch return .{ .status = 500, .body = errJson(resp, "buffer overflow") };
-            std.fmt.format(w, "{{\"request_id\":{d},\"sender_idx\":{d},\"target_idx\":{d},\"risk_tier\":{d},\"msg_len\":{d},\"preview\":\"{s}\"}}", .{
-                rid, sender_idx, target_idx_sign, risk_tier, mlen, preview,
+            // sender_idx = 0xFE indicates a server-origin (engine-generated)
+            // entry from coord_scan_suggestions (Task #14).
+            const origin: []const u8 = if (sender_idx == 0xFE) "server-engine" else "peer";
+            std.fmt.format(w, "{{\"request_id\":{d},\"origin\":\"{s}\",\"sender_idx\":{d},\"target_idx\":{d},\"risk_tier\":{d},\"msg_len\":{d},\"preview\":\"{s}\"}}", .{
+                rid, origin, sender_idx, target_idx_sign, risk_tier, mlen, preview,
             }) catch return .{ .status = 500, .body = errJson(resp, "buffer overflow") };
         }
         w.writeAll("]}") catch return .{ .status = 500, .body = errJson(resp, "buffer overflow") };
@@ -429,6 +456,15 @@ fn dispatch(tool: []const u8, body: []const u8, resp: []u8, allocator: std.mem.A
             const v = parsed.value.object.get("duration_ms") orelse break :blk 0;
             break :blk v.integer;
         };
+        // confidence is optional; accept 0..1 float or 0..100 integer, -1 if absent.
+        const confidence: i32 = blk: {
+            const v = parsed.value.object.get("confidence") orelse break :blk -1;
+            switch (v) {
+                .float => |f| break :blk @intFromFloat(@min(@max(f * 100.0, 0.0), 100.0)),
+                .integer => |i| break :blk @intCast(i),
+                else => break :blk -1,
+            }
+        };
 
         var token: [16]u8 = undefined;
         if (!parseToken(token_val.string, &token)) return .{ .status = 400, .body = errJson(resp, "invalid token hex") };
@@ -450,11 +486,55 @@ fn dispatch(tool: []const u8, body: []const u8, resp: []u8, allocator: std.mem.A
 
         const tier: i32 = @intCast(tier_val.integer);
         const duration: i32 = @intCast(duration_val);
-        const rc = ffi.coord_report_outcome(&token, 16, tag_str.ptr, @intCast(tag_str.len), outcome, duration, tier);
+        const rc = ffi.coord_report_outcome(&token, 16, tag_str.ptr, @intCast(tag_str.len), outcome, duration, tier, confidence);
         if (rc == 0) return .{ .status = 200, .body = okJson(resp, "recorded") };
         if (rc == -1) return .{ .status = 401, .body = errJson(resp, "unauthenticated") };
         if (rc == -2) return .{ .status = 400, .body = errJson(resp, "invalid args") };
         return .{ .status = 500, .body = errJson(resp, "report failed") };
+    }
+
+    if (std.mem.eql(u8, tool, "coord_set_declared_affinities")) {
+        const parsed = std.json.parseFromSlice(std.json.Value, allocator, body, .{}) catch return .{ .status = 400, .body = errJson(resp, "invalid json") };
+        defer parsed.deinit();
+        const token_val = parsed.value.object.get("token") orelse return .{ .status = 400, .body = errJson(resp, "missing token") };
+        const tags_val = parsed.value.object.get("tags") orelse return .{ .status = 400, .body = errJson(resp, "missing tags") };
+        if (tags_val != .array) return .{ .status = 400, .body = errJson(resp, "tags must be an array of strings") };
+
+        var token: [16]u8 = undefined;
+        if (!parseToken(token_val.string, &token)) return .{ .status = 400, .body = errJson(resp, "invalid token hex") };
+
+        var csv_buf: [256]u8 = undefined;
+        var csv_len: usize = 0;
+        for (tags_val.array.items) |item| {
+            if (item != .string) continue;
+            const s = item.string;
+            if (csv_len > 0 and csv_len < csv_buf.len) {
+                csv_buf[csv_len] = ',';
+                csv_len += 1;
+            }
+            const to_copy: usize = @min(s.len, csv_buf.len - csv_len);
+            if (to_copy > 0) @memcpy(csv_buf[csv_len .. csv_len + to_copy], s[0..to_copy]);
+            csv_len += to_copy;
+        }
+
+        const rc = ffi.coord_set_declared_affinities(&token, 16, &csv_buf, @intCast(csv_len));
+        if (rc == 0) return .{ .status = 200, .body = okJson(resp, "declared") };
+        if (rc == -1) return .{ .status = 401, .body = errJson(resp, "unauthenticated") };
+        if (rc == -2) return .{ .status = 400, .body = errJson(resp, "declared affinities CSV too long") };
+        return .{ .status = 500, .body = errJson(resp, "set failed") };
+    }
+
+    if (std.mem.eql(u8, tool, "coord_scan_suggestions")) {
+        const parsed = std.json.parseFromSlice(std.json.Value, allocator, body, .{}) catch return .{ .status = 400, .body = errJson(resp, "invalid json") };
+        defer parsed.deinit();
+        const token_val = parsed.value.object.get("token") orelse return .{ .status = 400, .body = errJson(resp, "missing token") };
+        var token: [16]u8 = undefined;
+        if (!parseToken(token_val.string, &token)) return .{ .status = 400, .body = errJson(resp, "invalid token hex") };
+
+        const n = ffi.coord_scan_suggestions(&token, 16);
+        if (n == -1) return .{ .status = 401, .body = errJson(resp, "unauthenticated") };
+        const body_out = std.fmt.bufPrint(resp, "{{\"success\":true,\"suggestions_queued\":{d},\"hint\":\"use coord_review to inspect, coord_approve/coord_reject to act\"}}", .{n}) catch return .{ .status = 500, .body = errJson(resp, "buffer overflow") };
+        return .{ .status = 200, .body = body_out };
     }
 
     if (std.mem.eql(u8, tool, "coord_get_affinities")) {

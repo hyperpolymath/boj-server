@@ -86,6 +86,12 @@ pub const ClaimResult = enum(c_int) {
 /// coord_set_context.
 const MAX_CONTEXT: usize = 32;
 
+/// Declared affinities — comma-joined list of tags the peer self-reports
+/// as strengths at register time. The reassignment engine (Task #14)
+/// cross-checks these against effective_affinity to detect gaps and
+/// overclaims. Stored as the raw CSV string so comparison is cheap.
+const MAX_DECLARED: usize = 256;
+
 const Peer = struct {
     active: bool,
     kind: ClientKind,
@@ -105,6 +111,9 @@ const Peer = struct {
     // Context disambiguator (repo / tty / window label)
     context: [MAX_CONTEXT]u8,
     context_len: u8,
+    // Declared affinities (CSV of tag names)
+    declared_affinities: [MAX_DECLARED]u8,
+    declared_affinities_len: u16,
 };
 
 const empty_peer = Peer{
@@ -123,6 +132,8 @@ const empty_peer = Peer{
     .status_len = 0,
     .context = [_]u8{0} ** MAX_CONTEXT,
     .context_len = 0,
+    .declared_affinities = [_]u8{0} ** MAX_DECLARED,
+    .declared_affinities_len = 0,
 };
 
 var peers: [MAX_PEERS]Peer = [_]Peer{empty_peer} ** MAX_PEERS;
@@ -207,6 +218,7 @@ const TrackEntry = struct {
     timestamp_ms: u64,
     tag_len: u8,
     tag: [MAX_TAG]u8,
+    confidence_pct: u8, // 255 = unset
 };
 
 const empty_track = TrackEntry{
@@ -218,6 +230,7 @@ const empty_track = TrackEntry{
     .timestamp_ms = 0,
     .tag_len = 0,
     .tag = [_]u8{0} ** MAX_TAG,
+    .confidence_pct = 255,
 };
 
 var track: [MAX_TRACK]TrackEntry = [_]TrackEntry{empty_track} ** MAX_TRACK;
@@ -233,6 +246,7 @@ fn recordTrack(
     risk_tier: u8,
     duration_ms: u32,
     tag: []const u8,
+    confidence_pct: u8,
 ) void {
     const t: *TrackEntry = &track[track_head];
     t.active = true;
@@ -244,6 +258,7 @@ fn recordTrack(
     const tl: usize = @min(tag.len, MAX_TAG);
     if (tl > 0) @memcpy(t.tag[0..tl], tag[0..tl]);
     t.tag_len = @intCast(tl);
+    t.confidence_pct = confidence_pct;
     track_head = (track_head + 1) % MAX_TRACK;
     if (track_count < MAX_TRACK) track_count += 1;
 }
@@ -258,6 +273,7 @@ fn recordTrackReplay(
     duration_ms: u32,
     timestamp_ms: u64,
     tag: []const u8,
+    confidence_pct: u8,
 ) void {
     const t: *TrackEntry = &track[track_head];
     t.active = true;
@@ -269,6 +285,7 @@ fn recordTrackReplay(
     const tl: usize = @min(tag.len, MAX_TAG);
     if (tl > 0) @memcpy(t.tag[0..tl], tag[0..tl]);
     t.tag_len = @intCast(tl);
+    t.confidence_pct = confidence_pct;
     track_head = (track_head + 1) % MAX_TRACK;
     if (track_count < MAX_TRACK) track_count += 1;
 }
@@ -1100,6 +1117,49 @@ pub export fn coord_set_status(
     return 0;
 }
 
+/// Set this peer's declared affinities — a CSV of tag names the peer
+/// self-reports as strengths. Feeds the reassignment engine (Task #14):
+/// tags not in this list but with high effective_affinity trigger a
+/// promotion suggestion; tags in the list with low effective_affinity
+/// trigger an overclaim or removal suggestion.
+///
+/// Returns 0 on success, -1 on bad token, -2 if csv exceeds MAX_DECLARED.
+/// An empty csv (len=0) clears the declared list.
+pub export fn coord_set_declared_affinities(
+    token_ptr: [*]const u8,
+    token_len: c_int,
+    csv_ptr: [*]const u8,
+    csv_len: c_int,
+) c_int {
+    mutex.lock();
+    defer mutex.unlock();
+
+    const idx = findPeerByToken(token_ptr, @intCast(token_len)) orelse return -1;
+    const clen: usize = @intCast(csv_len);
+    if (clen > MAX_DECLARED) return -2;
+
+    if (clen > 0) @memcpy(peers[idx].declared_affinities[0..clen], csv_ptr[0..clen]);
+    peers[idx].declared_affinities_len = @intCast(clen);
+    return 0;
+}
+
+/// Return this peer's declared affinities CSV in `out`. Writes up to
+/// `out_cap` bytes. Returns csv length, 0 if unset, -1 on bad index.
+pub export fn coord_read_declared_affinities(
+    peer_idx: c_int,
+    out: [*]u8,
+    out_cap: c_int,
+) c_int {
+    mutex.lock();
+    defer mutex.unlock();
+    if (peer_idx < 0 or peer_idx >= MAX_PEERS) return -1;
+    const p = &peers[@intCast(peer_idx)];
+    if (!p.active) return -1;
+    const dlen: usize = @min(@as(usize, p.declared_affinities_len), @as(usize, @intCast(out_cap)));
+    if (dlen > 0) @memcpy(out[0..dlen], p.declared_affinities[0..dlen]);
+    return @intCast(dlen);
+}
+
 // ═══════════════════════════════════════════════════════════════════════
 // Track Record FFI (Task #13)
 // ═══════════════════════════════════════════════════════════════════════
@@ -1112,6 +1172,9 @@ pub export fn coord_set_status(
 /// duration_ms: wall-time cost of the op in ms (0 if unknown)
 /// risk_tier: tier of the op the outcome belongs to (0-4)
 /// tag: affinity tag (e.g. "proof-analysis", "routine-edit"); max 64 bytes
+/// confidence_pct: self-assessed confidence at claim time (0-100), or -1
+///   if unreported. Used by the reassignment engine (Task #14) to detect
+///   overclaim (high confidence vs low effective_affinity).
 ///
 /// Returns 0 on success, -1 on bad token, -2 on bad args.
 pub export fn coord_report_outcome(
@@ -1122,6 +1185,7 @@ pub export fn coord_report_outcome(
     outcome: c_int,
     duration_ms: c_int,
     risk_tier: c_int,
+    confidence_pct: c_int,
 ) c_int {
     mutex.lock();
     defer mutex.unlock();
@@ -1131,6 +1195,7 @@ pub export fn coord_report_outcome(
     if (outcome < 0 or outcome > 1) return -2;
     if (risk_tier < 0 or risk_tier > 4) return -2;
     if (duration_ms < 0) return -2;
+    if (confidence_pct < -1 or confidence_pct > 100) return -2;
 
     const tlen: usize = @intCast(tag_len);
     const tag = tag_ptr[0..tlen];
@@ -1139,9 +1204,10 @@ pub export fn coord_report_outcome(
     const outcome_u: u8 = @intCast(outcome);
     const tier_u: u8 = @intCast(risk_tier);
     const dur_u: u32 = @intCast(duration_ms);
+    const conf_u: u8 = if (confidence_pct < 0) 255 else @intCast(confidence_pct);
 
-    recordTrack(kind_u, outcome_u, tier_u, dur_u, tag);
-    dur.logTrackUpdate(kind_u, outcome_u, tier_u, dur_u, @intCast(std.time.milliTimestamp()), tag);
+    recordTrack(kind_u, outcome_u, tier_u, dur_u, tag, conf_u);
+    dur.logTrackUpdate(kind_u, outcome_u, tier_u, dur_u, @intCast(std.time.milliTimestamp()), tag, conf_u);
     return 0;
 }
 
@@ -1315,6 +1381,183 @@ pub export fn coord_get_affinities(
 }
 
 // ═══════════════════════════════════════════════════════════════════════
+// Reassignment suggestion engine (Task #14)
+//
+// Scans track-record aggregates + per-peer declared_affinities and
+// synthesises candidate envelopes that land in the QUARANTINE as
+// server-origin entries (sender_idx = SERVER_ORIGIN_SENTINEL). Opus
+// (supervisor) then approves or rejects via coord_approve / coord_reject
+// — never auto-modifies.
+//
+// Suggestion kinds:
+//   - "overclaim": avg_confidence > 0.8 AND effective_affinity < 0.3
+//   - "promote":   effective_affinity >= 0.7 AND tag not in declared set
+//   - "remove":    effective_affinity <= 0.2 AND attempts >= 5
+//
+// Envelope payload is a compact JSON object surfaced to Opus verbatim.
+// ═══════════════════════════════════════════════════════════════════════
+
+pub const SERVER_ORIGIN_SENTINEL: u8 = 0xFE;
+
+const OVERCLAIM_CONF_MIN: u32 = 80;
+const OVERCLAIM_AFFINITY_MAX: u32 = 30;
+const PROMOTE_AFFINITY_MIN: u32 = 70;
+const REMOVE_AFFINITY_MAX: u32 = 20;
+const REMOVE_MIN_ATTEMPTS: u16 = 5;
+
+/// Enqueue a server-origin candidate envelope into the quarantine.
+/// Supervisor reviews via coord_review + coord_review_entry. Targets:
+///   target_idx = -1 -> broadcast on approve
+///   target_idx >= 0 -> direct delivery on approve
+///
+/// Returns the assigned request_id, or -1 if the quarantine queue is
+/// full (caller should back off).
+fn enqueueServerSuggestion(
+    target_idx: i8,
+    risk_tier: u8,
+    msg: []const u8,
+) i64 {
+    for (&quarantine) |*q| {
+        if (!q.active) {
+            q.active = true;
+            q.request_id = next_request_id;
+            next_request_id += 1;
+            q.sender_idx = SERVER_ORIGIN_SENTINEL;
+            q.target_idx = target_idx;
+            q.risk_tier = risk_tier;
+            const mlen: usize = @min(msg.len, 512);
+            if (mlen > 0) @memcpy(q.msg[0..mlen], msg[0..mlen]);
+            q.msg_len = @intCast(mlen);
+            q.reason_len = 0;
+            dur.logQuarAdd(q.request_id, q.sender_idx, q.target_idx, q.risk_tier, msg[0..mlen]);
+            return @intCast(q.request_id);
+        }
+    }
+    return -1;
+}
+
+fn affinityPct(attempts: u16, successes: u16) u32 {
+    if (attempts == 0) return 0;
+    return (@as(u32, successes) * 100) / @as(u32, attempts);
+}
+
+/// Average confidence (pct) for entries matching (kind, tag) within the
+/// active window. Returns 256 when there is no confidence-tagged data.
+fn windowedAvgConfidence(tgt_kind: u8, tgt_tag: []const u8) u32 {
+    if (track_count == 0) return 256;
+
+    const now: u64 = @intCast(std.time.milliTimestamp());
+    const cutoff: u64 = if (now > WINDOW_MS) now - WINDOW_MS else 0;
+
+    var seen: u16 = 0;
+    var sum_conf: u32 = 0;
+    var conf_n: u32 = 0;
+
+    var k: usize = 0;
+    while (k < track_count) : (k += 1) {
+        const raw_i: isize = @as(isize, @intCast(track_head)) - 1 - @as(isize, @intCast(k));
+        const src_i: usize = @intCast(@mod(raw_i, @as(isize, @intCast(MAX_TRACK))));
+        const t = &track[src_i];
+        if (!t.active) continue;
+        if (t.client_kind != tgt_kind) continue;
+        if (!tagEql(t.tag[0..t.tag_len], tgt_tag)) continue;
+
+        seen += 1;
+        const within_time = t.timestamp_ms >= cutoff;
+        const within_count = seen <= @as(u16, @intCast(WINDOW_ATTEMPTS));
+
+        if (within_time or within_count) {
+            if (t.confidence_pct != 255) {
+                sum_conf += t.confidence_pct;
+                conf_n += 1;
+            }
+        } else break;
+    }
+    if (conf_n == 0) return 256;
+    return sum_conf / conf_n;
+}
+
+/// Is `tag` present in any peer of the given client_kind's declared CSV?
+fn tagInDeclaredFor(kind: u8, tag: []const u8) bool {
+    for (&peers) |*p| {
+        if (!p.active) continue;
+        if (@intFromEnum(p.kind) != kind) continue;
+        const csv = p.declared_affinities[0..p.declared_affinities_len];
+        var it = std.mem.splitScalar(u8, csv, ',');
+        while (it.next()) |raw| {
+            const trimmed = std.mem.trim(u8, raw, " ");
+            if (trimmed.len == 0) continue;
+            if (tagEql(trimmed, tag)) return true;
+        }
+    }
+    return false;
+}
+
+/// Scan track-record aggregates and enqueue candidate envelopes into the
+/// quarantine. Returns the number of suggestions emitted, or -1 on bad
+/// token. Caller should be a supervisor — only the supervisor can act
+/// on these through coord_approve/coord_reject anyway, but any peer can
+/// trigger the scan since it mutates only server-owned queue state.
+pub export fn coord_scan_suggestions(
+    token_ptr: [*]const u8,
+    token_len: c_int,
+) c_int {
+    mutex.lock();
+    defer mutex.unlock();
+
+    if (findPeerByToken(token_ptr, @intCast(token_len)) == null) return -1;
+
+    var aggs: [MAX_TRACK]Aggregate = undefined;
+    const n = buildAggregates(aggs[0..]);
+
+    var emitted: c_int = 0;
+    var msg_buf: [512]u8 = undefined;
+
+    var i: usize = 0;
+    while (i < n) : (i += 1) {
+        const agg = &aggs[i];
+        if (agg.attempts == 0) continue;
+        const pct = affinityPct(agg.attempts, agg.successes);
+        const tag_slice: []const u8 = agg.tag[0..agg.tag_len];
+        const kind_str = switch (agg.client_kind) {
+            0 => "claude",
+            1 => "gemini",
+            2 => "copilot",
+            else => "custom",
+        };
+
+        // Overclaim: high self-confidence + low real affinity.
+        const avg_conf = windowedAvgConfidence(agg.client_kind, tag_slice);
+        if (avg_conf != 256 and avg_conf >= OVERCLAIM_CONF_MIN and pct < OVERCLAIM_AFFINITY_MAX) {
+            const msg = std.fmt.bufPrint(&msg_buf,
+                "{{\"kind\":\"overclaim\",\"client_kind\":\"{s}\",\"tag\":\"{s}\",\"attempts\":{d},\"successes\":{d},\"effective_affinity_pct\":{d},\"avg_confidence_pct\":{d},\"op_kind\":\"fyi\",\"rationale\":\"high self-confidence with low track-record success — reassignment suggested\"}}",
+                .{ kind_str, tag_slice, agg.attempts, agg.successes, pct, avg_conf },
+            ) catch continue;
+            if (enqueueServerSuggestion(-1, 1, msg) >= 0) emitted += 1;
+        }
+
+        // Promote: high effective affinity, but tag not in any same-kind peer's declared list.
+        if (pct >= PROMOTE_AFFINITY_MIN and !tagInDeclaredFor(agg.client_kind, tag_slice)) {
+            const msg = std.fmt.bufPrint(&msg_buf,
+                "{{\"kind\":\"promote\",\"client_kind\":\"{s}\",\"tag\":\"{s}\",\"attempts\":{d},\"successes\":{d},\"effective_affinity_pct\":{d},\"op_kind\":\"fyi\",\"rationale\":\"strong track record on an undeclared tag — consider adding to declared_affinities\"}}",
+                .{ kind_str, tag_slice, agg.attempts, agg.successes, pct },
+            ) catch continue;
+            if (enqueueServerSuggestion(-1, 1, msg) >= 0) emitted += 1;
+        }
+
+        // Remove: low effective affinity with enough sample.
+        if (agg.attempts >= REMOVE_MIN_ATTEMPTS and pct <= REMOVE_AFFINITY_MAX) {
+            const msg = std.fmt.bufPrint(&msg_buf,
+                "{{\"kind\":\"remove\",\"client_kind\":\"{s}\",\"tag\":\"{s}\",\"attempts\":{d},\"successes\":{d},\"effective_affinity_pct\":{d},\"op_kind\":\"clarify\",\"rationale\":\"consistently low success for this tag — consider removing from declared_affinities\"}}",
+                .{ kind_str, tag_slice, agg.attempts, agg.successes, pct },
+            ) catch continue;
+            if (enqueueServerSuggestion(-1, 1, msg) >= 0) emitted += 1;
+        }
+    }
+    return emitted;
+}
+
+// ═══════════════════════════════════════════════════════════════════════
 // Standard Cartridge Interface (loader expects these 4 C-ABI symbols)
 // ═══════════════════════════════════════════════════════════════════════
 
@@ -1466,7 +1709,7 @@ fn replayDispatch(event: dur.EventType, payload: []const u8) void {
         },
         .track_update => {
             const d = dur.decodeTrackUpdate(payload) orelse return;
-            recordTrackReplay(d.client_kind, d.outcome, d.risk_tier, d.duration_ms, d.timestamp_ms, d.tag);
+            recordTrackReplay(d.client_kind, d.outcome, d.risk_tier, d.duration_ms, d.timestamp_ms, d.tag, d.confidence_pct);
         },
         else => {},
     }
@@ -2221,12 +2464,12 @@ test "report outcome and compute affinity" {
     for (0..3) |_| {
         try std.testing.expectEqual(
             @as(c_int, 0),
-            coord_report_outcome(&tok, TOKEN_LEN, tag.ptr, @intCast(tag.len), 1, 500, 2),
+            coord_report_outcome(&tok, TOKEN_LEN, tag.ptr, @intCast(tag.len), 1, 500, 2, -1),
         );
     }
     try std.testing.expectEqual(
         @as(c_int, 0),
-        coord_report_outcome(&tok, TOKEN_LEN, tag.ptr, @intCast(tag.len), 0, 500, 2),
+        coord_report_outcome(&tok, TOKEN_LEN, tag.ptr, @intCast(tag.len), 0, 500, 2, -1),
     );
 
     var buf: [64 * 8]u8 = undefined;
@@ -2253,15 +2496,15 @@ test "affinity keyed on client_kind, survives peer restart" {
     var suf1: [4]u8 = undefined;
     _ = coord_register(0, -1, &tok1, &suf1); // claude #1
     const tag = "routine-edit";
-    _ = coord_report_outcome(&tok1, TOKEN_LEN, tag.ptr, @intCast(tag.len), 1, 100, 1);
-    _ = coord_report_outcome(&tok1, TOKEN_LEN, tag.ptr, @intCast(tag.len), 1, 100, 1);
+    _ = coord_report_outcome(&tok1, TOKEN_LEN, tag.ptr, @intCast(tag.len), 1, 100, 1, -1);
+    _ = coord_report_outcome(&tok1, TOKEN_LEN, tag.ptr, @intCast(tag.len), 1, 100, 1, -1);
     _ = coord_deregister(&tok1, TOKEN_LEN);
 
     // New peer, same client_kind. Track record should aggregate together.
     var tok2: [TOKEN_LEN]u8 = undefined;
     var suf2: [4]u8 = undefined;
     _ = coord_register(0, -1, &tok2, &suf2); // claude #2
-    _ = coord_report_outcome(&tok2, TOKEN_LEN, tag.ptr, @intCast(tag.len), 0, 100, 1);
+    _ = coord_report_outcome(&tok2, TOKEN_LEN, tag.ptr, @intCast(tag.len), 0, 100, 1, -1);
 
     var buf: [64 * 8]u8 = undefined;
     const n = coord_get_affinities(&tok2, TOKEN_LEN, &buf, @intCast(buf.len));
@@ -2284,7 +2527,7 @@ test "affinity window cap — last 20 attempts when no 7-day-older entries" {
     // 25 successes — window caps at 20 (all newer than 7 days, count-rule wins).
     var i: usize = 0;
     while (i < 25) : (i += 1) {
-        _ = coord_report_outcome(&tok, TOKEN_LEN, tag.ptr, @intCast(tag.len), 1, 50, 1);
+        _ = coord_report_outcome(&tok, TOKEN_LEN, tag.ptr, @intCast(tag.len), 1, 50, 1, -1);
     }
 
     var buf: [64 * 4]u8 = undefined;
@@ -2308,8 +2551,103 @@ test "affinity bad token rejected" {
     );
     try std.testing.expectEqual(
         @as(c_int, -1),
-        coord_report_outcome(&bad_tok, TOKEN_LEN, "x".ptr, 1, 1, 0, 0),
+        coord_report_outcome(&bad_tok, TOKEN_LEN, "x".ptr, 1, 1, 0, 0, -1),
     );
+    coord_reset();
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// Reassignment-engine tests (Task #14)
+// ═══════════════════════════════════════════════════════════════════════
+
+test "scan flags overclaim: high confidence + low effective_affinity" {
+    coord_reset();
+    var tok: [TOKEN_LEN]u8 = undefined;
+    var suf: [4]u8 = undefined;
+    _ = coord_register(0, -1, &tok, &suf); // claude
+
+    const tag = "formal-verification";
+    // 1 success + 4 failures => 20% affinity. All with confidence 90.
+    _ = coord_report_outcome(&tok, TOKEN_LEN, tag.ptr, @intCast(tag.len), 1, 100, 2, 90);
+    for (0..4) |_| {
+        _ = coord_report_outcome(&tok, TOKEN_LEN, tag.ptr, @intCast(tag.len), 0, 100, 2, 90);
+    }
+
+    // No supervisor registered — scan still runs.
+    const n = coord_scan_suggestions(&tok, TOKEN_LEN);
+    try std.testing.expect(n >= 1);
+
+    // The quarantine entry should be a server-origin envelope with
+    // "overclaim" in the body.
+    var found_overclaim: bool = false;
+    var found_remove: bool = false;
+    for (&quarantine) |*q| {
+        if (!q.active) continue;
+        try std.testing.expectEqual(SERVER_ORIGIN_SENTINEL, q.sender_idx);
+        if (std.mem.indexOf(u8, q.msg[0..q.msg_len], "overclaim") != null) found_overclaim = true;
+        if (std.mem.indexOf(u8, q.msg[0..q.msg_len], "remove") != null) found_remove = true;
+    }
+    try std.testing.expect(found_overclaim);
+    // 5 attempts + 20% affinity also fires the remove rule.
+    try std.testing.expect(found_remove);
+
+    coord_reset();
+}
+
+test "scan flags promote: high affinity on undeclared tag" {
+    coord_reset();
+    var tok: [TOKEN_LEN]u8 = undefined;
+    var suf: [4]u8 = undefined;
+    _ = coord_register(0, -1, &tok, &suf);
+
+    // Declare only 'routine-edit'; let 'proof-analysis' accumulate a
+    // strong record to trigger the promote suggestion.
+    const decl = "routine-edit";
+    _ = coord_set_declared_affinities(&tok, TOKEN_LEN, decl.ptr, @intCast(decl.len));
+
+    const tag = "proof-analysis";
+    for (0..8) |_| {
+        _ = coord_report_outcome(&tok, TOKEN_LEN, tag.ptr, @intCast(tag.len), 1, 100, 2, 60);
+    }
+
+    const n = coord_scan_suggestions(&tok, TOKEN_LEN);
+    try std.testing.expect(n >= 1);
+
+    var found_promote: bool = false;
+    for (&quarantine) |*q| {
+        if (!q.active) continue;
+        if (std.mem.indexOf(u8, q.msg[0..q.msg_len], "promote") != null) found_promote = true;
+    }
+    try std.testing.expect(found_promote);
+    coord_reset();
+}
+
+test "scan with no track record emits nothing" {
+    coord_reset();
+    var tok: [TOKEN_LEN]u8 = undefined;
+    var suf: [4]u8 = undefined;
+    _ = coord_register(0, -1, &tok, &suf);
+    const n = coord_scan_suggestions(&tok, TOKEN_LEN);
+    try std.testing.expectEqual(@as(c_int, 0), n);
+    coord_reset();
+}
+
+test "declared affinities round-trip" {
+    coord_reset();
+    var tok: [TOKEN_LEN]u8 = undefined;
+    var suf: [4]u8 = undefined;
+    const idx = coord_register(0, -1, &tok, &suf);
+
+    const decl = "proof-analysis,supervision,doc-writing";
+    try std.testing.expectEqual(
+        @as(c_int, 0),
+        coord_set_declared_affinities(&tok, TOKEN_LEN, decl.ptr, @intCast(decl.len)),
+    );
+
+    var buf: [256]u8 = undefined;
+    const dlen = coord_read_declared_affinities(idx, &buf, @intCast(buf.len));
+    try std.testing.expectEqual(@as(c_int, @intCast(decl.len)), dlen);
+    try std.testing.expectEqualSlices(u8, decl, buf[0..@intCast(dlen)]);
     coord_reset();
 }
 
@@ -2378,8 +2716,8 @@ test "affinity replay after restart" {
     _ = coord_register(0, -1, &tok, &suf);
 
     const tag = "test-writing";
-    _ = coord_report_outcome(&tok, TOKEN_LEN, tag.ptr, @intCast(tag.len), 1, 200, 1);
-    _ = coord_report_outcome(&tok, TOKEN_LEN, tag.ptr, @intCast(tag.len), 0, 200, 1);
+    _ = coord_report_outcome(&tok, TOKEN_LEN, tag.ptr, @intCast(tag.len), 1, 200, 1, -1);
+    _ = coord_report_outcome(&tok, TOKEN_LEN, tag.ptr, @intCast(tag.len), 0, 200, 1, -1);
 
     dur.close();
     coord_reset();

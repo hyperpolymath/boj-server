@@ -28,7 +28,7 @@
   "tier": "Ayo",
   "tools": [
     {
-      "description": "Register this instance as a coordination peer. Returns a peer ID and a session token for all subsequent calls. Optional `context` (alphanumeric + hyphen/underscore, max 32 bytes) disambiguates multiple windows of the same client_kind — peer_id becomes <kind>-<4hex>@<context>.",
+      "description": "Register this instance as a coordination peer. Returns a peer ID and a session token for all subsequent calls. Optional `context` (alphanumeric + hyphen/underscore, max 32 bytes) disambiguates multiple windows of the same client_kind. Optional `declared_affinities` is an array of tag names the peer self-reports as strengths — feeds the reassignment engine (Task #14).",
       "inputSchema": {
         "properties": {
           "client_kind": {
@@ -44,6 +44,13 @@
           "context": {
             "description": "Optional per-window disambiguator (repo name, tty label). Alphanumeric/hyphen/underscore only, max 32 chars.",
             "type": "string"
+          },
+          "declared_affinities": {
+            "description": "Optional array of tag strings the peer claims as strengths (e.g. ['proof-analysis', 'supervision']). Feeds Task #14 reassignment engine.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
           },
           "role": {
             "description": "Optional requested role. supervisor is ALWAYS rejected here — promote via coord_promote_to_supervisor. Default derived from client_kind (claude->executor, others->supervised).",
@@ -325,9 +332,15 @@
       "name": "coord_reject"
     },
     {
-      "description": "Report the outcome of a claim or attempted op against an affinity tag. Aggregated into the track record keyed on client_kind (survives peer restart). Feeds effective_affinity + reassignment suggestions.",
+      "description": "Report the outcome of a claim or attempted op against an affinity tag. Aggregated into the track record keyed on client_kind (survives peer restart). Feeds effective_affinity + reassignment suggestions. Task #14: optional `confidence` 0.0-1.0 feeds the overclaim detector.",
       "inputSchema": {
         "properties": {
+          "confidence": {
+            "description": "Self-assessed confidence at claim time (0.0-1.0). Feeds overclaim detection.",
+            "maximum": 1,
+            "minimum": 0,
+            "type": "number"
+          },
           "duration_ms": {
             "description": "Wall-time duration of the op in ms (optional, default 0)",
             "minimum": 0,
@@ -382,7 +395,47 @@
         "type": "object"
       },
       "name": "coord_get_affinities"
+    },
+    {
+      "description": "Set this peer's declared affinities (self-reported strengths). Replaces any existing list. Task #14 diffs against effective_affinity to detect overclaim/promote/remove outliers.",
+      "inputSchema": {
+        "properties": {
+          "tags": {
+            "description": "Array of tag names (e.g. ['proof-analysis', 'supervision']). Serialised as CSV internally (max 256 bytes total).",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "token": {
+            "description": "Session token from coord_register",
+            "type": "string"
+          }
+        },
+        "required": [
+          "token",
+          "tags"
+        ],
+        "type": "object"
+      },
+      "name": "coord_set_declared_affinities"
+    },
+    {
+      "description": "Run the reassignment-suggestion scanner (Task #14). Scans track-record aggregates vs declared_affinities; enqueues candidate envelopes in the quarantine for supervisor review. Rules: overclaim (high avg_confidence + low effective_affinity), promote (high effective_affinity on undeclared tag), remove (low effective_affinity with >=5 attempts). Supervisor reviews via coord_review / approves via coord_approve / rejects via coord_reject — never auto-modifies.",
+      "inputSchema": {
+        "properties": {
+          "token": {
+            "description": "Session token from coord_register",
+            "type": "string"
+          }
+        },
+        "required": [
+          "token"
+        ],
+        "type": "object"
+      },
+      "name": "coord_scan_suggestions"
     }
   ],
-  "version": "0.4.0"
+  "version": "0.5.0"
 }

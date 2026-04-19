@@ -327,7 +327,10 @@ pub fn logAudit(kind: u8, detail: []const u8) void {
 }
 
 /// TRACK_UPDATE — client_kind:u8 outcome:u8 risk_tier:u8 duration_ms:u32
-///                timestamp_ms:u64 tag_len:u8 tag[tag_len]
+///                timestamp_ms:u64 tag_len:u8 tag[tag_len] confidence_pct:u8
+///
+/// confidence_pct is 0..100, or 255 = unset. Always the last byte so old
+/// decoders (16+tag.len) can still parse the leading fields.
 ///
 /// DD-29: keyed on client_kind (not peer_id/suffix) so the track record
 /// survives peer crash+restart — a fresh peer of the same client_kind
@@ -339,9 +342,10 @@ pub fn logTrackUpdate(
     duration_ms: u32,
     timestamp_ms: u64,
     tag: []const u8,
+    confidence_pct: u8,
 ) void {
     if (tag.len > 64) return;
-    var buf: [16 + 64]u8 = undefined;
+    var buf: [17 + 64]u8 = undefined;
     buf[0] = client_kind;
     buf[1] = outcome;
     buf[2] = risk_tier;
@@ -349,7 +353,8 @@ pub fn logTrackUpdate(
     std.mem.writeInt(u64, buf[7..15], timestamp_ms, .little);
     buf[15] = @intCast(tag.len);
     if (tag.len > 0) @memcpy(buf[16 .. 16 + tag.len], tag);
-    append(.track_update, buf[0 .. 16 + tag.len]);
+    buf[16 + tag.len] = confidence_pct;
+    append(.track_update, buf[0 .. 17 + tag.len]);
 }
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -463,11 +468,13 @@ pub const TrackUpdate = struct {
     duration_ms: u32,
     timestamp_ms: u64,
     tag: []const u8,
+    confidence_pct: u8, // 255 = unset (old event or never reported)
 };
 pub fn decodeTrackUpdate(p: []const u8) ?TrackUpdate {
     if (p.len < 16) return null;
     const n: usize = p[15];
     if (p.len < 16 + n) return null;
+    const conf: u8 = if (p.len >= 17 + n) p[16 + n] else 255;
     return .{
         .client_kind = p[0],
         .outcome = p[1],
@@ -475,6 +482,7 @@ pub fn decodeTrackUpdate(p: []const u8) ?TrackUpdate {
         .duration_ms = std.mem.readInt(u32, p[3..7], .little),
         .timestamp_ms = std.mem.readInt(u64, p[7..15], .little),
         .tag = p[16 .. 16 + n],
+        .confidence_pct = conf,
     };
 }
 
@@ -611,7 +619,7 @@ test "replay decodes every event type" {
     logQuarApprove(42);
     logQuarReject(43, "confabulated path");
     logAudit(1, "tier3-from-supervised");
-    logTrackUpdate(0, 1, 2, 1234, 1_700_000_000_000, "proof-analysis");
+    logTrackUpdate(0, 1, 2, 1234, 1_700_000_000_000, "proof-analysis", 85);
     logPeerRemove(0);
     close();
 
@@ -642,4 +650,5 @@ test "replay decodes every event type" {
     try std.testing.expectEqual(@as(u32, 1234), tr.duration_ms);
     try std.testing.expectEqual(@as(u64, 1_700_000_000_000), tr.timestamp_ms);
     try std.testing.expectEqualSlices(u8, "proof-analysis", tr.tag);
+    try std.testing.expectEqual(@as(u8, 85), tr.confidence_pct);
 }

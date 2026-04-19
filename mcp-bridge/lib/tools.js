@@ -267,12 +267,13 @@ function buildToolList() {
   // Local coordination (localhost multi-instance AI coordination — local-coord-mcp cartridge)
   tools.push({
     name: "coord_register",
-    description: "Register this AI instance as a coordination peer on localhost. Returns a peer ID and a session token for all subsequent calls. Loopback-only, never exposed beyond 127.0.0.1. Pass the optional `context` (repo name, tty tag, or similar) to disambiguate multiple windows of the same client_kind on one machine — peer_id becomes <kind>-<4hex>@<context> rather than just <kind>-<4hex>.",
+    description: "Register this AI instance as a coordination peer on localhost. Returns a peer ID and a session token for all subsequent calls. Loopback-only, never exposed beyond 127.0.0.1. Optional: `context` disambiguator per window, `declared_affinities` array of self-reported strength tags (feeds Task #14 reassignment engine).",
     inputSchema: {
       type: "object",
       properties: {
         client_kind: { type: "string", enum: ["claude", "gemini", "copilot", "custom"], description: "Client type prefix for the peer ID" },
         context: { type: "string", description: "Optional disambiguator, e.g. current repo name. Alphanumeric + hyphen/underscore, max 32 bytes. Absent = old <kind>-<4hex> form.", maxLength: 32 },
+        declared_affinities: { type: "array", items: { type: "string" }, description: "Optional self-reported strength tags (e.g. ['proof-analysis', 'supervision']). Max 256 bytes as CSV." },
       },
       required: ["client_kind"],
     },
@@ -429,7 +430,7 @@ function buildToolList() {
   // ── Track record / affinity tools (Task #13) ───────────────────
   tools.push({
     name: "coord_report_outcome",
-    description: "Report outcome of a claim or attempted op against an affinity tag. Track record is keyed on client_kind (DD-29) so it survives peer restart. Drives effective_affinity + reassignment suggestions.",
+    description: "Report outcome of a claim or attempted op against an affinity tag. Track record is keyed on client_kind (DD-29) so it survives peer restart. Drives effective_affinity + reassignment suggestions. Optional `confidence` (0.0-1.0) feeds Task #14 overclaim detector.",
     inputSchema: {
       type: "object",
       properties: {
@@ -438,6 +439,7 @@ function buildToolList() {
         outcome: { type: "string", enum: ["success", "fail"], description: "'success' or 'fail'" },
         risk_tier: { type: "integer", minimum: 0, maximum: 4, description: "Risk tier of the op" },
         duration_ms: { type: "integer", minimum: 0, description: "Wall-time duration in ms (optional)" },
+        confidence: { type: "number", minimum: 0, maximum: 1, description: "Self-assessed confidence at claim time (optional)" },
       },
       required: ["token", "tag", "outcome", "risk_tier"],
     },
@@ -450,6 +452,32 @@ function buildToolList() {
       type: "object",
       properties: {
         token: { type: "string", description: "Session token from coord_register" },
+      },
+      required: ["token"],
+    },
+  });
+
+  // ── Reassignment engine (Task #14) ─────────────────────────────
+  tools.push({
+    name: "coord_set_declared_affinities",
+    description: "Set this peer's self-reported strength tags. Feeds Task #14 — tags with high effective_affinity but absent here trigger a 'promote' suggestion; tags here with low effective_affinity trigger 'remove'. Replaces any existing list.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        token: { type: "string", description: "Session token from coord_register" },
+        tags: { type: "array", items: { type: "string" }, description: "Array of tag names (e.g. ['proof-analysis', 'supervision'])" },
+      },
+      required: ["token", "tags"],
+    },
+  });
+
+  tools.push({
+    name: "coord_scan_suggestions",
+    description: "Run the reassignment scanner: diffs track-record aggregates vs declared affinities, enqueues candidate fyi/clarify envelopes in the quarantine. Supervisor approves or rejects via coord_review + coord_approve / coord_reject — engine never auto-modifies (DD-28).",
+    inputSchema: {
+      type: "object",
+      properties: {
+        token: { type: "string", description: "Session token (supervisor recommended, any peer accepted)" },
       },
       required: ["token"],
     },
