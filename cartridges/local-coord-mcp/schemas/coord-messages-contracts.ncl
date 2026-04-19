@@ -161,6 +161,23 @@ let OpKinds = std.record.fields OpDefaults in
            ["trivial", "routine", "challenging", "novel"])
   ),
 
+  # ── Task #36 — difficulty_hint ─────────────────────────────────
+  #
+  # Orthogonal to risk_tier. risk_tier says *how bad if wrong*;
+  # difficulty_hint says *how hard to get right*. Drives model-class
+  # routing (DD-36):
+  #   (low risk, low difficulty)    -> jester (e.g. Flash)
+  #   (low risk, high difficulty)   -> reasoner (Pro / Sonnet)
+  #   (high risk, low difficulty)   -> journeyman + trust check
+  #   (high risk, high difficulty)  -> master + reasoner + attester
+  DifficultyHintValid = std.contract.from_predicate (fun e =>
+    !(std.record.has_field "difficulty_hint" e)
+    || (std.is_string e.difficulty_hint
+        && std.array.any
+           (fun k => k == e.difficulty_hint)
+           ["low", "medium", "high"])
+  ),
+
   # ── Combined validator ─────────────────────────────────────────
   #
   # Lazy function that applies all four dependent-constraint contracts
@@ -187,5 +204,6 @@ let OpKinds = std.record.fields OpDefaults in
     | TierOverrideJustification
     | ConfidenceShape
     | DispatchPrefShape
-    | TaskDifficultyShape,
+    | TaskDifficultyShape
+    | DifficultyHintValid,
 }

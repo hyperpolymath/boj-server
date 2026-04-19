@@ -218,6 +218,39 @@ run_case "unknown task_difficulty string (TaskDifficultyShape)" \
 }' \
 "fail"
 
+# ── Task #36 — difficulty_hint ────────────────────────────────
+
+run_case "envelope with difficulty_hint=high (DifficultyHintValid)" \
+'{
+    version = 1,
+    msg_id = "abcdef01234f",
+    prev_msg_hash = "0000000000000000000000000000000000000000000000000000000000000000",
+    sender = "claude-7f3a",
+    recipient = "*",
+    timestamp = "2026-04-20T10:00:00Z",
+    op_kind = "claim",
+    risk_tier = 2,
+    payload = { task = "tricky-proof" },
+    context_fetch_id = "ctx",
+    difficulty_hint = "high",
+}' \
+"pass"
+
+run_case "unknown difficulty_hint string (DifficultyHintValid)" \
+'{
+    version = 1,
+    msg_id = "abcdef012350",
+    prev_msg_hash = "0000000000000000000000000000000000000000000000000000000000000000",
+    sender = "claude-7f3a",
+    recipient = "*",
+    timestamp = "2026-04-20T10:00:00Z",
+    op_kind = "status",
+    risk_tier = 0,
+    payload = { status = "ok" },
+    difficulty_hint = "impossible",
+}' \
+"fail"
+
 echo
 echo "=== Summary ==="
 echo "Accepted (pass expected): $PASS"
