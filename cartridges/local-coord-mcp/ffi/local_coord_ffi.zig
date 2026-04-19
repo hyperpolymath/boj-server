@@ -840,6 +840,89 @@ pub export fn coord_read_peer_provers(peer_idx: c_int, out: [*]u8, out_cap: c_in
     return @intCast(plen);
 }
 
+// ═══════════════════════════════════════════════════════════════════════
+// Health metrics — read-only aggregates over live registries. Exposed so
+// the adapter can render `coord_health` without knowing the registry
+// layout. All functions take the caller's token and return -1 on auth
+// failure so individual peers can poll without a master gate but rogue
+// local processes can't.
+// ═══════════════════════════════════════════════════════════════════════
+
+fn validateToken(token_ptr: [*]const u8, token_len: c_int) bool {
+    return findPeerByToken(token_ptr, @intCast(token_len)) != null;
+}
+
+/// Count active quarantine entries. Returns count, -1 on bad token.
+pub export fn coord_count_quarantine(token_ptr: [*]const u8, token_len: c_int) c_int {
+    mutex.lock();
+    defer mutex.unlock();
+    if (!validateToken(token_ptr, token_len)) return -1;
+    var n: c_int = 0;
+    for (&quarantine) |*q| {
+        if (q.active) n += 1;
+    }
+    return n;
+}
+
+/// Count active claims. Returns count, -1 on bad token.
+pub export fn coord_count_claims(token_ptr: [*]const u8, token_len: c_int) c_int {
+    mutex.lock();
+    defer mutex.unlock();
+    if (!validateToken(token_ptr, token_len)) return -1;
+    var n: c_int = 0;
+    for (&claims) |*c| {
+        if (c.active) n += 1;
+    }
+    return n;
+}
+
+/// Count track-record entries in the ring (saturates at MAX_TRACK).
+/// Returns count, -1 on bad token.
+pub export fn coord_count_track(token_ptr: [*]const u8, token_len: c_int) c_int {
+    mutex.lock();
+    defer mutex.unlock();
+    if (!validateToken(token_ptr, token_len)) return -1;
+    return @intCast(track_count);
+}
+
+/// Count rejections in the current window for the given client_kind.
+/// Returns count, -1 on bad token, -2 on bad kind.
+pub export fn coord_count_rejects_recent(
+    token_ptr: [*]const u8,
+    token_len: c_int,
+    kind: c_int,
+) c_int {
+    mutex.lock();
+    defer mutex.unlock();
+    if (!validateToken(token_ptr, token_len)) return -1;
+    if (kind < 0 or kind >= KIND_COUNT) return -2;
+    const k: usize = @intCast(kind);
+    const now_ms: u64 = @intCast(std.time.milliTimestamp());
+    var n: c_int = 0;
+    for (reject_ring[k]) |ts| {
+        if (ts == 0) continue;
+        if (now_ms > ts and (now_ms - ts) > REJECT_WINDOW_MS) continue;
+        n += 1;
+    }
+    return n;
+}
+
+/// Returns 1 if the given client_kind is currently in reject-cooldown,
+/// 0 otherwise, -1 on bad token, -2 on bad kind.
+pub export fn coord_kind_in_cooldown(
+    token_ptr: [*]const u8,
+    token_len: c_int,
+    kind: c_int,
+) c_int {
+    mutex.lock();
+    defer mutex.unlock();
+    if (!validateToken(token_ptr, token_len)) return -1;
+    if (kind < 0 or kind >= KIND_COUNT) return -2;
+    const ck: ClientKind = @enumFromInt(kind);
+    const now_ms: u64 = @intCast(std.time.milliTimestamp());
+    return if (isInCooldown(ck, now_ms)) 1 else 0;
+}
+
 /// Deregister a peer. Releases any claims it holds.
 pub export fn coord_deregister(token_ptr: [*]const u8, token_len: c_int) c_int {
     mutex.lock();
@@ -2016,7 +2099,7 @@ pub export fn boj_cartridge_name() [*:0]const u8 {
 }
 
 pub export fn boj_cartridge_version() [*:0]const u8 {
-    return "0.7.0";
+    return "0.8.0";
 }
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -2387,6 +2470,40 @@ test "set and read peer capabilities (Task #34)" {
         provers.ptr, @intCast(provers.len),
     );
     try std.testing.expectEqual(@as(c_int, -2), rc_bad_char);
+
+    coord_reset();
+}
+
+test "coord_health counts basics" {
+    coord_reset();
+    var tok1: [TOKEN_LEN]u8 = undefined;
+    var tok2: [TOKEN_LEN]u8 = undefined;
+    var tok3: [TOKEN_LEN]u8 = undefined;
+    var suf: [4]u8 = undefined;
+
+    _ = coord_register(0, -1, &tok1, &suf); // claude → journeyman
+    _ = coord_register(1, -1, &tok2, &suf); // gemini → apprentice
+    _ = coord_register(4, -1, &tok3, &suf); // openai → apprentice
+
+    // Claim from tok1 contributes to active claim count.
+    const t = "health-test-task";
+    try std.testing.expectEqual(@as(c_int, 0), coord_claim_task(&tok1, TOKEN_LEN, t.ptr, @intCast(t.len)));
+
+    // Bad token returns -1.
+    var bad: [TOKEN_LEN]u8 = [_]u8{0} ** TOKEN_LEN;
+    try std.testing.expectEqual(@as(c_int, -1), coord_count_claims(&bad, TOKEN_LEN));
+    try std.testing.expectEqual(@as(c_int, -1), coord_count_quarantine(&bad, TOKEN_LEN));
+    try std.testing.expectEqual(@as(c_int, -1), coord_count_track(&bad, TOKEN_LEN));
+
+    // With a valid token, counts are positive / zero as expected.
+    try std.testing.expectEqual(@as(c_int, 1), coord_count_claims(&tok1, TOKEN_LEN));
+    try std.testing.expectEqual(@as(c_int, 0), coord_count_quarantine(&tok1, TOKEN_LEN));
+    try std.testing.expectEqual(@as(c_int, 0), coord_count_track(&tok1, TOKEN_LEN));
+
+    // Recent-rejects for an unseen kind (mistral=5) is 0; kind out of range is -2.
+    try std.testing.expectEqual(@as(c_int, 0), coord_count_rejects_recent(&tok1, TOKEN_LEN, 5));
+    try std.testing.expectEqual(@as(c_int, -2), coord_count_rejects_recent(&tok1, TOKEN_LEN, 99));
+    try std.testing.expectEqual(@as(c_int, 0), coord_kind_in_cooldown(&tok1, TOKEN_LEN, 0));
 
     coord_reset();
 }

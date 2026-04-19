@@ -11,7 +11,7 @@
   spdx = "PMPL-1.0-or-later",
   copyright = "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>",
   name = "local-coord-mcp",
-  version = "0.7.0",
+  version = "0.8.0",
   description = "Localhost multi-instance coordination — peer discovery, message passing, and task claiming for parallel AI sessions on the same machine",
   domain = "ai",
   tier = "Ayo",
@@ -293,6 +293,17 @@
           peer_id = { type = "string", description = "Target peer_id (<kind>-<4hex>[@<context>])" },
         },
         required = ["token", "peer_id"],
+      },
+    },
+    {
+      name = "coord_health",
+      description = "Read-only snapshot of coord-mcp state: active peer count (with per-kind / per-role breakdown), pending quarantine depth, active claims, track-record fill, and recent reject counts with cooldown flags. Lets other tooling monitor coord health without walking every export individually.",
+      inputSchema = {
+        type = "object",
+        properties = {
+          token = { type = "string", description = "Session token from coord_register — any active peer may poll." },
+        },
+        required = ["token"],
       },
     },
   ],

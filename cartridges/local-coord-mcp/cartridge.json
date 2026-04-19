@@ -573,7 +573,23 @@
         "type": "object"
       },
       "name": "coord_get_peer_capabilities"
+    },
+    {
+      "description": "Read-only snapshot of coord-mcp state: active peer count (with per-kind / per-role breakdown), pending quarantine depth, active claims, track-record fill, and recent reject counts with cooldown flags. Lets other tooling monitor coord health without walking every export individually.",
+      "inputSchema": {
+        "properties": {
+          "token": {
+            "description": "Session token from coord_register — any active peer may poll.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "token"
+        ],
+        "type": "object"
+      },
+      "name": "coord_health"
     }
   ],
-  "version": "0.7.0"
+  "version": "0.8.0"
 }
