@@ -56,6 +56,8 @@ pub const EventType = enum(u16) {
     peer_variant_set = 15,
     // Task #34 — capability advertisement (class / tier / prover_strengths).
     peer_capabilities_set = 16,
+    // DD-20 — watchdog heartbeat for a claim.
+    claim_progress = 17,
     _,
 };
 
@@ -313,6 +315,14 @@ pub fn logClaimRel(claim_idx: u8) void {
     append(.claim_rel, &[_]u8{claim_idx});
 }
 
+/// CLAIM_PROGRESS — claim_idx:u8 timestamp_ms:u64 (9B). DD-20 watchdog.
+pub fn logClaimProgress(claim_idx: u8, timestamp_ms: u64) void {
+    var buf: [9]u8 = undefined;
+    buf[0] = claim_idx;
+    std.mem.writeInt(u64, buf[1..9], timestamp_ms, .little);
+    append(.claim_progress, &buf);
+}
+
 /// QUAR_ADD — request_id:u32 sender_idx:u8 target_idx:i8 risk_tier:u8
 ///            msg_len:u16 msg[msg_len]
 pub fn logQuarAdd(request_id: u32, sender_idx: u8, target_idx: i8, risk_tier: u8, msg: []const u8) void {
@@ -476,6 +486,15 @@ pub fn decodeClaimAdd(p: []const u8) ?ClaimAdd {
     const n: usize = p[2];
     if (p.len < 3 + n) return null;
     return .{ .claim_idx = p[0], .holder_idx = p[1], .task = p[3 .. 3 + n] };
+}
+
+pub const ClaimProgress = struct { claim_idx: u8, timestamp_ms: u64 };
+pub fn decodeClaimProgress(p: []const u8) ?ClaimProgress {
+    if (p.len < 9) return null;
+    return .{
+        .claim_idx = p[0],
+        .timestamp_ms = std.mem.readInt(u64, p[1..9], .little),
+    };
 }
 
 pub const QuarAdd = struct {

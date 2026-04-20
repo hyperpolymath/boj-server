@@ -23,7 +23,7 @@ Last updated: 2026-04-20.
 
 - **Hash chain per envelope** — sender-side `prev_msg_hash`; server tracks chain head; break = instant reject. (DD-8 mechanism 1.)
 - **Content sanity gate** — file-ref validity vs recent-FS cache + self-contradiction heuristic + risk-tier escalator patterns (`git push` → auto-promote Tier 3). (DD-8 mechanism 4, DD-14.)
-- **Watchdog TTL enforcement** — 30 s apprentice, 5 min journeyman; `progress` heartbeat resets. (DD-20.)
+- ~~**Watchdog TTL enforcement** — 30 s apprentice, 5 min journeyman; `progress` heartbeat resets. (DD-20.)~~ — **done**: `coord_progress` heartbeats, `coord_sweep_watchdog` polls, implicit sweep on `coord_claim_task`. Master has no TTL. Auto-release audited with kind=3 (`AUTO_RELEASE`); DD-21 warn_drift broadcast still separate.
 - **Warn-drift broadcast on auto-release** via Opus review. (DD-21.)
 - **Quarantine queue spill to VeriSimDB** when full; currently `MAX_QUARANTINE=32` hot cache only. (DD-17.)
 - **Audit-echo anchor** — preserve old chain head on peer crash/restart; new peer = fresh chain. (DD-29.)

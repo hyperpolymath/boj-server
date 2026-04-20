@@ -818,6 +818,39 @@ fn dispatch(tool: []const u8, body: []const u8, resp: []u8, allocator: std.mem.A
         return .{ .status = 200, .body = resp[0..stream.pos] };
     }
 
+    if (std.mem.eql(u8, tool, "coord_progress")) {
+        const parsed = std.json.parseFromSlice(std.json.Value, allocator, body, .{}) catch return .{ .status = 400, .body = errJson(resp, "invalid json") };
+        defer parsed.deinit();
+        const token_val = parsed.value.object.get("token") orelse return .{ .status = 400, .body = errJson(resp, "missing token") };
+        const task_val = parsed.value.object.get("task") orelse return .{ .status = 400, .body = errJson(resp, "missing task") };
+
+        var token: [16]u8 = undefined;
+        if (!parseToken(token_val.string, &token)) return .{ .status = 400, .body = errJson(resp, "invalid token hex") };
+
+        const task = task_val.string;
+        const rc = ffi.coord_progress(&token, 16, task.ptr, @intCast(task.len));
+        if (rc == 0) return .{ .status = 200, .body = okJson(resp, "heartbeat") };
+        if (rc == -1) return .{ .status = 401, .body = errJson(resp, "unauthenticated") };
+        if (rc == -2) return .{ .status = 404, .body = errJson(resp, "no active claim for this task") };
+        if (rc == -3) return .{ .status = 403, .body = errJson(resp, "caller is not the claim holder") };
+        return .{ .status = 500, .body = errJson(resp, "progress failed") };
+    }
+
+    if (std.mem.eql(u8, tool, "coord_sweep_watchdog")) {
+        const parsed = std.json.parseFromSlice(std.json.Value, allocator, body, .{}) catch return .{ .status = 400, .body = errJson(resp, "invalid json") };
+        defer parsed.deinit();
+        const token_val = parsed.value.object.get("token") orelse return .{ .status = 400, .body = errJson(resp, "missing token") };
+        var token: [16]u8 = undefined;
+        if (!parseToken(token_val.string, &token)) return .{ .status = 400, .body = errJson(resp, "invalid token hex") };
+
+        const rc = ffi.coord_sweep_watchdog(&token, 16);
+        if (rc < 0) return .{ .status = 401, .body = errJson(resp, "unauthenticated") };
+        const body_out = std.fmt.bufPrint(resp,
+            "{{\"success\":true,\"released\":{d},\"ttl_apprentice_ms\":30000,\"ttl_journeyman_ms\":300000}}",
+            .{rc}) catch return .{ .status = 500, .body = errJson(resp, "buffer overflow") };
+        return .{ .status = 200, .body = body_out };
+    }
+
     if (std.mem.eql(u8, tool, "coord_health")) {
         const parsed = std.json.parseFromSlice(std.json.Value, allocator, body, .{}) catch return .{ .status = 400, .body = errJson(resp, "invalid json") };
         defer parsed.deinit();
