@@ -1300,6 +1300,82 @@ pub export fn coord_claim_task_ex(
 /// Master claims are never swept (TTL=0). Inactive-holder claims (peer
 /// deregistered without releasing) are cleared by coord_deregister, so
 /// the sweep just treats their slots as already free.
+// Audit event kinds used by the watchdog path (DD-20 / DD-21).
+// 1 = tier3-from-supervised, 2 = master-transfer (defined elsewhere).
+const AUDIT_AUTO_RELEASE: u8 = 3;
+const AUDIT_WARN_DRIFT_QUEUED: u8 = 4;
+const AUDIT_WARN_DRIFT_BROADCAST: u8 = 5;
+
+fn roleStr(r: Role) []const u8 {
+    return switch (r) {
+        .master => "master",
+        .journeyman => "journeyman",
+        .apprentice => "apprentice",
+    };
+}
+
+/// DD-21: when the watchdog auto-releases a claim, broadcast a `warn_drift`
+/// envelope so the rest of the coordination pool notices the stalled peer.
+/// Route through quarantine (sender_idx = server-origin sentinel) if a
+/// master is present; otherwise push directly into every active peer's
+/// inbox so the warning still lands in master-less local sessions.
+fn emitWarnDrift(
+    holder_idx: u8,
+    role: Role,
+    task: []const u8,
+    held_ms: u64,
+) void {
+    const holder = &peers[holder_idx];
+    if (!holder.active) return;
+
+    const kind_name = kindStr(@intCast(@intFromEnum(holder.kind)));
+    const role_name = roleStr(role);
+    const ctx_slice = holder.context[0..holder.context_len];
+
+    var env_buf: [512]u8 = undefined;
+    const env = blk: {
+        if (ctx_slice.len > 0) {
+            break :blk std.fmt.bufPrint(&env_buf,
+                "{{\"kind\":\"warn_drift\",\"op_kind\":\"warn\",\"risk_tier\":1," ++
+                "\"peer_id\":\"{s}-{s}@{s}\",\"peer_kind\":\"{s}\"," ++
+                "\"task\":\"{s}\",\"held_ms\":{d},\"role\":\"{s}\"," ++
+                "\"rationale\":\"watchdog auto-release: peer held claim past TTL without heartbeat\"}}",
+                .{ kind_name, holder.suffix[0..], ctx_slice, kind_name, task, held_ms, role_name },
+            ) catch return;
+        } else {
+            break :blk std.fmt.bufPrint(&env_buf,
+                "{{\"kind\":\"warn_drift\",\"op_kind\":\"warn\",\"risk_tier\":1," ++
+                "\"peer_id\":\"{s}-{s}\",\"peer_kind\":\"{s}\"," ++
+                "\"task\":\"{s}\",\"held_ms\":{d},\"role\":\"{s}\"," ++
+                "\"rationale\":\"watchdog auto-release: peer held claim past TTL without heartbeat\"}}",
+                .{ kind_name, holder.suffix[0..], kind_name, task, held_ms, role_name },
+            ) catch return;
+        }
+    };
+
+    if (findMaster() != null) {
+        const rid = enqueueServerSuggestion(-1, 1, env);
+        if (rid >= 0) dur.logAudit(AUDIT_WARN_DRIFT_QUEUED, env);
+        return;
+    }
+
+    // Master absent — direct broadcast to every active peer except the holder.
+    var pushed: c_int = 0;
+    for (&peers, 0..) |*p, i| {
+        if (!p.active) continue;
+        if (i == holder_idx) continue;
+        if (p.inbox_count >= MAX_MESSAGES) continue;
+        const head: usize = p.inbox_head;
+        @memcpy(p.inbox[head][0..env.len], env);
+        p.inbox_lens[head] = @intCast(env.len);
+        p.inbox_head = @intCast((@as(u32, p.inbox_head) + 1) % MAX_MESSAGES);
+        p.inbox_count += 1;
+        dur.logInboxPush(@intCast(i), env);
+        pushed += 1;
+    }
+    if (pushed > 0) dur.logAudit(AUDIT_WARN_DRIFT_BROADCAST, env);
+}
+
 fn sweepExpiredClaims(now_ms: u64) c_int {
     var released: c_int = 0;
     for (&claims, 0..) |*c, ci| {
@@ -1318,16 +1394,25 @@ fn sweepExpiredClaims(now_ms: u64) c_int {
         if (now_ms <= c.claimed_at_ms) continue; // clock skew guard
         if ((now_ms - c.claimed_at_ms) <= ttl) continue;
 
-        // Auto-release. Audit kind=3 = AUTO_RELEASE.
-        var detail_buf: [128]u8 = undefined;
+        // Auto-release.
+        const age_ms = now_ms - c.claimed_at_ms;
         const task_slice = c.task_name[0..c.task_name_len];
+        const holder_role = holder.role;
+        const holder_idx_copy = c.holder_idx;
+
+        var detail_buf: [128]u8 = undefined;
         const detail = std.fmt.bufPrint(&detail_buf,
             "claim={d}|holder={d}|role={d}|age_ms={d}|task={s}",
-            .{ ci, c.holder_idx, @intFromEnum(holder.role), now_ms - c.claimed_at_ms, task_slice },
+            .{ ci, c.holder_idx, @intFromEnum(holder_role), age_ms, task_slice },
         ) catch "";
         c.active = false;
         dur.logClaimRel(@intCast(ci));
-        dur.logAudit(3, detail);
+        dur.logAudit(AUDIT_AUTO_RELEASE, detail);
+
+        // DD-21: warn-drift broadcast so the pool sees the stalled peer.
+        // Emitted after the auto-release audit so the release is durable
+        // even if the warning path fails to serialize.
+        emitWarnDrift(holder_idx_copy, holder_role, task_slice, age_ms);
         released += 1;
     }
     return released;
@@ -2591,6 +2676,78 @@ test "watchdog: implicit sweep frees stale slot on contention" {
     // new peer gets granted (rc=0), not held (rc=1).
     try std.testing.expectEqual(@as(c_int, 0),
         coord_claim_task(&tok_new, TOKEN_LEN, task.ptr, @intCast(task.len)));
+
+    coord_reset();
+}
+
+test "watchdog auto-release files warn_drift into quarantine when master present" {
+    // DD-21: with a master on the pool, the warn_drift envelope is queued
+    // for master review as a server-origin suggestion (sender_idx = 0xFE).
+    coord_reset();
+    var tok_m: [TOKEN_LEN]u8 = undefined;
+    var tok_a: [TOKEN_LEN]u8 = undefined;
+    var suf: [4]u8 = undefined;
+    _ = coord_register(0, -1, &tok_m, &suf); // claude → journeyman; promote below
+    _ = coord_register(1, -1, &tok_a, &suf); // gemini → apprentice
+    peers[0].role = .master;
+
+    const task = "stalled-work";
+    try std.testing.expectEqual(@as(c_int, 0),
+        coord_claim_task(&tok_a, TOKEN_LEN, task.ptr, @intCast(task.len)));
+    claims[0].claimed_at_ms -= TTL_APPRENTICE_MS + 1000;
+
+    const released = coord_sweep_watchdog(&tok_m, TOKEN_LEN);
+    try std.testing.expectEqual(@as(c_int, 1), released);
+
+    // Quarantine now has one server-origin entry with the warn_drift envelope.
+    var found: bool = false;
+    for (&quarantine) |*q| {
+        if (!q.active) continue;
+        if (q.sender_idx != SERVER_ORIGIN_SENTINEL) continue;
+        try std.testing.expectEqual(@as(i8, -1), q.target_idx);
+        try std.testing.expectEqual(@as(u8, 1), q.risk_tier);
+        const body = q.msg[0..q.msg_len];
+        try std.testing.expect(std.mem.indexOf(u8, body, "\"kind\":\"warn_drift\"") != null);
+        try std.testing.expect(std.mem.indexOf(u8, body, "\"task\":\"stalled-work\"") != null);
+        try std.testing.expect(std.mem.indexOf(u8, body, "\"role\":\"apprentice\"") != null);
+        try std.testing.expect(std.mem.indexOf(u8, body, "\"held_ms\":") != null);
+        found = true;
+        break;
+    }
+    try std.testing.expect(found);
+
+    coord_reset();
+}
+
+test "watchdog auto-release broadcasts warn_drift when no master" {
+    // DD-21 fallback: with no master present, the envelope goes straight
+    // to every active peer's inbox so the warning still lands.
+    coord_reset();
+    var tok_a: [TOKEN_LEN]u8 = undefined;
+    var tok_j: [TOKEN_LEN]u8 = undefined;
+    var suf: [4]u8 = undefined;
+    _ = coord_register(1, -1, &tok_a, &suf); // gemini → apprentice (holder)
+    _ = coord_register(0, -1, &tok_j, &suf); // claude → journeyman (receiver)
+
+    const task = "abandoned-claim";
+    try std.testing.expectEqual(@as(c_int, 0),
+        coord_claim_task(&tok_a, TOKEN_LEN, task.ptr, @intCast(task.len)));
+    claims[0].claimed_at_ms -= TTL_APPRENTICE_MS + 1000;
+
+    const released = coord_sweep_watchdog(&tok_j, TOKEN_LEN);
+    try std.testing.expectEqual(@as(c_int, 1), released);
+
+    // Journeyman (idx 1) should have a warn_drift envelope in its inbox.
+    try std.testing.expect(peers[1].inbox_count >= 1);
+    const tail = peers[1].inbox_tail;
+    const len: usize = peers[1].inbox_lens[tail];
+    const body = peers[1].inbox[tail][0..len];
+    try std.testing.expect(std.mem.indexOf(u8, body, "\"kind\":\"warn_drift\"") != null);
+    try std.testing.expect(std.mem.indexOf(u8, body, "\"task\":\"abandoned-claim\"") != null);
+    try std.testing.expect(std.mem.indexOf(u8, body, "\"role\":\"apprentice\"") != null);
+
+    // Holder (idx 0) must NOT receive its own drift warning.
+    try std.testing.expectEqual(@as(u16, 0), peers[0].inbox_count);
 
     coord_reset();
 }
