@@ -36,6 +36,8 @@ export fn aerie_get_status(env_id: u32) u8 {
 
 // ── Standard ABI symbols (ADR-0005 + ADR-0006) ─────────────────────────
 
+const shim = @import("cartridge_shim");
+
 // String literals in Zig are already NUL-terminated sentinel arrays; hold
 // their addresses in module-level constants so the exported pointers have
 // stable lifetime.
@@ -58,12 +60,6 @@ export fn boj_cartridge_version() callconv(.c) [*:0]const u8 {
 
 /// ADR-0006 reference: dispatch `tool_name` with `json_args`, write result
 /// into `out_buf`/`*in_out_len`. Return codes documented in ADR-0006.
-///
-/// This reference does **not** parse `json_args`; every dispatched tool
-/// either ignores args or consumes trivial integers that we embed as
-/// placeholder values. That keeps the reference focused on the ABI
-/// shape rather than on JSON parsing, which each cartridge chooses for
-/// itself.
 export fn boj_cartridge_invoke(
     tool_name: [*c]const u8,
     json_args: [*c]const u8,
@@ -72,31 +68,21 @@ export fn boj_cartridge_invoke(
 ) callconv(.c) i32 {
     _ = json_args; // reference implementation ignores args
 
-    if (tool_name == null or out_buf == null or in_out_len == null) return -2;
-
-    const tool = std.mem.span(@as([*:0]const u8, @ptrCast(tool_name)));
-    const cap = in_out_len.*;
+    if (shim.invokeArgsNull(tool_name, out_buf, in_out_len)) return shim.RC_BAD_ARGS;
 
     // Tool table — extend this for every tool the cartridge exposes.
-    const body = if (std.mem.eql(u8, tool, "list_envs_count"))
+    const body: []const u8 = if (shim.toolIs(tool_name, "list_envs_count"))
         "{\"result\":{\"count\":0}}"
-    else if (std.mem.eql(u8, tool, "create_env"))
+    else if (shim.toolIs(tool_name, "create_env"))
         "{\"result\":{\"env_id\":1}}"
-    else if (std.mem.eql(u8, tool, "destroy_env"))
+    else if (shim.toolIs(tool_name, "destroy_env"))
         "{\"result\":{\"ok\":true}}"
-    else if (std.mem.eql(u8, tool, "get_status"))
+    else if (shim.toolIs(tool_name, "get_status"))
         "{\"result\":{\"status\":\"ready\"}}"
     else
-        return -1; // unknown-tool
+        return shim.RC_UNKNOWN_TOOL;
 
-    if (body.len > cap) {
-        in_out_len.* = body.len;
-        return -3; // buffer-too-small
-    }
-
-    @memcpy(out_buf[0..body.len], body);
-    in_out_len.* = body.len;
-    return 0;
+    return shim.writeResult(out_buf, in_out_len, body);
 }
 
 // ── Tests ──

@@ -55,10 +55,20 @@ defmodule BojRest.Invoker do
   @spec version(so_path()) :: result()
   def version(so_path), do: run(so_path, "version")
 
+  @doc """
+  Invoke a tool on a cartridge: runs init, calls invoke, runs deinit.
+  Returns `{:ok, map()}` on success (JSON output parsed).
+  """
+  @spec invoke(so_path(), String.t(), map()) :: result()
+  def invoke(so_path, tool_name, args) do
+    args_json = Jason.encode!(args)
+    run(so_path, "invoke", [tool_name, args_json])
+  end
+
   # ── internals ───────────────────────────────────────────────────────
 
-  @spec run(so_path(), String.t()) :: result()
-  defp run(so_path, verb) do
+  @spec run(so_path(), String.t(), [String.t()]) :: result()
+  defp run(so_path, verb, extra_args \\ []) do
     cli = cli_path()
 
     if cli == nil do
@@ -71,7 +81,9 @@ defmodule BojRest.Invoker do
     else
       # stderr_to_stdout merges the CLI's error-path JSON (which it emits on
       # stderr) into stdout so we get it in the `{output, exit_code}` tuple.
-      case System.cmd(cli, [so_path, verb], stderr_to_stdout: true) do
+      cmd_args = [so_path, verb] ++ extra_args
+
+      case System.cmd(cli, cmd_args, stderr_to_stdout: true) do
         {stdout, @exit_ok} ->
           case Jason.decode(stdout) do
             {:ok, map} -> {:ok, map}
