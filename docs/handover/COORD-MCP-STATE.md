@@ -105,7 +105,11 @@ mission drift.
 - Layer A (static affinity, register-time) — **done** (DD-34 landed as Task #34 pending, but declared affinities already accepted).
 - Layer B (per-claim `confidence` + `reasoning`) — **done** (DD-9, Task #15).
 - Layer C (server-computed `effective_affinity` from track record) — **done** (DD-9, Task #13).
-- Layer D (drift detector: confidence ≫ track record → flag) — **pending P1**.
+- Layer D (drift detector: confidence ≫ track record → flag) — **done**.
+  Implemented in `coord_scan_suggestions` as a parallel `kind:"drift"`
+  envelope (op_kind=warn, tier 2, carries `drift_pct = avg_conf − eff_affinity`).
+  Co-emitted with `overclaim` so the master sees a routing FYI **and** a
+  self-assessment monitoring flag from the same condition.
 
 ## Architectural spine — decisions taken
 

@@ -27,8 +27,8 @@ Last updated: 2026-04-20.
 - **Warn-drift broadcast on auto-release** via Opus review. (DD-21.)
 - **Quarantine queue spill to VeriSimDB** when full; currently `MAX_QUARANTINE=32` hot cache only. (DD-17.)
 - **Audit-echo anchor** — preserve old chain head on peer crash/restart; new peer = fresh chain. (DD-29.)
-- **Drift detector** — flag `confidence > 0.8 AND effective_affinity < 0.3`. (DD-9 layer D.)
-- **`coord_health` metrics tool** — active peers, pending quarantine, reject rate, claim depth.
+- ~~**Drift detector** — flag `confidence > 0.8 AND effective_affinity < 0.3`. (DD-9 layer D.)~~ — **done**: `coord_scan_suggestions` now emits a parallel `kind:"drift"` envelope (op_kind=warn, tier 2, includes `drift_pct`) alongside the routing-focused `overclaim`.
+- ~~**`coord_health` metrics tool** — active peers, pending quarantine, reject rate, claim depth.~~ — **done**: `coord_health` returns peers (active/by_kind/by_role), quarantine, claims, track-record fill, and per-kind rejects + cooldown flags.
 - **Rejection rate limit hardening** — 5 rejects / 10 min per `client_kind` already lands cooldown; audit whether per-peer is better on heavy multi-session load.
 
 ### 007-mcp + 007-lang
