@@ -11,7 +11,7 @@
   spdx = "PMPL-1.0-or-later",
   copyright = "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>",
   name = "local-coord-mcp",
-  version = "0.8.0",
+  version = "0.9.0",
   description = "Localhost multi-instance coordination — peer discovery, message passing, and task claiming for parallel AI sessions on the same machine",
   domain = "ai",
   tier = "Ayo",
@@ -293,6 +293,29 @@
           peer_id = { type = "string", description = "Target peer_id (<kind>-<4hex>[@<context>])" },
         },
         required = ["token", "peer_id"],
+      },
+    },
+    {
+      name = "coord_progress",
+      description = "Heartbeat for a held claim — resets the watchdog TTL (DD-20). Apprentice TTL is 30 s, journeyman 5 min, master no watchdog. Long-running work should ping this periodically so the server doesn't auto-release the claim.",
+      inputSchema = {
+        type = "object",
+        properties = {
+          token = { type = "string", description = "Session token from coord_register" },
+          task = { type = "string", description = "Task identifier previously claimed via coord_claim_task" },
+        },
+        required = ["token", "task"],
+      },
+    },
+    {
+      name = "coord_sweep_watchdog",
+      description = "Explicit watchdog sweep — release any claim whose holder has missed its role-based TTL. The sweep also runs implicitly at the top of every coord_claim_task, so this tool is only needed by ops wanting an external tick.",
+      inputSchema = {
+        type = "object",
+        properties = {
+          token = { type = "string", description = "Session token from coord_register — any active peer may invoke." },
+        },
+        required = ["token"],
       },
     },
     {

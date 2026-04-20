@@ -183,6 +183,10 @@ const Claim = struct {
     task_name: [128]u8,
     task_name_len: u8,
     holder_idx: u8, // index into peers[]
+    // Task #15-watchdog (DD-20) — ms since epoch of claim acquisition or
+    // most recent coord_progress heartbeat. sweepExpiredClaims compares
+    // (now - claimed_at_ms) against the holder's role-specific TTL.
+    claimed_at_ms: u64,
 };
 
 const empty_claim = Claim{
@@ -190,9 +194,25 @@ const empty_claim = Claim{
     .task_name = [_]u8{0} ** 128,
     .task_name_len = 0,
     .holder_idx = 0,
+    .claimed_at_ms = 0,
 };
 
 var claims: [MAX_CLAIMS]Claim = [_]Claim{empty_claim} ** MAX_CLAIMS;
+
+/// Watchdog TTLs per role (DD-20). master has no TTL — they're the
+/// approval authority, not an executor. Values chosen to catch abandoned
+/// work fast (apprentice) while allowing deep thought time (journeyman).
+const TTL_APPRENTICE_MS: u64 = 30 * 1000;       // 30 s
+const TTL_JOURNEYMAN_MS: u64 = 5 * 60 * 1000;   // 5 min
+
+/// Return the TTL in ms for a role, or 0 for roles with no watchdog.
+fn watchdogTtlMs(role: Role) u64 {
+    return switch (role) {
+        .apprentice => TTL_APPRENTICE_MS,
+        .journeyman => TTL_JOURNEYMAN_MS,
+        .master => 0,
+    };
+}
 
 // ═══════════════════════════════════════════════════════════════════════
 // Quarantine Queue — Tier 2+ ops from role=apprentice peers held here
@@ -1148,12 +1168,19 @@ pub export fn coord_claim_task_ex(
     const kind = peers[idx].kind;
     if (isInCooldown(kind, now_ms)) return -5;
 
+    // Watchdog sweep piggybacks on claim contention — the natural moment
+    // an abandoned claim matters. DD-20: apprentice = 30 s, journeyman =
+    // 5 min, master no TTL. Releases happen before contention is checked
+    // so a freshly-expired slot becomes available to this caller.
+    _ = sweepExpiredClaims(now_ms);
+
     // Check if already claimed
     for (&claims) |*c| {
         if (c.active and c.task_name_len == @as(u8, @intCast(tlen)) and
             std.mem.eql(u8, c.task_name[0..tlen], task_ptr[0..tlen]))
         {
             if (c.holder_idx == @as(u8, @intCast(idx))) {
+                c.claimed_at_ms = now_ms; // re-claim resets TTL
                 return 0; // Already held by caller — idempotent grant
             }
             recordRejection(kind, now_ms);
@@ -1168,12 +1195,101 @@ pub export fn coord_claim_task_ex(
             @memcpy(c.task_name[0..tlen], task_ptr[0..tlen]);
             c.task_name_len = @intCast(tlen);
             c.holder_idx = @intCast(idx);
+            c.claimed_at_ms = now_ms;
             dur.logClaimAdd(@intCast(ci), @intCast(idx), task_ptr[0..tlen]);
             return 0; // Granted
         }
     }
     recordRejection(kind, now_ms);
     return 2; // No slots available (treated as NotFound)
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// Watchdog (DD-20) — auto-release claims whose holder missed the TTL.
+// ═══════════════════════════════════════════════════════════════════════
+
+/// Sweep all active claims, auto-releasing any that have exceeded the
+/// TTL for their holder's role. Returns the number of claims released.
+/// Caller must already hold `mutex`.
+///
+/// Master claims are never swept (TTL=0). Inactive-holder claims (peer
+/// deregistered without releasing) are cleared by coord_deregister, so
+/// the sweep just treats their slots as already free.
+fn sweepExpiredClaims(now_ms: u64) c_int {
+    var released: c_int = 0;
+    for (&claims, 0..) |*c, ci| {
+        if (!c.active) continue;
+        const holder = &peers[c.holder_idx];
+        if (!holder.active) {
+            // Shouldn't normally happen (deregister releases), but be safe.
+            c.active = false;
+            dur.logClaimRel(@intCast(ci));
+            released += 1;
+            continue;
+        }
+        const ttl = watchdogTtlMs(holder.role);
+        if (ttl == 0) continue; // master or unknown — no watchdog
+        if (c.claimed_at_ms == 0) continue; // replayed without timestamp; skip first pass
+        if (now_ms <= c.claimed_at_ms) continue; // clock skew guard
+        if ((now_ms - c.claimed_at_ms) <= ttl) continue;
+
+        // Auto-release. Audit kind=3 = AUTO_RELEASE.
+        var detail_buf: [128]u8 = undefined;
+        const task_slice = c.task_name[0..c.task_name_len];
+        const detail = std.fmt.bufPrint(&detail_buf,
+            "claim={d}|holder={d}|role={d}|age_ms={d}|task={s}",
+            .{ ci, c.holder_idx, @intFromEnum(holder.role), now_ms - c.claimed_at_ms, task_slice },
+        ) catch "";
+        c.active = false;
+        dur.logClaimRel(@intCast(ci));
+        dur.logAudit(3, detail);
+        released += 1;
+    }
+    return released;
+}
+
+/// Heartbeat: bump the claimed_at_ms of a claim held by the caller so
+/// long-running work doesn't get swept. The caller must be the current
+/// holder; other peers cannot refresh someone else's claim.
+///
+/// Returns 0 OK, -1 bad token, -2 no matching claim, -3 not the holder.
+pub export fn coord_progress(
+    token_ptr: [*]const u8,
+    token_len: c_int,
+    task_ptr: [*]const u8,
+    task_len: c_int,
+) c_int {
+    mutex.lock();
+    defer mutex.unlock();
+
+    const idx = findPeerByToken(token_ptr, @intCast(token_len)) orelse return -1;
+    const tlen: usize = @intCast(@min(task_len, 128));
+    const now_ms: u64 = @intCast(std.time.milliTimestamp());
+
+    for (&claims, 0..) |*c, ci| {
+        if (!c.active) continue;
+        if (c.task_name_len != @as(u8, @intCast(tlen))) continue;
+        if (!std.mem.eql(u8, c.task_name[0..tlen], task_ptr[0..tlen])) continue;
+        if (c.holder_idx != @as(u8, @intCast(idx))) return -3;
+        c.claimed_at_ms = now_ms;
+        dur.logClaimProgress(@intCast(ci), now_ms);
+        return 0;
+    }
+    return -2;
+}
+
+/// Externally-callable watchdog sweep. Any active peer may invoke it
+/// (loopback-only, trusted session); callers can schedule it as a
+/// polling tick. Returns released-count, -1 on bad token.
+pub export fn coord_sweep_watchdog(
+    token_ptr: [*]const u8,
+    token_len: c_int,
+) c_int {
+    mutex.lock();
+    defer mutex.unlock();
+    if (findPeerByToken(token_ptr, @intCast(token_len)) == null) return -1;
+    const now_ms: u64 = @intCast(std.time.milliTimestamp());
+    return sweepExpiredClaims(now_ms);
 }
 
 /// Release a task claim.
@@ -2044,11 +2160,22 @@ fn replayDispatch(event: dur.EventType, payload: []const u8) void {
             const tlen: usize = @min(d.task.len, 128);
             if (tlen > 0) @memcpy(c.task_name[0..tlen], d.task[0..tlen]);
             c.task_name_len = @intCast(tlen);
+            // Fresh TTL after replay: old logs predate claim_progress
+            // events, so we restart the watchdog from now. A claim_progress
+            // record later in the same log will override this.
+            c.claimed_at_ms = @intCast(std.time.milliTimestamp());
         },
         .claim_rel => {
             const idx = dur.decodeSlotIdx(payload) orelse return;
             if (idx >= MAX_CLAIMS) return;
             claims[idx].active = false;
+        },
+        .claim_progress => {
+            const d = dur.decodeClaimProgress(payload) orelse return;
+            if (d.claim_idx >= MAX_CLAIMS) return;
+            const c = &claims[d.claim_idx];
+            if (!c.active) return;
+            c.claimed_at_ms = d.timestamp_ms;
         },
         .quar_add => {
             const d = dur.decodeQuarAdd(payload) orelse return;
@@ -2126,7 +2253,7 @@ pub export fn boj_cartridge_name() [*:0]const u8 {
 }
 
 pub export fn boj_cartridge_version() [*:0]const u8 {
-    return "0.8.0";
+    return "0.9.0";
 }
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -2259,6 +2386,124 @@ test "claim mutex semantics" {
     // Now peer 2 can claim
     const r4 = coord_claim_task(&tok2, TOKEN_LEN, task.ptr, @intCast(task.len));
     try std.testing.expectEqual(@as(c_int, 0), r4); // Granted
+
+    coord_reset();
+}
+
+test "watchdog: apprentice claim swept past 30s TTL" {
+    coord_reset();
+    var tok: [TOKEN_LEN]u8 = undefined;
+    var suf: [4]u8 = undefined;
+    _ = coord_register(1, -1, &tok, &suf); // gemini → apprentice, 30s TTL
+
+    const task = "long-running-apprentice-task";
+    try std.testing.expectEqual(@as(c_int, 0),
+        coord_claim_task(&tok, TOKEN_LEN, task.ptr, @intCast(task.len)));
+
+    // Rewind the claim timestamp past the apprentice TTL.
+    claims[0].claimed_at_ms -= TTL_APPRENTICE_MS + 1000;
+
+    const released = coord_sweep_watchdog(&tok, TOKEN_LEN);
+    try std.testing.expectEqual(@as(c_int, 1), released);
+    try std.testing.expectEqual(false, claims[0].active);
+
+    coord_reset();
+}
+
+test "watchdog: progress heartbeat keeps claim alive" {
+    coord_reset();
+    var tok: [TOKEN_LEN]u8 = undefined;
+    var suf: [4]u8 = undefined;
+    _ = coord_register(1, -1, &tok, &suf); // gemini → apprentice
+
+    const task = "heartbeat-task";
+    try std.testing.expectEqual(@as(c_int, 0),
+        coord_claim_task(&tok, TOKEN_LEN, task.ptr, @intCast(task.len)));
+
+    // Rewind just under the TTL to simulate nearly-expired work.
+    claims[0].claimed_at_ms -= TTL_APPRENTICE_MS - 1000;
+
+    // Heartbeat must succeed and bump the timestamp.
+    try std.testing.expectEqual(@as(c_int, 0),
+        coord_progress(&tok, TOKEN_LEN, task.ptr, @intCast(task.len)));
+
+    // Sweep now should release nothing — TTL got reset.
+    try std.testing.expectEqual(@as(c_int, 0), coord_sweep_watchdog(&tok, TOKEN_LEN));
+    try std.testing.expectEqual(true, claims[0].active);
+
+    coord_reset();
+}
+
+test "watchdog: journeyman gets 5min TTL, master never swept" {
+    coord_reset();
+    var tok_j: [TOKEN_LEN]u8 = undefined;
+    var tok_a: [TOKEN_LEN]u8 = undefined;
+    var suf: [4]u8 = undefined;
+    _ = coord_register(0, -1, &tok_j, &suf); // claude → journeyman
+    _ = coord_register(1, -1, &tok_a, &suf); // gemini → apprentice
+
+    const t_j = "journeyman-task";
+    const t_a = "apprentice-task";
+    _ = coord_claim_task(&tok_j, TOKEN_LEN, t_j.ptr, @intCast(t_j.len));
+    _ = coord_claim_task(&tok_a, TOKEN_LEN, t_a.ptr, @intCast(t_a.len));
+
+    // Rewind both by 1 minute: journeyman still safe (5 min TTL), apprentice
+    // is way over (30 s TTL).
+    const one_min: u64 = 60 * 1000;
+    claims[0].claimed_at_ms -= one_min;
+    claims[1].claimed_at_ms -= one_min;
+
+    try std.testing.expectEqual(@as(c_int, 1), coord_sweep_watchdog(&tok_j, TOKEN_LEN));
+    try std.testing.expectEqual(true, claims[0].active);   // journeyman survives
+    try std.testing.expectEqual(false, claims[1].active);  // apprentice swept
+
+    // Now push the journeyman past its TTL.
+    claims[0].claimed_at_ms -= TTL_JOURNEYMAN_MS;
+    try std.testing.expectEqual(@as(c_int, 1), coord_sweep_watchdog(&tok_j, TOKEN_LEN));
+    try std.testing.expectEqual(false, claims[0].active);
+
+    coord_reset();
+}
+
+test "watchdog: progress rejected from non-holder" {
+    coord_reset();
+    var tok1: [TOKEN_LEN]u8 = undefined;
+    var tok2: [TOKEN_LEN]u8 = undefined;
+    var suf: [4]u8 = undefined;
+    _ = coord_register(0, -1, &tok1, &suf);
+    _ = coord_register(1, -1, &tok2, &suf);
+
+    const task = "held-by-tok1";
+    _ = coord_claim_task(&tok1, TOKEN_LEN, task.ptr, @intCast(task.len));
+
+    // tok2 tries to refresh tok1's claim → -3.
+    try std.testing.expectEqual(@as(c_int, -3),
+        coord_progress(&tok2, TOKEN_LEN, task.ptr, @intCast(task.len)));
+
+    // Unknown task → -2.
+    const missing = "no-such-task";
+    try std.testing.expectEqual(@as(c_int, -2),
+        coord_progress(&tok1, TOKEN_LEN, missing.ptr, @intCast(missing.len)));
+
+    coord_reset();
+}
+
+test "watchdog: implicit sweep frees stale slot on contention" {
+    coord_reset();
+    var tok_old: [TOKEN_LEN]u8 = undefined;
+    var tok_new: [TOKEN_LEN]u8 = undefined;
+    var suf: [4]u8 = undefined;
+    _ = coord_register(1, -1, &tok_old, &suf); // gemini → apprentice
+    _ = coord_register(1, -1, &tok_new, &suf);
+
+    const task = "contested-task";
+    _ = coord_claim_task(&tok_old, TOKEN_LEN, task.ptr, @intCast(task.len));
+    claims[0].claimed_at_ms -= TTL_APPRENTICE_MS + 1000;
+
+    // Second peer attempts to claim — sweep runs inline, old claim evaporates,
+    // new peer gets granted (rc=0), not held (rc=1).
+    try std.testing.expectEqual(@as(c_int, 0),
+        coord_claim_task(&tok_new, TOKEN_LEN, task.ptr, @intCast(task.len)));
 
     coord_reset();
 }
