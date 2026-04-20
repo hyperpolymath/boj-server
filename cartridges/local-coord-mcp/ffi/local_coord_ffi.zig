@@ -943,6 +943,58 @@ pub export fn coord_kind_in_cooldown(
     return if (isInCooldown(ck, now_ms)) 1 else 0;
 }
 
+/// Count rejections in the current window for the given peer slot (Item A).
+/// Returns count, -1 on bad token, -2 on bad/inactive peer_idx.
+pub export fn coord_count_rejects_recent_peer(
+    token_ptr: [*]const u8,
+    token_len: usize,
+    peer_idx: c_int,
+) c_int {
+    mutex.lock();
+    defer mutex.unlock();
+    if (findPeerByToken(token_ptr, token_len) == null) return -1;
+    if (peer_idx < 0 or peer_idx >= MAX_PEERS) return -2;
+    const pi: usize = @intCast(peer_idx);
+    if (!peers[pi].active) return -2;
+    const now_ms: u64 = @intCast(std.time.milliTimestamp());
+    var n: c_int = 0;
+    for (peer_reject_ring[pi]) |ts| {
+        if (ts == 0) continue;
+        if (now_ms > ts and (now_ms - ts) > REJECT_WINDOW_MS) continue;
+        n += 1;
+    }
+    return n;
+}
+
+/// Returns 1 if peer_idx is currently in reject-cooldown, 0 otherwise,
+/// -1 on bad token, -2 on bad/inactive peer_idx (Item A).
+pub export fn coord_peer_in_cooldown(
+    token_ptr: [*]const u8,
+    token_len: usize,
+    peer_idx: c_int,
+) c_int {
+    mutex.lock();
+    defer mutex.unlock();
+    if (findPeerByToken(token_ptr, token_len) == null) return -1;
+    if (peer_idx < 0 or peer_idx >= MAX_PEERS) return -2;
+    const pi: usize = @intCast(peer_idx);
+    if (!peers[pi].active) return -2;
+    const now_ms: u64 = @intCast(std.time.milliTimestamp());
+    return if (isPeerInCooldown(pi, now_ms)) 1 else 0;
+}
+
+/// Read a peer's 4-char hex suffix into out (must be at least 4 bytes).
+/// Returns 4 on success, -1 if peer_idx is out of range or inactive.
+pub export fn coord_read_peer_suffix(peer_idx: c_int, out: [*]u8) c_int {
+    mutex.lock();
+    defer mutex.unlock();
+    if (peer_idx < 0 or peer_idx >= MAX_PEERS) return -1;
+    const p = &peers[@intCast(peer_idx)];
+    if (!p.active) return -1;
+    @memcpy(out[0..4], &p.suffix);
+    return 4;
+}
+
 /// Deregister a peer. Releases any claims it holds.
 pub export fn coord_deregister(token_ptr: [*]const u8, token_len: c_int) c_int {
     mutex.lock();
@@ -960,6 +1012,8 @@ pub export fn coord_deregister(token_ptr: [*]const u8, token_len: c_int) c_int {
 
     peers[idx].active = false;
     peers[idx].state = .gone;
+    peer_reject_ring[idx] = [_]u64{0} ** REJECT_LIMIT;
+    peer_reject_head[idx] = 0;
     dur.logPeerRemove(@intCast(idx));
     return 0;
 }
@@ -1087,6 +1141,11 @@ const KIND_COUNT: usize = 6;
 var reject_ring: [KIND_COUNT][REJECT_LIMIT]u64 = [_][REJECT_LIMIT]u64{[_]u64{0} ** REJECT_LIMIT} ** KIND_COUNT;
 var reject_head: [KIND_COUNT]usize = [_]usize{0} ** KIND_COUNT;
 
+// Per-peer rejection ring (Item A — per-peer reject tracking).
+// 16 peers × 5 slots × 8 bytes = 640 bytes overhead.
+var peer_reject_ring: [MAX_PEERS][REJECT_LIMIT]u64 = [_][REJECT_LIMIT]u64{[_]u64{0} ** REJECT_LIMIT} ** MAX_PEERS;
+var peer_reject_head: [MAX_PEERS]usize = [_]usize{0} ** MAX_PEERS;
+
 fn isInCooldown(kind: ClientKind, now_ms: u64) bool {
     const k: usize = @intCast(@intFromEnum(kind));
     if (k >= KIND_COUNT) return false;
@@ -1111,6 +1170,29 @@ fn recordRejection(kind: ClientKind, now_ms: u64) void {
     const h = reject_head[k];
     reject_ring[k][h] = now_ms;
     reject_head[k] = (h + 1) % REJECT_LIMIT;
+}
+
+fn isPeerInCooldown(peer_idx: usize, now_ms: u64) bool {
+    if (peer_idx >= MAX_PEERS) return false;
+    const ring = &peer_reject_ring[peer_idx];
+    var count: usize = 0;
+    var newest: u64 = 0;
+    for (ring) |ts| {
+        if (ts == 0) continue;
+        if (now_ms > ts and (now_ms - ts) > REJECT_WINDOW_MS) continue;
+        count += 1;
+        if (ts > newest) newest = ts;
+    }
+    if (count < REJECT_LIMIT) return false;
+    if (now_ms > newest and (now_ms - newest) >= COOLDOWN_MS) return false;
+    return true;
+}
+
+fn recordPeerRejection(peer_idx: usize, now_ms: u64) void {
+    if (peer_idx >= MAX_PEERS) return;
+    const h = peer_reject_head[peer_idx];
+    peer_reject_ring[peer_idx][h] = now_ms;
+    peer_reject_head[peer_idx] = (h + 1) % REJECT_LIMIT;
 }
 
 /// Attempt to claim a task. Returns ClaimResult encoding.
@@ -1167,6 +1249,7 @@ pub export fn coord_claim_task_ex(
     const now_ms: u64 = @intCast(std.time.milliTimestamp());
     const kind = peers[idx].kind;
     if (isInCooldown(kind, now_ms)) return -5;
+    if (isPeerInCooldown(idx, now_ms)) return -5;
 
     // Watchdog sweep piggybacks on claim contention — the natural moment
     // an abandoned claim matters. DD-20: apprentice = 30 s, journeyman =
@@ -1184,6 +1267,7 @@ pub export fn coord_claim_task_ex(
                 return 0; // Already held by caller — idempotent grant
             }
             recordRejection(kind, now_ms);
+            recordPeerRejection(idx, now_ms);
             return 1; // Held by another peer
         }
     }
@@ -1201,6 +1285,7 @@ pub export fn coord_claim_task_ex(
         }
     }
     recordRejection(kind, now_ms);
+    recordPeerRejection(idx, now_ms);
     return 2; // No slots available (treated as NotFound)
 }
 
@@ -2311,6 +2396,8 @@ pub export fn coord_reset() void {
     track_count = 0;
     reject_ring = [_][REJECT_LIMIT]u64{[_]u64{0} ** REJECT_LIMIT} ** KIND_COUNT;
     reject_head = [_]usize{0} ** KIND_COUNT;
+    peer_reject_ring = [_][REJECT_LIMIT]u64{[_]u64{0} ** REJECT_LIMIT} ** MAX_PEERS;
+    peer_reject_head = [_]usize{0} ** MAX_PEERS;
 }
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -3569,6 +3656,64 @@ test "rejection cooldown engages after 5 rejects in 10 min" {
     _ = coord_register(1, -1, &gem_tok, &suf);
     const gem_rc = coord_claim_task(&gem_tok, TOKEN_LEN, task.ptr, @intCast(task.len));
     try std.testing.expectEqual(@as(c_int, 1), gem_rc); // held, not cooldown
+
+    coord_reset();
+}
+
+test "per-peer reject ring counts independently of kind ring" {
+    // Item A — after 5 rejections of one peer, coord_count_rejects_recent_peer
+    // and coord_peer_in_cooldown reflect it via the public FFI.
+    coord_reset();
+    var tok_holder: [TOKEN_LEN]u8 = undefined;
+    var tok_a: [TOKEN_LEN]u8 = undefined;
+    var suf: [4]u8 = undefined;
+    _ = coord_register(1, -1, &tok_holder, &suf); // gemini #1 (idx 0) holds
+    _ = coord_register(1, -1, &tok_a, &suf);      // gemini #2 (idx 1) rejects 5x
+
+    const task = "contested";
+    try std.testing.expectEqual(@as(c_int, 0), coord_claim_task(&tok_holder, TOKEN_LEN, task.ptr, @intCast(task.len)));
+
+    var i: usize = 0;
+    while (i < 5) : (i += 1) {
+        try std.testing.expectEqual(
+            @as(c_int, 1),
+            coord_claim_task(&tok_a, TOKEN_LEN, task.ptr, @intCast(task.len)),
+        );
+    }
+
+    // Per-peer counts via FFI — peer idx 1 accumulated 5, idx 0 (holder) 0.
+    try std.testing.expectEqual(@as(c_int, 5), coord_count_rejects_recent_peer(&tok_holder, TOKEN_LEN, 1));
+    try std.testing.expectEqual(@as(c_int, 0), coord_count_rejects_recent_peer(&tok_holder, TOKEN_LEN, 0));
+    try std.testing.expectEqual(@as(c_int, 1), coord_peer_in_cooldown(&tok_holder, TOKEN_LEN, 1));
+    try std.testing.expectEqual(@as(c_int, 0), coord_peer_in_cooldown(&tok_holder, TOKEN_LEN, 0));
+
+    coord_reset();
+}
+
+test "per-peer reject ring resets on deregister" {
+    // Item A — when a peer deregisters, its reject ring is zeroed so a
+    // freshly-registered replacement in the same slot starts clean.
+    coord_reset();
+    var tok_holder: [TOKEN_LEN]u8 = undefined;
+    var tok_a: [TOKEN_LEN]u8 = undefined;
+    var suf: [4]u8 = undefined;
+    _ = coord_register(2, -1, &tok_holder, &suf); // copilot #1 (idx 0)
+    _ = coord_register(2, -1, &tok_a, &suf);      // copilot #2 (idx 1) rejects
+
+    const task = "held";
+    try std.testing.expectEqual(@as(c_int, 0), coord_claim_task(&tok_holder, TOKEN_LEN, task.ptr, @intCast(task.len)));
+
+    var i: usize = 0;
+    while (i < 3) : (i += 1) {
+        _ = coord_claim_task(&tok_a, TOKEN_LEN, task.ptr, @intCast(task.len));
+    }
+    try std.testing.expectEqual(@as(c_int, 3), coord_count_rejects_recent_peer(&tok_holder, TOKEN_LEN, 1));
+
+    // Deregister idx 1; re-register — replacement lands back in slot 1.
+    try std.testing.expectEqual(@as(c_int, 0), coord_deregister(&tok_a, TOKEN_LEN));
+    var tok_b: [TOKEN_LEN]u8 = undefined;
+    _ = coord_register(2, -1, &tok_b, &suf);
+    try std.testing.expectEqual(@as(c_int, 0), coord_count_rejects_recent_peer(&tok_holder, TOKEN_LEN, 1));
 
     coord_reset();
 }
