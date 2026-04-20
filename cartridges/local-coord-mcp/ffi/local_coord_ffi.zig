@@ -1746,6 +1746,11 @@ pub export fn coord_get_affinities(
 //
 // Suggestion kinds:
 //   - "overclaim": avg_confidence > 0.8 AND effective_affinity < 0.3
+//                  → routing FYI (op_kind=fyi, tier 1)
+//   - "drift":     same condition as overclaim, but framed as a self-
+//                  assessment monitoring flag (DD-9 layer D). Emitted
+//                  alongside overclaim with op_kind=warn, tier 2, and a
+//                  drift_pct field carrying the confidence-vs-affinity gap.
 //   - "promote":   effective_affinity >= 0.7 AND tag not in declared set
 //   - "remove":    effective_affinity <= 0.2 AND attempts >= 5
 //
@@ -1789,6 +1794,20 @@ fn enqueueServerSuggestion(
         }
     }
     return -1;
+}
+
+/// Internal kind→string for engine-side rendering. Mirrors the adapter's
+/// kindName but lives in FFI so server-origin envelopes can name peers
+/// correctly. Updated when ClientKind grows (Task #33 added openai/mistral).
+fn kindStr(k: u8) []const u8 {
+    return switch (k) {
+        0 => "claude",
+        1 => "gemini",
+        2 => "copilot",
+        4 => "openai",
+        5 => "mistral",
+        else => "custom",
+    };
 }
 
 fn affinityPct(attempts: u16, successes: u16) u32 {
@@ -1874,14 +1893,10 @@ pub export fn coord_scan_suggestions(
         if (agg.attempts == 0) continue;
         const pct = affinityPct(agg.attempts, agg.successes);
         const tag_slice: []const u8 = agg.tag[0..agg.tag_len];
-        const kind_str = switch (agg.client_kind) {
-            0 => "claude",
-            1 => "gemini",
-            2 => "copilot",
-            else => "custom",
-        };
+        const kind_str = kindStr(agg.client_kind);
 
         // Overclaim: high self-confidence + low real affinity.
+        // (Routing suggestion — op_kind=fyi, tier 1.)
         const avg_conf = windowedAvgConfidence(agg.client_kind, tag_slice);
         if (avg_conf != 256 and avg_conf >= OVERCLAIM_CONF_MIN and pct < OVERCLAIM_AFFINITY_MAX) {
             const msg = std.fmt.bufPrint(&msg_buf,
@@ -1889,6 +1904,18 @@ pub export fn coord_scan_suggestions(
                 .{ kind_str, tag_slice, agg.attempts, agg.successes, pct, avg_conf },
             ) catch continue;
             if (enqueueServerSuggestion(-1, 1, msg) >= 0) emitted += 1;
+
+            // Drift detector (DD-9 layer D / TODO P1): same condition, but
+            // framed as a self-assessment monitoring flag for the master
+            // to act on at the peer-trust level (op_kind=warn, tier 2).
+            // Carries `drift_pct = avg_conf - effective_affinity` so the
+            // master sees the magnitude of the gap at a glance.
+            const drift_pct: u32 = avg_conf - pct;
+            const drift_msg = std.fmt.bufPrint(&msg_buf,
+                "{{\"kind\":\"drift\",\"client_kind\":\"{s}\",\"tag\":\"{s}\",\"attempts\":{d},\"successes\":{d},\"effective_affinity_pct\":{d},\"avg_confidence_pct\":{d},\"drift_pct\":{d},\"op_kind\":\"warn\",\"rationale\":\"self-assessment drift — confidence consistently outpaces track-record success\"}}",
+                .{ kind_str, tag_slice, agg.attempts, agg.successes, pct, avg_conf, drift_pct },
+            ) catch continue;
+            if (enqueueServerSuggestion(-1, 2, drift_msg) >= 0) emitted += 1;
         }
 
         // Promote: high effective affinity, but tag not in any same-kind peer's declared list.
@@ -3139,19 +3166,58 @@ test "scan flags overclaim: high confidence + low effective_affinity" {
     const n = coord_scan_suggestions(&tok, TOKEN_LEN);
     try std.testing.expect(n >= 1);
 
-    // The quarantine entry should be a server-origin envelope with
-    // "overclaim" in the body.
+    // The quarantine should contain server-origin envelopes for both
+    // overclaim (routing FYI, tier 1) and drift (monitoring warn, tier 2).
     var found_overclaim: bool = false;
     var found_remove: bool = false;
+    var found_drift: bool = false;
+    var drift_tier: u8 = 0;
     for (&quarantine) |*q| {
         if (!q.active) continue;
         try std.testing.expectEqual(SERVER_ORIGIN_SENTINEL, q.sender_idx);
-        if (std.mem.indexOf(u8, q.msg[0..q.msg_len], "overclaim") != null) found_overclaim = true;
-        if (std.mem.indexOf(u8, q.msg[0..q.msg_len], "remove") != null) found_remove = true;
+        if (std.mem.indexOf(u8, q.msg[0..q.msg_len], "\"kind\":\"overclaim\"") != null) found_overclaim = true;
+        if (std.mem.indexOf(u8, q.msg[0..q.msg_len], "\"kind\":\"remove\"") != null) found_remove = true;
+        if (std.mem.indexOf(u8, q.msg[0..q.msg_len], "\"kind\":\"drift\"") != null) {
+            found_drift = true;
+            drift_tier = q.risk_tier;
+            // Drift envelope must carry the gap magnitude.
+            try std.testing.expect(std.mem.indexOf(u8, q.msg[0..q.msg_len], "\"drift_pct\":") != null);
+            try std.testing.expect(std.mem.indexOf(u8, q.msg[0..q.msg_len], "\"op_kind\":\"warn\"") != null);
+        }
     }
     try std.testing.expect(found_overclaim);
+    try std.testing.expect(found_drift);
+    try std.testing.expectEqual(@as(u8, 2), drift_tier);
     // 5 attempts + 20% affinity also fires the remove rule.
     try std.testing.expect(found_remove);
+
+    coord_reset();
+}
+
+test "drift uses Task #33 kind names (openai)" {
+    coord_reset();
+    var tok: [TOKEN_LEN]u8 = undefined;
+    var suf: [4]u8 = undefined;
+    _ = coord_register(4, -1, &tok, &suf); // openai
+
+    const tag = "rust-codegen";
+    _ = coord_report_outcome(&tok, TOKEN_LEN, tag.ptr, @intCast(tag.len), 1, 100, 2, 90);
+    for (0..4) |_| {
+        _ = coord_report_outcome(&tok, TOKEN_LEN, tag.ptr, @intCast(tag.len), 0, 100, 2, 90);
+    }
+    _ = coord_scan_suggestions(&tok, TOKEN_LEN);
+
+    var found_openai_drift: bool = false;
+    for (&quarantine) |*q| {
+        if (!q.active) continue;
+        const body = q.msg[0..q.msg_len];
+        if (std.mem.indexOf(u8, body, "\"kind\":\"drift\"") != null and
+            std.mem.indexOf(u8, body, "\"client_kind\":\"openai\"") != null)
+        {
+            found_openai_drift = true;
+        }
+    }
+    try std.testing.expect(found_openai_drift);
 
     coord_reset();
 }
