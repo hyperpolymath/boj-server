@@ -21,7 +21,7 @@ Last updated: 2026-04-20.
 
 ### Coord-MCP phase 1b refinements
 
-- **Hash chain per envelope** — sender-side `prev_msg_hash`; server tracks chain head; break = instant reject. (DD-8 mechanism 1.)
+- **Hash chain per envelope** — sender-side `prev_msg_hash`; server tracks chain head; break = instant reject. (DD-8 mechanism 1.) **Plan staged 2026-04-20**: add `chain_head: [32]u8` to `Peer`; shared `sendInner` for `coord_send` + `coord_send_gated`; new `coord_send_chain` / `coord_send_gated_chain` exports with `-6` chain_break return + expected/got out-params; adapter hex parsing + HTTP 409 chain_break JSON; new durability event `chain_advance = 18`; optional `prev_msg_hash` field in schema (backwards-compat for in-flight 007-mcp client per D3). ~8 subtasks.
 - **Content sanity gate** — file-ref validity vs recent-FS cache + self-contradiction heuristic + risk-tier escalator patterns (`git push` → auto-promote Tier 3). (DD-8 mechanism 4, DD-14.)
 - ~~**Watchdog TTL enforcement** — 30 s apprentice, 5 min journeyman; `progress` heartbeat resets. (DD-20.)~~ — **done**: `coord_progress` heartbeats, `coord_sweep_watchdog` polls, implicit sweep on `coord_claim_task`. Master has no TTL. Auto-release audited with kind=3 (`AUTO_RELEASE`).
 - ~~**Warn-drift broadcast on auto-release** via Opus review. (DD-21.)~~ — **done**: `sweepExpiredClaims` now emits a `warn_drift` envelope alongside the kind=3 auto-release audit. Master present → queued as server-origin suggestion (`sender_idx=0xFE`, tier 1, broadcast-on-approve); master absent → direct inbox push to every peer except the holder. Extra audit kinds: 4 = `WARN_DRIFT_QUEUED`, 5 = `WARN_DRIFT_BROADCAST`.
