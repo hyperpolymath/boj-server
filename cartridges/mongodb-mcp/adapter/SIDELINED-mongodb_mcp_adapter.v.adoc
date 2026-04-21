@@ -1,5 +1,0 @@
-= SIDELINED: mongodb_mcp_adapter.v
-
-V-lang banned 2026-04-12. Replaced by `mongodb_mcp_adapter.zig`.
-
-Ports: REST 9160 / gRPC 9161 / GraphQL 9162. FFI unchanged: `mongodb_mcp_ffi.zig`.

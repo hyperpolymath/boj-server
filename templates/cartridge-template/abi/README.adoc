@@ -1,0 +1,23 @@
+= My New Cartridge ABI Layer
+
+== Purpose
+
+This layer defines the abstract interfaces and types for the My New Cartridge cartridge. It ensures type safety and provides a clear contract for the rest of the system.
+
+== Boundaries
+
+- **Input**: Type definitions and interfaces from the Idris2 ABI layer.
+- **Output**: Type-safe bindings for the FFI layer.
+- **Dependencies**: None.
+
+== Invariants
+
+- The ABI layer must be type-safe.
+- The ABI layer must provide a clear contract for the FFI layer.
+- The ABI layer must be well-documented.
+
+== Execution Surfaces
+
+- **Entry Points**: Type definitions and interfaces.
+- **Error Handling**: Type errors are caught at compile time.
+- **Testing**: Type checking and formal proofs.

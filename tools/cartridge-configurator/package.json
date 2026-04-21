@@ -1,0 +1,13 @@
+{
+  "name": "cartridge-configurator",
+  "version": "0.1.0",
+  "description": "Cartridge Configurator — Apply runtime configuration to cartridges dynamically",
+  "main": "configurator.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": ["boj-server", "cartridge", "configurator"],
+  "author": "Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>",
+  "license": "PMPL-1.0-or-later",
+  "type": "module"
+}

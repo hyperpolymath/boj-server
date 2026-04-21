@@ -1,5 +1,0 @@
-= SIDELINED: telegram_mcp_adapter.v
-
-V-lang banned 2026-04-12. Replaced by `telegram_mcp_adapter.zig`.
-
-Ports: REST 9190 / gRPC 9191 / GraphQL 9192. FFI unchanged: `telegram_mcp_ffi.zig`.

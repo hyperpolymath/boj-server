@@ -1,5 +1,605 @@
 #!/usr/bin/env node
-// SPDX-License-Identifier: PMPL-1.0-or-later
+// Hardening gate — validates every tool call before dispatch
+// ===================================================================
+
+/**
+ * Run all security checks on a tool call.
+ * Returns an error object {code, message} if rejected, or null if OK.
+ * @param {string} toolName
+ * @param {Record<string, unknown>} args
+ * @returns {{code: number, message: string}|null}
+ */
+function hardeningGate(toolName, args) {
+  // 1. Rate limiting
+  if (!rateLimitAllow()) {
+    return { code: -32000, message: "Rate limit exceeded. Max " + RATE_LIMIT + " tool calls per minute." };
+  }
+
+  // 2. Tool name validation
+  if (!isValidToolName(toolName)) {
+    return { code: -32602, message: "Invalid tool name" };
+  }
+
+  // 3. Input size check
+  if (!isInputSizeOk(args)) {
+    return { code: -32600, message: "Tool arguments exceed maximum size (1 MB)" };
+  }
+
+  // 4. Prompt injection detection
+  const injectionLevel = scanObjectForInjection(args);
+  if (injectionLevel === "critical" || injectionLevel === "high") {
+    logError("Injection blocked", { tool: toolName, confidence: injectionLevel });
+    return { code: -32600, message: "Request rejected: suspicious content detected" };
+  }
+  if (injectionLevel === "medium") {
+    warn("Injection warning", { tool: toolName, confidence: injectionLevel });
+  }
+
+  // 5. Required field validation
+  let validationError = null;
+  if (toolName === "boj_cartridge_info" || toolName === "boj_cartridge_invoke") {
+    validationError = validateRequiredStrings(args, ["name"]);
+  } else if (toolName === "boj_browser_navigate") {
+    validationError = validateRequiredStrings(args, ["url"]);
+  } else if (toolName === "boj_browser_click") {
+    validationError = validateRequiredStrings(args, ["selector"]);
+  } else if (toolName === "boj_browser_type") {
+    validationError = validateRequiredStrings(args, ["selector", "text"]);
+  } else if (toolName === "boj_browser_execute_js") {
+    validationError = validateRequiredStrings(args, ["script"]);
+  } else if (toolName.startsWith("boj_github_") && toolName !== "boj_github_list_repos") {
+    if (toolName === "boj_github_graphql" || toolName === "boj_github_search_code" || toolName === "boj_github_search_issues") {
+      validationError = validateRequiredStrings(args, ["query"]);
+    } else {
+      validationError = validateRequiredStrings(args, ["owner", "repo"]);
+    }
+  } else if (toolName.startsWith("boj_gitlab_") && toolName !== "boj_gitlab_list_projects") {
+    validationError = validateRequiredStrings(args, ["project_id"]);
+  } else if (toolName.startsWith("boj_cloud_") || toolName.startsWith("boj_comms_") || toolName === "boj_ml_huggingface" || toolName === "boj_research" || toolName === "boj_codeseeker") {
+    validationError = validateRequiredStrings(args, ["operation"]);
+  } else if (toolName === "boj_browser_tabs") {
+    validationError = validateRequiredStrings(args, ["operation"]);
+  }
+
+  if (validationError) {
+    return { code: -32602, message: validationError };
+  }
+
+  return null;
+}
+=======
+// ===================================================================
+// Authentication
+// ===================================================================
+
+/**
+ * Authenticate a request using a bearer token.
+ * @param {string} token
+ * @returns {boolean}
+ */
+function authenticate(token) {
+  // In a real implementation, you would validate the token against a database
+  // or authentication service. For now, we'll just check if the token is present.
+  return token !== undefined && token !== null && token !== "";
+}
+
+// ===================================================================
+// Hardening gate — validates every tool call before dispatch
+// ===================================================================
+
+/**
+ * Run all security checks on a tool call.
+ * Returns an error object {code, message} if rejected, or null if OK.
+ * @param {string} toolName
+ * @param {Record<string, unknown>} args
+ * @param {string} token
+ * @returns {{code: number, message: string}|null}
+ */
+function hardeningGate(toolName, args, token = null) {
+  // 1. Authentication
+  if (token && !authenticate(token)) {
+    return { code: -32001, message: "Authentication failed" };
+  }
+
+  // 2. Rate limiting
+  if (!rateLimitAllow()) {
+    return { code: -32000, message: "Rate limit exceeded. Max " + RATE_LIMIT + " tool calls per minute." };
+  }
+
+  // 3. Tool name validation
+  if (!isValidToolName(toolName)) {
+    return { code: -32602, message: "Invalid tool name" };
+  }
+
+  // 4. Input size check
+  if (!isInputSizeOk(args)) {
+    return { code: -32600, message: "Tool arguments exceed maximum size (1 MB)" };
+  }
+
+  // 5. Prompt injection detection
+  const injectionLevel = scanObjectForInjection(args);
+  if (injectionLevel === "critical" || injectionLevel === "high") {
+    logError("Injection blocked", { tool: toolName, confidence: injectionLevel });
+    return { code: -32600, message: "Request rejected: suspicious content detected" };
+  }
+  if (injectionLevel === "medium") {
+    warn("Injection warning", { tool: toolName, confidence: injectionLevel });
+  }
+
+  // 6. Required field validation
+  let validationError = null;
+  if (toolName === "boj_cartridge_info" || toolName === "boj_cartridge_invoke") {
+    validationError = validateRequiredStrings(args, ["name"]);
+  } else if (toolName === "boj_browser_navigate") {
+    validationError = validateRequiredStrings(args, ["url"]);
+  } else if (toolName === "boj_browser_click") {
+    validationError = validateRequiredStrings(args, ["selector"]);
+  } else if (toolName === "boj_browser_type") {
+    validationError = validateRequiredStrings(args, ["selector", "text"]);
+  } else if (toolName === "boj_browser_execute_js") {
+    validationError = validateRequiredStrings(args, ["script"]);
+  } else if (toolName.startsWith("boj_github_") && toolName !== "boj_github_list_repos") {
+    if (toolName === "boj_github_graphql" || toolName === "boj_github_search_code" || toolName === "boj_github_search_issues") {
+      validationError = validateRequiredStrings(args, ["query"]);
+    } else {
+      validationError = validateRequiredStrings(args, ["owner", "repo"]);
+    }
+  } else if (toolName.startsWith("boj_gitlab_") && toolName !== "boj_gitlab_list_projects") {
+    validationError = validateRequiredStrings(args, ["project_id"]);
+  } else if (toolName.startsWith("boj_cloud_") || toolName.startsWith("boj_comms_") || toolName === "boj_ml_huggingface" || toolName === "boj_research" || toolName === "boj_codeseeker") {
+    validationError = validateRequiredStrings(args, ["operation"]);
+  } else if (toolName === "boj_browser_tabs") {
+    validationError = validateRequiredStrings(args, ["operation"]);
+  }
+
+  if (validationError) {
+    return { code: -32602, message: validationError };
+  }
+
+  return null;
+}MCP message handler
+// ===================================================================
+
+async function handleMessage(line) {
+  let msg;
+  try {
+    msg = JSON.parse(line);
+  } catch {
+    sendError(null, -32700, "Parse error");
+    return;
+  }
+
+  const { id, method, params } = msg;
+
+  switch (method) {
+    case "initialize": {
+      info("MCP initialize", { client: params?.clientInfo?.name });
+      sendResult(id, {
+        protocolVersion: "2024-11-05",
+        capabilities: { tools: { listChanged: false } },
+        serverInfo: { name: SERVER_NAME, version: SERVER_VERSION },
+      });
+      break;
+    }
+
+    case "notifications/initialized":
+      break;
+=======
+// ===================================================================
+// SSE (Server-Sent Events) transport
+// ===================================================================
+
+/**
+ * Initialize SSE transport.
+ */
+function initSSE() {
+  info("Initializing SSE transport...");
+}
+
+/**
+ * Add an SSE client.
+ * @param {object} client
+ */
+function addSSEClient(client) {
+  const clientId = sseId++;
+  sseClients.add({ id: clientId, client });
+  info(`SSE client connected: ${clientId}`);
+  return clientId;
+}
+
+/**
+ * Remove an SSE client.
+ * @param {number} clientId
+ */
+function removeSSEClient(clientId) {
+  const client = Array.from(sseClients).find((c) => c.id === clientId);
+  if (client) {
+    sseClients.delete(client);
+    info(`SSE client disconnected: ${clientId}`);
+  }
+}
+
+/**
+ * Send an SSE event to all clients.
+ * @param {string} event
+ * @param {object} data
+ */
+function sendSSEEvent(event, data) {
+  const message = `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
+  sseClients.forEach((client) => {
+    try {
+      client.client.write(message);
+    } catch (error) {
+      warn(`Failed to send SSE event to client ${client.id}: ${error.message}`);
+    }
+  });
+}
+
+// ===================================================================
+// MCP message handler
+// ===================================================================
+
+async function handleMessage(line) {
+  let msg;
+  try {
+    msg = JSON.parse(line);
+  } catch {
+    sendError(null, -32700, "Parse error");
+    return;
+  }
+
+  const { id, method, params } = msg;
+
+  switch (method) {
+    case "initialize": {
+      info("MCP initialize", { client: params?.clientInfo?.name });
+      sendResult(id, {
+        protocolVersion: "2024-11-05",
+        capabilities: { tools: { listChanged: false } },
+        serverInfo: { name: SERVER_NAME, version: SERVER_VERSION },
+      });
+      break;
+    }
+
+    case "notifications/initialized":
+      break;JSON-RPC stdio transport
+// ===================================================================
+
+let buffer = "";
+const MAX_BUFFER_BYTES = 2 * 1_048_576; // 2 MB
+
+// Auto-reconnect configuration
+const MAX_RECONNECT_ATTEMPTS = 5;
+const INITIAL_RECONNECT_DELAY = 1000; // 1 second
+let reconnectAttempts = 0;
+let reconnectTimeout = null;
+=======
+// ===================================================================
+// JSON-RPC stdio transport
+// ===================================================================
+
+let buffer = "";
+const MAX_BUFFER_BYTES = 2 * 1_048_576; // 2 MB
+
+// Auto-reconnect configuration
+const MAX_RECONNECT_ATTEMPTS = 5;
+const INITIAL_RECONNECT_DELAY = 1000; // 1 second
+let reconnectAttempts = 0;
+let reconnectTimeout = null;
+
+// SSE (Server-Sent Events) support
+const sseClients = new Set();
+let sseId = 0;Group management
+// ===================================================================
+
+/**
+ * Fetch the list of available groups.
+ * @returns {Promise<Array<{id: string, name: string, description: string}>>}
+ */
+async function fetchGroups() {
+  // For now, return a static list of groups. This can be extended to fetch
+  // groups from a configuration file or database.
+  return [
+    { id: "database", name: "Database", description: "Database-related tools" },
+    { id: "cloud", name: "Cloud", description: "Cloud-related tools" },
+    { id: "git", name: "Git", description: "Git-related tools" },
+    { id: "comms", name: "Comms", description: "Communication-related tools" },
+  ];
+}
+=======
+// ===================================================================
+// Prompt management
+// ===================================================================
+
+/**
+ * Fetch the list of available prompts.
+ * @returns {Promise<Array<{id: string, name: string, description: string}>>}
+ */
+async function fetchPrompts() {
+  // For now, return a static list of prompts. This can be extended to fetch
+  // prompts from a configuration file or database.
+  return [
+    { id: "project-analysis", name: "Project Analysis", description: "Analyze a project and suggest improvements" },
+    { id: "code-review", name: "Code Review", description: "Review code and detect code smells" },
+    { id: "research", name: "Research", description: "Research a topic and summarize findings" },
+  ];
+}
+
+/**
+ * Fetch a specific prompt by ID.
+ * @param {string} promptId
+ * @returns {Promise<{id: string, name: string, description: string, template: string} | null>}
+ */
+async function fetchPrompt(promptId) {
+  // For now, return a static prompt. This can be extended to fetch
+  // prompts from a configuration file or database.
+  const prompts = [
+    {
+      id: "project-analysis",
+      name: "Project Analysis",
+      description: "Analyze a project and suggest improvements",
+      template: "Analyze this repository and suggest improvements",
+    },
+    {
+      id: "code-review",
+      name: "Code Review",
+      description: "Review code and detect code smells",
+      template: "Review this code and detect code smells",
+    },
+    {
+      id: "research",
+      name: "Research",
+      description: "Research a topic and summarize findings",
+      template: "Research this topic and summarize findings",
+    },
+  ];
+
+  return prompts.find((p) => p.id === promptId) || null;
+}
+
+// ===================================================================
+// Resource management
+// ===================================================================
+
+/**
+ * Fetch the list of available resources.
+ * @returns {Promise<Array<{id: string, name: string, description: string}>>}
+ */
+async function fetchResources() {
+  // For now, return a static list of resources. This can be extended to fetch
+  // resources from a configuration file or database.
+  return [
+    { id: "knowledge-graph", name: "Knowledge Graph", description: "Knowledge graph for storing and managing contextual data" },
+    { id: "sessions", name: "Sessions", description: "Session management for persistent session state" },
+    { id: "learnings", name: "Learnings", description: "Learning system for capturing and organizing knowledge" },
+  ];
+}
+
+/**
+ * Fetch a specific resource by ID.
+ * @param {string} resourceId
+ * @returns {Promise<{id: string, name: string, description: string, schema: object} | null>}
+ */
+async function fetchResource(resourceId) {
+  // For now, return a static resource. This can be extended to fetch
+  // resources from a configuration file or database.
+  const resources = [
+    {
+      id: "knowledge-graph",
+      name: "Knowledge Graph",
+      description: "Knowledge graph for storing and managing contextual data",
+      schema: {
+        type: "object",
+        properties: {
+          entities: { type: "array", items: { type: "object" } },
+          observations: { type: "array", items: { type: "object" } },
+          relations: { type: "array", items: { type: "object" } },
+        },
+      },
+    },
+    {
+      id: "sessions",
+      name: "Sessions",
+      description: "Session management for persistent session state",
+      schema: {
+        type: "object",
+        properties: {
+          id: { type: "string" },
+          project: { type: "string" },
+          started_at: { type: "string", format: "date-time" },
+          ended_at: { type: "string", format: "date-time", nullable: true },
+          summary: { type: "string" },
+          context: { type: "array", items: { type: "string" } },
+        },
+      },
+    },
+    {
+      id: "learnings",
+      name: "Learnings",
+      description: "Learning system for capturing and organizing knowledge",
+      schema: {
+        type: "object",
+        properties: {
+          id: { type: "string" },
+          category: { type: "string" },
+          content: { type: "string" },
+          tags: { type: "array", items: { type: "string" } },
+          confidence: { type: "number", minimum: 0, maximum: 1 },
+          project: { type: "string", nullable: true },
+          created_at: { type: "string", format: "date-time" },
+          updated_at: { type: "string", format: "date-time" },
+        },
+      },
+    },
+  ];
+
+  return resources.find((r) => r.id === resourceId) || null;
+}
+
+// ===================================================================
+// Group management
+// ===================================================================
+
+/**
+ * Fetch the list of available groups.
+ * @returns {Promise<Array<{id: string, name: string, description: string}>>}
+ */
+async function fetchGroups() {
+  // For now, return a static list of groups. This can be extended to fetch
+  // groups from a configuration file or database.
+  return [
+    { id: "database", name: "Database", description: "Database-related tools" },
+    { id: "cloud", name: "Cloud", description: "Cloud-related tools" },
+    { id: "git", name: "Git", description: "Git-related tools" },
+    { id: "comms", name: "Comms", description: "Communication-related tools" },
+  ];
+}JSON-RPC stdio transport
+// ===================================================================
+
+let buffer = "";
+const MAX_BUFFER_BYTES = 2 * 1_048_576; // 2 MB
+=======
+// ===================================================================
+// JSON-RPC stdio transport
+// ===================================================================
+
+let buffer = "";
+const MAX_BUFFER_BYTES = 2 * 1_048_576; // 2 MB
+
+// Auto-reconnect configuration
+const MAX_RECONNECT_ATTEMPTS = 5;
+const INITIAL_RECONNECT_DELAY = 1000; // 1 second
+let reconnectAttempts = 0;
+let reconnectTimeout = null;
+
+// ===================================================================
+// Auto-reconnect helper
+// ===================================================================
+
+/**
+ * Calculate the next reconnect delay with exponential backoff and jitter.
+ * @param {number} attempt
+ * @returns {number}
+ */
+function getReconnectDelay(attempt) {
+  const delay = INITIAL_RECONNECT_DELAY * Math.pow(2, attempt);
+  const jitter = delay * 0.2; // 20% jitter
+  return delay + Math.random() * jitter;
+}
+
+/**
+ * Attempt to reconnect to the stdio transport.
+ */
+function attemptReconnect() {
+  if (reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
+    logError("Max reconnect attempts reached. Giving up.");
+    process.exit(1);
+  }
+
+  const delay = getReconnectDelay(reconnectAttempts);
+  logError(`Attempting to reconnect in ${delay}ms... (attempt ${reconnectAttempts + 1} of ${MAX_RECONNECT_ATTEMPTS})`);
+
+  reconnectTimeout = setTimeout(() => {
+    reconnectAttempts++;
+    // In a real stdio transport, you would re-establish the connection here.
+    // For now, we'll just log the attempt.
+    logError(`Reconnect attempt ${reconnectAttempts}`);
+    attemptReconnect();
+  }, delay);
+}
+
+// ===================================================================
+// Error handling
+// ===================================================================
+
+/**
+ * Handle errors and attempt to reconnect if necessary.
+ * @param {Error} error
+ */
+function handleError(error) {
+  logError("Error in MCP bridge:", error);
+  if (reconnectTimeout) {
+    clearTimeout(reconnectTimeout);
+  }
+  reconnectAttempts = 0;
+  attemptReconnect();
+}
+
+// Listen for unhandled rejections and errors
+process.on("unhandledRejection", (reason, promise) => {
+  logError("Unhandled Rejection at:", promise, "reason:", reason);
+  handleError(reason);
+});
+
+process.on("uncaughtException", (error) => {
+  logError("Uncaught Exception:", error);
+  handleError(error);
+});Tool dispatch
+// ===================================================================
+
+/**
+ * Dispatch a validated tool call to the appropriate handler.
+ * @param {string} toolName
+ * @param {Record<string, unknown>} args
+ * @returns {Promise<object>}
+ */
+async function dispatchTool(toolName, args) {
+=======
+// ===================================================================
+// Group management
+// ===================================================================
+
+/**
+ * Fetch the list of available groups.
+ * @returns {Promise<Array<{id: string, name: string, description: string}>>}
+ */
+async function fetchGroups() {
+  // For now, return a static list of groups. This can be extended to fetch
+  // groups from a configuration file or database.
+  return [
+    { id: "database", name: "Database", description: "Database-related tools" },
+    { id: "cloud", name: "Cloud", description: "Cloud-related tools" },
+    { id: "git", name: "Git", description: "Git-related tools" },
+    { id: "comms", name: "Comms", description: "Communication-related tools" },
+  ];
+}
+
+/**
+ * Dispatch a validated tool call to the appropriate handler within a group.
+ * @param {string} groupId
+ * @param {string} toolName
+ * @param {Record<string, unknown>} args
+ * @returns {Promise<object>}
+ */
+async function dispatchGroupTool(groupId, toolName, args) {
+  // Map group IDs to their respective cartridges
+  const groupToCartridge = {
+    database: "database-mcp",
+    cloud: "cloud-mcp",
+    git: "git-mcp",
+    comms: "comms-mcp",
+  };
+
+  const cartridgeName = groupToCartridge[groupId];
+  if (!cartridgeName) {
+    return null;
+  }
+
+  // Dispatch the tool call to the appropriate cartridge
+  return invokeCartridge(cartridgeName, args);
+}
+
+// ===================================================================
+// Tool dispatch
+// ===================================================================
+
+/**
+ * Dispatch a validated tool call to the appropriate handler.
+ * @param {string} toolName
+ * @param {Record<string, unknown>} args
+ * @returns {Promise<object>}
+ */
+async function dispatchTool(toolName, args) {SPDX-License-Identifier: PMPL-1.0-or-later
 // Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
 //
 // BoJ Server — MCP stdio transport bridge
@@ -356,8 +956,9 @@ async function handleMessage(line) {
     case "tools/call": {
       const toolName = params?.name;
       const args = params?.arguments || {};
+      const token = params?.token;
 
-      const rejection = hardeningGate(toolName, args);
+      const rejection = hardeningGate(toolName, args, token);
       if (rejection) {
         sendError(id, rejection.code, rejection.message);
         break;
@@ -370,6 +971,83 @@ async function handleMessage(line) {
         sendResult(id, {
           content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
         });
+      }
+      break;
+    }
+
+    case "groups/list": {
+      const groups = await fetchGroups();
+      sendResult(id, { groups });
+      break;
+    }
+
+    case "groups/call": {
+      const groupId = params?.groupId;
+      const toolName = params?.name;
+      const args = params?.arguments || {};
+
+      if (!groupId) {
+        sendError(id, -32602, "Group ID is required");
+        break;
+      }
+
+      const rejection = hardeningGate(toolName, args);
+      if (rejection) {
+        sendError(id, rejection.code, rejection.message);
+        break;
+      }
+
+      const result = await dispatchGroupTool(groupId, toolName, args);
+      if (result === null) {
+        sendError(id, -32601, "Unknown tool or group");
+      } else {
+        sendResult(id, {
+          content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
+        });
+      }
+      break;
+    }
+
+    case "prompts/list": {
+      const prompts = await fetchPrompts();
+      sendResult(id, { prompts });
+      break;
+    }
+
+    case "prompts/get": {
+      const promptId = params?.promptId;
+      if (!promptId) {
+        sendError(id, -32602, "Prompt ID is required");
+        break;
+      }
+
+      const prompt = await fetchPrompt(promptId);
+      if (prompt === null) {
+        sendError(id, -32601, "Unknown prompt");
+      } else {
+        sendResult(id, { prompt });
+      }
+      break;
+    }
+
+    case "resources/list": {
+      const resources = await fetchResources();
+      sendResult(id, { resources });
+      break;
+    }
+
+    case "resources/get": {
+      const resourceId = params?.resourceId;
+      if (!resourceId) {
+        sendError(id, -32602, "Resource ID is required");
+        break;
+      }
+
+      const resource = await fetchResource(resourceId);
+      if (resource === null) {
+        sendError(id, -32601, "Unknown resource");
+      } else {
+        sendResult(id, { resource });
       }
       break;
     }
