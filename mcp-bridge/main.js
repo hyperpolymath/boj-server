@@ -1,5 +1,137 @@
 #!/usr/bin/env node
-// Group management
+// MCP message handler
+// ===================================================================
+
+async function handleMessage(line) {
+  let msg;
+  try {
+    msg = JSON.parse(line);
+  } catch {
+    sendError(null, -32700, "Parse error");
+    return;
+  }
+
+  const { id, method, params } = msg;
+
+  switch (method) {
+    case "initialize": {
+      info("MCP initialize", { client: params?.clientInfo?.name });
+      sendResult(id, {
+        protocolVersion: "2024-11-05",
+        capabilities: { tools: { listChanged: false } },
+        serverInfo: { name: SERVER_NAME, version: SERVER_VERSION },
+      });
+      break;
+    }
+
+    case "notifications/initialized":
+      break;
+=======
+// ===================================================================
+// SSE (Server-Sent Events) transport
+// ===================================================================
+
+/**
+ * Initialize SSE transport.
+ */
+function initSSE() {
+  info("Initializing SSE transport...");
+}
+
+/**
+ * Add an SSE client.
+ * @param {object} client
+ */
+function addSSEClient(client) {
+  const clientId = sseId++;
+  sseClients.add({ id: clientId, client });
+  info(`SSE client connected: ${clientId}`);
+  return clientId;
+}
+
+/**
+ * Remove an SSE client.
+ * @param {number} clientId
+ */
+function removeSSEClient(clientId) {
+  const client = Array.from(sseClients).find((c) => c.id === clientId);
+  if (client) {
+    sseClients.delete(client);
+    info(`SSE client disconnected: ${clientId}`);
+  }
+}
+
+/**
+ * Send an SSE event to all clients.
+ * @param {string} event
+ * @param {object} data
+ */
+function sendSSEEvent(event, data) {
+  const message = `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
+  sseClients.forEach((client) => {
+    try {
+      client.client.write(message);
+    } catch (error) {
+      warn(`Failed to send SSE event to client ${client.id}: ${error.message}`);
+    }
+  });
+}
+
+// ===================================================================
+// MCP message handler
+// ===================================================================
+
+async function handleMessage(line) {
+  let msg;
+  try {
+    msg = JSON.parse(line);
+  } catch {
+    sendError(null, -32700, "Parse error");
+    return;
+  }
+
+  const { id, method, params } = msg;
+
+  switch (method) {
+    case "initialize": {
+      info("MCP initialize", { client: params?.clientInfo?.name });
+      sendResult(id, {
+        protocolVersion: "2024-11-05",
+        capabilities: { tools: { listChanged: false } },
+        serverInfo: { name: SERVER_NAME, version: SERVER_VERSION },
+      });
+      break;
+    }
+
+    case "notifications/initialized":
+      break;JSON-RPC stdio transport
+// ===================================================================
+
+let buffer = "";
+const MAX_BUFFER_BYTES = 2 * 1_048_576; // 2 MB
+
+// Auto-reconnect configuration
+const MAX_RECONNECT_ATTEMPTS = 5;
+const INITIAL_RECONNECT_DELAY = 1000; // 1 second
+let reconnectAttempts = 0;
+let reconnectTimeout = null;
+=======
+// ===================================================================
+// JSON-RPC stdio transport
+// ===================================================================
+
+let buffer = "";
+const MAX_BUFFER_BYTES = 2 * 1_048_576; // 2 MB
+
+// Auto-reconnect configuration
+const MAX_RECONNECT_ATTEMPTS = 5;
+const INITIAL_RECONNECT_DELAY = 1000; // 1 second
+let reconnectAttempts = 0;
+let reconnectTimeout = null;
+
+// SSE (Server-Sent Events) support
+const sseClients = new Set();
+let sseId = 0;Group management
 // ===================================================================
 
 /**
