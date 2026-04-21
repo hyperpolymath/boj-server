@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "ignore": {
+    "evalDynamicCode": [
+      {
+        "module": "mcp-bridge/lib/security.js",
+        "comment": "String literal 'eval(' in prompt-injection blocklist — not dynamic code execution"
+      }
+    ]
+  }
+}

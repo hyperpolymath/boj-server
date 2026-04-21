@@ -1,8 +1,8 @@
 {
   "name": "@hyperpolymath/boj-server",
-  "version": "0.4.0",
-  "description": "Bundle of Joy — cartridge-based MCP server with 53 formally verified domain cartridges",
-  "license": "PMPL-1.0-or-later",
+  "version": "0.4.1",
+  "description": "Bundle of Joy — cartridge-based MCP server with 100 domain cartridges, formally verified (Idris2) coord core",
+  "license": "MPL-2.0",
   "exports": "./mcp-bridge/main.js",
   "publish": {
     "include": ["mcp-bridge/", "LICENSE", "README.md"]

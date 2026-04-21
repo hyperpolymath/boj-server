@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: PMPL-1.0-or-later
+# SPDX-License-Identifier: MPL-2.0
 # Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
 #
 # Container Publish workflow — builds and pushes the container image to
@@ -60,5 +60,5 @@ jobs:
           labels: |
             org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
             org.opencontainers.image.description=Bundle of Joy MCP Server — 99 formally verified cartridges
-            org.opencontainers.image.licenses=PMPL-1.0-or-later
+            org.opencontainers.image.licenses=MPL-2.0
             org.opencontainers.image.version=${{ steps.meta.outputs.version }}
