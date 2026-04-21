@@ -1,5 +1,86 @@
 #!/usr/bin/env node
-// Tool dispatch
+// JSON-RPC stdio transport
+// ===================================================================
+
+let buffer = "";
+const MAX_BUFFER_BYTES = 2 * 1_048_576; // 2 MB
+=======
+// ===================================================================
+// JSON-RPC stdio transport
+// ===================================================================
+
+let buffer = "";
+const MAX_BUFFER_BYTES = 2 * 1_048_576; // 2 MB
+
+// Auto-reconnect configuration
+const MAX_RECONNECT_ATTEMPTS = 5;
+const INITIAL_RECONNECT_DELAY = 1000; // 1 second
+let reconnectAttempts = 0;
+let reconnectTimeout = null;
+
+// ===================================================================
+// Auto-reconnect helper
+// ===================================================================
+
+/**
+ * Calculate the next reconnect delay with exponential backoff and jitter.
+ * @param {number} attempt
+ * @returns {number}
+ */
+function getReconnectDelay(attempt) {
+  const delay = INITIAL_RECONNECT_DELAY * Math.pow(2, attempt);
+  const jitter = delay * 0.2; // 20% jitter
+  return delay + Math.random() * jitter;
+}
+
+/**
+ * Attempt to reconnect to the stdio transport.
+ */
+function attemptReconnect() {
+  if (reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
+    logError("Max reconnect attempts reached. Giving up.");
+    process.exit(1);
+  }
+
+  const delay = getReconnectDelay(reconnectAttempts);
+  logError(`Attempting to reconnect in ${delay}ms... (attempt ${reconnectAttempts + 1} of ${MAX_RECONNECT_ATTEMPTS})`);
+
+  reconnectTimeout = setTimeout(() => {
+    reconnectAttempts++;
+    // In a real stdio transport, you would re-establish the connection here.
+    // For now, we'll just log the attempt.
+    logError(`Reconnect attempt ${reconnectAttempts}`);
+    attemptReconnect();
+  }, delay);
+}
+
+// ===================================================================
+// Error handling
+// ===================================================================
+
+/**
+ * Handle errors and attempt to reconnect if necessary.
+ * @param {Error} error
+ */
+function handleError(error) {
+  logError("Error in MCP bridge:", error);
+  if (reconnectTimeout) {
+    clearTimeout(reconnectTimeout);
+  }
+  reconnectAttempts = 0;
+  attemptReconnect();
+}
+
+// Listen for unhandled rejections and errors
+process.on("unhandledRejection", (reason, promise) => {
+  logError("Unhandled Rejection at:", promise, "reason:", reason);
+  handleError(reason);
+});
+
+process.on("uncaughtException", (error) => {
+  logError("Uncaught Exception:", error);
+  handleError(error);
+});Tool dispatch
 // ===================================================================
 
 /**
