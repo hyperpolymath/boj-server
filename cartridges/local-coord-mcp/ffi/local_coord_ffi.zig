@@ -943,6 +943,58 @@ pub export fn coord_kind_in_cooldown(
     return if (isInCooldown(ck, now_ms)) 1 else 0;
 }
 
+/// Count rejections in the current window for the given peer slot (Item A).
+/// Returns count, -1 on bad token, -2 on bad/inactive peer_idx.
+pub export fn coord_count_rejects_recent_peer(
+    token_ptr: [*]const u8,
+    token_len: usize,
+    peer_idx: c_int,
+) c_int {
+    mutex.lock();
+    defer mutex.unlock();
+    if (findPeerByToken(token_ptr, token_len) == null) return -1;
+    if (peer_idx < 0 or peer_idx >= MAX_PEERS) return -2;
+    const pi: usize = @intCast(peer_idx);
+    if (!peers[pi].active) return -2;
+    const now_ms: u64 = @intCast(std.time.milliTimestamp());
+    var n: c_int = 0;
+    for (peer_reject_ring[pi]) |ts| {
+        if (ts == 0) continue;
+        if (now_ms > ts and (now_ms - ts) > REJECT_WINDOW_MS) continue;
+        n += 1;
+    }
+    return n;
+}
+
+/// Returns 1 if peer_idx is currently in reject-cooldown, 0 otherwise,
+/// -1 on bad token, -2 on bad/inactive peer_idx (Item A).
+pub export fn coord_peer_in_cooldown(
+    token_ptr: [*]const u8,
+    token_len: usize,
+    peer_idx: c_int,
+) c_int {
+    mutex.lock();
+    defer mutex.unlock();
+    if (findPeerByToken(token_ptr, token_len) == null) return -1;
+    if (peer_idx < 0 or peer_idx >= MAX_PEERS) return -2;
+    const pi: usize = @intCast(peer_idx);
+    if (!peers[pi].active) return -2;
+    const now_ms: u64 = @intCast(std.time.milliTimestamp());
+    return if (isPeerInCooldown(pi, now_ms)) 1 else 0;
+}
+
+/// Read a peer's 4-char hex suffix into out (must be at least 4 bytes).
+/// Returns 4 on success, -1 if peer_idx is out of range or inactive.
+pub export fn coord_read_peer_suffix(peer_idx: c_int, out: [*]u8) c_int {
+    mutex.lock();
+    defer mutex.unlock();
+    if (peer_idx < 0 or peer_idx >= MAX_PEERS) return -1;
+    const p = &peers[@intCast(peer_idx)];
+    if (!p.active) return -1;
+    @memcpy(out[0..4], &p.suffix);
+    return 4;
+}
+
 /// Deregister a peer. Releases any claims it holds.
 pub export fn coord_deregister(token_ptr: [*]const u8, token_len: c_int) c_int {
     mutex.lock();
@@ -960,6 +1012,8 @@ pub export fn coord_deregister(token_ptr: [*]const u8, token_len: c_int) c_int {
 
     peers[idx].active = false;
     peers[idx].state = .gone;
+    peer_reject_ring[idx] = [_]u64{0} ** REJECT_LIMIT;
+    peer_reject_head[idx] = 0;
     dur.logPeerRemove(@intCast(idx));
     return 0;
 }
@@ -1087,6 +1141,11 @@ const KIND_COUNT: usize = 6;
 var reject_ring: [KIND_COUNT][REJECT_LIMIT]u64 = [_][REJECT_LIMIT]u64{[_]u64{0} ** REJECT_LIMIT} ** KIND_COUNT;
 var reject_head: [KIND_COUNT]usize = [_]usize{0} ** KIND_COUNT;
 
+// Per-peer rejection ring (Item A — per-peer reject tracking).
+// 16 peers × 5 slots × 8 bytes = 640 bytes overhead.
+var peer_reject_ring: [MAX_PEERS][REJECT_LIMIT]u64 = [_][REJECT_LIMIT]u64{[_]u64{0} ** REJECT_LIMIT} ** MAX_PEERS;
+var peer_reject_head: [MAX_PEERS]usize = [_]usize{0} ** MAX_PEERS;
+
 fn isInCooldown(kind: ClientKind, now_ms: u64) bool {
     const k: usize = @intCast(@intFromEnum(kind));
     if (k >= KIND_COUNT) return false;
@@ -1111,6 +1170,29 @@ fn recordRejection(kind: ClientKind, now_ms: u64) void {
     const h = reject_head[k];
     reject_ring[k][h] = now_ms;
     reject_head[k] = (h + 1) % REJECT_LIMIT;
+}
+
+fn isPeerInCooldown(peer_idx: usize, now_ms: u64) bool {
+    if (peer_idx >= MAX_PEERS) return false;
+    const ring = &peer_reject_ring[peer_idx];
+    var count: usize = 0;
+    var newest: u64 = 0;
+    for (ring) |ts| {
+        if (ts == 0) continue;
+        if (now_ms > ts and (now_ms - ts) > REJECT_WINDOW_MS) continue;
+        count += 1;
+        if (ts > newest) newest = ts;
+    }
+    if (count < REJECT_LIMIT) return false;
+    if (now_ms > newest and (now_ms - newest) >= COOLDOWN_MS) return false;
+    return true;
+}
+
+fn recordPeerRejection(peer_idx: usize, now_ms: u64) void {
+    if (peer_idx >= MAX_PEERS) return;
+    const h = peer_reject_head[peer_idx];
+    peer_reject_ring[peer_idx][h] = now_ms;
+    peer_reject_head[peer_idx] = (h + 1) % REJECT_LIMIT;
 }
 
 /// Attempt to claim a task. Returns ClaimResult encoding.
@@ -1167,6 +1249,7 @@ pub export fn coord_claim_task_ex(
     const now_ms: u64 = @intCast(std.time.milliTimestamp());
     const kind = peers[idx].kind;
     if (isInCooldown(kind, now_ms)) return -5;
+    if (isPeerInCooldown(idx, now_ms)) return -5;
 
     // Watchdog sweep piggybacks on claim contention — the natural moment
     // an abandoned claim matters. DD-20: apprentice = 30 s, journeyman =
@@ -1184,6 +1267,7 @@ pub export fn coord_claim_task_ex(
                 return 0; // Already held by caller — idempotent grant
             }
             recordRejection(kind, now_ms);
+            recordPeerRejection(idx, now_ms);
             return 1; // Held by another peer
         }
     }
@@ -1201,6 +1285,7 @@ pub export fn coord_claim_task_ex(
         }
     }
     recordRejection(kind, now_ms);
+    recordPeerRejection(idx, now_ms);
     return 2; // No slots available (treated as NotFound)
 }
 
@@ -1215,6 +1300,82 @@ pub export fn coord_claim_task_ex(
 /// Master claims are never swept (TTL=0). Inactive-holder claims (peer
 /// deregistered without releasing) are cleared by coord_deregister, so
 /// the sweep just treats their slots as already free.
+// Audit event kinds used by the watchdog path (DD-20 / DD-21).
+// 1 = tier3-from-supervised, 2 = master-transfer (defined elsewhere).
+const AUDIT_AUTO_RELEASE: u8 = 3;
+const AUDIT_WARN_DRIFT_QUEUED: u8 = 4;
+const AUDIT_WARN_DRIFT_BROADCAST: u8 = 5;
+
+fn roleStr(r: Role) []const u8 {
+    return switch (r) {
+        .master => "master",
+        .journeyman => "journeyman",
+        .apprentice => "apprentice",
+    };
+}
+
+/// DD-21: when the watchdog auto-releases a claim, broadcast a `warn_drift`
+/// envelope so the rest of the coordination pool notices the stalled peer.
+/// Route through quarantine (sender_idx = server-origin sentinel) if a
+/// master is present; otherwise push directly into every active peer's
+/// inbox so the warning still lands in master-less local sessions.
+fn emitWarnDrift(
+    holder_idx: u8,
+    role: Role,
+    task: []const u8,
+    held_ms: u64,
+) void {
+    const holder = &peers[holder_idx];
+    if (!holder.active) return;
+
+    const kind_name = kindStr(@intCast(@intFromEnum(holder.kind)));
+    const role_name = roleStr(role);
+    const ctx_slice = holder.context[0..holder.context_len];
+
+    var env_buf: [512]u8 = undefined;
+    const env = blk: {
+        if (ctx_slice.len > 0) {
+            break :blk std.fmt.bufPrint(&env_buf,
+                "{{\"kind\":\"warn_drift\",\"op_kind\":\"warn\",\"risk_tier\":1," ++
+                "\"peer_id\":\"{s}-{s}@{s}\",\"peer_kind\":\"{s}\"," ++
+                "\"task\":\"{s}\",\"held_ms\":{d},\"role\":\"{s}\"," ++
+                "\"rationale\":\"watchdog auto-release: peer held claim past TTL without heartbeat\"}}",
+                .{ kind_name, holder.suffix[0..], ctx_slice, kind_name, task, held_ms, role_name },
+            ) catch return;
+        } else {
+            break :blk std.fmt.bufPrint(&env_buf,
+                "{{\"kind\":\"warn_drift\",\"op_kind\":\"warn\",\"risk_tier\":1," ++
+                "\"peer_id\":\"{s}-{s}\",\"peer_kind\":\"{s}\"," ++
+                "\"task\":\"{s}\",\"held_ms\":{d},\"role\":\"{s}\"," ++
+                "\"rationale\":\"watchdog auto-release: peer held claim past TTL without heartbeat\"}}",
+                .{ kind_name, holder.suffix[0..], kind_name, task, held_ms, role_name },
+            ) catch return;
+        }
+    };
+
+    if (findMaster() != null) {
+        const rid = enqueueServerSuggestion(-1, 1, env);
+        if (rid >= 0) dur.logAudit(AUDIT_WARN_DRIFT_QUEUED, env);
+        return;
+    }
+
+    // Master absent — direct broadcast to every active peer except the holder.
+    var pushed: c_int = 0;
+    for (&peers, 0..) |*p, i| {
+        if (!p.active) continue;
+        if (i == holder_idx) continue;
+        if (p.inbox_count >= MAX_MESSAGES) continue;
+        const head: usize = p.inbox_head;
+        @memcpy(p.inbox[head][0..env.len], env);
+        p.inbox_lens[head] = @intCast(env.len);
+        p.inbox_head = @intCast((@as(u32, p.inbox_head) + 1) % MAX_MESSAGES);
+        p.inbox_count += 1;
+        dur.logInboxPush(@intCast(i), env);
+        pushed += 1;
+    }
+    if (pushed > 0) dur.logAudit(AUDIT_WARN_DRIFT_BROADCAST, env);
+}
+
 fn sweepExpiredClaims(now_ms: u64) c_int {
     var released: c_int = 0;
     for (&claims, 0..) |*c, ci| {
@@ -1233,16 +1394,25 @@ fn sweepExpiredClaims(now_ms: u64) c_int {
         if (now_ms <= c.claimed_at_ms) continue; // clock skew guard
         if ((now_ms - c.claimed_at_ms) <= ttl) continue;
 
-        // Auto-release. Audit kind=3 = AUTO_RELEASE.
-        var detail_buf: [128]u8 = undefined;
+        // Auto-release.
+        const age_ms = now_ms - c.claimed_at_ms;
         const task_slice = c.task_name[0..c.task_name_len];
+        const holder_role = holder.role;
+        const holder_idx_copy = c.holder_idx;
+
+        var detail_buf: [128]u8 = undefined;
         const detail = std.fmt.bufPrint(&detail_buf,
             "claim={d}|holder={d}|role={d}|age_ms={d}|task={s}",
-            .{ ci, c.holder_idx, @intFromEnum(holder.role), now_ms - c.claimed_at_ms, task_slice },
+            .{ ci, c.holder_idx, @intFromEnum(holder_role), age_ms, task_slice },
         ) catch "";
         c.active = false;
         dur.logClaimRel(@intCast(ci));
-        dur.logAudit(3, detail);
+        dur.logAudit(AUDIT_AUTO_RELEASE, detail);
+
+        // DD-21: warn-drift broadcast so the pool sees the stalled peer.
+        // Emitted after the auto-release audit so the release is durable
+        // even if the warning path fails to serialize.
+        emitWarnDrift(holder_idx_copy, holder_role, task_slice, age_ms);
         released += 1;
     }
     return released;
@@ -2311,6 +2481,8 @@ pub export fn coord_reset() void {
     track_count = 0;
     reject_ring = [_][REJECT_LIMIT]u64{[_]u64{0} ** REJECT_LIMIT} ** KIND_COUNT;
     reject_head = [_]usize{0} ** KIND_COUNT;
+    peer_reject_ring = [_][REJECT_LIMIT]u64{[_]u64{0} ** REJECT_LIMIT} ** MAX_PEERS;
+    peer_reject_head = [_]usize{0} ** MAX_PEERS;
 }
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -2504,6 +2676,78 @@ test "watchdog: implicit sweep frees stale slot on contention" {
     // new peer gets granted (rc=0), not held (rc=1).
     try std.testing.expectEqual(@as(c_int, 0),
         coord_claim_task(&tok_new, TOKEN_LEN, task.ptr, @intCast(task.len)));
+
+    coord_reset();
+}
+
+test "watchdog auto-release files warn_drift into quarantine when master present" {
+    // DD-21: with a master on the pool, the warn_drift envelope is queued
+    // for master review as a server-origin suggestion (sender_idx = 0xFE).
+    coord_reset();
+    var tok_m: [TOKEN_LEN]u8 = undefined;
+    var tok_a: [TOKEN_LEN]u8 = undefined;
+    var suf: [4]u8 = undefined;
+    _ = coord_register(0, -1, &tok_m, &suf); // claude → journeyman; promote below
+    _ = coord_register(1, -1, &tok_a, &suf); // gemini → apprentice
+    peers[0].role = .master;
+
+    const task = "stalled-work";
+    try std.testing.expectEqual(@as(c_int, 0),
+        coord_claim_task(&tok_a, TOKEN_LEN, task.ptr, @intCast(task.len)));
+    claims[0].claimed_at_ms -= TTL_APPRENTICE_MS + 1000;
+
+    const released = coord_sweep_watchdog(&tok_m, TOKEN_LEN);
+    try std.testing.expectEqual(@as(c_int, 1), released);
+
+    // Quarantine now has one server-origin entry with the warn_drift envelope.
+    var found: bool = false;
+    for (&quarantine) |*q| {
+        if (!q.active) continue;
+        if (q.sender_idx != SERVER_ORIGIN_SENTINEL) continue;
+        try std.testing.expectEqual(@as(i8, -1), q.target_idx);
+        try std.testing.expectEqual(@as(u8, 1), q.risk_tier);
+        const body = q.msg[0..q.msg_len];
+        try std.testing.expect(std.mem.indexOf(u8, body, "\"kind\":\"warn_drift\"") != null);
+        try std.testing.expect(std.mem.indexOf(u8, body, "\"task\":\"stalled-work\"") != null);
+        try std.testing.expect(std.mem.indexOf(u8, body, "\"role\":\"apprentice\"") != null);
+        try std.testing.expect(std.mem.indexOf(u8, body, "\"held_ms\":") != null);
+        found = true;
+        break;
+    }
+    try std.testing.expect(found);
+
+    coord_reset();
+}
+
+test "watchdog auto-release broadcasts warn_drift when no master" {
+    // DD-21 fallback: with no master present, the envelope goes straight
+    // to every active peer's inbox so the warning still lands.
+    coord_reset();
+    var tok_a: [TOKEN_LEN]u8 = undefined;
+    var tok_j: [TOKEN_LEN]u8 = undefined;
+    var suf: [4]u8 = undefined;
+    _ = coord_register(1, -1, &tok_a, &suf); // gemini → apprentice (holder)
+    _ = coord_register(0, -1, &tok_j, &suf); // claude → journeyman (receiver)
+
+    const task = "abandoned-claim";
+    try std.testing.expectEqual(@as(c_int, 0),
+        coord_claim_task(&tok_a, TOKEN_LEN, task.ptr, @intCast(task.len)));
+    claims[0].claimed_at_ms -= TTL_APPRENTICE_MS + 1000;
+
+    const released = coord_sweep_watchdog(&tok_j, TOKEN_LEN);
+    try std.testing.expectEqual(@as(c_int, 1), released);
+
+    // Journeyman (idx 1) should have a warn_drift envelope in its inbox.
+    try std.testing.expect(peers[1].inbox_count >= 1);
+    const tail = peers[1].inbox_tail;
+    const len: usize = peers[1].inbox_lens[tail];
+    const body = peers[1].inbox[tail][0..len];
+    try std.testing.expect(std.mem.indexOf(u8, body, "\"kind\":\"warn_drift\"") != null);
+    try std.testing.expect(std.mem.indexOf(u8, body, "\"task\":\"abandoned-claim\"") != null);
+    try std.testing.expect(std.mem.indexOf(u8, body, "\"role\":\"apprentice\"") != null);
+
+    // Holder (idx 0) must NOT receive its own drift warning.
+    try std.testing.expectEqual(@as(u16, 0), peers[0].inbox_count);
 
     coord_reset();
 }
@@ -3569,6 +3813,64 @@ test "rejection cooldown engages after 5 rejects in 10 min" {
     _ = coord_register(1, -1, &gem_tok, &suf);
     const gem_rc = coord_claim_task(&gem_tok, TOKEN_LEN, task.ptr, @intCast(task.len));
     try std.testing.expectEqual(@as(c_int, 1), gem_rc); // held, not cooldown
+
+    coord_reset();
+}
+
+test "per-peer reject ring counts independently of kind ring" {
+    // Item A — after 5 rejections of one peer, coord_count_rejects_recent_peer
+    // and coord_peer_in_cooldown reflect it via the public FFI.
+    coord_reset();
+    var tok_holder: [TOKEN_LEN]u8 = undefined;
+    var tok_a: [TOKEN_LEN]u8 = undefined;
+    var suf: [4]u8 = undefined;
+    _ = coord_register(1, -1, &tok_holder, &suf); // gemini #1 (idx 0) holds
+    _ = coord_register(1, -1, &tok_a, &suf);      // gemini #2 (idx 1) rejects 5x
+
+    const task = "contested";
+    try std.testing.expectEqual(@as(c_int, 0), coord_claim_task(&tok_holder, TOKEN_LEN, task.ptr, @intCast(task.len)));
+
+    var i: usize = 0;
+    while (i < 5) : (i += 1) {
+        try std.testing.expectEqual(
+            @as(c_int, 1),
+            coord_claim_task(&tok_a, TOKEN_LEN, task.ptr, @intCast(task.len)),
+        );
+    }
+
+    // Per-peer counts via FFI — peer idx 1 accumulated 5, idx 0 (holder) 0.
+    try std.testing.expectEqual(@as(c_int, 5), coord_count_rejects_recent_peer(&tok_holder, TOKEN_LEN, 1));
+    try std.testing.expectEqual(@as(c_int, 0), coord_count_rejects_recent_peer(&tok_holder, TOKEN_LEN, 0));
+    try std.testing.expectEqual(@as(c_int, 1), coord_peer_in_cooldown(&tok_holder, TOKEN_LEN, 1));
+    try std.testing.expectEqual(@as(c_int, 0), coord_peer_in_cooldown(&tok_holder, TOKEN_LEN, 0));
+
+    coord_reset();
+}
+
+test "per-peer reject ring resets on deregister" {
+    // Item A — when a peer deregisters, its reject ring is zeroed so a
+    // freshly-registered replacement in the same slot starts clean.
+    coord_reset();
+    var tok_holder: [TOKEN_LEN]u8 = undefined;
+    var tok_a: [TOKEN_LEN]u8 = undefined;
+    var suf: [4]u8 = undefined;
+    _ = coord_register(2, -1, &tok_holder, &suf); // copilot #1 (idx 0)
+    _ = coord_register(2, -1, &tok_a, &suf);      // copilot #2 (idx 1) rejects
+
+    const task = "held";
+    try std.testing.expectEqual(@as(c_int, 0), coord_claim_task(&tok_holder, TOKEN_LEN, task.ptr, @intCast(task.len)));
+
+    var i: usize = 0;
+    while (i < 3) : (i += 1) {
+        _ = coord_claim_task(&tok_a, TOKEN_LEN, task.ptr, @intCast(task.len));
+    }
+    try std.testing.expectEqual(@as(c_int, 3), coord_count_rejects_recent_peer(&tok_holder, TOKEN_LEN, 1));
+
+    // Deregister idx 1; re-register — replacement lands back in slot 1.
+    try std.testing.expectEqual(@as(c_int, 0), coord_deregister(&tok_a, TOKEN_LEN));
+    var tok_b: [TOKEN_LEN]u8 = undefined;
+    _ = coord_register(2, -1, &tok_b, &suf);
+    try std.testing.expectEqual(@as(c_int, 0), coord_count_rejects_recent_peer(&tok_holder, TOKEN_LEN, 1));
 
     coord_reset();
 }
