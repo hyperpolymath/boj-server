@@ -1,0 +1,32 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+// Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath)
+= opendatamcp / adapter — REST/gRPC/GraphQL bridge
+:orientation: deep
+
+== Purpose
+
+Exposes the FFI layer over three protocols. Stateless — all state lives behind the FFI mutex.
+
+== Files
+
+[cols="1,4"]
+|=== 
+| File | Role
+
+| build.zig                             | Zig build graph.
+| opendatamcp_adapter.zig                  | Three-protocol dispatcher.
+|=== 
+
+== Invariants
+
+* Stateless — no global mutable state.
+* One tool call per HTTP request.
+* JSON content type for all responses.
+
+== Test/proof surface
+
+No inline tests — FFI tests cover correctness. Integration tested via cartridge-matrix tests.
+
+== Read-first
+
+. opendatamcp_adapter.zig — tool-name → FFI-call mapping.

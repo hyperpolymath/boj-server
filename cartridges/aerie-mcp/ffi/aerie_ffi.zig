@@ -36,7 +36,7 @@ export fn aerie_get_status(env_id: u32) u8 {
 
 // ── Standard ABI symbols (ADR-0005 + ADR-0006) ─────────────────────────
 
-const shim = @import("cartridge_shim");
+const shim = @import("cartridge_shim.zig");
 
 // String literals in Zig are already NUL-terminated sentinel arrays; hold
 // their addresses in module-level constants so the exported pointers have

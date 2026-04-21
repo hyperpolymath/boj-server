@@ -1,0 +1,127 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://boj.dev/schemas/cartridge/v1.json",
+  "title": "BoJ Cartridge Manifest",
+  "description": "Schema for BoJ Server cartridge manifests",
+  "type": "object",
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "format": "uri"
+    },
+    "spdx": {
+      "type": "string"
+    },
+    "copyright": {
+      "type": "string"
+    },
+    "name": {
+      "type": "string",
+      "pattern": "^[a-z0-9-]+-mcp$"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
+    "description": {
+      "type": "string"
+    },
+    "domain": {
+      "type": "string"
+    },
+    "tier": {
+      "type": "string",
+      "enum": ["Teranga", "Shield", "Ayo"]
+    },
+    "protocols": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": ["MCP", "REST", "GraphQL", "gRPC"]
+      }
+    },
+    "auth": {
+      "type": "object",
+      "properties": {
+        "method": {
+          "type": "string",
+          "enum": ["none", "api-key", "oauth2", "vault"]
+        },
+        "env_var": {
+          "type": ["string", "null"]
+        },
+        "credential_source": {
+          "type": ["string", "null"]
+        }
+      },
+      "required": ["method", "env_var", "credential_source"]
+    },
+    "api": {
+      "type": "object",
+      "properties": {
+        "base_url": {
+          "type": "string"
+        },
+        "content_type": {
+          "type": "string"
+        }
+      },
+      "required": ["base_url", "content_type"]
+    },
+    "tools": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "inputSchema": {
+            "type": "object"
+          }
+        },
+        "required": ["name", "description", "inputSchema"]
+      }
+    },
+    "ports": {
+      "type": "object",
+      "description": "Port permissions for the cartridge",
+      "properties": {
+        "allowed": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 65535
+          }
+        },
+        "denied": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 65535
+          }
+        }
+      },
+      "required": ["allowed", "denied"]
+    }
+  },
+  "required": [
+    "$schema",
+    "spdx",
+    "copyright",
+    "name",
+    "version",
+    "description",
+    "domain",
+    "tier",
+    "protocols",
+    "auth",
+    "api",
+    "tools"
+  ]
+}
