@@ -839,7 +839,8 @@ async function dispatchTool(toolName, args) {
     case "coord_receive":
     case "coord_claim_task":
     case "coord_status":
-    case "coord_promote_to_supervisor":
+    case "coord_promote_to_master":
+    case "coord_promote_to_supervisor": // legacy alias — DD-32 rename; accepted for one release
     case "coord_send_gated":
     case "coord_review":
     case "coord_review_entry":
@@ -850,6 +851,12 @@ async function dispatchTool(toolName, args) {
     case "coord_set_declared_affinities":
     case "coord_scan_suggestions":
     case "coord_transfer_master":
+    case "coord_set_variant":
+    case "coord_set_capabilities":
+    case "coord_get_peer_capabilities":
+    case "coord_health":
+    case "coord_progress":
+    case "coord_sweep_watchdog":
       return dispatchLocalCoord(toolName, args);
 
     default:
