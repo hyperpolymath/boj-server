@@ -77,46 +77,49 @@ function buildToolList() {
   // Cloud providers
   tools.push({
     name: "boj_cloud_verpex",
-    description: "Manage Verpex hosting via cPanel UAPI — domains, DNS, email, databases, SSL, cron, metrics",
+    description: "Manage Verpex (cPanel UAPI) hosting resources — domains, DNS records, email accounts, MySQL databases, SSL certificates, cron jobs, and resource metrics. `authenticate` stores cPanel credentials once; subsequent ops reuse them. `dns-add`/`dns-remove`/`email-create`/`database-create` are side-effectful; list/status/metrics ops are read-only. Returns structured JSON or `{error, hint}` on auth failure / missing required params for the chosen operation.",
     inputSchema: {
       type: "object",
       properties: {
-        operation: { type: "string", enum: ["authenticate", "list-domains", "dns-list", "dns-add", "dns-remove", "email-list", "email-create", "databases-list", "database-create", "ssl-status", "cron-list", "metrics"], description: "The Verpex operation to perform" },
-        hostname: { type: "string", description: "cPanel hostname (for authenticate)" },
-        username: { type: "string", description: "cPanel username (for authenticate)" },
-        api_token: { type: "string", description: "cPanel API token (for authenticate)" },
-        domain: { type: "string", description: "Domain name (for DNS, SSL operations)" },
-        params: { type: "object", description: "Additional operation parameters" },
+        operation: { type: "string", enum: ["authenticate", "list-domains", "dns-list", "dns-add", "dns-remove", "email-list", "email-create", "databases-list", "database-create", "ssl-status", "cron-list", "metrics"], description: "Which Verpex op to run. `authenticate` must be called first (or with a valid stored credential)." },
+        hostname: { type: "string", description: "cPanel hostname for `authenticate` (e.g. `panel.example.com`). Ignored on other ops." },
+        username: { type: "string", description: "cPanel username for `authenticate`. Ignored on other ops." },
+        api_token: { type: "string", description: "cPanel API token for `authenticate`. Ignored on other ops." },
+        domain: { type: "string", description: "Domain name, required for DNS and SSL ops." },
+        params: { type: "object", description: "Op-specific payload: `dns-add` → {name, type, value, ttl?}; `email-create` → {email, password}; `database-create` → {name}; `metrics` → {window?}." },
       },
       required: ["operation"],
+      additionalProperties: false,
     },
   });
 
   tools.push({
     name: "boj_cloud_cloudflare",
-    description: "Manage Cloudflare resources — Workers, D1 databases, KV namespaces, R2 buckets, DNS zones/records",
+    description: "Manage Cloudflare edge resources — Workers scripts, D1 SQLite databases, KV namespaces, R2 object buckets, and DNS zones/records. `authenticate` stores an API token once; subsequent ops reuse it. `kv-put`/`add-dns-record`/`query-d1` (for mutations) are side-effectful; list/get ops are read-only. Returns the Cloudflare API response or `{error, hint}` on auth failure or 4xx/5xx.",
     inputSchema: {
       type: "object",
       properties: {
-        operation: { type: "string", enum: ["authenticate", "list-workers", "get-worker", "list-d1", "query-d1", "list-kv", "kv-get", "kv-put", "list-r2", "list-dns-zones", "list-dns-records", "add-dns-record"], description: "The Cloudflare operation" },
-        api_token: { type: "string", description: "Cloudflare API token (for authenticate)" },
-        params: { type: "object", description: "Operation parameters" },
+        operation: { type: "string", enum: ["authenticate", "list-workers", "get-worker", "list-d1", "query-d1", "list-kv", "kv-get", "kv-put", "list-r2", "list-dns-zones", "list-dns-records", "add-dns-record"], description: "Which Cloudflare op to run. `authenticate` must be called first (or with a valid stored token)." },
+        api_token: { type: "string", description: "Cloudflare API token with scope matching the requested op. Required for `authenticate`; ignored afterwards." },
+        params: { type: "object", description: "Op-specific payload: `get-worker` → {script_name}; `query-d1` → {database_id, sql, bindings?}; `kv-get`/`kv-put` → {namespace_id, key, value?}; `add-dns-record` → {zone_id, type, name, content, ttl?}." },
       },
       required: ["operation"],
+      additionalProperties: false,
     },
   });
 
   tools.push({
     name: "boj_cloud_vercel",
-    description: "Manage Vercel projects — deployments, domains, environment variables, logs, serverless functions",
+    description: "Manage Vercel projects — deployments, custom domains, environment variables, build logs, and serverless function listings. `authenticate` stores an API token once; subsequent ops reuse it. All ops here are read-only (no create/delete); use the Vercel dashboard for destructive actions. Returns the Vercel API response or `{error, hint}` on auth failure.",
     inputSchema: {
       type: "object",
       properties: {
-        operation: { type: "string", enum: ["authenticate", "list-projects", "get-project", "list-deployments", "get-deployment", "list-domains", "list-env-vars", "deployment-logs", "list-functions"], description: "The Vercel operation" },
-        api_token: { type: "string", description: "Vercel API token (for authenticate)" },
-        params: { type: "object", description: "Operation parameters" },
+        operation: { type: "string", enum: ["authenticate", "list-projects", "get-project", "list-deployments", "get-deployment", "list-domains", "list-env-vars", "deployment-logs", "list-functions"], description: "Which Vercel op to run. `authenticate` must be called first (or with a valid stored token)." },
+        api_token: { type: "string", description: "Vercel API token. Required for `authenticate`; ignored afterwards." },
+        params: { type: "object", description: "Op-specific payload: `get-project`/`list-env-vars`/`list-functions` → {project_id}; `get-deployment`/`deployment-logs` → {deployment_id}; `list-deployments` → {project_id?, limit?}." },
       },
       required: ["operation"],
+      additionalProperties: false,
     },
   });
 
@@ -154,15 +157,16 @@ function buildToolList() {
   // ML/AI
   tools.push({
     name: "boj_ml_huggingface",
-    description: "Hugging Face operations — search models, model info, inference, spaces, datasets",
+    description: "Hugging Face Hub operations via the ml-mcp cartridge — search models / datasets / spaces, fetch model cards, and run hosted inference against a specific model endpoint. `authenticate` stores an HF API token once; subsequent calls reuse it. `inference` is side-effectful on the HF backend (counts against quota) but idempotent locally. List/info ops are read-only. Returns structured JSON or `{error, hint}` on rate-limit / auth failure.",
     inputSchema: {
       type: "object",
       properties: {
-        operation: { type: "string", enum: ["authenticate", "search-models", "model-info", "inference", "list-spaces", "list-datasets"], description: "HuggingFace operation" },
-        api_token: { type: "string", description: "HF API token (for authenticate)" },
-        params: { type: "object", description: "Operation parameters (query for search, model_id for info/inference)" },
+        operation: { type: "string", enum: ["authenticate", "search-models", "model-info", "inference", "list-spaces", "list-datasets"], description: "Which HF op to run. `authenticate` must be called first unless a stored token is present." },
+        api_token: { type: "string", description: "Hugging Face API token with appropriate scope. Required for `authenticate`; ignored afterwards." },
+        params: { type: "object", description: "Op-specific payload: `search-models`/`list-spaces`/`list-datasets` → {query, limit?, filter?}; `model-info` → {model_id}; `inference` → {model_id, inputs, parameters?}." },
       },
       required: ["operation"],
+      additionalProperties: false,
     },
   });
 
@@ -221,7 +225,7 @@ function buildToolList() {
     { name: "boj_github_get_issue", desc: "Fetch a single issue — title, body, state, labels, assignees, comments count. Read-only. Use before `boj_github_comment_issue` to confirm the issue is still open.", props: { owner: { type: "string", description: "Repo owner login." }, repo: { type: "string", description: "Repo name." }, issue_number: { type: "number", minimum: 1, description: "Issue number as shown in the URL `#<n>`." } }, req: ["owner", "repo", "issue_number"] },
     { name: "boj_github_comment_issue", desc: "Post a comment on a GitHub issue. Side-effectful — visible to all watchers. Supports Markdown. Returns `{id, html_url}` on success.", props: { owner: { type: "string", description: "Repo owner login." }, repo: { type: "string", description: "Repo name." }, issue_number: { type: "number", minimum: 1, description: "Issue number." }, body: { type: "string", description: "Markdown comment body.", minLength: 1 } }, req: ["owner", "repo", "issue_number", "body"] },
     { name: "boj_github_create_pr", desc: "Open a pull request between two branches. Side-effectful — triggers CI and notifies watchers. `head` must already be pushed to the remote. Returns `{number, html_url}`.", props: { owner: { type: "string", description: "Repo owner login." }, repo: { type: "string", description: "Repo name." }, title: { type: "string", description: "PR title (keep under 70 chars).", minLength: 1 }, body: { type: "string", description: "Markdown body — summary + test plan." }, head: { type: "string", description: "Source branch (same-repo) or `owner:branch` (cross-fork)." }, base: { type: "string", description: "Target branch, usually `main`. Defaults to repo's `default_branch` when omitted." } }, req: ["owner", "repo", "title", "head"] },
-    { name: "boj_github_list_prs", desc: "List pull requests on a GitHub repository. Read-only. Does NOT include non-PR issues. Filter by `state`.", props: { owner: { type: "string", description: "Repo owner login." }, repo: { type: "string", description: "Repo name." }, state: { type: "string", enum: ["open", "closed", "all"], description: "PR state filter (default `open`)." } }, req: ["owner", "repo"] },
+    { name: "boj_github_list_prs", desc: "List pull requests on a GitHub repository, filtered by state. Read-only. Does NOT include non-PR issues (use `boj_github_list_issues` for those). Paginated by GitHub's default (30). Returns `[{number, title, state, user, head, base, html_url, ...}]`.", props: { owner: { type: "string", description: "Repo owner login." }, repo: { type: "string", description: "Repo name." }, state: { type: "string", enum: ["open", "closed", "all"], description: "PR state filter (default `open`)." } }, req: ["owner", "repo"] },
     { name: "boj_github_get_pr", desc: "Fetch a single PR — title, body, state, head/base refs, mergeable state, CI checks summary. Read-only. Use before `boj_github_merge_pr` to confirm CI is green and mergeable.", props: { owner: { type: "string", description: "Repo owner login." }, repo: { type: "string", description: "Repo name." }, pull_number: { type: "number", minimum: 1, description: "PR number as shown in the URL." } }, req: ["owner", "repo", "pull_number"] },
     { name: "boj_github_merge_pr", desc: "Merge a pull request. Side-effectful and hard-to-reverse — branch protection and CI status must already permit it. Default method is `merge` (merge commit); prefer `squash` for linear history. Returns `{sha, merged:true}` on success.", props: { owner: { type: "string", description: "Repo owner login." }, repo: { type: "string", description: "Repo name." }, pull_number: { type: "number", minimum: 1, description: "PR number." }, method: { type: "string", enum: ["merge", "squash", "rebase"], description: "Merge strategy (default `merge`). `squash` collapses all commits; `rebase` replays linearly." } }, req: ["owner", "repo", "pull_number"] },
     { name: "boj_github_search_code", desc: "Search code across GitHub using the Code Search API v2. Read-only. Query syntax supports `repo:`, `language:`, `path:`, `symbol:` qualifiers. Returns `{total_count, items:[{path, repository, html_url, ...}]}`. Rate-limited (30/min authenticated).", props: { query: { type: "string", description: "Code search query, e.g. `repo:hyperpolymath/boj-server \"coord_register\"`. See GitHub's Code Search syntax.", minLength: 1 } }, req: ["query"] },
@@ -237,7 +241,7 @@ function buildToolList() {
   const glTools = [
     { name: "boj_gitlab_list_projects", desc: "List projects accessible to the authenticated GitLab user (personal + group + starred). Read-only. Paginated; default 20 per page. Returns `[{id, path_with_namespace, visibility, default_branch, ...}]`.", props: { per_page: { type: "number", minimum: 1, maximum: 100, description: "Results per page (1..100, default 20)." } } },
     { name: "boj_gitlab_get_project", desc: "Fetch a single project's metadata — description, default branch, visibility, topics, statistics. Read-only. Use before operations needing `default_branch` or `web_url`.", props: { project_id: { type: "string", description: "Either numeric project id or the URL-encoded full path (e.g. `group%2Fsubgroup%2Frepo`).", minLength: 1 } }, req: ["project_id"] },
-    { name: "boj_gitlab_create_issue", desc: "Open a new issue on a GitLab project. Side-effectful — notifies watchers. Returns `{iid, web_url}`.", props: { project_id: { type: "string", description: "Project id or URL-encoded full path." }, title: { type: "string", description: "Issue title. Keep under 80 chars.", minLength: 1 }, description: { type: "string", description: "Markdown description. Optional but recommended." } }, req: ["project_id", "title"] },
+    { name: "boj_gitlab_create_issue", desc: "Open a new issue on a GitLab project. Side-effectful — creates a public (or project-private) record and notifies project watchers/subscribers. Returns `{iid, web_url}` on success. Pair with follow-up comments via the GitLab GraphQL API if richer conversation is needed.", props: { project_id: { type: "string", description: "Project id or URL-encoded full path." }, title: { type: "string", description: "Issue title. Keep under 80 chars.", minLength: 1 }, description: { type: "string", description: "Markdown description. Optional but recommended." } }, req: ["project_id", "title"] },
     { name: "boj_gitlab_list_issues", desc: "List issues on a GitLab project, filtered by state. Read-only. Does NOT include merge requests (use `boj_gitlab_list_mrs`).", props: { project_id: { type: "string", description: "Project id or URL-encoded full path." }, state: { type: "string", enum: ["opened", "closed", "all"], description: "Issue state filter (default `opened`)." } }, req: ["project_id"] },
     { name: "boj_gitlab_create_mr", desc: "Open a merge request on a GitLab project. Side-effectful — triggers CI and notifies reviewers. `source` must already be pushed. Target defaults to the project's `default_branch` when omitted. Returns `{iid, web_url}`.", props: { project_id: { type: "string", description: "Project id or URL-encoded full path." }, title: { type: "string", description: "MR title (keep under 70 chars).", minLength: 1 }, source: { type: "string", description: "Source branch name.", minLength: 1 }, target: { type: "string", description: "Target branch. Defaults to the project's default branch when omitted." } }, req: ["project_id", "title", "source"] },
     { name: "boj_gitlab_list_mrs", desc: "List merge requests on a GitLab project, filtered by state. Read-only. `merged` shows landed MRs, `all` returns every state.", props: { project_id: { type: "string", description: "Project id or URL-encoded full path." }, state: { type: "string", enum: ["opened", "closed", "merged", "all"], description: "MR state filter (default `opened`)." } }, req: ["project_id"] },
@@ -251,21 +255,22 @@ function buildToolList() {
   // Code Intelligence (CodeSeeker)
   tools.push({
     name: "boj_codeseeker",
-    description: "CodeSeeker code intelligence — hybrid search (vector + text + path with RRF), knowledge graph traversal (imports, calls, extends, implements), auto-detected pattern retrieval, and Graph RAG context. All data stored locally in .codeseeker/",
+    description: "CodeSeeker hybrid code-intelligence cartridge — vector + BM25 + path-tier search fused via RRF, knowledge-graph traversal (imports, calls, extends, implements, uses), auto-detected pattern retrieval, and Graph-RAG answers that combine retrieved code with graph context. Index lives in `.codeseeker/` alongside the codebase; `index` is side-effectful (writes embeddings + graph). All query ops are read-only. Returns structured hits or `{error, hint}` when the slot is closed or the index is stale.",
     inputSchema: {
       type: "object",
       properties: {
-        operation: { type: "string", enum: ["index", "search", "traverse", "patterns", "graph-rag", "status", "close"], description: "Operation: index (build/refresh index), search (hybrid search), traverse (graph traversal from a symbol), patterns (auto-detected conventions), graph-rag (RAG with graph context), status (session state), close (close session)" },
-        codebase_path: { type: "string", description: "Absolute path to the codebase to index or query (required for index)" },
-        slot: { type: "number", description: "Session slot index returned by the index operation (required for search/traverse/patterns/graph-rag/status/close)" },
-        query: { type: "string", description: "Search query or Graph RAG question (required for search and graph-rag)" },
-        mode: { type: "string", enum: ["hybrid", "vector", "text", "path"], description: "Search mode (default: hybrid)" },
-        symbol: { type: "string", description: "Symbol or file path to traverse from (required for traverse)" },
-        relation: { type: "string", enum: ["imports", "calls", "extends", "implements", "uses"], description: "Graph relation type to traverse (required for traverse)" },
-        depth: { type: "number", description: "Traversal depth (default: 2)" },
-        limit: { type: "number", description: "Maximum number of search results (default: 10)" },
+        operation: { type: "string", enum: ["index", "search", "traverse", "patterns", "graph-rag", "status", "close"], description: "Op verb: `index` builds/refreshes the index; `search` runs hybrid retrieval; `traverse` walks the knowledge graph from a symbol; `patterns` returns auto-detected code conventions; `graph-rag` answers a question using graph context; `status` / `close` manage the session slot." },
+        codebase_path: { type: "string", description: "Absolute path to the codebase to index or query. Required for `index`. Must be a directory the backend can read." },
+        slot: { type: "number", minimum: 0, description: "Session slot index returned by `index`. Required for every non-index op." },
+        query: { type: "string", description: "Search query or Graph-RAG question. Required for `search` and `graph-rag`." },
+        mode: { type: "string", enum: ["hybrid", "vector", "text", "path"], description: "Search mode — `hybrid` (default, RRF-fused) / `vector` / `text` / `path`." },
+        symbol: { type: "string", description: "Symbol name or file path to traverse from. Required for `traverse`." },
+        relation: { type: "string", enum: ["imports", "calls", "extends", "implements", "uses"], description: "Graph edge type to walk. Required for `traverse`." },
+        depth: { type: "number", minimum: 1, maximum: 10, description: "Traversal depth (default 2, max 10)." },
+        limit: { type: "number", minimum: 1, maximum: 100, description: "Maximum result count (default 10, max 100)." },
       },
       required: ["operation"],
+      additionalProperties: false,
     },
   });
 
@@ -288,82 +293,88 @@ function buildToolList() {
   // Local coordination (localhost multi-instance AI coordination — local-coord-mcp cartridge)
   tools.push({
     name: "coord_register",
-    description: "Register this AI instance as a coordination peer on localhost. Returns a peer ID and a session token for all subsequent calls. Loopback-only, never exposed beyond 127.0.0.1. Optional: `context` disambiguator per window, `declared_affinities` array of self-reported strength tags (feeds Task #14 reassignment engine).",
+    description: "Register this AI instance as a coordination peer on the loopback coord bus (127.0.0.1:7745). Returns `{peer_id, token}`; the token must be passed to every subsequent coord_* call. Side-effectful on the bus (creates peer entry + inbox). Loopback-only — never exposed beyond 127.0.0.1, so all callers are implicitly trusted. Optional `context` disambiguates multiple windows of the same client_kind; optional `declared_affinities` seeds the Task #14 reassignment engine with self-reported strengths. Returns `{error, hint}` on duplicate peer_id collision.",
     inputSchema: {
       type: "object",
       properties: {
-        client_kind: { type: "string", enum: ["claude", "gemini", "copilot", "custom"], description: "Client type prefix for the peer ID" },
-        context: { type: "string", description: "Optional disambiguator, e.g. current repo name. Alphanumeric + hyphen/underscore, max 32 bytes. Absent = old <kind>-<4hex> form.", maxLength: 32 },
-        declared_affinities: { type: "array", items: { type: "string" }, description: "Optional self-reported strength tags (e.g. ['proof-analysis', 'supervision']). Max 256 bytes as CSV." },
+        client_kind: { type: "string", enum: ["claude", "gemini", "copilot", "custom"], description: "Client type prefix for the generated peer ID (`<kind>-<4hex>[@<context>]`)." },
+        context: { type: "string", description: "Optional disambiguator, e.g. current repo name. Alphanumeric + hyphen/underscore, max 32 bytes. Absent = plain `<kind>-<4hex>` form.", maxLength: 32, pattern: "^[A-Za-z0-9_-]*$" },
+        declared_affinities: { type: "array", items: { type: "string", maxLength: 64 }, description: "Optional self-reported strength tags (e.g. ['proof-analysis', 'supervision']). Max 256 bytes as CSV; feeds reassignment-engine comparisons (DD-28)." },
       },
       required: ["client_kind"],
+      additionalProperties: false,
     },
   });
 
   tools.push({
     name: "coord_list_peers",
-    description: "List all active AI instances registered on this machine — their peer IDs, client kinds, states, and current status.",
+    description: "List all currently-registered peers on the coord bus — peer_id, client_kind, variant, role (master/journeyman/apprentice), current `status` string, last-heartbeat timestamp, and declared capabilities. Read-only; any active peer may call. Use for peer discovery before `coord_send`/`coord_claim_task`, or to confirm a successor is alive before `coord_transfer_master`.",
     inputSchema: {
       type: "object",
       properties: {
-        token: { type: "string", description: "Session token from coord_register" },
+        token: { type: "string", description: "Session token from `coord_register`." },
       },
       required: ["token"],
+      additionalProperties: false,
     },
   });
 
   tools.push({
     name: "coord_send",
-    description: "Send a message to a specific peer (by peer ID) or broadcast to all peers (target '*'). Messages are queued in recipient inboxes.",
+    description: "Send a free-form (untyped) message to a specific peer by peer_id, or broadcast to all active peers with target `*`. Side-effectful — enqueues into the recipient's inbox where it remains until the recipient calls `coord_receive`. No contract validation (use `coord_send_gated` for risk_tier-validated envelopes). Returns `{status:\"queued\", recipients:[...]}` on success.",
     inputSchema: {
       type: "object",
       properties: {
-        token: { type: "string", description: "Session token from coord_register" },
-        target: { type: "string", description: "Peer ID to send to, or '*' for broadcast" },
-        message: { type: "string", description: "Message content" },
+        token: { type: "string", description: "Session token from `coord_register`." },
+        target: { type: "string", description: "Peer ID to send to (e.g. `claude-a1b2@repo`), or `*` for broadcast to all active peers." },
+        message: { type: "string", description: "Message payload — free-form text, typically a JSON A2ML envelope.", maxLength: 65536 },
       },
       required: ["token", "target", "message"],
+      additionalProperties: false,
     },
   });
 
   tools.push({
     name: "coord_receive",
-    description: "Receive the next message from this peer's inbox. Returns the message content and sender, or indicates empty inbox.",
+    description: "Dequeue the next message from this peer's inbox (FIFO). Side-effectful — the message is removed from the queue. Read-only with respect to other peers' state. Returns `{from, message, ts}` when a message is available or `{empty:true}` when the inbox is drained. Use in a poll loop to drive reactive peer behaviour.",
     inputSchema: {
       type: "object",
       properties: {
-        token: { type: "string", description: "Session token from coord_register" },
+        token: { type: "string", description: "Session token from `coord_register`." },
       },
       required: ["token"],
+      additionalProperties: false,
     },
   });
 
   tools.push({
     name: "coord_claim_task",
-    description: "Attempt to claim a task (mutex-style). If the task is unclaimed, this peer becomes the holder. Idempotent if already held by caller. Task #15: optional confidence (0.0-1.0), dispatch_preference (deliberate/broadcast/auto), task_difficulty (trivial/routine/challenging/novel). Default policy (DD-30): broadcast trivial+routine, deliberate challenging+novel. Rejection cooldown: 5 claim rejections per client_kind in 10 min => 30s freeze before next attempt.",
+    description: "Attempt mutex-style ownership of a named task. If unclaimed, this peer becomes the holder and receives a watchdog TTL based on role (apprentice 30s / journeyman 5m / master none). Idempotent — repeated claims by the current holder refresh the TTL. Side-effectful on the bus. Task #15 options: `confidence` (0.0-1.0) feeds the overclaim detector (DD-28); `dispatch_preference` + `task_difficulty` drive routing policy (DD-30: broadcast trivial/routine, deliberate challenging/novel). Rejection cooldown: 5 rejects per client_kind in 10 min triggers a 30s freeze. Returns `{holder, ttl_s}` or `{error:\"already claimed\"|\"cooldown\"}`.",
     inputSchema: {
       type: "object",
       properties: {
-        token: { type: "string", description: "Session token from coord_register" },
-        task: { type: "string", description: "Task identifier to claim (e.g. 'audit-boj-server')" },
-        confidence: { type: "number", minimum: 0, maximum: 1, description: "Self-assessed fit 0.0-1.0 (feeds overclaim detector DD-28)" },
-        dispatch_preference: { type: "string", enum: ["deliberate", "broadcast", "auto"], description: "Routing hint (DD-30). auto = derive from difficulty" },
-        task_difficulty: { type: "string", enum: ["trivial", "routine", "challenging", "novel"], description: "Difficulty level (DD-30)" },
+        token: { type: "string", description: "Session token from `coord_register`." },
+        task: { type: "string", description: "Task identifier to claim (e.g. `audit-boj-server`). Free-form, max 128 bytes.", minLength: 1, maxLength: 128 },
+        confidence: { type: "number", minimum: 0, maximum: 1, description: "Self-assessed fit 0.0-1.0. Feeds the overclaim detector (DD-28)." },
+        dispatch_preference: { type: "string", enum: ["deliberate", "broadcast", "auto"], description: "Routing hint (DD-30). `auto` derives from `task_difficulty`." },
+        task_difficulty: { type: "string", enum: ["trivial", "routine", "challenging", "novel"], description: "Difficulty label (DD-30)." },
       },
       required: ["token", "task"],
+      additionalProperties: false,
     },
   });
 
   tools.push({
     name: "coord_status",
-    description: "Set this peer's current work status, visible to other peers via coord_list_peers.",
+    description: "Set this peer's current work-status string, visible to every other peer via `coord_list_peers`. Side-effectful on the bus (updates own entry only). Use for coarse-grained progress signals between peers — e.g. `working on task X`, `idle, awaiting review`. For fine-grained claim heartbeats, prefer `coord_progress` which also refreshes the watchdog TTL. Returns `{ok:true}` on success.",
     inputSchema: {
       type: "object",
       properties: {
-        token: { type: "string", description: "Session token from coord_register" },
-        status: { type: "string", description: "Current work status description" },
+        token: { type: "string", description: "Session token from `coord_register`." },
+        status: { type: "string", description: "Human-readable current-work status (e.g. `claim:audit-boj-server` or `idle`). Max 256 bytes.", maxLength: 256 },
       },
       required: ["token", "status"],
+      additionalProperties: false,
     },
   });
 
@@ -384,124 +395,133 @@ function buildToolList() {
 
   tools.push({
     name: "coord_send_gated",
-    description: "Send a message with a declared risk_tier (0-4). Tier 2+ from role=supervised peers is quarantined for supervisor review. Returns status:quarantined + request_id when gated, status:delivered otherwise.",
+    description: "Send a Nickel-contract-validated envelope with a declared `risk_tier` (0-4). Tier 2+ messages from role=apprentice peers are diverted into the supervisor quarantine queue awaiting manual review via `coord_review`/`coord_approve`/`coord_reject`. Tier 0-1 or non-apprentice senders deliver immediately. Side-effectful on the bus. Returns `{status:\"delivered\"}` on immediate delivery, `{status:\"quarantined\", request_id}` when gated, or `{error:\"invalid envelope\", hint}` on Nickel contract failure (when COORD_REQUIRE_NICKEL=1).",
     inputSchema: {
       type: "object",
       properties: {
-        token: { type: "string", description: "Session token from coord_register" },
-        target: { type: "string", description: "Peer ID to send to, or '*' for broadcast" },
-        message: { type: "string", description: "Message content (typically an A2ML envelope)" },
-        risk_tier: { type: "integer", minimum: 0, maximum: 4, description: "Declared risk tier 0-4" },
+        token: { type: "string", description: "Session token from `coord_register`." },
+        target: { type: "string", description: "Peer ID to send to, or `*` for broadcast." },
+        message: { type: "string", description: "Message payload — typically a JSON A2ML envelope. Validated against `coord-messages.ncl` when strict mode is enabled.", maxLength: 65536 },
+        risk_tier: { type: "integer", minimum: 0, maximum: 4, description: "Self-declared risk tier 0..4. 0=observational, 1=routine-read, 2=small-write, 3=major-write, 4=destructive/irreversible." },
       },
       required: ["token", "target", "message", "risk_tier"],
+      additionalProperties: false,
     },
   });
 
   tools.push({
     name: "coord_review",
-    description: "List all quarantined messages awaiting supervisor decision. Supervisor role only. Returns entries with request_id + preview.",
+    description: "List every currently-quarantined envelope awaiting master/journeyman decision — request_id, sender peer_id, declared risk_tier, 160-char message preview, and arrival timestamp. Master role only; journeyman listings are filtered to their own up-for-review items. Read-only. Use to triage the queue before calling `coord_review_entry` for full content then `coord_approve` / `coord_reject`.",
     inputSchema: {
       type: "object",
       properties: {
-        token: { type: "string", description: "Supervisor session token" },
+        token: { type: "string", description: "Master (or journeyman) session token from `coord_register`." },
       },
       required: ["token"],
+      additionalProperties: false,
     },
   });
 
   tools.push({
     name: "coord_review_entry",
-    description: "Read the full body of a specific quarantined entry by request_id. Supervisor role only.",
+    description: "Read the full body of a single quarantined envelope by request_id — full message payload, sender peer_id, risk_tier, and arrival timestamp. Master role only. Read-only; the entry stays in the queue until `coord_approve` or `coord_reject` is called. Returns `{error:\"not found\"}` for unknown ids or items already processed.",
     inputSchema: {
       type: "object",
       properties: {
-        token: { type: "string", description: "Supervisor session token" },
-        request_id: { type: "integer", description: "Request ID from coord_review" },
+        token: { type: "string", description: "Master session token from `coord_register`." },
+        request_id: { type: "integer", minimum: 1, description: "Quarantine entry id returned by `coord_review`." },
       },
       required: ["token", "request_id"],
+      additionalProperties: false,
     },
   });
 
   tools.push({
     name: "coord_approve",
-    description: "Approve a quarantined message — delivers to target, removes from queue. Supervisor role only.",
+    description: "Approve a quarantined envelope — delivers the original message to its declared target and removes the entry from the queue. Master role only; side-effectful and hard-to-reverse once delivered. Use after `coord_review_entry` has surfaced the full content. Returns `{ok:true, delivered_to}` on success or `{error:\"not found\"|\"not master\"}` on failure.",
     inputSchema: {
       type: "object",
       properties: {
-        token: { type: "string", description: "Supervisor session token" },
-        request_id: { type: "integer", description: "Request ID to approve" },
+        token: { type: "string", description: "Master session token from `coord_register`." },
+        request_id: { type: "integer", minimum: 1, description: "Quarantine entry id returned by `coord_review`." },
       },
       required: ["token", "request_id"],
+      additionalProperties: false,
     },
   });
 
   tools.push({
     name: "coord_reject",
-    description: "Reject a quarantined message with a reason — removes without delivery. Supervisor role only. Reason logged.",
+    description: "Reject a quarantined envelope with a human-readable reason — removes the entry without delivery and logs the decision to the audit log (consumed by the reassignment engine DD-28). Master role only; irreversible. Use to refuse tier-2+ apprentice messages that shouldn't execute. Returns `{ok:true}` on success.",
     inputSchema: {
       type: "object",
       properties: {
-        token: { type: "string", description: "Supervisor session token" },
-        request_id: { type: "integer", description: "Request ID to reject" },
-        reason: { type: "string", description: "Reason for rejection" },
+        token: { type: "string", description: "Master session token from `coord_register`." },
+        request_id: { type: "integer", minimum: 1, description: "Quarantine entry id returned by `coord_review`." },
+        reason: { type: "string", description: "Human-readable rejection reason; logged to the audit stream. Max 512 bytes.", minLength: 1, maxLength: 512 },
       },
       required: ["token", "request_id", "reason"],
+      additionalProperties: false,
     },
   });
 
   // ── Track record / affinity tools (Task #13) ───────────────────
   tools.push({
     name: "coord_report_outcome",
-    description: "Report outcome of a claim or attempted op against an affinity tag. Track record is keyed on client_kind (DD-29) so it survives peer restart. Drives effective_affinity + reassignment suggestions. Optional `confidence` (0.0-1.0) feeds Task #14 overclaim detector.",
+    description: "Record the outcome of a completed claim or attempted op against an affinity tag. Track-record is keyed on `client_kind` (DD-29) so it survives peer restart and follows the model family rather than the ephemeral peer id. Drives `effective_affinity` and the reassignment-suggestion engine (DD-28). Optional `confidence` at claim time feeds the overclaim detector (a high-confidence fail counts more heavily). Side-effectful on the bus (appends to the track-record ring). Returns `{ok:true}`.",
     inputSchema: {
       type: "object",
       properties: {
-        token: { type: "string", description: "Session token from coord_register" },
-        tag: { type: "string", description: "Affinity tag (e.g. 'proof-analysis', 'routine-edit'). Max 64 bytes.", maxLength: 64 },
-        outcome: { type: "string", enum: ["success", "fail"], description: "'success' or 'fail'" },
-        risk_tier: { type: "integer", minimum: 0, maximum: 4, description: "Risk tier of the op" },
-        duration_ms: { type: "integer", minimum: 0, description: "Wall-time duration in ms (optional)" },
-        confidence: { type: "number", minimum: 0, maximum: 1, description: "Self-assessed confidence at claim time (optional)" },
+        token: { type: "string", description: "Session token from `coord_register`." },
+        tag: { type: "string", description: "Affinity tag (e.g. `proof-analysis`, `routine-edit`). Max 64 bytes.", minLength: 1, maxLength: 64 },
+        outcome: { type: "string", enum: ["success", "fail"], description: "Outcome label." },
+        risk_tier: { type: "integer", minimum: 0, maximum: 4, description: "Risk tier of the completed op (0..4)." },
+        duration_ms: { type: "integer", minimum: 0, description: "Optional wall-time duration in ms." },
+        confidence: { type: "number", minimum: 0, maximum: 1, description: "Optional self-assessed confidence at claim time (0.0-1.0); feeds the overclaim detector." },
       },
       required: ["token", "tag", "outcome", "risk_tier"],
+      additionalProperties: false,
     },
   });
 
   tools.push({
     name: "coord_get_affinities",
-    description: "Return per-(client_kind, tag) effective_affinity over the last 20 attempts OR last 7 days (whichever is larger). Use for attester selection (DD-27) and reassignment-suggestion review (DD-28).",
+    description: "Return the per-(client_kind, tag) `effective_affinity` scores computed over the trailing window — the larger of the last 20 attempts or the last 7 days. Read-only. Used for attester selection (DD-27) and for reviewing reassignment suggestions before applying them (DD-28). Returns `{affinities:[{client_kind, tag, effective_affinity, sample_size}]}`.",
     inputSchema: {
       type: "object",
       properties: {
-        token: { type: "string", description: "Session token from coord_register" },
+        token: { type: "string", description: "Session token from `coord_register`." },
       },
       required: ["token"],
+      additionalProperties: false,
     },
   });
 
   // ── Reassignment engine (Task #14) ─────────────────────────────
   tools.push({
     name: "coord_set_declared_affinities",
-    description: "Set this peer's self-reported strength tags. Feeds Task #14 — tags with high effective_affinity but absent here trigger a 'promote' suggestion; tags here with low effective_affinity trigger 'remove'. Replaces any existing list.",
+    description: "Replace this peer's self-reported strength tags. Feeds the reassignment engine (Task #14): tags with high `effective_affinity` but absent here trigger `promote` suggestions in the quarantine; tags declared here but with low effective_affinity trigger `remove` suggestions. Engine never auto-modifies declarations — a supervisor must approve via `coord_review`/`coord_approve` (DD-28). Side-effectful on the bus. Returns `{ok:true, tags:[...]}`.",
     inputSchema: {
       type: "object",
       properties: {
-        token: { type: "string", description: "Session token from coord_register" },
-        tags: { type: "array", items: { type: "string" }, description: "Array of tag names (e.g. ['proof-analysis', 'supervision'])" },
+        token: { type: "string", description: "Session token from `coord_register`." },
+        tags: { type: "array", items: { type: "string", maxLength: 64 }, description: "Array of tag names (e.g. ['proof-analysis', 'supervision']). Max 256 bytes total when joined as CSV." },
       },
       required: ["token", "tags"],
+      additionalProperties: false,
     },
   });
 
   tools.push({
     name: "coord_scan_suggestions",
-    description: "Run the reassignment scanner: diffs track-record aggregates vs declared affinities, enqueues candidate fyi/clarify envelopes in the quarantine. Supervisor approves or rejects via coord_review + coord_approve / coord_reject — engine never auto-modifies (DD-28).",
+    description: "Trigger one pass of the reassignment scanner — diffs track-record aggregates vs currently-declared affinities, enqueues candidate `fyi`/`clarify` envelopes in the quarantine, and emits `overclaim`/`drift` warnings when a peer's confidence and `effective_affinity` diverge. Supervisor approves or rejects via `coord_review`+`coord_approve`/`coord_reject`; the engine never auto-modifies peer state (DD-28). Any peer may call. Returns `{scanned, enqueued}`.",
     inputSchema: {
       type: "object",
       properties: {
-        token: { type: "string", description: "Session token (supervisor recommended, any peer accepted)" },
+        token: { type: "string", description: "Session token (master recommended; any active peer accepted)." },
       },
       required: ["token"],
+      additionalProperties: false,
     },
   });
 

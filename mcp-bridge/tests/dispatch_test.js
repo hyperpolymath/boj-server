@@ -70,16 +70,50 @@ test("coord_promote_to_master is canonical (DD-32 rename)", () => {
 // 3. AAA-tier description floor. Glama's tool-definition quality
 //    score (60% mean + 40% MIN) collapses if any single tool has a
 //    thin description. Enforce a minimum character count so a
-//    regression can't slip through review.
+//    regression can't slip through review. Bumped 80 -> 120 after the
+//    April 2026 AAA audit raised the weakest tools.
 // -----------------------------------------------------------------
-test("every tool has a description at least 80 chars long", () => {
+test("every tool has a description at least 120 chars long", () => {
   const thin = tools.filter(
-    (t) => !t.description || t.description.length < 80,
+    (t) => !t.description || t.description.length < 120,
   );
   assert.equal(
     thin.length,
     0,
     `Thin tool descriptions (hurts Glama AAA score): ${thin.map((t) => `${t.name}=${t.description?.length ?? 0}`).join(", ")}`,
+  );
+});
+
+// -----------------------------------------------------------------
+// 3b. Mean description length must stay above the AAA healthy floor.
+//     Glama scores the MEAN of tool descriptions (60% of TDQS); this
+//     guards against death-by-a-thousand-cuts regressions where every
+//     tool stays above the MIN floor but collectively the mean drops.
+// -----------------------------------------------------------------
+test("mean description length stays above 200 chars", () => {
+  const mean =
+    tools.reduce((sum, t) => sum + (t.description?.length ?? 0), 0) /
+    tools.length;
+  assert.ok(
+    mean >= 200,
+    `Mean description length ${mean.toFixed(1)} dropped below the 200-char AAA floor.`,
+  );
+});
+
+// -----------------------------------------------------------------
+// 3c. Every tool's schema must set `additionalProperties: false` so
+//     unknown keys are rejected. Glama scores this under Parameter
+//     Semantics; open schemas hide typos and violate strict-mode
+//     clients.
+// -----------------------------------------------------------------
+test("every inputSchema sets additionalProperties: false", () => {
+  const open = tools.filter(
+    (t) => t.inputSchema?.additionalProperties !== false,
+  );
+  assert.equal(
+    open.length,
+    0,
+    `Tools with open schemas: ${open.map((t) => t.name).join(", ")}`,
   );
 });
 
