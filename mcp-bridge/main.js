@@ -1,5 +1,169 @@
 #!/usr/bin/env node
-// JSON-RPC stdio transport
+// Group management
+// ===================================================================
+
+/**
+ * Fetch the list of available groups.
+ * @returns {Promise<Array<{id: string, name: string, description: string}>>}
+ */
+async function fetchGroups() {
+  // For now, return a static list of groups. This can be extended to fetch
+  // groups from a configuration file or database.
+  return [
+    { id: "database", name: "Database", description: "Database-related tools" },
+    { id: "cloud", name: "Cloud", description: "Cloud-related tools" },
+    { id: "git", name: "Git", description: "Git-related tools" },
+    { id: "comms", name: "Comms", description: "Communication-related tools" },
+  ];
+}
+=======
+// ===================================================================
+// Prompt management
+// ===================================================================
+
+/**
+ * Fetch the list of available prompts.
+ * @returns {Promise<Array<{id: string, name: string, description: string}>>}
+ */
+async function fetchPrompts() {
+  // For now, return a static list of prompts. This can be extended to fetch
+  // prompts from a configuration file or database.
+  return [
+    { id: "project-analysis", name: "Project Analysis", description: "Analyze a project and suggest improvements" },
+    { id: "code-review", name: "Code Review", description: "Review code and detect code smells" },
+    { id: "research", name: "Research", description: "Research a topic and summarize findings" },
+  ];
+}
+
+/**
+ * Fetch a specific prompt by ID.
+ * @param {string} promptId
+ * @returns {Promise<{id: string, name: string, description: string, template: string} | null>}
+ */
+async function fetchPrompt(promptId) {
+  // For now, return a static prompt. This can be extended to fetch
+  // prompts from a configuration file or database.
+  const prompts = [
+    {
+      id: "project-analysis",
+      name: "Project Analysis",
+      description: "Analyze a project and suggest improvements",
+      template: "Analyze this repository and suggest improvements",
+    },
+    {
+      id: "code-review",
+      name: "Code Review",
+      description: "Review code and detect code smells",
+      template: "Review this code and detect code smells",
+    },
+    {
+      id: "research",
+      name: "Research",
+      description: "Research a topic and summarize findings",
+      template: "Research this topic and summarize findings",
+    },
+  ];
+
+  return prompts.find((p) => p.id === promptId) || null;
+}
+
+// ===================================================================
+// Resource management
+// ===================================================================
+
+/**
+ * Fetch the list of available resources.
+ * @returns {Promise<Array<{id: string, name: string, description: string}>>}
+ */
+async function fetchResources() {
+  // For now, return a static list of resources. This can be extended to fetch
+  // resources from a configuration file or database.
+  return [
+    { id: "knowledge-graph", name: "Knowledge Graph", description: "Knowledge graph for storing and managing contextual data" },
+    { id: "sessions", name: "Sessions", description: "Session management for persistent session state" },
+    { id: "learnings", name: "Learnings", description: "Learning system for capturing and organizing knowledge" },
+  ];
+}
+
+/**
+ * Fetch a specific resource by ID.
+ * @param {string} resourceId
+ * @returns {Promise<{id: string, name: string, description: string, schema: object} | null>}
+ */
+async function fetchResource(resourceId) {
+  // For now, return a static resource. This can be extended to fetch
+  // resources from a configuration file or database.
+  const resources = [
+    {
+      id: "knowledge-graph",
+      name: "Knowledge Graph",
+      description: "Knowledge graph for storing and managing contextual data",
+      schema: {
+        type: "object",
+        properties: {
+          entities: { type: "array", items: { type: "object" } },
+          observations: { type: "array", items: { type: "object" } },
+          relations: { type: "array", items: { type: "object" } },
+        },
+      },
+    },
+    {
+      id: "sessions",
+      name: "Sessions",
+      description: "Session management for persistent session state",
+      schema: {
+        type: "object",
+        properties: {
+          id: { type: "string" },
+          project: { type: "string" },
+          started_at: { type: "string", format: "date-time" },
+          ended_at: { type: "string", format: "date-time", nullable: true },
+          summary: { type: "string" },
+          context: { type: "array", items: { type: "string" } },
+        },
+      },
+    },
+    {
+      id: "learnings",
+      name: "Learnings",
+      description: "Learning system for capturing and organizing knowledge",
+      schema: {
+        type: "object",
+        properties: {
+          id: { type: "string" },
+          category: { type: "string" },
+          content: { type: "string" },
+          tags: { type: "array", items: { type: "string" } },
+          confidence: { type: "number", minimum: 0, maximum: 1 },
+          project: { type: "string", nullable: true },
+          created_at: { type: "string", format: "date-time" },
+          updated_at: { type: "string", format: "date-time" },
+        },
+      },
+    },
+  ];
+
+  return resources.find((r) => r.id === resourceId) || null;
+}
+
+// ===================================================================
+// Group management
+// ===================================================================
+
+/**
+ * Fetch the list of available groups.
+ * @returns {Promise<Array<{id: string, name: string, description: string}>>}
+ */
+async function fetchGroups() {
+  // For now, return a static list of groups. This can be extended to fetch
+  // groups from a configuration file or database.
+  return [
+    { id: "database", name: "Database", description: "Database-related tools" },
+    { id: "cloud", name: "Cloud", description: "Cloud-related tools" },
+    { id: "git", name: "Git", description: "Git-related tools" },
+    { id: "comms", name: "Comms", description: "Communication-related tools" },
+  ];
+}JSON-RPC stdio transport
 // ===================================================================
 
 let buffer = "";
@@ -542,6 +706,50 @@ async function handleMessage(line) {
         sendResult(id, {
           content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
         });
+      }
+      break;
+    }
+
+    case "prompts/list": {
+      const prompts = await fetchPrompts();
+      sendResult(id, { prompts });
+      break;
+    }
+
+    case "prompts/get": {
+      const promptId = params?.promptId;
+      if (!promptId) {
+        sendError(id, -32602, "Prompt ID is required");
+        break;
+      }
+
+      const prompt = await fetchPrompt(promptId);
+      if (prompt === null) {
+        sendError(id, -32601, "Unknown prompt");
+      } else {
+        sendResult(id, { prompt });
+      }
+      break;
+    }
+
+    case "resources/list": {
+      const resources = await fetchResources();
+      sendResult(id, { resources });
+      break;
+    }
+
+    case "resources/get": {
+      const resourceId = params?.resourceId;
+      if (!resourceId) {
+        sendError(id, -32602, "Resource ID is required");
+        break;
+      }
+
+      const resource = await fetchResource(resourceId);
+      if (resource === null) {
+        sendError(id, -32601, "Unknown resource");
+      } else {
+        sendResult(id, { resource });
       }
       break;
     }
