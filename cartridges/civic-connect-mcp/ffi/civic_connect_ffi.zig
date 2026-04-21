@@ -26,7 +26,7 @@ export fn civic_connect_get_poll(poll_id: u32) u32 {
 // Standard ABI (ADR-0005 four symbols + ADR-0006 invoke)
 // ═══════════════════════════════════════════════════════════════════════
 
-const shim = @import("cartridge_shim");
+const shim = @import("cartridge_shim.zig");
 
 const CARTRIDGE_NAME_PTR: [*:0]const u8 = "civic-connect-mcp";
 const CARTRIDGE_VERSION_PTR: [*:0]const u8 = "0.1.0";

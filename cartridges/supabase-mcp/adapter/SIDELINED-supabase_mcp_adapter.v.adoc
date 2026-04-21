@@ -1,5 +1,0 @@
-= SIDELINED: supabase_mcp_adapter.v
-
-V-lang banned 2026-04-12. Replaced by `supabase_mcp_adapter.zig`.
-
-Ports: REST 9175 / gRPC 9176 / GraphQL 9177. FFI unchanged: `supabase_mcp_ffi.zig`.

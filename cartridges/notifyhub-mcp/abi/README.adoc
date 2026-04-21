@@ -1,0 +1,33 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+// Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath)
+= notifyhub-mcp / abi — Idris2 ABI layer
+:orientation: deep
+
+== Purpose
+
+Encodes the notifyhub-mcp connection state machine and the MCP tool catalogue.
+
+== Files
+
+[cols="1,4"]
+|=== 
+| File | Role
+
+| notifyhub.ipkg                          | Idris2 package descriptor.
+| notifyhub/Safenotifyhub.idr               | State machine and tool definitions.
+|=== 
+
+== Invariants
+
+*  at module top.
+* Zero .
+
+== Test/proof surface
+
+Type-check only — 
+  Error loading file "notifyhub.ipkg": File Not Found.
+
+== Read-first
+
+. Safenotifyhub.idr — state machine and tool definitions.
+
