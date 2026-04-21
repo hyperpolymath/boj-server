@@ -1,5 +1,163 @@
 #!/usr/bin/env node
-// MCP message handler
+// Hardening gate — validates every tool call before dispatch
+// ===================================================================
+
+/**
+ * Run all security checks on a tool call.
+ * Returns an error object {code, message} if rejected, or null if OK.
+ * @param {string} toolName
+ * @param {Record<string, unknown>} args
+ * @returns {{code: number, message: string}|null}
+ */
+function hardeningGate(toolName, args) {
+  // 1. Rate limiting
+  if (!rateLimitAllow()) {
+    return { code: -32000, message: "Rate limit exceeded. Max " + RATE_LIMIT + " tool calls per minute." };
+  }
+
+  // 2. Tool name validation
+  if (!isValidToolName(toolName)) {
+    return { code: -32602, message: "Invalid tool name" };
+  }
+
+  // 3. Input size check
+  if (!isInputSizeOk(args)) {
+    return { code: -32600, message: "Tool arguments exceed maximum size (1 MB)" };
+  }
+
+  // 4. Prompt injection detection
+  const injectionLevel = scanObjectForInjection(args);
+  if (injectionLevel === "critical" || injectionLevel === "high") {
+    logError("Injection blocked", { tool: toolName, confidence: injectionLevel });
+    return { code: -32600, message: "Request rejected: suspicious content detected" };
+  }
+  if (injectionLevel === "medium") {
+    warn("Injection warning", { tool: toolName, confidence: injectionLevel });
+  }
+
+  // 5. Required field validation
+  let validationError = null;
+  if (toolName === "boj_cartridge_info" || toolName === "boj_cartridge_invoke") {
+    validationError = validateRequiredStrings(args, ["name"]);
+  } else if (toolName === "boj_browser_navigate") {
+    validationError = validateRequiredStrings(args, ["url"]);
+  } else if (toolName === "boj_browser_click") {
+    validationError = validateRequiredStrings(args, ["selector"]);
+  } else if (toolName === "boj_browser_type") {
+    validationError = validateRequiredStrings(args, ["selector", "text"]);
+  } else if (toolName === "boj_browser_execute_js") {
+    validationError = validateRequiredStrings(args, ["script"]);
+  } else if (toolName.startsWith("boj_github_") && toolName !== "boj_github_list_repos") {
+    if (toolName === "boj_github_graphql" || toolName === "boj_github_search_code" || toolName === "boj_github_search_issues") {
+      validationError = validateRequiredStrings(args, ["query"]);
+    } else {
+      validationError = validateRequiredStrings(args, ["owner", "repo"]);
+    }
+  } else if (toolName.startsWith("boj_gitlab_") && toolName !== "boj_gitlab_list_projects") {
+    validationError = validateRequiredStrings(args, ["project_id"]);
+  } else if (toolName.startsWith("boj_cloud_") || toolName.startsWith("boj_comms_") || toolName === "boj_ml_huggingface" || toolName === "boj_research" || toolName === "boj_codeseeker") {
+    validationError = validateRequiredStrings(args, ["operation"]);
+  } else if (toolName === "boj_browser_tabs") {
+    validationError = validateRequiredStrings(args, ["operation"]);
+  }
+
+  if (validationError) {
+    return { code: -32602, message: validationError };
+  }
+
+  return null;
+}
+=======
+// ===================================================================
+// Authentication
+// ===================================================================
+
+/**
+ * Authenticate a request using a bearer token.
+ * @param {string} token
+ * @returns {boolean}
+ */
+function authenticate(token) {
+  // In a real implementation, you would validate the token against a database
+  // or authentication service. For now, we'll just check if the token is present.
+  return token !== undefined && token !== null && token !== "";
+}
+
+// ===================================================================
+// Hardening gate — validates every tool call before dispatch
+// ===================================================================
+
+/**
+ * Run all security checks on a tool call.
+ * Returns an error object {code, message} if rejected, or null if OK.
+ * @param {string} toolName
+ * @param {Record<string, unknown>} args
+ * @param {string} token
+ * @returns {{code: number, message: string}|null}
+ */
+function hardeningGate(toolName, args, token = null) {
+  // 1. Authentication
+  if (token && !authenticate(token)) {
+    return { code: -32001, message: "Authentication failed" };
+  }
+
+  // 2. Rate limiting
+  if (!rateLimitAllow()) {
+    return { code: -32000, message: "Rate limit exceeded. Max " + RATE_LIMIT + " tool calls per minute." };
+  }
+
+  // 3. Tool name validation
+  if (!isValidToolName(toolName)) {
+    return { code: -32602, message: "Invalid tool name" };
+  }
+
+  // 4. Input size check
+  if (!isInputSizeOk(args)) {
+    return { code: -32600, message: "Tool arguments exceed maximum size (1 MB)" };
+  }
+
+  // 5. Prompt injection detection
+  const injectionLevel = scanObjectForInjection(args);
+  if (injectionLevel === "critical" || injectionLevel === "high") {
+    logError("Injection blocked", { tool: toolName, confidence: injectionLevel });
+    return { code: -32600, message: "Request rejected: suspicious content detected" };
+  }
+  if (injectionLevel === "medium") {
+    warn("Injection warning", { tool: toolName, confidence: injectionLevel });
+  }
+
+  // 6. Required field validation
+  let validationError = null;
+  if (toolName === "boj_cartridge_info" || toolName === "boj_cartridge_invoke") {
+    validationError = validateRequiredStrings(args, ["name"]);
+  } else if (toolName === "boj_browser_navigate") {
+    validationError = validateRequiredStrings(args, ["url"]);
+  } else if (toolName === "boj_browser_click") {
+    validationError = validateRequiredStrings(args, ["selector"]);
+  } else if (toolName === "boj_browser_type") {
+    validationError = validateRequiredStrings(args, ["selector", "text"]);
+  } else if (toolName === "boj_browser_execute_js") {
+    validationError = validateRequiredStrings(args, ["script"]);
+  } else if (toolName.startsWith("boj_github_") && toolName !== "boj_github_list_repos") {
+    if (toolName === "boj_github_graphql" || toolName === "boj_github_search_code" || toolName === "boj_github_search_issues") {
+      validationError = validateRequiredStrings(args, ["query"]);
+    } else {
+      validationError = validateRequiredStrings(args, ["owner", "repo"]);
+    }
+  } else if (toolName.startsWith("boj_gitlab_") && toolName !== "boj_gitlab_list_projects") {
+    validationError = validateRequiredStrings(args, ["project_id"]);
+  } else if (toolName.startsWith("boj_cloud_") || toolName.startsWith("boj_comms_") || toolName === "boj_ml_huggingface" || toolName === "boj_research" || toolName === "boj_codeseeker") {
+    validationError = validateRequiredStrings(args, ["operation"]);
+  } else if (toolName === "boj_browser_tabs") {
+    validationError = validateRequiredStrings(args, ["operation"]);
+  }
+
+  if (validationError) {
+    return { code: -32602, message: validationError };
+  }
+
+  return null;
+}MCP message handler
 // ===================================================================
 
 async function handleMessage(line) {
@@ -791,8 +949,9 @@ async function handleMessage(line) {
     case "tools/call": {
       const toolName = params?.name;
       const args = params?.arguments || {};
+      const token = params?.token;
 
-      const rejection = hardeningGate(toolName, args);
+      const rejection = hardeningGate(toolName, args, token);
       if (rejection) {
         sendError(id, rejection.code, rejection.message);
         break;
