@@ -1,0 +1,23 @@
+= My New Cartridge FFI Layer
+
+== Purpose
+
+This layer provides the foreign function interface for the My New Cartridge cartridge. It bridges the Idris2 ABI layer with the Zig adapter layer.
+
+== Boundaries
+
+- **Input**: JSON arguments from the MCP bridge.
+- **Output**: JSON responses to the MCP bridge.
+- **Dependencies**: None.
+
+== Invariants
+
+- The FFI layer must be thread-safe.
+- The FFI layer must handle errors gracefully.
+- The FFI layer must validate input arguments.
+
+== Execution Surfaces
+
+- **Entry Points**: `boj_cartridge_init`, `boj_cartridge_deinit`, `boj_cartridge_name`, `boj_cartridge_version`, `boj_cartridge_invoke`.
+- **Error Handling**: Returns appropriate error codes for invalid inputs or failed operations.
+- **Testing**: Unit tests for each function.
