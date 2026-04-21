@@ -1,5 +1,70 @@
 #!/usr/bin/env node
-// SPDX-License-Identifier: PMPL-1.0-or-later
+// Tool dispatch
+// ===================================================================
+
+/**
+ * Dispatch a validated tool call to the appropriate handler.
+ * @param {string} toolName
+ * @param {Record<string, unknown>} args
+ * @returns {Promise<object>}
+ */
+async function dispatchTool(toolName, args) {
+=======
+// ===================================================================
+// Group management
+// ===================================================================
+
+/**
+ * Fetch the list of available groups.
+ * @returns {Promise<Array<{id: string, name: string, description: string}>>}
+ */
+async function fetchGroups() {
+  // For now, return a static list of groups. This can be extended to fetch
+  // groups from a configuration file or database.
+  return [
+    { id: "database", name: "Database", description: "Database-related tools" },
+    { id: "cloud", name: "Cloud", description: "Cloud-related tools" },
+    { id: "git", name: "Git", description: "Git-related tools" },
+    { id: "comms", name: "Comms", description: "Communication-related tools" },
+  ];
+}
+
+/**
+ * Dispatch a validated tool call to the appropriate handler within a group.
+ * @param {string} groupId
+ * @param {string} toolName
+ * @param {Record<string, unknown>} args
+ * @returns {Promise<object>}
+ */
+async function dispatchGroupTool(groupId, toolName, args) {
+  // Map group IDs to their respective cartridges
+  const groupToCartridge = {
+    database: "database-mcp",
+    cloud: "cloud-mcp",
+    git: "git-mcp",
+    comms: "comms-mcp",
+  };
+
+  const cartridgeName = groupToCartridge[groupId];
+  if (!cartridgeName) {
+    return null;
+  }
+
+  // Dispatch the tool call to the appropriate cartridge
+  return invokeCartridge(cartridgeName, args);
+}
+
+// ===================================================================
+// Tool dispatch
+// ===================================================================
+
+/**
+ * Dispatch a validated tool call to the appropriate handler.
+ * @param {string} toolName
+ * @param {Record<string, unknown>} args
+ * @returns {Promise<object>}
+ */
+async function dispatchTool(toolName, args) {SPDX-License-Identifier: PMPL-1.0-or-later
 // Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
 //
 // BoJ Server — MCP stdio transport bridge
@@ -39,7 +104,7 @@ import { info, warn, error as logError } from "./lib/logger.js";
 
 const BOJ_BASE = process.env.BOJ_URL || "http://localhost:7700";
 const SERVER_NAME = "boj-server";
-const SERVER_VERSION = "0.3.1";
+const SERVER_VERSION = "0.4.0";
 
 // ===================================================================
 // JSON-RPC stdio transport
@@ -359,6 +424,39 @@ async function handleMessage(line) {
       const result = await dispatchTool(toolName, args);
       if (result === null) {
         sendError(id, -32601, "Unknown tool");
+      } else {
+        sendResult(id, {
+          content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
+        });
+      }
+      break;
+    }
+
+    case "groups/list": {
+      const groups = await fetchGroups();
+      sendResult(id, { groups });
+      break;
+    }
+
+    case "groups/call": {
+      const groupId = params?.groupId;
+      const toolName = params?.name;
+      const args = params?.arguments || {};
+
+      if (!groupId) {
+        sendError(id, -32602, "Group ID is required");
+        break;
+      }
+
+      const rejection = hardeningGate(toolName, args);
+      if (rejection) {
+        sendError(id, rejection.code, rejection.message);
+        break;
+      }
+
+      const result = await dispatchGroupTool(groupId, toolName, args);
+      if (result === null) {
+        sendError(id, -32601, "Unknown tool or group");
       } else {
         sendResult(id, {
           content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
