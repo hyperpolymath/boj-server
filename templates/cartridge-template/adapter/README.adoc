@@ -1,0 +1,23 @@
+= My New Cartridge Adapter Layer
+
+== Purpose
+
+This layer contains the actual implementations of the tools and functionalities provided by the My New Cartridge cartridge.
+
+== Boundaries
+
+- **Input**: JSON arguments from the FFI layer.
+- **Output**: JSON responses to the FFI layer.
+- **Dependencies**: None.
+
+== Invariants
+
+- The adapter layer must be thread-safe.
+- The adapter layer must handle errors gracefully.
+- The adapter layer must validate input arguments.
+
+== Execution Surfaces
+
+- **Entry Points**: Tool implementations.
+- **Error Handling**: Returns appropriate error codes for invalid inputs or failed operations.
+- **Testing**: Unit tests for each tool.

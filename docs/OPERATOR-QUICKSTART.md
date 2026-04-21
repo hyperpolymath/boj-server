@@ -59,9 +59,9 @@ All configuration is via environment variables in the `[Container]` section:
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `BOJ_NODE_ID` | (auto-generated) | Unique node identifier. Set this to a stable value so your node keeps its identity across restarts. |
-| `BOJ_FEDERATION_PORT` | `9999` | UDP port for Umoja gossip protocol (QUIC transport). |
+| `BOJ_FEDERATION_PORT` | `9999` | UDP port for Umoja gossip protocol (QUIC-first, UDP fallback). |
 | `BOJ_REST_PORT` / `APP_PORT` | `7700` | TCP port for REST API (health, status, matrix). |
-| `BOJ_QUIC` | `1` | Enable QUIC transport (`1` = on, `0` = fall back to plain UDP). |
+| `BOJ_QUIC` | `1` | Enable QUIC transport (`1` = QUIC-first, `0` = UDP-only). |
 | `APP_HOST` | `[::]` | Listen address. `[::]` binds all interfaces (IPv4 + IPv6). |
 | `APP_DATA_DIR` | `/data` | Persistent data directory inside the container. |
 | `APP_LOG_FORMAT` | `json` | Log format (`json` or `text`). |

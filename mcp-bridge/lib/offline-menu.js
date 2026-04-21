@@ -36,7 +36,11 @@ export const OFFLINE_MENU = {
     { name: "proof-mcp", version: "0.1.0", domain: "Proof", protocols: ["MCP","REST"], status: "Available", available: true },
   ],
   tier_ayo: [
-    { name: "local-coord-mcp", version: "0.1.0", domain: "Agent", protocols: ["MCP","Agentic"], status: "Available", available: true, notes: "Localhost-only (127.0.0.1:7745) multi-instance AI coordination — peer discovery, message passing, task claiming" },
+    { name: "local-coord-mcp", version: "0.9.0", domain: "Agent", protocols: ["MCP","Agentic"], status: "Available", available: true, notes: "Localhost-only (127.0.0.1:7745) multi-instance AI coordination — peer discovery, typed envelopes, task claiming, master/journeyman/apprentice supervision with quarantine + watchdog TTL + track-record affinity + capability advertisement" },
   ],
-  summary: { total: 24, ready: 24, mounted: 0 },
+  // `total` reflects the full cartridges/ directory (100 cartridges on disk);
+  // the tier_* arrays above enumerate the named ones exposed through the
+  // offline menu. Regenerate counts with
+  // `node mcp-bridge/lib/generate-offline-menu.js`.
+  summary: { total: 100, ready: 24, mounted: 0 },
 };

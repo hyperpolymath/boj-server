@@ -63,31 +63,22 @@ defmodule BojRest.Router do
   post "/cartridge/:name/invoke" do
     case BojRest.Catalog.get(name) do
       {:ok, cart} ->
-        # Skinny Phase 2 per ADR-0005: we can probe the cartridge .so
-        # via the Zig CLI, but cannot dispatch to a specific tool yet
-        # (ADR-0006 work). Run the probe so the caller gets real
-        # evidence the cartridge loads; still return 501 on the tool
-        # field because dispatch is not wired.
         so_path = cartridge_so_path(cart)
-
-        probe =
-          case BojRest.Invoker.probe(so_path) do
-            {:ok, map} -> %{probe: :ok, result: map}
-            {:error, info} -> %{probe: :error, info: info}
-          end
-
         tool = Map.get(conn.body_params || %{}, "tool")
+        args = Map.get(conn.body_params || %{}, "arguments") || %{}
 
-        json(conn, 501, %{
-          error: "tool-dispatch-not-wired",
-          cartridge: name,
-          tool: tool,
-          so_path: so_path,
-          probe: probe,
-          message:
-            "Cartridge can be probed (init/name/version) but tool-level dispatch " <>
-              "awaits ADR-0006 (boj_cartridge_invoke ABI)."
-        })
+        case BojRest.Invoker.invoke(so_path, tool, args) do
+          {:ok, result} ->
+            json(conn, 200, result)
+
+          {:error, info} ->
+            json(conn, 500, %{
+              error: "invocation-failed",
+              cartridge: name,
+              tool: tool,
+              info: info
+            })
+        end
 
       :not_found ->
         json(conn, 404, %{error: "unknown-cartridge", cartridge: name})

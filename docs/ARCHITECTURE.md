@@ -142,6 +142,26 @@ The Zig HTTP adapter spawns worker threads that call into the Zig FFI concurrent
 
 The panic-attack security scanner validated the thread-safety model across all 9 modules. Results: 1 expected weak point (QUIC crypto — inherent to the protocol's 0-RTT replay window, mitigated at the application layer), 0 critical vulnerabilities.
 
+## Transport Layer
+
+BoJ supports multiple transport protocols:
+
+- **stdio** (default): JSON-RPC 2.0 over stdin/stdout (Claude Code, Glama, etc.)
+- **REST** (port 7700): HTTP/1.1 JSON API
+- **gRPC** (port 7701): Binary protocol for high-performance clients
+- **GraphQL** (port 7702): Flexible querying for UI/integration layers
+- **SSE** (port 7703): Server-Sent Events for real-time updates
+
+Each cartridge declares its supported protocols in its manifest. The MCP bridge routes calls to the appropriate transport.
+
+### Auto-Reconnect
+
+The transport layer includes an exponential backoff with jitter mechanism for improved resilience. This ensures that the system can recover from connection issues and continue to operate smoothly.
+
+### Health Monitoring
+
+The transport layer provides detailed health information, including cartridge connection status. This makes it easy to monitor the system's health and identify any issues.
+
 ## Unified-Zig-API Stack
 
 The estate standard for all Zig-edge service boundaries is the **unified-zig-api

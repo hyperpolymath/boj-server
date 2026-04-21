@@ -1,0 +1,26 @@
+{
+  "name": "my-new-cartridge",
+  "version": "0.1.0",
+  "description": "A brief description of your cartridge",
+  "domain": "Domain",
+  "tier": "Ayo",
+  "protocols": ["MCP", "REST"],
+  "auth": {
+    "method": "none"
+  },
+  "ports": {
+    "allowed": [],
+    "denied": []
+  },
+  "tools": [
+    {
+      "name": "tool_name",
+      "description": "A brief description of the tool",
+      "inputSchema": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    }
+  ]
+}

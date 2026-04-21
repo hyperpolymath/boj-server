@@ -1,5 +1,0 @@
-= SIDELINED: redis_mcp_adapter.v
-
-V-lang banned 2026-04-12. Replaced by `redis_mcp_adapter.zig`.
-
-Ports: REST 9163 / gRPC 9164 / GraphQL 9165. FFI unchanged: `redis_mcp_ffi.zig`.

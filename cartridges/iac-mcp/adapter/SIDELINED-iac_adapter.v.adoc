@@ -1,5 +1,0 @@
-= SIDELINED: iac_adapter.v
-
-V-lang banned 2026-04-12. Replaced by `iac_adapter.zig`.
-
-Ports: REST 9151 / gRPC 9152 / GraphQL 9153. FFI unchanged: `iac_ffi.zig`.

@@ -204,7 +204,7 @@ pub export fn boj_cartridge_version() [*:0]const u8 {
 // ADR-0006 dispatch (boj_cartridge_invoke, 5th standard symbol)
 // ═══════════════════════════════════════════════════════════════════════
 
-const shim = @import("cartridge_shim");
+const shim = @import("cartridge_shim.zig");
 
 /// Dispatch the cartridge.json MCP tools. Grade D Alpha — each arm
 /// returns a stub JSON body shaped to the tool's intended response.

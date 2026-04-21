@@ -34,7 +34,7 @@ pub export fn router_fallback(tier: i32) i32 {
 // Note: model-router-mcp has no cartridge.json; the 4 MCP tool names
 // below come from README.adoc.
 
-const shim = @import("cartridge_shim");
+const shim = @import("cartridge_shim.zig");
 
 const CARTRIDGE_NAME_PTR: [*:0]const u8 = "model-router-mcp";
 const CARTRIDGE_VERSION_PTR: [*:0]const u8 = "0.1.0";

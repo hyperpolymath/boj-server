@@ -1,7 +1,7 @@
 {
   "name": "@hyperpolymath/boj-server",
-  "version": "0.3.1",
-  "description": "Bundle of Joy (BoJ) MCP Server — cartridge-based DevOps toolkit with 96 domain cartridges (database, container, git, k8s, observability, secrets, IaC, and more)",
+  "version": "0.4.0",
+  "description": "Bundle of Joy (BoJ) MCP Server — cartridge-based DevOps + multi-agent coordination toolkit with 100 domain cartridges (database, container, git, k8s, observability, secrets, IaC, multi-instance AI coord, and more). Formally verified (Idris2) core; PMPL-1.0-or-later.",
   "license": "PMPL-1.0-or-later",
   "author": "Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>",
   "repository": {
@@ -15,16 +15,24 @@
   "keywords": [
     "mcp",
     "mcp-server",
+    "model-context-protocol",
     "devops",
     "containers",
     "kubernetes",
     "database",
     "git",
+    "github",
+    "gitlab",
     "observability",
     "iac",
     "secrets",
     "formal-verification",
-    "idris2"
+    "idris2",
+    "zig",
+    "multi-agent",
+    "coordination",
+    "claude",
+    "cartridge"
   ],
   "type": "module",
   "bin": {
@@ -42,8 +50,9 @@
   },
   "scripts": {
     "start": "node mcp-bridge/main.js",
-    "test": "echo 'Tests run via: just test' && exit 0",
-    "prepublishOnly": "echo 'Ready to publish'"
+    "test": "node --test mcp-bridge/tests/",
+    "inspect": "node --test mcp-bridge/tests/dispatch_test.js",
+    "prepublishOnly": "node --test mcp-bridge/tests/"
   },
   "engines": {
     "node": ">=18.0.0"

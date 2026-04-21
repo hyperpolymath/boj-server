@@ -1,0 +1,13 @@
+{
+  "name": "panel-harness",
+  "version": "0.1.0",
+  "description": "Panel Harness — Bridge cartridges to BoJ Server and panll",
+  "main": "harness.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": ["boj-server", "cartridge", "panel-harness"],
+  "author": "Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>",
+  "license": "PMPL-1.0-or-later",
+  "type": "module"
+}

@@ -1,0 +1,130 @@
+{
+  "$schema": "https://boj.dev/schemas/cartridge/v1.json",
+  "spdx": "PMPL-1.0-or-later",
+  "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath)",
+  "name": "opendatamcp",
+  "version": "0.1.0",
+  "description": "Open Data Model Context Protocol. Access public datasets from your LLM application. Publish and distribute your Open Data via MCP servers.",
+  "domain": "Open Data",
+  "tier": "Ayo",
+  "protocols": [
+    "MCP",
+    "REST"
+  ],
+  "auth": {
+    "method": "none",
+    "env_var": null,
+    "credential_source": null
+  },
+  "api": {
+    "base_url": "local://opendatamcp",
+    "content_type": "application/json"
+  },
+  "ports": {
+    "allowed": [8000],
+    "denied": [22, 23, 25, 135, 139, 445]
+  },
+  "tools": [
+    {
+      "name": "opendatamcp_query_dataset",
+      "description": "Query a public dataset (e.g., Switzerland SBB train disruptions).",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "dataset_id": {
+            "type": "string",
+            "description": "ID of the dataset (e.g., ch_sbb)"
+          },
+          "query": {
+            "type": "string",
+            "description": "Query string (e.g., 'train disruptions')"
+          },
+          "limit": {
+            "type": "integer",
+            "description": "Maximum number of results (default: 10)"
+          }
+        },
+        "required": ["dataset_id", "query"]
+      }
+    },
+    {
+      "name": "opendatamcp_list_datasets",
+      "description": "List available public datasets.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "category": {
+            "type": "string",
+            "description": "Filter by category (optional)"
+          },
+          "country": {
+            "type": "string",
+            "description": "Filter by country code (optional)"
+          }
+        }
+      }
+    },
+    {
+      "name": "opendatamcp_get_dataset_info",
+      "description": "Get metadata about a specific dataset.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "dataset_id": {
+            "type": "string",
+            "description": "ID of the dataset"
+          }
+        },
+        "required": ["dataset_id"]
+      }
+    },
+    {
+      "name": "opendatamcp_publish_dataset",
+      "description": "Publish a new Open Data dataset (for contributors).",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Name of the dataset"
+          },
+          "description": {
+            "type": "string",
+            "description": "Description of the dataset"
+          },
+          "source_url": {
+            "type": "string",
+            "description": "URL to the data source"
+          },
+          "license": {
+            "type": "string",
+            "description": "License (e.g., MIT, CC-BY-SA)"
+          },
+          "category": {
+            "type": "string",
+            "description": "Category (e.g., transportation, weather)"
+          }
+        },
+        "required": ["name", "description", "source_url", "license", "category"]
+      }
+    },
+    {
+      "name": "opendatamcp_search_datasets",
+      "description": "Search for datasets by keywords.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "keywords": {
+            "type": "string",
+            "description": "Search keywords (e.g., 'train transportation')"
+          },
+          "limit": {
+            "type": "integer",
+            "description": "Maximum number of results (default: 10)"
+          }
+        },
+        "required": ["keywords"]
+      }
+    }
+  ]
+}
