@@ -4,9 +4,9 @@
 # BoJ Server Component Readiness Assessment
 
 **Standard:** [Component Readiness Grades (CRG) v2.0](https://github.com/hyperpolymath/standards/tree/main/component-readiness-grades)
-**Assessed:** 2026-05-25
+**Assessed:** 2026-05-28
 **Assessor:** Jonathan D.A. Jewell (updated by Mistral Vibe)
-**Previous assessment:** 2026-04-18 (CRG v2.0)
+**Previous assessment:** 2026-05-25 (CRG v2.0)
 
 **Current Grade:** C
 
@@ -48,9 +48,9 @@ whole. See the table in §3 for per-component grades.
 
 | Metric | Value | Source |
 |--------|-------|--------|
-| Cartridges in fleet | 99 (plus 1 non-standard: `model-router-mcp`) | `cartridges/*/cartridge.json` |
-| Cartridge `README.adoc` coverage | **100/100** (46 newly generated 2026-04-18) | `cartridges/*/README.adoc` |
-| Cartridge shared libs built | 96/99 | `.machine_readable/6a2/STATE.a2ml` §quality |
+| Cartridges in fleet | 106 (plus 1 non-standard: `model-router-mcp`) | `cartridges/*/cartridge.json` |
+| Cartridge `README.adoc` coverage | **106/106** (46 newly generated 2026-04-18) | `cartridges/*/README.adoc` |
+| Cartridge shared libs built | 103/106 | `.machine_readable/6a2/STATE.a2ml` §quality |
 | Total tests passing | **365** (178 core FFI + 113 cartridge FFI + 40 federation + 14 coprocessor + 11 SLA + 11 community + 10 SDP + 28 readiness + 13 E2E + 12 guardian + 7 VeriSimDB + 11 multi-node + 58 MCP bridge + 17 aspect) | STATE.a2ml |
 | `believe_me` count | 4 (down from 31 — sweep complete 2026-04-12) | STATE.a2ml |
 | V-lang adapters | **Sidelined** — all cartridge adapters are now Zig, `.v` variants preserved alongside as `SIDELINED-*.v.adoc` | `cartridges/*/adapter/` |
@@ -72,7 +72,7 @@ component's state **within its home context only** unless noted.
 | Catalogue ABI (Idris2)       | C     | `alpha-stable`          | Type-checks with `%default total`. 4 `believe_me` (down from 31). Deep annotation complete. Dogfooded for 4+ weeks. | None — promoted to C.                                  | 2026-05-25    |
 | Catalogue FFI (Zig)          | C     | `alpha-stable`          | Builds clean. 178 core tests pass. Deep annotation complete. Dogfooded for 4+ weeks.                | None — promoted to C.                                  | 2026-05-25    |
 | C Headers (generated)        | D     | `alpha-unstable`         | Generated, matches Idris2 encodings. Not tested via a C consumer.                                  | Real C consumer + ABI round-trip test                   | 2026-04-18    |
-| Cartridge fleet (99)         | C     | `alpha-stable`          | 96/99 shared libs built. 100/100 cartridges have `README.adoc`. 113 FFI tests pass. Deep annotation complete (393 per-directory READMEs). Dogfooded for 4+ weeks. | None — promoted to C.                                  | 2026-05-25    |
+| Cartridge fleet (106)         | C     | `alpha-stable`          | 103/106 shared libs built. 106/106 cartridges have `README.adoc`. 113 FFI tests pass. Deep annotation complete (393 per-directory READMEs). Dogfooded for 4+ weeks. | None — promoted to C.                                  | 2026-05-28    |
 | Zig adapter layer (per cartridge) | C | `alpha-stable`          | All adapters are Zig-only. V-lang files eliminated. Deep annotation complete. Dogfooded for 4+ weeks. | None — promoted to C.                                  | 2026-05-25    |
 | Dynamic Loader               | D     | `alpha-unstable`         | Hash verification, mount/unmount. 14 loader tests pass.                                            | Use in anger on multi-cartridge live reload             | 2026-04-18    |
 | Guardian module              | D     | `alpha-unstable`         | Resource-aware failure tolerance. 12 tests pass.                                                   | Fault-injection campaign                                | 2026-04-18    |
@@ -164,13 +164,15 @@ publication must be explicitly abstract / provisional.
 - **V-lang eliminated**: all V-lang files (including `SIDELINED-*.v.adoc`) have been
   removed. All adapters are now Zig-only.
 - **DOGFOOD-LOG.adoc active**: 4+ weeks of dated evidence (2026-04-18 to
-  2026-05-25) with no failures observed.
+  2026-05-28) with no failures observed.
 - **Remaining D-grade components**: C Headers, Dynamic Loader, Guardian,
   Umoja Federation, VeriSimDB, PanLL BoJ panel, CI pipeline, Container
   ecosystem, Coprocessor dispatch, SLA module, Community module, SDP module,
   Order-Ticket Protocol, Extensibility, and Teranga Menu.
 - **Machine-readable grade line present** (§1 above) for `just crg-grade` /
   `just crg-badge`.
+- **Version updated**: BoJ server version updated to 0.4.0 to reflect the current
+  state of the project.
 
 **Next milestone:** first-ring D → C on Catalogue ABI/FFI + 6 lead cartridges
 + PanLL panel. Deep annotation pass precedes the 4-week dogfood window.
