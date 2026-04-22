@@ -4,4 +4,4 @@
 // Single source of truth for server version and name.
 
 export const SERVER_NAME = "boj-server";
-export const SERVER_VERSION = "0.4.0";
+export const SERVER_VERSION = "0.4.2";

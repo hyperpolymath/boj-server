@@ -35,7 +35,7 @@ import {
   tryParseEnvelope,
   validateEnvelope,
 } from "./lib/nickel-validator.js";
-import { info, warn, error as logError } from "./lib/logger.js";
+import { info, warn, error as logError, setLevel as setLogLevel } from "./lib/logger.js";
 
 const BOJ_BASE = process.env.BOJ_URL || "http://localhost:7700";
 const SERVER_NAME = "boj-server";
@@ -338,7 +338,10 @@ async function handleMessage(line) {
       info("MCP initialize", { client: params?.clientInfo?.name });
       sendResult(id, {
         protocolVersion: "2024-11-05",
-        capabilities: { tools: { listChanged: false } },
+        capabilities: {
+          tools: { listChanged: false },
+          logging: {},
+        },
         serverInfo: { name: SERVER_NAME, version: SERVER_VERSION },
       });
       break;
@@ -346,6 +349,18 @@ async function handleMessage(line) {
 
     case "notifications/initialized":
       break;
+
+    case "logging/setLevel": {
+      const level = params?.level;
+      const applied = setLogLevel(level);
+      if (!applied) {
+        sendError(id, -32602, `Unknown log level: ${level}. Expected debug|info|warn|error|silent.`);
+      } else {
+        info("MCP logging/setLevel", { level });
+        sendResult(id, {});
+      }
+      break;
+    }
 
     case "tools/list": {
       const tools = buildToolList();
