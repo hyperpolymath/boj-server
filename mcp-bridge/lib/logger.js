@@ -7,7 +7,22 @@
 // MCP JSON-RPC messages). Log level controlled via BOJ_LOG_LEVEL env.
 
 const LOG_LEVELS = { debug: 0, info: 1, warn: 2, error: 3, silent: 4 };
-const currentLevel = LOG_LEVELS[process.env.BOJ_LOG_LEVEL || "info"] ?? LOG_LEVELS.info;
+let currentLevel = LOG_LEVELS[process.env.BOJ_LOG_LEVEL || "info"] ?? LOG_LEVELS.info;
+
+/**
+ * Update the minimum log level at runtime. Used by the MCP
+ * `logging/setLevel` handler to honour client-requested verbosity.
+ * Unknown levels are ignored (no-op).
+ * @param {"debug"|"info"|"warn"|"error"|"silent"} level
+ * @returns {boolean} true if the level was recognised and applied
+ */
+function setLevel(level) {
+  if (level in LOG_LEVELS) {
+    currentLevel = LOG_LEVELS[level];
+    return true;
+  }
+  return false;
+}
 
 /**
  * Emit a structured log entry to stderr.
@@ -38,4 +53,4 @@ function warn(msg, fields) { log("warn", msg, fields); }
 /** @param {string} msg @param {Record<string, unknown>} [fields] */
 function error(msg, fields) { log("error", msg, fields); }
 
-export { debug, error, info, log, warn };
+export { debug, error, info, log, setLevel, warn };
