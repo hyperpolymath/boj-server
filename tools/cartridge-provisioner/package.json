@@ -1,0 +1,13 @@
+{
+  "name": "cartridge-provisioner",
+  "version": "0.1.0",
+  "description": "Cartridge Provisioner — Deploy cartridges to BoJ Server, BoJ Server + Elixir Multiplier, or panll",
+  "main": "provisioner.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": ["boj-server", "cartridge", "provisioner"],
+  "author": "Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>",
+  "license": "PMPL-1.0-or-later",
+  "type": "module"
+}

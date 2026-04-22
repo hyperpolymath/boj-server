@@ -6,7 +6,7 @@ image:https://img.shields.io/badge/OpenSSF-Best_Practices-green?logo=opensources
 image:https://glama.ai/mcp/servers/hyperpolymath/boj-server/badge[Glama MCP Server,link=https://glama.ai/mcp/servers/hyperpolymath/boj-server]
 image:https://api.thegreenwebfoundation.org/greencheckimage/boj-server.net[Green Hosting,link="https://www.thegreenwebfoundation.org/green-web-check/?url=boj-server.net"]
 
-BoJ (Bundle of Joy) is a unified MCP server that consolidates all hyperpolymath tooling into a single endpoint — GitHub, GitLab, Cloudflare, Vercel, Verpex, Gmail, Calendar, browser automation, research, ML, and 50+ open-source cartridges.
+BoJ (Bundle of Joy) is a unified MCP server that consolidates all hyperpolymath tooling into a single endpoint — GitHub, GitLab, Cloudflare, Vercel, Verpex, Gmail, Calendar, browser automation, research, ML, and 106+ open-source cartridges.
 
 == Install
 

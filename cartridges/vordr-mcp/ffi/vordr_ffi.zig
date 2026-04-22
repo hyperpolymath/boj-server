@@ -56,7 +56,7 @@ export fn vordr_version() [*:0]const u8 {
 // Standard ABI (ADR-0005 four symbols + ADR-0006 invoke)
 // ═══════════════════════════════════════════════════════════════════════
 
-const shim = @import("cartridge_shim");
+const shim = @import("cartridge_shim.zig");
 
 const CARTRIDGE_NAME_PTR: [*:0]const u8 = "vordr-mcp";
 const CARTRIDGE_VERSION_PTR: [*:0]const u8 = "0.1.0";

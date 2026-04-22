@@ -1,0 +1,33 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+// Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath)
+= claude-agents-power-mcp / abi — Idris2 ABI layer
+:orientation: deep
+
+== Purpose
+
+Encodes the claude-agents-power-mcp connection state machine and the MCP tool catalogue.
+
+== Files
+
+[cols="1,4"]
+|=== 
+| File | Role
+
+| claude-agents-power.ipkg                          | Idris2 package descriptor.
+| claude-agents-power/Safeclaude-agents-power.idr               | State machine and tool definitions.
+|=== 
+
+== Invariants
+
+*  at module top.
+* Zero .
+
+== Test/proof surface
+
+Type-check only — 
+  Error loading file "claude-agents-power.ipkg": File Not Found.
+
+== Read-first
+
+. Safeclaude-agents-power.idr — state machine and tool definitions.
+

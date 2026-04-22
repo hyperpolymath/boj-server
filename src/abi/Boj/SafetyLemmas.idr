@@ -206,30 +206,3 @@ allNeqImpliesNotElem {target} {xs = x :: xs'} prf with (x == target) proof xEq
 export
 unpackLength : (s : String) -> length (unpack s) = length s
 unpackLength _ = believe_me ()
-
-||| Convert a Bool-valued `lte` test to a proof term.
-|||
-||| Enables large-Nat range proofs (e.g. LTE 3600 86400) without building
-||| depth-n proof trees. With `%builtin NaturalNumber Nat` the elaborator
-||| evaluates `lte m n` efficiently on literal arguments, so `Refl` is accepted
-||| as the evidence argument when both m and n are compile-time constants.
-export
-fromLteTrue : (m, n : Nat) -> lte m n = True -> LTE m n
-fromLteTrue Z     _     _   = LTEZero
-fromLteTrue (S _) Z     prf = absurd prf
-fromLteTrue (S m) (S n) prf = LTESucc (fromLteTrue m n prf)
-
---------------------------------------------------------------------------------
--- take/drop (for List-based truncation proofs)
---------------------------------------------------------------------------------
-
-||| `allRec p (take n xs) = True` if `allRec p xs = True`.
-export
-allTake : {p : a -> Bool} -> {xs : List a} -> {n : Nat} ->
-          allRec p xs = True -> allRec p (take n xs) = True
-allTake {n = Z} _ = Refl
-allTake {n = S k} {xs = []} _ = Refl
-allTake {p} {xs = x :: xs'} {n = S k} prf with (p x) proof eq
-  allTake {p} {xs = x :: xs'} {n = S k} prf | True =
-    allTake {xs = xs'} {n = k} prf
-  allTake {p} {xs = x :: xs'} {n = S k} prf | False = absurd prf

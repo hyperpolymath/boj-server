@@ -1,0 +1,33 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+// Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath)
+= coderag-mcp / ffi — Zig FFI layer
+:orientation: deep
+
+== Purpose
+
+Zig implementation of the connection state machine from .
+
+== Files
+
+[cols="1,4"]
+|=== 
+| File | Role
+
+| build.zig          | Zig build graph.
+| coderag_ffi.zig   | FFI implementation.
+|=== 
+
+== Invariants
+
+* Mutex discipline for all shared state.
+* Bounds checks before dereference.
+* State-machine mirror of ABI.
+
+== Test/proof surface
+
+Inline  blocks in coderag_ffi.zig. Run with .
+
+== Read-first
+
+. coderag_ffi.zig — FFI exports and guards.
+

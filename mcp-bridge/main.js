@@ -371,8 +371,9 @@ async function handleMessage(line) {
     case "tools/call": {
       const toolName = params?.name;
       const args = params?.arguments || {};
+      const token = params?.token;
 
-      const rejection = hardeningGate(toolName, args);
+      const rejection = hardeningGate(toolName, args, token);
       if (rejection) {
         sendError(id, rejection.code, rejection.message);
         break;
@@ -385,6 +386,83 @@ async function handleMessage(line) {
         sendResult(id, {
           content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
         });
+      }
+      break;
+    }
+
+    case "groups/list": {
+      const groups = await fetchGroups();
+      sendResult(id, { groups });
+      break;
+    }
+
+    case "groups/call": {
+      const groupId = params?.groupId;
+      const toolName = params?.name;
+      const args = params?.arguments || {};
+
+      if (!groupId) {
+        sendError(id, -32602, "Group ID is required");
+        break;
+      }
+
+      const rejection = hardeningGate(toolName, args);
+      if (rejection) {
+        sendError(id, rejection.code, rejection.message);
+        break;
+      }
+
+      const result = await dispatchGroupTool(groupId, toolName, args);
+      if (result === null) {
+        sendError(id, -32601, "Unknown tool or group");
+      } else {
+        sendResult(id, {
+          content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
+        });
+      }
+      break;
+    }
+
+    case "prompts/list": {
+      const prompts = await fetchPrompts();
+      sendResult(id, { prompts });
+      break;
+    }
+
+    case "prompts/get": {
+      const promptId = params?.promptId;
+      if (!promptId) {
+        sendError(id, -32602, "Prompt ID is required");
+        break;
+      }
+
+      const prompt = await fetchPrompt(promptId);
+      if (prompt === null) {
+        sendError(id, -32601, "Unknown prompt");
+      } else {
+        sendResult(id, { prompt });
+      }
+      break;
+    }
+
+    case "resources/list": {
+      const resources = await fetchResources();
+      sendResult(id, { resources });
+      break;
+    }
+
+    case "resources/get": {
+      const resourceId = params?.resourceId;
+      if (!resourceId) {
+        sendError(id, -32602, "Resource ID is required");
+        break;
+      }
+
+      const resource = await fetchResource(resourceId);
+      if (resource === null) {
+        sendError(id, -32601, "Unknown resource");
+      } else {
+        sendResult(id, { resource });
       }
       break;
     }

@@ -74,15 +74,22 @@ else
     exit 1
 fi
 
-# --- Step 4: Check V adapter compiles ---
+# --- Step 4: Verify Zig adapter completeness ---
 echo ""
-echo "Step 4: Checking V-lang adapter..."
-cd "$PROJECT_DIR/adapter/v"
-if v -check src/main.v 2>/dev/null; then
-    green "  V adapter syntax check passed"
+echo "Step 4: Verifying Zig adapter completeness..."
+cd "$PROJECT_DIR"
+adapter_count=0
+for cart in database-mcp fleet-mcp nesy-mcp agent-mcp; do
+    if [ -f "cartridges/$cart/adapter/${cart%%-mcp}_adapter.zig" ]; then
+        adapter_count=$((adapter_count + 1))
+    fi
+done
+if [ $adapter_count -eq 4 ]; then
+    green "  All Zig adapters present ($adapter_count/4)"
+    PASS=$((PASS + 1))
 else
-    yellow "  V adapter check failed (may need V 0.5.0+)"
-    SKIP=$((SKIP + 1))
+    red "  Missing Zig adapters ($adapter_count/4)"
+    FAIL=$((FAIL + 1))
 fi
 
 # --- Step 5: Run cartridge FFI tests ---

@@ -475,18 +475,30 @@ matrix:
 # RUN & EXECUTE
 # ═══════════════════════════════════════════════════════════════════════════════
 
-# Run the BoJ server (V-lang adapter: REST 7700, gRPC 7701, GraphQL 7702, SSE 7703)
+# Run the BoJ server (REST 7700, gRPC 7701, GraphQL 7702, SSE 7703)
 run *args: build
     #!/usr/bin/env bash
     set -euo pipefail
-    ADAPTER="adapter/v/boj-server"
-    if [ ! -f "$ADAPTER" ]; then
-        just build-adapter
+    # Preference: Elixir (Class 3) > V-lang (deprecated/banned)
+    if [ -d "elixir" ] && command -v mix >/dev/null 2>&1; then
+        echo "Starting BoJ Server (Elixir Class 3 Multiplier)..."
+        cd elixir && exec mix run --no-halt {{args}}
+    else
+        ADAPTER="adapter/v/boj-server"
+        if [ ! -f "$ADAPTER" ]; then
+            if command -v v >/dev/null 2>&1; then
+                just build-adapter
+            else
+                echo "ERROR: V-lang adapter not built and 'v' not found."
+                echo "V-lang was banned 2026-04-10. Please use the Elixir backend (cd elixir && mix run)."
+                exit 1
+            fi
+        fi
+        echo "Starting BoJ Server (Legacy V-lang Adapter)..."
+        LLP="$(pwd)/ffi/zig/zig-out/lib"
+        for d in cartridges/*/ffi/zig-out/lib; do [ -d "$d" ] && LLP="${LLP}:$(pwd)/${d}"; done
+        LD_LIBRARY_PATH="${LLP}${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" exec "$ADAPTER" {{args}}
     fi
-    echo "Starting BoJ Server..."
-    LLP="$(pwd)/ffi/zig/zig-out/lib"
-    for d in cartridges/*/ffi/zig-out/lib; do [ -d "$d" ] && LLP="${LLP}:$(pwd)/${d}"; done
-    LD_LIBRARY_PATH="${LLP}${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" exec "$ADAPTER" {{args}}
 
 # Run with verbose output
 run-verbose *args: build
@@ -1090,7 +1102,11 @@ doctor:
     check() {
         local name="$1" cmd="$2" min="$3"
         if command -v "$cmd" >/dev/null 2>&1; then
-            VER=$("$cmd" --version 2>&1 | head -1)
+            if [ "$cmd" = "zig" ]; then
+                VER=$("$cmd" version 2>&1 | head -1)
+            else
+                VER=$("$cmd" --version 2>&1 | head -1 || "$cmd" version 2>&1 | head -1 || echo "available")
+            fi
             echo "  [OK]   $name — $VER"
             PASS=$((PASS + 1))
         else
@@ -1113,11 +1129,12 @@ doctor:
     check "Deno"              deno      "1.40+"
     check "Zig"               zig       "0.13"
     check "Idris2"            idris2    "0.7.0"
-    check "V (vlang)"         v         "0.4.4"
+    check "Mix (Elixir)"      mix       "1.15+"
     check "just"              just      "1.25"
     check "git"               git       "2.0+"
     echo ""
     echo "Optional tools:"
+    check_optional "V (vlang)"    v            "deprecated/banned 2026-04-10"
     check_optional "Cargo"        cargo        "needed for tools/cartridge-minter"
     check_optional "cloudflared"  cloudflared  "needed for tunnel"
     check_optional "panic-attack" panic-attack "pre-commit scanner"

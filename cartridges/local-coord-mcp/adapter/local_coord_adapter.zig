@@ -927,6 +927,31 @@ fn dispatch(tool: []const u8, body: []const u8, resp: []u8, allocator: std.mem.A
                 w.writeAll("\"") catch return .{ .status = 500, .body = errJson(resp, "buffer overflow") };
             }
         }
+        w.writeAll("],\"by_peer\":[") catch return .{ .status = 500, .body = errJson(resp, "buffer overflow") };
+
+        // Per-peer reject counts + cooldown flags (Item A — rejection rate-limit hardening).
+        // Skip inactive slots; peer_id rebuilt canonically via renderPeerId.
+        var wrote_bp: bool = false;
+        var pi: c_int = 0;
+        while (pi < 16) : (pi += 1) {
+            const pk = ffi.coord_read_peer_kind(pi);
+            if (pk < 0) continue;
+            var psuf: [4]u8 = undefined;
+            if (ffi.coord_read_peer_suffix(pi, &psuf) != 4) continue;
+            var pctx_buf: [32]u8 = undefined;
+            const pctx_len = ffi.coord_read_peer_context(pi, &pctx_buf, @intCast(pctx_buf.len));
+            const pctx_slice: []const u8 = if (pctx_len > 0) pctx_buf[0..@intCast(pctx_len)] else "";
+            var pid_buf: [96]u8 = undefined;
+            const pid = renderPeerId(&pid_buf, kindName(pk), &psuf, pctx_slice) catch continue;
+            const prc = ffi.coord_count_rejects_recent_peer(&token, 16, pi);
+            if (prc < 0) continue;
+            const pcd = ffi.coord_peer_in_cooldown(&token, 16, pi);
+            if (wrote_bp) w.writeAll(",") catch return .{ .status = 500, .body = errJson(resp, "buffer overflow") };
+            wrote_bp = true;
+            std.fmt.format(w, "{{\"peer_id\":\"{s}\",\"count\":{d},\"in_cooldown\":{s}}}", .{
+                pid, prc, if (pcd == 1) "true" else "false",
+            }) catch return .{ .status = 500, .body = errJson(resp, "buffer overflow") };
+        }
         w.writeAll("]}}") catch return .{ .status = 500, .body = errJson(resp, "buffer overflow") };
         return .{ .status = 200, .body = resp[0..stream.pos] };
     }

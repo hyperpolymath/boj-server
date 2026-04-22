@@ -1,0 +1,131 @@
+{
+  "$schema": "https://boj.dev/schemas/cartridge/v1.json",
+  "spdx": "PMPL-1.0-or-later",
+  "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath)",
+  "name": "claude-agents-power-mcp",
+  "version": "0.1.0",
+  "description": "Claude Agents Power MCP Server. Intelligent management of specialized AI agents for development teams. Analyze projects, recommend agents, and deploy 100+ professional roles.",
+  "domain": "Agent Orchestration",
+  "tier": "Ayo",
+  "protocols": [
+    "MCP",
+    "REST"
+  ],
+  "auth": {
+    "method": "api-key",
+    "env_var": "GITHUB_TOKEN",
+    "credential_source": "user-provided"
+  },
+  "api": {
+    "base_url": "local://claude-agents-power-mcp",
+    "content_type": "application/json"
+  },
+  "ports": {
+    "allowed": [3000],
+    "denied": [22, 23, 25, 135, 139, 445]
+  },
+  "tools": [
+    {
+      "name": "claude_agents_analyze_project",
+      "description": "Analyze project directory and recommend suitable agents.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "project_path": {
+            "type": "string",
+            "description": "Path to project directory (default: current directory)"
+          },
+          "language": {
+            "type": "string",
+            "enum": ["en", "ko"],
+            "description": "Language for agent descriptions (default: en)"
+          }
+        }
+      }
+    },
+    {
+      "name": "claude_agents_list_agents",
+      "description": "List available agents with filtering options.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "category": {
+            "type": "string",
+            "description": "Filter by category (e.g., Technology, Data, Product)"
+          },
+          "language": {
+            "type": "string",
+            "enum": ["en", "ko"],
+            "description": "Language for agent descriptions (default: en)"
+          },
+          "limit": {
+            "type": "integer",
+            "description": "Maximum number of results (default: 20)"
+          }
+        }
+      }
+    },
+    {
+      "name": "claude_agents_search_agents",
+      "description": "Search agents by keywords or skills.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "keywords": {
+            "type": "string",
+            "description": "Search keywords (e.g., 'machine learning react')"
+          },
+          "language": {
+            "type": "string",
+            "enum": ["en", "ko"],
+            "description": "Language for agent descriptions (default: en)"
+          }
+        },
+        "required": ["keywords"]
+      }
+    },
+    {
+      "name": "claude_agents_install_agents",
+      "description": "Install one or more agents to project directory.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "agent_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "List of agent IDs to install"
+          },
+          "target_dir": {
+            "type": "string",
+            "description": "Target directory for agent files (default: ./claude/agents/)"
+          },
+          "language": {
+            "type": "string",
+            "enum": ["en", "ko"],
+            "description": "Language for agent files (default: en)"
+          }
+        },
+        "required": ["agent_ids"]
+      }
+    },
+    {
+      "name": "claude_agents_get_download_stats",
+      "description": "Get download statistics for agents.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "agent_id": {
+            "type": "string",
+            "description": "Agent ID (optional, returns all if not specified)"
+          },
+          "limit": {
+            "type": "integer",
+            "description": "Maximum number of results (default: 10)"
+          }
+        }
+      }
+    }
+  ]
+}

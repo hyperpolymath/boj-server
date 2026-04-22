@@ -6,7 +6,7 @@
 
 name: boj-server
 description: "Bundle of Joy — cartridge-based MCP server with 53 formally verified domain cartridges (database, cloud, git, k8s, containers, observability, secrets, IaC, and more)"
-version: "0.3.1"
+version: "0.4.0"
 author: "Jonathan D.A. Jewell"
 license: "PMPL-1.0-or-later"
 homepage: "https://github.com/hyperpolymath/boj-server"

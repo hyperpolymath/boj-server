@@ -138,7 +138,7 @@ export fn opsm_set_name(slot_idx: u32, name_ptr: [*]const u8, name_len: u32) i32
 // Standard ABI (ADR-0005 four symbols + ADR-0006 invoke)
 // ═══════════════════════════════════════════════════════════════════════
 
-const shim = @import("cartridge_shim");
+const shim = @import("cartridge_shim.zig");
 
 const CARTRIDGE_NAME_PTR: [*:0]const u8 = "opsm-mcp";
 const CARTRIDGE_VERSION_PTR: [*:0]const u8 = "0.1.0";

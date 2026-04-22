@@ -22,7 +22,30 @@ const GITLAB_TOKEN = process.env.GITLAB_TOKEN || "";
 async function fetchHealth() {
   try {
     const res = await fetch(`${BOJ_BASE}/health`);
-    return await res.json();
+    const health = await res.json();
+    
+    // Add cartridge connection status
+    const cartridges = await fetchCartridges();
+    const cartridgeStatus = {};
+    for (const cartridge of cartridges.cartridges) {
+      try {
+        const info = await fetchCartridgeInfo(cartridge.name);
+        cartridgeStatus[cartridge.name] = {
+          status: "connected",
+          tools: info.tools.length,
+        };
+      } catch {
+        cartridgeStatus[cartridge.name] = {
+          status: "disconnected",
+          tools: 0,
+        };
+      }
+    }
+    
+    return {
+      ...health,
+      cartridge_status: cartridgeStatus,
+    };
   } catch {
     return {
       status: "rest-unavailable",

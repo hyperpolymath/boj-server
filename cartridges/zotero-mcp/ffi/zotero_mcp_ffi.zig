@@ -286,7 +286,7 @@ pub export fn zotero_mcp_reset() void {
 // Standard ABI (ADR-0005 four symbols + ADR-0006 invoke)
 // ═══════════════════════════════════════════════════════════════════════
 
-const shim = @import("cartridge_shim");
+const shim = @import("cartridge_shim.zig");
 
 const CARTRIDGE_NAME_PTR: [*:0]const u8 = "zotero-mcp";
 const CARTRIDGE_VERSION_PTR: [*:0]const u8 = "0.1.0";
