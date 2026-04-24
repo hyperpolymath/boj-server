@@ -58,8 +58,13 @@ pub fn invokeArgsNull(
 /// Compare a C-NUL-terminated tool-name pointer against a Zig string
 /// literal. Caller must have already verified `tool_name` is non-null
 /// (usually via `invokeArgsNull`).
+///
+/// Safety: @ptrCast from [*c]const u8 to [*:0]const u8 is safe at this
+/// C-ABI boundary — the BoJ cartridge ABI (ADR-0006) requires all
+/// tool_name arguments to be NUL-terminated C strings. Non-NUL-terminated
+/// inputs violate the calling convention and are the caller's fault.
 pub fn toolIs(tool_name: [*c]const u8, expected: []const u8) bool {
-    const s = std.mem.span(@as([*:0]const u8, @ptrCast(tool_name)));
+    const s = std.mem.span(@as([*:0]const u8, @ptrCast(tool_name))); // FFI boundary: NUL-termination guaranteed by ADR-0006
     return std.mem.eql(u8, s, expected);
 }
 
