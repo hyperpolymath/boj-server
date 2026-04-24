@@ -1,210 +1,205 @@
 // SPDX-License-Identifier: PMPL-1.0-or-later
 // Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
-= ECHIDNA Call Protocol
+= ECHIDNA Call Protocol — How to Invoke ECHIDNA from Any Repo
 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
-:toc:
+:revdate: 2026-04-24
+:toc: left
 :toclevels: 2
 
-== Overview
+== Rule Zero
 
-The `echidna-llm-mcp` BoJ cartridge is the *only* authorised entry point for
-all ECHIDNA invocations from other hyperpolymath repos.  All 105 prover
-backends are reachable through 8 tools spread across two backend layers.
+**Never call ECHIDNA directly.  Always use the `echidna-llm-mcp` BoJ cartridge.**
 
-**NEVER call ECHIDNA directly.** All calls go through BoJ.
+The cartridge enforces the 30 s timeout, routes to the right backend URL,
+and maintains the trust invariant that advisory suggestions cannot affect
+prover trust levels (formally proved in `abi/EchidnaLlm/Protocol.idr`).
 
-== Backend Layers
+== Backend
 
-[cols="1,2,2,1"]
+All 15 tools route through a single ECHIDNA REST API endpoint:
+
+[source,bash]
+----
+# Local (echidna --port 8081, the main.rs default)
+export ECHIDNA_REST_URL=http://127.0.0.1:8081
+
+# Fly.io private 6PN (production — used by nesy-solver-api, etc.)
+export ECHIDNA_REST_URL=http://echidna-nesy.flycast:8090
+----
+
+If `ECHIDNA_REST_URL` is unset the cartridge defaults to `http://127.0.0.1:8081`.
+Fly.io cold-start grace is 90 s (Isabelle heap maps on first use; Julia JIT
+initialises on first `/api/suggest` call).
+
+== 15 Tools at a Glance
+
+[cols="2,1,3"]
 |===
-| Layer | Env var | Default | Purpose
+| Tool | HTTP | What it does
 
-| REST | `ECHIDNA_REST_URL` | `http://127.0.0.1:8000` | Proof invocation, discovery, search
-| LLM  | `ECHIDNA_LLM_URL`  | `http://127.0.0.1:7721` | Advisory tactic suggestions, prover ranking
+| `echidna_list_provers` | GET /api/provers | **Start here.** Returns all 105 provers: name, tier, complexity.
+| `echidna_health` | GET /api/health | Is the backend up? Returns `{ status, version }`.
+| `echidna_rank_provers` | GET /api/provers | Same list — sort by tier/complexity to pick the best prover.
+| `echidna_aspect_tags` | GET /api/aspect-tags | Domain tags used by the tactic suggestion model.
+| `echidna_prove` | POST /api/prove | Parse + prove a theorem. Returns `{ success, goals, message }`.
+| `echidna_verify` | POST /api/verify | Parse → export → binary round-trip. Typed outcome.
+| `echidna_verify_raw` | POST /api/verify_raw | Raw binary invocation (EProver, CaDiCaL, etc.).
+| `echidna_suggest` | POST /api/suggest | GNN / Julia ML corpus-backed tactic suggestions.
+| `echidna_suggest_tactics` | POST /api/tactics/suggest | Aspect-tag model — takes goal text. Advisory only.
+| `echidna_search` | GET /api/search?q= | Keyword search over 66,674-proof corpus.
+| `echidna_search_theorems` | GET /api/theorems/search?q= | Theorem metadata search.
+| `echidna_session_create` | POST /api/session/create | Start interactive tactic session.
+| `echidna_session_state` | GET /api/session/:id/state | Current goals + completion flag.
+| `echidna_session_apply` | POST /api/session/:id/apply | Apply a tactic.
+| `echidna_session_tree` | GET /api/session/:id/tree | Proof tree JSON.
 |===
 
-The REST layer delegates to the ECHIDNA axum server.
-The LLM layer delegates to the ECHIDNA LLM proxy (advisory only —
-suggestions are hints, not trust-certified results).
+== Typical Workflows
 
-== Tool Reference
+=== 1. Discover Provers, Then Verify
 
-=== Discovery
-
-`echidna_list_provers` — no required args::
-Returns all 105 prover backends with `name`, `tier`, `category`,
-and `complexity` fields.  Call this first to enumerate valid prover IDs.
-
-+
 [source,json]
 ----
 { "tool": "echidna_list_provers", "args": {} }
+
+{
+  "tool": "echidna_verify",
+  "args": {
+    "prover": "Lean",
+    "content": "theorem zero_add (n : Nat) : 0 + n = n := Nat.zero_add n"
+  }
+}
 ----
 
-=== Proof Invocation
+Response shape: `{ valid, outcome, goals_remaining, tactics_used }`
+Outcome is one of: `PROVED`, `NO_PROOF_FOUND`, `INVALID_INPUT`,
+`UNSUPPORTED_FEATURE`, `TIMEOUT`, `INCONSISTENT_PREMISES`,
+`PROVER_ERROR`, `SYSTEM_ERROR`.
 
-`echidna_prove` — required: `file`::
-Invokes a prover backend on an absolute file path.
-Prover is auto-detected from file extension when omitted.
+=== 2. Prove with Neural Assistance
 
-+
 [source,json]
 ----
 {
   "tool": "echidna_prove",
   "args": {
-    "file": "/path/to/proof.lean",
-    "prover": "Lean",
-    "timeout_secs": 120
+    "prover": "Coq",
+    "content": "Theorem plus_comm : forall n m : nat, n + m = m + n.\nProof. intros. ring. Qed.",
+    "neural": true,
+    "timeout": 120
   }
 }
 ----
 
-+
-Response shape: `{ verified, message, prover, raw_output, stderr }`
+=== 3. Get Tactic Suggestions
 
-`echidna_verify` — required: `content`, `prover`::
-Verify inline proof content as a string.
-No auto-detection — `prover` is always required.
-
-+
 [source,json]
 ----
+// Corpus-backed neural suggestions (Julia ML layer)
 {
-  "tool": "echidna_verify",
-  "args": {
-    "content": "(assert (not true))\n(check-sat)",
-    "prover": "Z3"
-  }
+  "tool": "echidna_suggest",
+  "args": { "prover": "Idris2", "content": "?hole : n + Z = n", "limit": 10 }
 }
-----
 
-=== Corpus Search
-
-`echidna_search` — required: `query`::
-Keyword search over 66,674 proofs in the training corpus.
-Returns matching examples useful for tactic inspiration.
-
-+
-[source,json]
-----
-{ "tool": "echidna_search", "args": { "query": "induction list append" } }
-----
-
-=== LLM Advisory Ops (non-trust-certified)
-
-`echidna_init`::
-Initialise the LLM advisory session.  Call once per session.
-
-`echidna_authenticate` — required: `token`::
-Authenticate for metered LLM calls.
-
-`echidna_suggest_tactics` — required: `goal`::
-Get tactic suggestions from the LLM advisory layer for a proof goal.
-Optionally pass `hypotheses` (list of strings), `prover` ID, and `top_k`.
-
-+
-[source,json]
-----
+// Aspect-tag model (goal text in, tactics out — advisory only)
 {
   "tool": "echidna_suggest_tactics",
-  "args": {
-    "goal": "n + 0 = n",
-    "prover": "Lean",
-    "top_k": 5
-  }
+  "args": { "goal": "n + 0 = n", "prover": "Lean", "top_k": 5 }
 }
 ----
 
-`echidna_rank_provers` — required: `theorem`::
-Rank all applicable prover backends by expected success probability.
-Optionally pass `context` and `domain` (`arithmetic`, `logic`,
-`type-theory`, `program-verification`, `security-protocol`,
-`constraint-solving`, `model-checking`).
+=== 4. SMT / ATP Raw Invocation
 
-+
 [source,json]
 ----
 {
-  "tool": "echidna_rank_provers",
+  "tool": "echidna_verify_raw",
   "args": {
-    "theorem": "forall n : nat, n + 0 = n",
-    "domain": "arithmetic"
+    "prover": "Z3",
+    "content": "(declare-const x Int)\n(assert (not (= (+ x 1) (+ 1 x))))\n(check-sat)"
   }
 }
 ----
 
-== All 105 Prover IDs
+Expected: `{ valid: true, exit_code: 0, stdout: "unsat", stderr: "", message: "..." }`
 
-Listed by tier.  Use `echidna_list_provers` to get tier, category,
-and complexity metadata for each.
+=== 5. Interactive Tactic Session
+
+[source,json]
+----
+// a. Open session
+{ "tool": "echidna_session_create", "args": { "prover": "Coq" } }
+// → { session_id: "abc123" }
+
+// b. Apply tactics step by step
+{ "tool": "echidna_session_apply",
+  "args": { "session_id": "abc123", "tactic": "intros n." } }
+{ "tool": "echidna_session_apply",
+  "args": { "session_id": "abc123", "tactic": "ring." } }
+
+// c. Confirm completion
+{ "tool": "echidna_session_state", "args": { "session_id": "abc123" } }
+// → { goals: 0, complete: true }
+----
+
+== Prover Quick Reference
+
+[cols="2,4,1"]
+|===
+| Domain | Recommended Provers | Tier
+
+| Dependent types | Idris2, Agda, Lean, Coq | 1
+| SMT / arithmetic | Z3, CVC5, AltErgo, DReal | 1–2
+| Program verification | Dafny, FStar, Why3, Viper, FramaC, Boogie, Cameleer | 2
+| First-order ATP | Vampire, EProver, SPASS | 2
+| SAT solving | CaDiCaL, Kissat, MiniSat | 2
+| Model checking | SPIN, NuSMV, TLC, UPPAAL, Prism, Alloy | 2
+| Security protocols | Tamarin, ProVerif | 2
+| Hardware / synthesis | ABC | 3
+| HP type disciplines | TypeLL, KatagoriaVerifier, LinearTypeChecker, AffineTypeChecker, … | 3
+|===
+
+All 105 prover IDs: call `echidna_list_provers`.
+
+== Error Responses
+
+All tools return `{ status: int, data: object }`.
 
 [cols="1,3"]
 |===
-| Tier | Prover IDs
+| Status | Meaning
 
-| 1 — Core ITPs | `Agda`, `Coq`, `Lean`, `Isabelle`, `Z3`, `CVC5`
-| 2 — Big Six | `Metamath`, `HOLLight`, `Mizar`
-| 3 — Additional | `PVS`, `ACL2`
-| 4 — Classic | `HOL4`
-| Extended | `Idris2`, `Lean3`
-| 5 — First-Order ATPs | `Vampire`, `EProver`, `SPASS`, `AltErgo`
-| 6 — Auto-active | `FStar`, `Dafny`, `Why3`
-| 7 — Specialised ITPs | `TLAPS`, `Twelf`, `Nuprl`, `Minlog`, `Imandra`
-| 8 — Constraint solvers | `GLPK`, `SCIP`, `MiniZinc`, `Chuffed`, `ORTools`
-| Oracle | `TypedWasm`
-| 9 — Program verifiers | `SPIN`, `CBMC`, `SeaHorn`, `FramaC`, `Viper`
-| 9 — SAT solvers | `CaDiCaL`, `Kissat`, `MiniSat`
-| 9 — Model checkers | `NuSMV`, `TLC`, `Alloy`, `Prism`, `UPPAAL`
-| 9 — Security protocols | `Tamarin`, `ProVerif`
-| 9 — Java deductive | `KeY`
-| 10 — Delta SMT | `DReal`
-| 10 — Logic synthesis | `ABC`
-| 11 — HP type checkers | `TypeLL`, `KatagoriaVerifier`, `TropicalTypeChecker`, `ChoreographicTypeChecker`, `EpistemicTypeChecker`, `EchoTypeChecker`, `SessionTypeChecker`, `ModalTypeChecker`, `QTTTypeChecker`, `EffectRowTypeChecker`, `DependentTypeChecker`, `RefinementTypeChecker`, `OrdinaryTypeChecker`, `PhantomTypeChecker`, `PolymorphicTypeChecker`, `ExistentialTypeChecker`, `HigherKindedTypeChecker`, `RowTypeChecker`, `SubtypingTypeChecker`, `IntersectionTypeChecker`, `UnionTypeChecker`, `GradualTypeChecker`, `HoareTypeChecker`, `IndexedTypeChecker`, `LinearTypeChecker`, `AffineTypeChecker`, `RelevantTypeChecker`, `OrderedTypeChecker`, `UniquenessTypeChecker`, `ImmutableTypeChecker`, `CapabilityTypeChecker`, `BunchedTypeChecker`, `TemporalTypeChecker`, `ProvabilityTypeChecker`, `ImpureTypeChecker`, `CoeffectTypeChecker`, `ProbabilisticTypeChecker`, `DyadicTypeChecker`, `HomotopyTypeChecker`, `CubicalTypeChecker`, `NominalTypeChecker`
-| Phase 4 variety | `Abella`, `Dedukti`, `Cameleer`, `ACL2s`, `IsabelleZF`, `Boogie`, `Naproche`, `Matita`, `Arend`, `Athena`, `LambdaProlog`, `Mercury`, `Nitpick`, `Nunchaku`
+| 200 | Success
+| 400 | Bad request (malformed prover name, missing required field)
+| 404 | Unknown tool, session not found
+| 503 | ECHIDNA backend unavailable — check `ECHIDNA_REST_URL`, wait 90 s for cold start
+| 504 | 30 s cartridge timeout exceeded
 |===
+
+== Adding ECHIDNA to a New Repo
+
+1. Add to `.machine_readable/6a2/ECOSYSTEM.a2ml`:
++
+[source,toml]
+----
+{ name = "echidna", relationship = "active-integration",
+  notes = "Proof verification via echidna-llm-mcp BoJ cartridge." }
+----
+
+2. Add the call-protocol snippet to `0-AI-MANIFEST.a2ml` (see any existing
+   consumer repo, e.g. `verification-ecosystem/proven-servers`).
+
+3. Set `ECHIDNA_REST_URL` in `fly.toml` or your local shell profile.
+
+4. Never import the echidna Rust crates or call the REST API directly —
+   always go through the `echidna-llm-mcp` cartridge.
 
 == Trust Model
 
-LLM advisory ops (suggest_tactics, rank_provers) are **advisory only**.
-They cannot influence ECHIDNA trust levels.  This property is formally
-verified in `abi/EchidnaLlm/Protocol.idr::allOperationsAdvisory`.
+`echidna_suggest` and `echidna_suggest_tactics` are **advisory only**.
+Their output is never fed back into the ECHIDNA trust pipeline.
+This is formally proved in `abi/EchidnaLlm/Protocol.idr::allOperationsAdvisory`.
 
-Proof results from `echidna_prove` and `echidna_verify` carry the full
-ECHIDNA trust pipeline (solver integrity, certificate checking, axiom
-tracking, confidence scoring).
-
-== File Extension Auto-Detection
-
-When `prover` is omitted from `echidna_prove`, ECHIDNA selects by
-extension:
-
-[cols="1,2"]
-|===
-| Extension | Default prover
-
-| `.lean` | `Lean`
-| `.v` | `Coq`
-| `.agda` | `Agda`
-| `.smt2` | `Z3`
-| `.thy` | `Isabelle`
-| `.miz` | `Mizar`
-| `.fst` | `FStar`
-| `.dfy` | `Dafny`
-| `.whyml` | `Why3`
-| `.mm` | `Metamath`
-| `.idr` | `Idris2`
-| `.dfg` | `SPASS`
-| `.p` / `.tptp` | `Vampire`
-|===
-
-== Environment Quick Reference
-
-[source,bash]
-----
-# REST API (proof, discovery, search)
-export ECHIDNA_REST_URL=http://127.0.0.1:8000   # default
-
-# LLM advisory layer (tactic suggestions, ranking)
-export ECHIDNA_LLM_URL=http://127.0.0.1:7721    # default
-----
+`echidna_prove` and `echidna_verify` run the full 11-step trust pipeline:
+solver binary integrity (SHAKE3-512 + BLAKE3), SMT cross-checking, proof
+certificate verification, axiom tracking, sandboxing, and confidence scoring.

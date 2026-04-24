@@ -121,10 +121,13 @@ usage evidence.
 The following repos invoke ECHIDNA via this cartridge.  Each has a
 call-protocol snippet in its `0-AI-MANIFEST.a2ml`:
 
+* `verification-ecosystem/proven-servers` (active — nesy-solver-api calls echidna-nesy.flycast:8090)
+* `verification-ecosystem/nesy-solver`
 * `verification-ecosystem/typell`
 * `verification-ecosystem/panll`
-* `verification-ecosystem/nesy-solver`
-* `verification-ecosystem/proven-servers`
+* `verification-ecosystem/statistease`
+* `verification-ecosystem/ochrance-framework`
+* `verification-ecosystem/absolute-zero`
 * `verification-ecosystem/typed-wasm`
-* `007-lang`
 * `developer-ecosystem/aspasia`
+* `007-lang`
