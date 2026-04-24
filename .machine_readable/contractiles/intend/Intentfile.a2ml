@@ -1,0 +1,61 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+// Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+// Intentfile.a2ml — Purpose and scope contract for boj-server
+
+@abstract:
+Declared intent, purpose, and scope for Bundle of Joy (BoJ) Server.
+LLM/SLM agents: understand what this repo IS and IS NOT before acting.
+@end
+
+@requires:
+- section: Purpose
+- section: Anti-Purpose
+- section: Architectural-Invariants
+@end
+
+## Purpose
+
+BoJ (Bundle of Joy) is a unified MCP server that consolidates all hyperpolymath
+tooling into a single endpoint. It provides Claude Code integration for GitHub,
+GitLab, Cloudflare, Vercel, Verpex, Gmail, Calendar, browser automation, research,
+ML, and 50+ open-source cartridges. It implements a three-class architecture:
+- Class 1 (Simple Track): zero-infrastructure CLI/curl workflows
+- Class 2 (Orchestrator Track): HMAC-SHA256 webhooks and real-time MQTT/WS
+- Class 3 (Multiplier Track): Elixir/BEAM mass concurrency
+
+## Anti-Purpose
+
+BoJ is NOT:
+- A general-purpose API gateway or reverse proxy
+- A standalone application — it serves LLM/MCP tool consumers
+- A replacement for direct API access when MCP is not involved
+- A container for business logic for connected services (GitHub, GitLab, etc.)
+- A standalone MCP server outside the BoJ architecture (all MCP goes through BoJ)
+
+## Architectural-Invariants
+
+These must not be reversed without an explicit ADR:
+- Three-class architecture: Class 1 must never be broken by Class 2/3 features
+- MCP bridge is the sole entry point for Claude Code integration
+- REST API on port 7700 for all cartridge invocations
+- Self-contained cartridges with own adapters in cartridges/<name>/adapter/
+- All MCP through BoJ only — no standalone MCP servers permitted
+- Firefox first for browser automation (not Chrome)
+- HMAC-SHA256 webhook verification for Class 2 orchestrator track
+- Target runtime: Zig→WASM typed bridge (Node.js mcp-bridge is transitional)
+
+## Sensitive-Areas
+
+Ask before touching:
+- mcp-bridge/ — MCP protocol bridge; changes affect all Claude Code integration
+- adapter/ — service adapters (GitHub, GitLab, Cloudflare, etc.); API contract changes
+- cartridges/ — self-contained service cartridges; each has own adapter
+- ffi/ — Idris2 ABI + Zig FFI interface layer
+- .machine_readable/ — checkpoint files, format is specified
+- ai-plugin.json — cartridge metadata; must remain valid for discovery
+
+## Ecosystem
+
+- belongs-to: standalone server (not a library)
+- depends-on: github-api, gitlab-api, cloudflare-api, vercel-api, verpex-api
+- depended-on-by: claude-code, panll, hypatia, ambientops

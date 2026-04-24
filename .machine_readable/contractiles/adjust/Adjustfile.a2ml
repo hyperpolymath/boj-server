@@ -1,0 +1,86 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+// Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+// Adjustfile.a2ml — Accessibility & Digital Justice contract for boj-server
+//
+// ADJUST = Accessibility & Digital Justice for Universal Software & Technology
+// Standard: WCAG 2.2 Level AA (minimum). Violating ADJUST is a MUST violation.
+
+@abstract:
+Accessibility invariants for boj-server. These apply to all user-facing interfaces:
+GUI, TUI, CLI, web, mobile, documentation, error messages, and installation flows.
+LLM/SLM agents MUST NOT violate these invariants.
+@end
+
+@requires:
+- section: Visual
+- section: Keyboard
+- section: CLI-TUI
+@end
+
+## Visual
+
+- colour-contrast-ratio >= 4.5:1 for normal text
+- colour-contrast-ratio >= 3:1 for large text (18pt+ or 14pt+ bold)
+- no information conveyed by colour alone
+- no flashing or strobing content (3 flashes/second max)
+- text resizable to 200% without loss of content or function
+- focus indicators visible on all interactive elements
+
+## Keyboard
+
+- all interactive elements reachable via keyboard (Tab/Shift+Tab)
+- no keyboard traps — user can always Tab away
+- skip navigation link present on pages with repeated blocks
+- logical focus order follows visual reading order
+
+## Screen-Reader
+
+- all images have meaningful alt text (or alt='' if decorative)
+- all form inputs have associated labels
+- ARIA landmarks used for page regions (main, nav, banner, etc.)
+- dynamic content updates announced via aria-live regions
+- semantic HTML used (headings, lists, tables) — not div soup
+
+## Interactive
+
+- touch targets minimum 44x44px on mobile/touch interfaces
+- error messages identify the field and describe the error
+- error messages not conveyed by colour or position alone
+- form validation provides suggestions for correction
+
+## Media
+
+- video has captions (closed or open)
+- audio-only content has text transcript
+- no autoplay of media with sound
+
+## Motion
+
+- animations respect prefers-reduced-motion media query
+- no content depends on motion to convey meaning
+
+## CLI-TUI
+
+- CLI output must not rely solely on colour (use symbols: [OK] [FAIL])
+- TUI must support high-contrast mode
+- all CLI commands support --help with plain-text output
+- error messages written in plain language, not jargon or codes alone
+
+## Documentation
+
+- docs use clear language, short sentences, logical structure
+- code examples include comments explaining non-obvious steps
+- diagrams have text descriptions or alt text
+
+## Enforcement
+
+- ci: accessibility linting in quality.yml workflow
+- pr-block: PR blocked if accessibility regression detected
+- tool: axe-core or pa11y for automated checks on web UI
+- tool: CLI output inspected for colour-only signalling
+- manual: manual screen reader test before major releases
+
+## Notes
+
+These are MINIMUM requirements (WCAG 2.2 AA). Exceeding them (AAA) is encouraged.
+Accessibility is not optional polish — it is a structural requirement.

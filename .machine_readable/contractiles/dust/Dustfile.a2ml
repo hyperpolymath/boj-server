@@ -1,22 +1,20 @@
 # SPDX-License-Identifier: PMPL-1.0-or-later
-# Dustfile — Cleanup and Hygiene Contract
+# Dustfile (A2ML Canonical)
 
-[dustfile]
-version = "1.0.0"
-format = "a2ml"
+@abstract:
+Recovery and rollback paths for boj-server.
+Declares how to undo significant state changes.
+@end
 
-[cleanup]
-stale-branch-policy = "delete-after-merge"
-artifact-retention = "90-days"
-cache-policy = "clear-on-release"
+@requires:
+- section: Source
+@end
 
-[hygiene]
-linting = "required"
-formatting = "required"
-dead-code-removal = "encouraged"
-todo-tracking = "tracked-in-issues"
+## Source
 
-[reversibility]
-backup-before-destructive = true
-rollback-mechanism = "git-revert"
-data-retention-policy = "preserve-30-days"
+### source-rollback
+- description: Revert all source changes to last commit
+- rollback: git checkout HEAD -- .
+- blast_radius: file
+- precondition: git stash
+- notes: Stashes uncommitted work before reverting

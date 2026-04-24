@@ -26,7 +26,7 @@ jobs:
     name: ABI Specification Check (Idris2)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - name: Validate ABI modules exist
         run: |
           echo "=== Checking LSP/DAP/BSP ABI modules ==="
@@ -55,7 +55,7 @@ jobs:
     name: FFI Build & Test (Zig)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - name: Install Zig 0.15.2
         run: |
           curl -L https://ziglang.org/builds/zig-linux-x86_64-0.15.2.tar.xz | tar -xJ
@@ -95,7 +95,7 @@ jobs:
     name: V-lang Adapter Check
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - name: Install V-lang
         run: |
           sudo apt-get update && sudo apt-get install -y libgc-dev
@@ -123,7 +123,7 @@ jobs:
     name: Panel Manifest Validation
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - name: Validate LSP/DAP/BSP panel manifests
         run: |
           for cart in lsp-mcp dap-mcp bsp-mcp; do
@@ -155,7 +155,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: [abi-check, ffi-build, adapter-check, panel-validation]
     steps:
-      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - name: Verify triadic structure
         run: |
           echo "=== LSP/DAP/BSP Triadic Structure Audit ==="
