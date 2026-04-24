@@ -5,7 +5,6 @@
 //
 // Three-protocol BoJ adapter: REST (port 9229), gRPC-compat (port 9230),
 // GraphQL (port 9231).
-// Replaces the banned V-lang adapter (echidna_llm_adapter.v).
 
 const std = @import("std");
 const ffi = @import("echidna_llm_ffi");
