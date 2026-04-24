@@ -7,7 +7,7 @@
 // Thread-safe via mutex-guarded session state. All LLM calls are advisory-only
 // (proven in Idris2 ABI, enforced here at runtime).
 //
-// Memory: all strings returned to V-lang are heap-allocated via c_allocator.
+// Memory: all strings returned to the adapter caller are heap-allocated via c_allocator.
 // The adapter MUST call the corresponding free function after use.
 
 const std = @import("std");
@@ -59,7 +59,7 @@ const EphemeralSession = struct {
     created_at: i64,
 };
 
-/// Result buffer for returning JSON responses to V-lang adapter
+/// Result buffer for returning JSON responses to the adapter caller
 const ResultBuffer = struct {
     data: ?[*:0]u8,
     len: usize,
@@ -85,7 +85,7 @@ var boj_endpoint: [256]u8 = undefined;
 var boj_endpoint_len: usize = 0;
 
 // ═══════════════════════════════════════════════════════════════════════
-// Session Management (exported to V-lang via C ABI)
+// Session Management (exported via C ABI)
 // ═══════════════════════════════════════════════════════════════════════
 
 /// Initialise the cartridge with BoJ endpoint URL
