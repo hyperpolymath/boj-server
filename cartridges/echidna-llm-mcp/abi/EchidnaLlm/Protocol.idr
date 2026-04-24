@@ -36,10 +36,10 @@ public export
 confidenceToInt : Confidence -> Int
 confidenceToInt (MkConfidence n) = cast (finToNat n)
 
-||| Prover identifier (matches ECHIDNA's 30 backends)
+||| Prover identifier (matches ECHIDNA's 105 backends)
 public export
 data ProverId : Type where
-  MkProverId : (id : Fin 30) -> ProverId
+  MkProverId : (id : Fin 105) -> ProverId
 
 ||| Operation that the cartridge can perform
 public export

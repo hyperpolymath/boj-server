@@ -9,19 +9,51 @@ Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
 
 == Overview
 
-ECHIDNA LLM proof-tactic neurosymbolic interface
+ECHIDNA 105-prover cross-repo invocation surface.  Exposes all 105 ECHIDNA
+prover backends (proof invocation, tool discovery, tactic advisory) as BoJ
+cartridge tools.  **All ECHIDNA calls from any hyperpolymath repo must go
+through this cartridge — never call ECHIDNA directly.**
 
-== Tools (4)
+== Tools (8)
 
-[cols="2,4"]
+[cols="2,4,2"]
 |===
-| Tool | Description
+| Tool | Description | Backend
 
-| `echidna_init` | Initialise ECHIDNA LLM endpoint
-| `echidna_authenticate` | Authenticate with ECHIDNA token
-| `echidna_suggest_tactics` | Get proof tactic suggestions for a goal
-| `echidna_rank_provers` | Rank proof strategies by expected success
+| `echidna_list_provers` | Tool-discovery: returns all 105 provers with tier/category/complexity | REST :8000
+| `echidna_prove` | Invoke a prover on a file path (auto-detects from extension) | REST :8000
+| `echidna_verify` | Verify inline proof content as a string | REST :8000
+| `echidna_search` | Keyword search over the 66,674-proof corpus | REST :8000
+| `echidna_init` | Initialise LLM advisory session | LLM :7721
+| `echidna_authenticate` | Authenticate for metered LLM calls | LLM :7721
+| `echidna_suggest_tactics` | Advisory tactic suggestions for a proof goal | LLM :7721
+| `echidna_rank_provers` | Advisory prover ranking for a theorem | LLM :7721
 |===
+
+Advisory tools (suggest_tactics, rank_provers) cannot influence ECHIDNA
+trust levels — formally verified in `abi/EchidnaLlm/Protocol.idr`.
+
+== Quick Start
+
+[source,json]
+----
+// 1. Discover available provers
+{ "tool": "echidna_list_provers", "args": {} }
+
+// 2. Prove a Lean 4 file
+{
+  "tool": "echidna_prove",
+  "args": { "file": "/path/to/proof.lean", "prover": "Lean" }
+}
+
+// 3. Verify inline Z3 content
+{
+  "tool": "echidna_verify",
+  "args": { "content": "(assert (not true))\n(check-sat)", "prover": "Z3" }
+}
+----
+
+Full protocol documentation: `docs/CALL-PROTOCOL.adoc`
 
 == Architecture
 
@@ -31,10 +63,21 @@ Three-layer stack per the BoJ cartridge standard:
 |===
 | Layer | Language | Purpose
 
-| ABI    | Idris2 | Formally verified state machine with dependent-type proofs
+| ABI    | Idris2 | Formally verified state machine; proves advisory-only invariant for all 5 LLM operations; `ProverId` bounded to `Fin 105`
 | FFI    | Zig    | C-ABI implementation: session pool, action metrics, thread safety
-| Adapter| Zig    | Adapter bridge to the BoJ unified adapter protocol (V-lang predecessors sidelined)
+| Adapter| Zig    | Adapter bridge to the BoJ unified adapter protocol
 |===
+
+== Backend URLs
+
+[source,bash]
+----
+# REST API (proof, discovery, search) — full 105-prover portfolio
+export ECHIDNA_REST_URL=http://127.0.0.1:8000   # default
+
+# LLM advisory layer (tactic suggestions, ranking)
+export ECHIDNA_LLM_URL=http://127.0.0.1:7721    # default
+----
 
 == Building
 
@@ -53,6 +96,19 @@ cd adapter && zig build
 
 == Status
 
-Alpha (CRG D). Cartridge metadata declared in `cartridge.json`; 4 tool(s) exposed.
-Not yet dogfooded externally. See `docs/READINESS.md` at repo root for the
-project-wide grade table and `docs/practice/DOGFOOD-LOG.adoc` for usage evidence.
+Alpha (CRG D). Cartridge metadata declared in `cartridge.json`; 8 tools exposed
+across two backend layers (REST + LLM advisory). Not yet dogfooded externally.
+See `docs/practice/DOGFOOD-LOG.adoc` for usage evidence.
+
+== Consumer Repos
+
+The following repos invoke ECHIDNA via this cartridge.  Each has a
+call-protocol snippet in its `0-AI-MANIFEST.a2ml`:
+
+* `verification-ecosystem/typell`
+* `verification-ecosystem/panll`
+* `verification-ecosystem/nesy-solver`
+* `verification-ecosystem/proven-servers`
+* `verification-ecosystem/typed-wasm`
+* `007-lang`
+* `developer-ecosystem/aspasia`

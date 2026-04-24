@@ -3,8 +3,8 @@
   "spdx": "PMPL-1.0-or-later",
   "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>",
   "name": "echidna-llm-mcp",
-  "version": "0.1.0",
-  "description": "ECHIDNA LLM proof-tactic neurosymbolic interface",
+  "version": "0.2.0",
+  "description": "ECHIDNA 105-prover invocation surface — discovery, proof, verification, and LLM advisory",
   "domain": "ai",
   "tier": "Ayo",
   "protocols": [
@@ -20,23 +20,102 @@
     "base_url": "local://echidna-llm-mcp",
     "content_type": "application/json"
   },
+  "backends": {
+    "rest": {
+      "env_var": "ECHIDNA_REST_URL",
+      "default": "http://127.0.0.1:8000",
+      "description": "ECHIDNA REST API — full 105-prover portfolio"
+    },
+    "llm": {
+      "env_var": "ECHIDNA_LLM_URL",
+      "default": "http://127.0.0.1:7721",
+      "description": "ECHIDNA LLM advisory layer — tactic suggestions, prover ranking"
+    }
+  },
+  "provers": "105 backends: Agda, Coq, Lean, Isabelle, Z3, CVC5, Metamath, HOLLight, Mizar, PVS, ACL2, HOL4, Idris2, Lean3, Vampire, EProver, SPASS, AltErgo, FStar, Dafny, Why3, TLAPS, Twelf, Nuprl, Minlog, Imandra, GLPK, SCIP, MiniZinc, Chuffed, ORTools, TypedWasm, SPIN, CBMC, SeaHorn, CaDiCaL, Kissat, MiniSat, NuSMV, TLC, Alloy, Prism, UPPAAL, FramaC, Viper, Tamarin, ProVerif, KeY, DReal, ABC, TypeLL, KatagoriaVerifier, TropicalTypeChecker, ChoreographicTypeChecker, EpistemicTypeChecker, EchoTypeChecker, SessionTypeChecker, ModalTypeChecker, QTTTypeChecker, EffectRowTypeChecker, DependentTypeChecker, RefinementTypeChecker, OrdinaryTypeChecker, PhantomTypeChecker, PolymorphicTypeChecker, ExistentialTypeChecker, HigherKindedTypeChecker, RowTypeChecker, SubtypingTypeChecker, IntersectionTypeChecker, UnionTypeChecker, GradualTypeChecker, HoareTypeChecker, IndexedTypeChecker, LinearTypeChecker, AffineTypeChecker, RelevantTypeChecker, OrderedTypeChecker, UniquenessTypeChecker, ImmutableTypeChecker, CapabilityTypeChecker, BunchedTypeChecker, TemporalTypeChecker, ProvabilityTypeChecker, ImpureTypeChecker, CoeffectTypeChecker, ProbabilisticTypeChecker, DyadicTypeChecker, HomotopyTypeChecker, CubicalTypeChecker, NominalTypeChecker, Abella, Dedukti, Cameleer, ACL2s, IsabelleZF, Boogie, Naproche, Matita, Arend, Athena, LambdaProlog, Mercury, Nitpick, Nunchaku",
   "tools": [
     {
+      "name": "echidna_list_provers",
+      "description": "Tool-discovery endpoint. Returns all 105 prover backends with name, tier, category, and complexity metadata. Call this first to know which prover ID to pass to other tools.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {}
+      }
+    },
+    {
+      "name": "echidna_prove",
+      "description": "Invoke a prover backend on a file path. Returns {verified, message, prover, raw_output, stderr}. Auto-detects prover from file extension when prover is omitted.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "file": {
+            "type": "string",
+            "description": "Absolute path to the proof file. Extension determines default prover: .lean → Lean, .v → Coq, .agda → Agda, .smt2 → Z3, .thy → Isabelle, .miz → Mizar, .fst → FStar, etc."
+          },
+          "prover": {
+            "type": "string",
+            "description": "Prover backend ID (case-sensitive). One of 105 values — call echidna_list_provers for the full list. Common: Agda, Coq, Lean, Isabelle, Z3, CVC5, Idris2, FStar, Dafny, Why3, Metamath, Vampire, SPASS, EProver."
+          },
+          "timeout_secs": {
+            "type": "integer",
+            "description": "Timeout in seconds. Default 300."
+          }
+        },
+        "required": ["file"]
+      }
+    },
+    {
+      "name": "echidna_verify",
+      "description": "Verify proof content from an inline string rather than a file. Requires prover ID — content is passed directly to the prover binary with no extension-based auto-detection.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "content": {
+            "type": "string",
+            "description": "Proof content to verify (raw prover syntax)"
+          },
+          "prover": {
+            "type": "string",
+            "description": "Prover backend ID. One of 105 values — call echidna_list_provers for the full list."
+          },
+          "timeout_secs": {
+            "type": "integer",
+            "description": "Timeout in seconds. Default 300."
+          }
+        },
+        "required": ["content", "prover"]
+      }
+    },
+    {
+      "name": "echidna_search",
+      "description": "Keyword search over the ECHIDNA proof corpus (66,674 proofs across 16 prover systems). Returns matching proof examples useful for tactic inspiration.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string",
+            "description": "Search query (keywords, tactic names, theorem types)"
+          }
+        },
+        "required": ["query"]
+      }
+    },
+    {
       "name": "echidna_init",
-      "description": "Initialise ECHIDNA LLM endpoint",
+      "description": "Initialise ECHIDNA LLM advisory endpoint",
       "inputSchema": {
         "type": "object",
         "properties": {
           "endpoint": {
             "type": "string",
-            "description": "ECHIDNA backend endpoint URL"
+            "description": "ECHIDNA LLM backend endpoint URL"
           }
         }
       }
     },
     {
       "name": "echidna_authenticate",
-      "description": "Authenticate with ECHIDNA token",
+      "description": "Authenticate with ECHIDNA LLM advisory token",
       "inputSchema": {
         "type": "object",
         "properties": {
@@ -49,49 +128,56 @@
             "description": "Max calls per session"
           }
         },
-        "required": [
-          "token"
-        ]
+        "required": ["token"]
       }
     },
     {
       "name": "echidna_suggest_tactics",
-      "description": "Get proof tactic suggestions for a goal",
+      "description": "LLM-advisory: get proof tactic suggestions for a goal. Advisory only — suggestions are hints, not verified results. Does not affect ECHIDNA trust levels.",
       "inputSchema": {
         "type": "object",
         "properties": {
           "goal": {
             "type": "string",
-            "description": "Proof goal (Lean/Idris2/Coq syntax)"
+            "description": "Proof goal (in target prover's syntax)"
+          },
+          "hypotheses": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Available hypotheses in the proof context"
           },
           "prover": {
             "type": "string",
-            "description": "Target prover: lean4|idris2|coq"
+            "description": "Target prover ID. One of 105 values — call echidna_list_provers for the full list. Common: Agda, Coq, Lean, Idris2, Isabelle, FStar, Dafny, Z3, CVC5, Why3, Vampire."
+          },
+          "top_k": {
+            "type": "integer",
+            "description": "Number of tactic suggestions to return (1-50, default 5)"
           }
         },
-        "required": [
-          "goal"
-        ]
+        "required": ["goal"]
       }
     },
     {
       "name": "echidna_rank_provers",
-      "description": "Rank proof strategies by expected success",
+      "description": "LLM-advisory: rank all applicable prover backends by expected success probability for a given theorem. Returns ranked list with confidence scores. Advisory only.",
       "inputSchema": {
         "type": "object",
         "properties": {
           "theorem": {
             "type": "string",
-            "description": "Theorem statement"
+            "description": "Theorem statement to rank provers for"
           },
           "context": {
             "type": "string",
-            "description": "Proof context"
+            "description": "Proof context (available lemmas, type environment)"
+          },
+          "domain": {
+            "type": "string",
+            "description": "Proof domain hint: arithmetic, logic, type-theory, program-verification, security-protocol, constraint-solving, model-checking"
           }
         },
-        "required": [
-          "theorem"
-        ]
+        "required": ["theorem"]
       }
     }
   ]

@@ -20,6 +20,7 @@ projects = [
   { name = "proven-servers", relationship = "dependency", notes = "108 components (94 protocols + 8 core primitives + 6 connectors). BoJ imports proven-mcp types, dbconn, authconn, etc. All zero believe_me." },
   { name = "polystack", relationship = "supersedes", notes = "BoJ replaces polystack's 13 components. poly-cloud/container/db/k8s/git/iac/secret/queue/observability/proof/ssg become cartridges in the BoJ matrix." },
   { name = "PanLL", relationship = "primary-consumer", notes = "PanLL is the primary consumer. Panels need diverse capabilities dynamically — the BoJ catalogue tells them what's available." },
+  { name = "echidna", relationship = "dependency", notes = "ECHIDNA 105-prover portfolio exposed via echidna-llm-mcp cartridge (v0.2.0). 8 tools: list_provers, prove, verify, search (REST :8000) + init, authenticate, suggest_tactics, rank_provers (LLM :7721). Consumer repos: typell, panll, nesy-solver, proven-servers, typed-wasm, 007-lang, aspasia." },
   { name = "hypatia", relationship = "integration", notes = "Hypatia scans cartridges for security. SafeReasoning harmonizes Neural (Hypatia) + Symbolic (Echidna) verdicts." },
   { name = "gitbot-fleet", relationship = "integration", notes = "SafeFleet enforces 6-bot gate policy. FleetCertified proof type requires all gates passed." },
   { name = "stapeln", relationship = "dependency", notes = "Container supply chain for node hosting. Chainguard base images, selur-compose, vordr, svalinn, cerro-torre." },
