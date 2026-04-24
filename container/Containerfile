@@ -1,10 +1,3 @@
-# Stage 1: FFI Builder
-# ============================================================================
-#
-# Compiles all Zig FFI layers (core + all cartridges) in ReleaseFast mode,
-# then compiles the V adapter binary against those FFI libs — fully
-# self-contained, no local pre-build required.
-=======
 # SPDX-License-Identifier: PMPL-1.0-or-later
 # Bundle of Joy Server Container Image
 #
@@ -27,12 +20,6 @@
 #
 # Compiles all Zig FFI layers (core + all cartridges) in ReleaseFast mode,
 # then compiles the Zig adapter binary against those FFI libs — fully
-# self-contained, no local pre-build required.============================================================================
-# Stage 1: FFI Builder
-# ============================================================================
-#
-# Compiles all Zig FFI layers (core + all cartridges) in ReleaseFast mode,
-# then compiles the V adapter binary against those FFI libs — fully
 # self-contained, no local pre-build required.
 
 FROM cgr.dev/chainguard/wolfi-base:latest AS builder
@@ -127,7 +114,7 @@ COPY container/.gatekeeper.yaml /etc/svalinn/gatekeeper.yaml
 COPY container/manifest.toml /app/manifest.toml
 
 # Copy machine-readable config (menu, order-ticket)
-COPY .machine_readable/servers/ /app/config/servers/
+COPY .machine_readable/servers/ /app/config/servers/ 2>/dev/null || true
 
 # Create data directory for persistent storage
 RUN mkdir -p /data && chown appuser:appuser /data

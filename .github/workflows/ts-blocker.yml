@@ -12,15 +12,22 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      - name: Block new TypeScript/JavaScript
+      - name: Block TypeScript (zero tolerance) and new JavaScript
         run: |
-          NEW_TS=$(git diff --name-only --diff-filter=A HEAD~1 2>/dev/null | grep -E '\.(ts|tsx)$' | grep -v '\.gen\.' || true)
-          NEW_JS=$(git diff --name-only --diff-filter=A HEAD~1 2>/dev/null | grep -E '\.(js|jsx)$' | grep -v '\.res\.js$' | grep -v '\.gen\.' | grep -v 'node_modules' || true)
-
-          if [ -n "$NEW_TS" ] || [ -n "$NEW_JS" ]; then
-            echo "❌ New TS/JS files detected. Use ReScript instead."
-            [ -n "$NEW_TS" ] && echo "$NEW_TS"
-            [ -n "$NEW_JS" ] && echo "$NEW_JS"
+          # Zero-tolerance: NO .ts files anywhere in the tree.
+          EXISTING_TS=$(find . -name "*.ts" -o -name "*.tsx" | grep -v './.git/' | grep -v node_modules | grep -v '\.gen\.' || true)
+          if [ -n "$EXISTING_TS" ]; then
+            echo "❌ TypeScript files found (must be zero — port to Zig or ReScript):"
+            printf '%s\n' "$EXISTING_TS"
             exit 1
           fi
-          echo "✅ ReScript policy enforced"
+
+          # JS: block new additions only (existing JS tracked for WASM migration).
+          NEW_JS=$(git diff --name-only --diff-filter=A HEAD~1 2>/dev/null | grep -E '\.(js|jsx)$' | grep -v '\.res\.js$' | grep -v '\.gen\.' | grep -v 'node_modules' || true)
+          if [ -n "$NEW_JS" ]; then
+            echo "❌ New .js files detected. Target language is Zig→WASM; use Zig or ReScript instead."
+            printf '%s\n' "$NEW_JS"
+            exit 1
+          fi
+
+          echo "✅ No TS/new-JS violations"

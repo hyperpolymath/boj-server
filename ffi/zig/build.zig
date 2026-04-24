@@ -310,11 +310,60 @@ pub fn build(b: *std.Build) void {
     });
     const run_e2e_tests = b.addRunArtifact(e2e_tests);
 
-    const e2e_step = b.step("e2e", "Run end-to-end order-ticket tests (no V server needed)");
+    const e2e_step = b.step("e2e", "Run end-to-end order-ticket tests");
     e2e_step.dependOn(&run_e2e_tests.step);
 
+    // --- Protocol-layer tests (formerly TypeScript; now Zig) ---
+    // These live in ../../tests/ and are compiled as standalone test executables.
+    const smoke_mod = b.createModule(.{
+        .root_source_file = b.path("../../tests/smoke_test.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    const smoke_tests = b.addTest(.{ .root_module = smoke_mod });
+    const run_smoke = b.addRunArtifact(smoke_tests);
+
+    const mcp_e2e_mod = b.createModule(.{
+        .root_source_file = b.path("../../tests/e2e_mcp_test.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    const mcp_e2e_tests = b.addTest(.{ .root_module = mcp_e2e_mod });
+    const run_mcp_e2e = b.addRunArtifact(mcp_e2e_tests);
+
+    const security_mod = b.createModule(.{
+        .root_source_file = b.path("../../tests/aspect_security_test.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    const security_tests = b.addTest(.{ .root_module = security_mod });
+    const run_security = b.addRunArtifact(security_tests);
+
+    const p2p_mod = b.createModule(.{
+        .root_source_file = b.path("../../tests/p2p_cartridge_properties_test.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    const p2p_tests = b.addTest(.{ .root_module = p2p_mod });
+    const run_p2p = b.addRunArtifact(p2p_tests);
+
+    const bench_mod = b.createModule(.{
+        .root_source_file = b.path("../../tests/mcp_bench.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    const bench_tests = b.addTest(.{ .root_module = bench_mod });
+    const run_bench = b.addRunArtifact(bench_tests);
+
+    const protocol_step = b.step("protocol-tests", "Run protocol-layer Zig tests");
+    protocol_step.dependOn(&run_smoke.step);
+    protocol_step.dependOn(&run_mcp_e2e.step);
+    protocol_step.dependOn(&run_security.step);
+    protocol_step.dependOn(&run_p2p.step);
+    protocol_step.dependOn(&run_bench.step);
+
     // --- Test step runs all ---
-    const test_step = b.step("test", "Run all FFI tests");
+    const test_step = b.step("test", "Run all FFI + protocol tests");
     test_step.dependOn(&run_catalogue_tests.step);
     test_step.dependOn(&run_loader_tests.step);
     test_step.dependOn(&run_readiness_tests.step);
@@ -328,4 +377,9 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&run_sdp_tests.step);
     test_step.dependOn(&run_seams_tests.step);
     test_step.dependOn(&run_shim_tests.step);
+    test_step.dependOn(&run_smoke.step);
+    test_step.dependOn(&run_mcp_e2e.step);
+    test_step.dependOn(&run_security.step);
+    test_step.dependOn(&run_p2p.step);
+    test_step.dependOn(&run_bench.step);
 }

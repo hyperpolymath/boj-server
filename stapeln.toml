@@ -6,18 +6,23 @@
 
 [metadata]
 name = "boj-server"
-version = "0.1.0"
-description = "boj-server container service"
+version = "0.3.1"
+description = "Bundle of Joy Server — unified MCP capability catalogue with formally verified Zig/Idris2 cartridges"
 author = "Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>"
 license = "PMPL-1.0-or-later"
 registry = "ghcr.io/hyperpolymath"
 
 [build]
-containerfile = "Containerfile"
+containerfile = "container/Containerfile"
 context = "."
 runtime = "podman"
 
 # ── Layer Definitions ──────────────────────────────────────────
+#
+# Architecture: Zig FFI → Idris2-verified ABI → Zig adapter binary.
+# No JavaScript/TypeScript/Node.js in the production path.
+# (The MCP bridge Containerfile at root/ is transitional until
+# typed-wasm-mcp lands — see docs/architecture/TYPED-WASM-MCP-BRIDGE.md.)
 
 [layers.base]
 description = "Chainguard Wolfi minimal base"
@@ -25,26 +30,38 @@ from = "cgr.dev/chainguard/wolfi-base:latest"
 cache = true
 verify = true
 
-[layers.deno-toolchain]
-description = "Deno runtime"
+[layers.zig-toolchain]
+description = "Zig toolchain + build-base + sqlite headers"
 extends = "base"
-packages = ["deno"]
+packages = ["build-base", "zig", "sqlite-dev"]
 cache = true
 
-[layers.build]
-description = "boj-server Deno build"
-extends = "deno-toolchain"
-commands = ["deno cache src/main.ts || true"]
+[layers.ffi-build]
+description = "Compile core FFI + all cartridge FFI shared libraries"
+extends = "zig-toolchain"
+commands = [
+    "cd ffi/zig && zig build -Doptimize=ReleaseFast",
+    "for d in cartridges/*/ffi; do [ -f \"$d/build.zig\" ] && (cd \"$d\" && zig build -Doptimize=ReleaseFast) || true; done",
+]
+
+[layers.adapter-build]
+description = "Compile Zig adapter binary (boj-server) linking all FFI libs"
+extends = "ffi-build"
+commands = [
+    "cd adapter/zig && zig build -Doptimize=ReleaseFast",
+]
 
 [layers.runtime]
-description = "Minimal runtime"
+description = "Minimal Chainguard runtime — binary + FFI libs only, no build toolchain"
 from = "cgr.dev/chainguard/wolfi-base:latest"
 packages = ["ca-certificates", "curl"]
 copy-from = [
-    { layer = "build", src = "/app/", dst = "/app/" },
+    { layer = "adapter-build", src = "/build/adapter/zig/zig-out/bin/boj-server", dst = "/app/boj-server" },
+    { layer = "ffi-build",     src = "/build/ffi/zig/zig-out/",                   dst = "/app/lib/core/" },
 ]
-entrypoint = ["["node", "mcp-bridge/main.js"]"]
-user = "node"
+entrypoint = ["/app/entrypoint.sh"]
+cmd = ["/app/boj-server"]
+user = "appuser"
 
 # ── Security ───────────────────────────────────────────────────
 
@@ -53,7 +70,7 @@ non-root = true
 read-only-root = false
 no-new-privileges = true
 cap-drop = ["ALL"]
-seccomp-profile = "default"
+seccomp-profile = "container/seccomp-boj.json"
 
 [security.signing]
 algorithm = "ML-DSA-87"
@@ -75,13 +92,24 @@ fail-on = ["critical", "high"]
 # ── Targets ────────────────────────────────────────────────────
 
 [targets.development]
-layers = ["base", "deno-toolchain", "build"]
-env = { LOG_LEVEL = "debug" }
+layers = ["base", "zig-toolchain", "ffi-build", "adapter-build"]
+env = { LOG_LEVEL = "debug", BOJ_DEV_MODE = "true" }
 
 [targets.production]
 layers = ["runtime"]
-env = { LOG_LEVEL = "info" }
+env = { LOG_LEVEL = "info", APP_HOST = "[::]", APP_PORT = "7700" }
 
 [targets.test]
-layers = ["base", "deno-toolchain", "build"]
+layers = ["base", "zig-toolchain", "ffi-build", "adapter-build"]
+env = { LOG_LEVEL = "debug", BOJ_TEST_MODE = "true" }
+
+[targets.ci]
+layers = ["base", "zig-toolchain", "ffi-build", "adapter-build"]
 env = { LOG_LEVEL = "debug" }
+commands = [
+    "cd ffi/zig && zig build test",
+    "zig test tests/smoke_test.zig",
+    "zig test tests/e2e_mcp_test.zig",
+    "zig test tests/aspect_security_test.zig",
+    "zig test tests/p2p_cartridge_properties_test.zig",
+]
