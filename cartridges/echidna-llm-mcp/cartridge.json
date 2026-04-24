@@ -3,8 +3,8 @@
   "spdx": "PMPL-1.0-or-later",
   "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>",
   "name": "echidna-llm-mcp",
-  "version": "0.2.0",
-  "description": "ECHIDNA 105-prover invocation surface — discovery, proof, verification, and LLM advisory",
+  "version": "0.3.0",
+  "description": "ECHIDNA 105-prover invocation surface — discovery, proof, verification, tactic suggestions, interactive sessions",
   "domain": "ai",
   "tier": "Ayo",
   "protocols": [
@@ -20,23 +20,42 @@
     "base_url": "local://echidna-llm-mcp",
     "content_type": "application/json"
   },
-  "backends": {
-    "rest": {
-      "env_var": "ECHIDNA_REST_URL",
-      "default": "http://127.0.0.1:8000",
-      "description": "ECHIDNA REST API — full 105-prover portfolio"
-    },
-    "llm": {
-      "env_var": "ECHIDNA_LLM_URL",
-      "default": "http://127.0.0.1:7721",
-      "description": "ECHIDNA LLM advisory layer — tactic suggestions, prover ranking"
-    }
+  "backend": {
+    "env_var": "ECHIDNA_REST_URL",
+    "default_local": "http://127.0.0.1:8081",
+    "fly_private": "http://echidna-nesy.flycast:8090",
+    "description": "ECHIDNA REST API — all 15 tools route here"
   },
-  "provers": "105 backends: Agda, Coq, Lean, Isabelle, Z3, CVC5, Metamath, HOLLight, Mizar, PVS, ACL2, HOL4, Idris2, Lean3, Vampire, EProver, SPASS, AltErgo, FStar, Dafny, Why3, TLAPS, Twelf, Nuprl, Minlog, Imandra, GLPK, SCIP, MiniZinc, Chuffed, ORTools, TypedWasm, SPIN, CBMC, SeaHorn, CaDiCaL, Kissat, MiniSat, NuSMV, TLC, Alloy, Prism, UPPAAL, FramaC, Viper, Tamarin, ProVerif, KeY, DReal, ABC, TypeLL, KatagoriaVerifier, TropicalTypeChecker, ChoreographicTypeChecker, EpistemicTypeChecker, EchoTypeChecker, SessionTypeChecker, ModalTypeChecker, QTTTypeChecker, EffectRowTypeChecker, DependentTypeChecker, RefinementTypeChecker, OrdinaryTypeChecker, PhantomTypeChecker, PolymorphicTypeChecker, ExistentialTypeChecker, HigherKindedTypeChecker, RowTypeChecker, SubtypingTypeChecker, IntersectionTypeChecker, UnionTypeChecker, GradualTypeChecker, HoareTypeChecker, IndexedTypeChecker, LinearTypeChecker, AffineTypeChecker, RelevantTypeChecker, OrderedTypeChecker, UniquenessTypeChecker, ImmutableTypeChecker, CapabilityTypeChecker, BunchedTypeChecker, TemporalTypeChecker, ProvabilityTypeChecker, ImpureTypeChecker, CoeffectTypeChecker, ProbabilisticTypeChecker, DyadicTypeChecker, HomotopyTypeChecker, CubicalTypeChecker, NominalTypeChecker, Abella, Dedukti, Cameleer, ACL2s, IsabelleZF, Boogie, Naproche, Matita, Arend, Athena, LambdaProlog, Mercury, Nitpick, Nunchaku",
+  "prover_count": 105,
+  "provers": "Agda, Coq, Lean, Isabelle, Z3, CVC5, Metamath, HOLLight, Mizar, PVS, ACL2, HOL4, Idris2, Lean3, Vampire, EProver, SPASS, AltErgo, FStar, Dafny, Why3, TLAPS, Twelf, Nuprl, Minlog, Imandra, GLPK, SCIP, MiniZinc, Chuffed, ORTools, TypedWasm, SPIN, CBMC, SeaHorn, CaDiCaL, Kissat, MiniSat, NuSMV, TLC, Alloy, Prism, UPPAAL, FramaC, Viper, Tamarin, ProVerif, KeY, DReal, ABC, TypeLL, KatagoriaVerifier, TropicalTypeChecker, ChoreographicTypeChecker, EpistemicTypeChecker, EchoTypeChecker, SessionTypeChecker, ModalTypeChecker, QTTTypeChecker, EffectRowTypeChecker, DependentTypeChecker, RefinementTypeChecker, OrdinaryTypeChecker, PhantomTypeChecker, PolymorphicTypeChecker, ExistentialTypeChecker, HigherKindedTypeChecker, RowTypeChecker, SubtypingTypeChecker, IntersectionTypeChecker, UnionTypeChecker, GradualTypeChecker, HoareTypeChecker, IndexedTypeChecker, LinearTypeChecker, AffineTypeChecker, RelevantTypeChecker, OrderedTypeChecker, UniquenessTypeChecker, ImmutableTypeChecker, CapabilityTypeChecker, BunchedTypeChecker, TemporalTypeChecker, ProvabilityTypeChecker, ImpureTypeChecker, CoeffectTypeChecker, ProbabilisticTypeChecker, DyadicTypeChecker, HomotopyTypeChecker, CubicalTypeChecker, NominalTypeChecker, Abella, Dedukti, Cameleer, ACL2s, IsabelleZF, Boogie, Naproche, Matita, Arend, Athena, LambdaProlog, Mercury, Nitpick, Nunchaku",
   "tools": [
     {
       "name": "echidna_list_provers",
-      "description": "Tool-discovery endpoint. Returns all 105 prover backends with name, tier, category, and complexity metadata. Call this first to know which prover ID to pass to other tools.",
+      "description": "Tool-discovery endpoint. Returns all 105 prover backends with name, tier, and complexity metadata. Always call this first to get valid prover IDs for other tools.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {}
+      }
+    },
+    {
+      "name": "echidna_health",
+      "description": "Health check. Returns { status: 'ok', version } if the ECHIDNA backend is reachable.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {}
+      }
+    },
+    {
+      "name": "echidna_rank_provers",
+      "description": "Returns all 105 prover backends with tier and complexity scores. Sort by tier ASC, complexity ASC to select the most appropriate prover for a given domain. Advisory — same data as echidna_list_provers.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {}
+      }
+    },
+    {
+      "name": "echidna_aspect_tags",
+      "description": "Returns the active aspect-tag set used by the tactic suggestion model. Tags categorise proof goals by domain (arithmetic, induction, rewriting, etc.).",
       "inputSchema": {
         "type": "object",
         "properties": {}
@@ -44,46 +63,113 @@
     },
     {
       "name": "echidna_prove",
-      "description": "Invoke a prover backend on a file path. Returns {verified, message, prover, raw_output, stderr}. Auto-detects prover from file extension when prover is omitted.",
+      "description": "Invoke a prover backend on proof content. Returns { success, goals, message }. Parses the content, runs the prover, and reports verification outcome.",
       "inputSchema": {
         "type": "object",
         "properties": {
-          "file": {
-            "type": "string",
-            "description": "Absolute path to the proof file. Extension determines default prover: .lean → Lean, .v → Coq, .agda → Agda, .smt2 → Z3, .thy → Isabelle, .miz → Mizar, .fst → FStar, etc."
-          },
           "prover": {
             "type": "string",
-            "description": "Prover backend ID (case-sensitive). One of 105 values — call echidna_list_provers for the full list. Common: Agda, Coq, Lean, Isabelle, Z3, CVC5, Idris2, FStar, Dafny, Why3, Metamath, Vampire, SPASS, EProver."
+            "description": "Prover backend ID. One of 105 values — call echidna_list_provers for the full list. Common: Agda, Coq, Lean, Isabelle, Z3, CVC5, Idris2, FStar, Dafny, Why3, Metamath, Vampire, SPASS, EProver."
           },
-          "timeout_secs": {
+          "content": {
+            "type": "string",
+            "description": "Proof content in the target prover's syntax."
+          },
+          "timeout": {
             "type": "integer",
             "description": "Timeout in seconds. Default 300."
+          },
+          "neural": {
+            "type": "boolean",
+            "description": "Enable Julia ML neural premise selection. Default true."
           }
         },
-        "required": ["file"]
+        "required": ["prover", "content"]
       }
     },
     {
       "name": "echidna_verify",
-      "description": "Verify proof content from an inline string rather than a file. Requires prover ID — content is passed directly to the prover binary with no extension-based auto-detection.",
+      "description": "Verify proof content (parse → export → prover binary round-trip). Returns { valid, outcome, goals_remaining, tactics_used }. Outcome is one of PROVED, NO_PROOF_FOUND, INVALID_INPUT, UNSUPPORTED_FEATURE, TIMEOUT, INCONSISTENT_PREMISES, PROVER_ERROR, SYSTEM_ERROR.",
       "inputSchema": {
         "type": "object",
         "properties": {
+          "prover": {
+            "type": "string",
+            "description": "Prover backend ID. Call echidna_list_provers for the full list of 105 values."
+          },
           "content": {
             "type": "string",
-            "description": "Proof content to verify (raw prover syntax)"
+            "description": "Proof content in the target prover's syntax."
+          }
+        },
+        "required": ["prover", "content"]
+      }
+    },
+    {
+      "name": "echidna_verify_raw",
+      "description": "Invoke the prover binary directly on raw content, skipping the internal parse/export round-trip. Required for provers that produce non-standard output (EProver, CaDiCaL, MiniSat, etc.). Returns { valid, exit_code, stdout, stderr, message }.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "prover": {
+            "type": "string",
+            "description": "Prover backend ID. Call echidna_list_provers for the full list of 105 values."
+          },
+          "content": {
+            "type": "string",
+            "description": "Raw proof content to pass directly to the prover binary."
+          }
+        },
+        "required": ["prover", "content"]
+      }
+    },
+    {
+      "name": "echidna_suggest",
+      "description": "Neural tactic suggestions from the Julia ML layer (corpus-backed, GNN-guided). Returns { suggestions: [string] }. These are corpus-derived and not formally verified — advisory only.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "prover": {
+            "type": "string",
+            "description": "Prover backend ID. Call echidna_list_provers for the full list of 105 values."
+          },
+          "content": {
+            "type": "string",
+            "description": "Current proof state or partial proof in the target prover's syntax."
+          },
+          "limit": {
+            "type": "integer",
+            "description": "Maximum number of suggestions to return. Default 5."
+          }
+        },
+        "required": ["prover", "content"]
+      }
+    },
+    {
+      "name": "echidna_suggest_tactics",
+      "description": "Aspect-tag model tactic suggestions for a proof goal (goal text in, ranked tactics out). Advisory only — results are hints, not verified; they cannot influence ECHIDNA trust levels (invariant proved in abi/EchidnaLlm/Protocol.idr).",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "goal": {
+            "type": "string",
+            "description": "Proof goal text in the target prover's syntax."
           },
           "prover": {
             "type": "string",
-            "description": "Prover backend ID. One of 105 values — call echidna_list_provers for the full list."
+            "description": "Target prover ID. Call echidna_list_provers for the full list of 105 values. Common: Agda, Coq, Lean, Idris2, Isabelle, FStar, Dafny, Z3, CVC5, Why3, Vampire."
           },
-          "timeout_secs": {
+          "active_tags": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Aspect tags to activate (filters suggestions by domain). Call echidna_aspect_tags for available tags."
+          },
+          "top_k": {
             "type": "integer",
-            "description": "Timeout in seconds. Default 300."
+            "description": "Number of tactic suggestions to return (1–50, default 5)."
           }
         },
-        "required": ["content", "prover"]
+        "required": ["goal"]
       }
     },
     {
@@ -94,90 +180,84 @@
         "properties": {
           "query": {
             "type": "string",
-            "description": "Search query (keywords, tactic names, theorem types)"
+            "description": "Search query (keywords, tactic names, theorem types)."
           }
         },
         "required": ["query"]
       }
     },
     {
-      "name": "echidna_init",
-      "description": "Initialise ECHIDNA LLM advisory endpoint",
+      "name": "echidna_search_theorems",
+      "description": "Theorem-specific search with full metadata (name, prover, source). Complements echidna_search when you need structured theorem records rather than raw proof text.",
       "inputSchema": {
         "type": "object",
         "properties": {
-          "endpoint": {
+          "query": {
             "type": "string",
-            "description": "ECHIDNA LLM backend endpoint URL"
-          }
-        }
-      }
-    },
-    {
-      "name": "echidna_authenticate",
-      "description": "Authenticate with ECHIDNA LLM advisory token",
-      "inputSchema": {
-        "type": "object",
-        "properties": {
-          "token": {
-            "type": "string",
-            "description": "API token"
-          },
-          "max_calls": {
-            "type": "integer",
-            "description": "Max calls per session"
+            "description": "Theorem name fragment, keyword, or mathematical concept."
           }
         },
-        "required": ["token"]
+        "required": ["query"]
       }
     },
     {
-      "name": "echidna_suggest_tactics",
-      "description": "LLM-advisory: get proof tactic suggestions for a goal. Advisory only — suggestions are hints, not verified results. Does not affect ECHIDNA trust levels.",
+      "name": "echidna_session_create",
+      "description": "Start an interactive tactic proof session. Returns { session_id }. Use the session_id with echidna_session_apply to apply tactics one at a time.",
       "inputSchema": {
         "type": "object",
         "properties": {
-          "goal": {
-            "type": "string",
-            "description": "Proof goal (in target prover's syntax)"
-          },
-          "hypotheses": {
-            "type": "array",
-            "items": { "type": "string" },
-            "description": "Available hypotheses in the proof context"
-          },
           "prover": {
             "type": "string",
-            "description": "Target prover ID. One of 105 values — call echidna_list_provers for the full list. Common: Agda, Coq, Lean, Idris2, Isabelle, FStar, Dafny, Z3, CVC5, Why3, Vampire."
-          },
-          "top_k": {
-            "type": "integer",
-            "description": "Number of tactic suggestions to return (1-50, default 5)"
+            "description": "Prover backend ID. Call echidna_list_provers for the full list of 105 values."
           }
         },
-        "required": ["goal"]
+        "required": ["prover"]
       }
     },
     {
-      "name": "echidna_rank_provers",
-      "description": "LLM-advisory: rank all applicable prover backends by expected success probability for a given theorem. Returns ranked list with confidence scores. Advisory only.",
+      "name": "echidna_session_state",
+      "description": "Get the current proof state for an interactive session. Returns { goals, complete }.",
       "inputSchema": {
         "type": "object",
         "properties": {
-          "theorem": {
+          "session_id": {
             "type": "string",
-            "description": "Theorem statement to rank provers for"
-          },
-          "context": {
-            "type": "string",
-            "description": "Proof context (available lemmas, type environment)"
-          },
-          "domain": {
-            "type": "string",
-            "description": "Proof domain hint: arithmetic, logic, type-theory, program-verification, security-protocol, constraint-solving, model-checking"
+            "description": "Session ID returned by echidna_session_create."
           }
         },
-        "required": ["theorem"]
+        "required": ["session_id"]
+      }
+    },
+    {
+      "name": "echidna_session_apply",
+      "description": "Apply a tactic to the current goal in an interactive session. Returns { success, complete, goals_remaining, message }.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "session_id": {
+            "type": "string",
+            "description": "Session ID returned by echidna_session_create."
+          },
+          "tactic": {
+            "type": "string",
+            "description": "Tactic to apply (in the prover's syntax)."
+          }
+        },
+        "required": ["session_id", "tactic"]
+      }
+    },
+    {
+      "name": "echidna_session_tree",
+      "description": "Retrieve the current proof tree for an interactive session as a JSON structure.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "session_id": {
+            "type": "string",
+            "description": "Session ID returned by echidna_session_create."
+          }
+        },
+        "required": ["session_id"]
       }
     }
   ]

@@ -10,27 +10,35 @@ Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
 == Overview
 
 ECHIDNA 105-prover cross-repo invocation surface.  Exposes all 105 ECHIDNA
-prover backends (proof invocation, tool discovery, tactic advisory) as BoJ
-cartridge tools.  **All ECHIDNA calls from any hyperpolymath repo must go
-through this cartridge — never call ECHIDNA directly.**
+prover backends through 15 tools covering discovery, proof, verification,
+tactic advisory, and interactive proof sessions.
+**All ECHIDNA calls from any hyperpolymath repo must go through this
+cartridge — never call ECHIDNA directly.**
 
-== Tools (8)
+== Tools (15)
 
 [cols="2,4,2"]
 |===
-| Tool | Description | Backend
+| Tool | Description | REST Endpoint
 
-| `echidna_list_provers` | Tool-discovery: returns all 105 provers with tier/category/complexity | REST :8000
-| `echidna_prove` | Invoke a prover on a file path (auto-detects from extension) | REST :8000
-| `echidna_verify` | Verify inline proof content as a string | REST :8000
-| `echidna_search` | Keyword search over the 66,674-proof corpus | REST :8000
-| `echidna_init` | Initialise LLM advisory session | LLM :7721
-| `echidna_authenticate` | Authenticate for metered LLM calls | LLM :7721
-| `echidna_suggest_tactics` | Advisory tactic suggestions for a proof goal | LLM :7721
-| `echidna_rank_provers` | Advisory prover ranking for a theorem | LLM :7721
+| `echidna_list_provers` | Discovery: all 105 provers with tier/complexity | `GET /api/provers`
+| `echidna_health` | Backend health check | `GET /api/health`
+| `echidna_rank_provers` | Prover list (advisory selection hint) | `GET /api/provers`
+| `echidna_aspect_tags` | Active proof-aspect tag set | `GET /api/aspect-tags`
+| `echidna_prove` | Invoke prover on content | `POST /api/prove`
+| `echidna_verify` | Parse → export → verify round-trip | `POST /api/verify`
+| `echidna_verify_raw` | Direct binary invocation, no round-trip | `POST /api/verify_raw`
+| `echidna_suggest` | Julia ML neural tactic suggestions | `POST /api/suggest`
+| `echidna_suggest_tactics` | Aspect-tag model tactic suggestions | `POST /api/tactics/suggest`
+| `echidna_search` | Keyword search over 66,674-proof corpus | `GET /api/search`
+| `echidna_search_theorems` | Theorem search with metadata | `GET /api/theorems/search`
+| `echidna_session_create` | Start interactive tactic session | `POST /api/session/create`
+| `echidna_session_state` | Current goals / completion | `GET /api/session/:id/state`
+| `echidna_session_apply` | Apply tactic to current goal | `POST /api/session/:id/apply`
+| `echidna_session_tree` | Full proof tree for session | `GET /api/session/:id/tree`
 |===
 
-Advisory tools (suggest_tactics, rank_provers) cannot influence ECHIDNA
+Advisory tools (suggest_tactics, suggest) cannot influence ECHIDNA
 trust levels — formally verified in `abi/EchidnaLlm/Protocol.idr`.
 
 == Quick Start
@@ -40,16 +48,22 @@ trust levels — formally verified in `abi/EchidnaLlm/Protocol.idr`.
 // 1. Discover available provers
 { "tool": "echidna_list_provers", "args": {} }
 
-// 2. Prove a Lean 4 file
+// 2. Prove inline Lean 4 content
 {
   "tool": "echidna_prove",
-  "args": { "file": "/path/to/proof.lean", "prover": "Lean" }
+  "args": { "content": "theorem t : 1 + 1 = 2 := rfl", "prover": "Lean" }
 }
 
 // 3. Verify inline Z3 content
 {
   "tool": "echidna_verify",
   "args": { "content": "(assert (not true))\n(check-sat)", "prover": "Z3" }
+}
+
+// 4. Start interactive session
+{
+  "tool": "echidna_session_create",
+  "args": { "prover": "Coq" }
 }
 ----
 
@@ -63,20 +77,22 @@ Three-layer stack per the BoJ cartridge standard:
 |===
 | Layer | Language | Purpose
 
-| ABI    | Idris2 | Formally verified state machine; proves advisory-only invariant for all 5 LLM operations; `ProverId` bounded to `Fin 105`
+| ABI    | Idris2 | Formally verified state machine; proves advisory-only invariant for all tactic ops; `ProverId` bounded to `Fin 105`
 | FFI    | Zig    | C-ABI implementation: session pool, action metrics, thread safety
-| Adapter| Zig    | Adapter bridge to the BoJ unified adapter protocol
+| Adapter| Zig    | Bridge to the BoJ unified adapter protocol
 |===
 
-== Backend URLs
+== Backend URL
+
+Single REST backend — all 15 tools route here.
 
 [source,bash]
 ----
-# REST API (proof, discovery, search) — full 105-prover portfolio
-export ECHIDNA_REST_URL=http://127.0.0.1:8000   # default
+# Local default
+export ECHIDNA_REST_URL=http://127.0.0.1:8081
 
-# LLM advisory layer (tactic suggestions, ranking)
-export ECHIDNA_LLM_URL=http://127.0.0.1:7721    # default
+# Fly.io private network
+export ECHIDNA_REST_URL=http://echidna-nesy.flycast:8090
 ----
 
 == Building
@@ -96,9 +112,9 @@ cd adapter && zig build
 
 == Status
 
-Alpha (CRG D). Cartridge metadata declared in `cartridge.json`; 8 tools exposed
-across two backend layers (REST + LLM advisory). Not yet dogfooded externally.
-See `docs/practice/DOGFOOD-LOG.adoc` for usage evidence.
+Alpha (CRG D). Cartridge v0.3.0: 15 tools across the full ECHIDNA REST API.
+Not yet dogfooded externally. See `docs/practice/DOGFOOD-LOG.adoc` for
+usage evidence.
 
 == Consumer Repos
 
