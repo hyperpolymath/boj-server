@@ -5,13 +5,14 @@
 # Configuration for Hypatia scanning and symbolic reasoning.
 
 [metadata]
-version = "0.1.0"
-last-updated = "2026-03-02"
+version = "0.2.0"
+last-updated = "2026-04-25"
 
 [hypatia-config]
 scan-enabled = true
 scan-depth = "standard"  # quick | standard | deep
-report-format = "logtalk"
+report-format = "json"
+# logtalk removed 2026-04-12: Hypatia now consumes JSON AssailReport via Elixir rules
 
 [symbolic-rules]
 # Custom symbolic rules for this project

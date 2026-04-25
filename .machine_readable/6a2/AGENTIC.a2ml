@@ -5,8 +5,8 @@
 # Defines what AI agents can and cannot do in this repository.
 
 [metadata]
-version = "0.1.0"
-last-updated = "2026-03-02"
+version = "0.2.0"
+last-updated = "2026-04-25"
 
 [agent-permissions]
 can-edit-source = true
@@ -22,6 +22,9 @@ can-create-files = true
 # - Never use banned languages (TypeScript, Python, Go, etc.)
 # - Never place state files in repository root (must be in .machine_readable/)
 # - Never use AGPL license (use PMPL-1.0-or-later)
+# - Never use elixir:1.16-alpine in Containerfile.fly — must be elixir:1.16 (Debian/glibc) to match wolfi-base Stage 3 ABI
+# - Never add `*.json` to .dockerignore — would exclude cartridges/*/cartridge.json needed by seed nodes
+# - fly.io [build].dockerfile resolves relative to fly.toml — always pass --dockerfile flag on CLI instead
 
 [maintenance-integrity]
 fail-closed = true

@@ -4,8 +4,8 @@
 # ECOSYSTEM.a2ml — Bundle of Joy Server ecosystem position
 
 [metadata]
-version = "0.1.0"
-last-updated = "2026-03-02"
+version = "0.2.0"
+last-updated = "2026-04-25"
 
 [project]
 name = "Bundle of Joy Server"
@@ -24,7 +24,7 @@ projects = [
   { name = "hypatia", relationship = "integration", notes = "Hypatia scans cartridges for security. SafeReasoning harmonizes Neural (Hypatia) + Symbolic (Echidna) verdicts." },
   { name = "gitbot-fleet", relationship = "integration", notes = "SafeFleet enforces 6-bot gate policy. FleetCertified proof type requires all gates passed." },
   { name = "stapeln", relationship = "dependency", notes = "Container supply chain for node hosting. Chainguard base images, selur-compose, vordr, svalinn, cerro-torre." },
-  { name = "language-bridges", relationship = "sibling-standard", notes = "Same Idris2/Zig/V-lang stack. BoJ follows the ABI-FFI universal standard." },
+  { name = "language-bridges", relationship = "sibling-standard", notes = "Same Idris2/Zig stack (V-lang retired 2026-04-10). BoJ follows the ABI-FFI universal standard." },
   { name = "rsr-template-repo", relationship = "origin", notes = "BoJ was bootstrapped from rsr-template-repo. All 17 mandatory workflows present." },
 ]
 
@@ -41,9 +41,10 @@ integrations = [
 type = "community-hosted"
 description = "Volunteer nodes host BoJ servers, like Tor/IPFS. Hash attestation ensures integrity — tampered nodes are excluded from the community network but can still run locally."
 seed-nodes = [
-  { region = "Europe-West", operator = "hyperpolymath", notes = "Primary development node" },
-  { region = "Europe-Central", operator = "family", notes = "Son's node" },
-  { region = "Oceania", operator = "family", notes = "Brother's node (Australia)" },
-  { region = "Americas", operator = "family", notes = "US node" },
+  { region = "Europe-West",    operator = "hyperpolymath", fly-app = "boj-seed-eu", host = "boj-seed-eu.fly.dev",  canonical-host = "eu.boj.hyperpolymath.dev", notes = "Deployed 2026-04-25 — lhr region" },
+  { region = "Europe-Central", operator = "hyperpolymath", fly-app = "boj-seed-de", host = "boj-seed-de.fly.dev",  canonical-host = "de.boj.hyperpolymath.dev", notes = "Deployed 2026-04-25 — fra region" },
+  { region = "US-East",        operator = "hyperpolymath", fly-app = "boj-seed-us", host = "boj-seed-us.fly.dev",  canonical-host = "us.boj.hyperpolymath.dev", notes = "Deployed 2026-04-25 — iad region" },
+  { region = "Asia-Pacific",   operator = "hyperpolymath", fly-app = "boj-seed-ap", host = "boj-seed-ap.fly.dev",  canonical-host = "ap.boj.hyperpolymath.dev", notes = "Deployed 2026-04-25 — syd region" },
 ]
-federation-protocol = "Umoja gossip (IPv6, Byzantine fault tolerance)"
+dns-status = "hyperpolymath.dev undelegated — registrar action needed (see container/fly/DNS-SETUP.adoc); *.fly.dev hostnames operative"
+federation-protocol = "Umoja gossip (X25519 + ChaCha20-Poly1305, UDP 9999, IPv6)"

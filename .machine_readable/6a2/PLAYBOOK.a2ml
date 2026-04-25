@@ -5,18 +5,68 @@
 # Runbooks, incident response, deployment procedures.
 
 [metadata]
-version = "0.1.0"
-last-updated = "2026-03-02"
+version = "0.2.0"
+last-updated = "2026-04-25"
 
 [deployment]
-# method = "gitops"  # gitops | manual | ci-triggered
-# target = "container"  # container | binary | library | wasm
+method = "gitops + manual"
+targets = ["container", "fly.io"]
+
+[local-dev-deployment]
+prereqs = ["zig >= 0.15", "elixir >= 1.16", "deno >= 1.40", "podman", "just"]
+start = "just dev"
+# Runs: compose.dev.yaml (boj-rest:7700 + http-capability-gateway:7800)
+test = "just test"
+invoke-check = "just invoke-check"
+
+[container-deployment]
+# Full image (all 111 .so files + mod.js — ~50 min build)
+build = "podman build -f container/Containerfile -t boj-server:latest ."
+push = "just container-push"
+compose = "podman compose -f container/compose.prod.yaml up -d"
+
+[fly-io-seed-deployment]
+# Lean image (~3 min build — boj-invoke only, JS path for all cartridges)
+# Run from repo root
+deploy-eu = "fly deploy --app boj-seed-eu --config container/fly/fly-eu.toml --dockerfile container/Containerfile.fly --remote-only"
+deploy-de = "fly deploy --app boj-seed-de --config container/fly/fly-de.toml --dockerfile container/Containerfile.fly --remote-only"
+deploy-us = "fly deploy --app boj-seed-us --config container/fly/fly-us.toml --dockerfile container/Containerfile.fly --remote-only"
+deploy-ap = "fly deploy --app boj-seed-ap --config container/fly/fly-ap.toml --dockerfile container/Containerfile.fly --remote-only"
+deploy-all = "bash container/fly/deploy-seeds.sh"
+# Health check after deploy:
+health-check = "for h in eu de us ap; do echo \"=== $h ===\"; curl -sf https://boj-seed-${h}.fly.dev/health | jq .; done"
+
+[fly-io-notes]
+# .dockerignore is critical — without it build context is ~2.8 GB (.git alone is ~2 GB)
+# Containerfile.fly uses elixir:1.16 (Debian/glibc) in Stage 2 — NOT alpine (musl)
+# Stage 3 is cgr.dev/chainguard/wolfi-base (glibc-native); gcompat not needed
+# Stage 3 packages: ca-certificates openssl ncurses libstdc++ libssl3 curl
+# [build].dockerfile in fly.toml resolves relative to fly.toml — use CLI --dockerfile flag instead
+# Healthcheck uses curl /health (no .so dependency — seed nodes have no .so files)
+
+[fly-io-custom-domains]
+# hyperpolymath.dev has no NS records as of 2026-04-25 — registrar action needed
+# See container/fly/DNS-SETUP.adoc for full procedure
+# Once DNS is delegated: fly certs add eu.boj.hyperpolymath.dev --app boj-seed-eu (etc.)
+operative-urls = [
+  "https://boj-seed-eu.fly.dev",
+  "https://boj-seed-de.fly.dev",
+  "https://boj-seed-us.fly.dev",
+  "https://boj-seed-ap.fly.dev",
+]
+future-canonical-urls = [
+  "https://eu.boj.hyperpolymath.dev",
+  "https://de.boj.hyperpolymath.dev",
+  "https://us.boj.hyperpolymath.dev",
+  "https://ap.boj.hyperpolymath.dev",
+]
 
 [incident-response]
-# 1. Check .machine_readable/STATE.a2ml for current status
+# 1. Check .machine_readable/6a2/STATE.a2ml for current status
 # 2. Review recent commits and CI results
 # 3. Run `just validate` to check compliance
 # 4. Run `just security` to audit for vulnerabilities
+# 5. For fly.io incidents: fly status --app boj-seed-eu (etc.)
 
 [release-process]
 # 1. Update version in STATE.a2ml, META.a2ml, Justfile
@@ -25,6 +75,7 @@ last-updated = "2026-03-02"
 # 4. Tag and push
 # 5. Restore local permissions if needed: `just perms-restore`
 # 6. Run `just container-push` if applicable
+# 7. Redeploy seed nodes: bash container/fly/deploy-seeds.sh
 
 [maintenance-operations]
 # Baseline audit:
