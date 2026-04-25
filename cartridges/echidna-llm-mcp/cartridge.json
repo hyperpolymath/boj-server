@@ -259,6 +259,32 @@
         },
         "required": ["session_id"]
       }
+    },
+    {
+      "name": "consultant_qa",
+      "description": "Compose a markdown Q&A response for echidnabot's Consultant mode. Pulls related corpus precedent (/api/search) and tactic hints (/api/tactics/suggest), formats both into a single markdown answer block. Used when a Consultant-mode repo gets an `@echidnabot` mention on a PR comment.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "repo": {
+            "type": "string",
+            "description": "Full repo name (owner/name) — currently used only in logging/provenance."
+          },
+          "pr_number": {
+            "type": "integer",
+            "description": "PR number the question was posted on."
+          },
+          "question": {
+            "type": "string",
+            "description": "The user's question, with @echidnabot mentions stripped."
+          },
+          "context": {
+            "type": "string",
+            "description": "Compact summary of recent verification jobs on this PR."
+          }
+        },
+        "required": ["question"]
+      }
     }
   ]
 }

@@ -129,6 +129,94 @@ export async function handleTool(toolName, args) {
       return restGet(`/api/session/${id}/tree`);
     }
 
+    // ── Consultant-mode Q&A (Phase 6 of echidnabot bot-mode wiring) ────────
+    case "consultant_qa": {
+      // Args: { repo: string, pr_number: number, question: string, context: string }
+      //
+      // Composes existing ECHIDNA endpoints into a single markdown-formatted
+      // Q&A response. Used by echidnabot when a Consultant-mode repo gets
+      // an `@echidnabot` mention on a PR comment.
+      //
+      // Strategy (composition over a new endpoint):
+      //   1. /api/search — keyword search over the 66,674-proof corpus
+      //      for proofs related to the user's question. Surfaces precedent
+      //      that the reviewer might find useful.
+      //   2. /api/tactics/suggest — aspect-tag model gives tactic hints
+      //      for a freeform goal-shaped query.
+      //   3. Format both into a single markdown answer block.
+      //
+      // No new ECHIDNA endpoint is needed; if one ever lands at /api/consult,
+      // route preferentially to it from here.
+      const question = (a.question ?? "").trim();
+      if (!question) {
+        return {
+          status: 200,
+          data: {
+            answer:
+              "_Mention received — no question text. Ping me with `@echidnabot " +
+              "<your question>` and I'll look up related proofs and suggestions._",
+            provenance: "no-op (empty question)",
+          },
+        };
+      }
+
+      const [searchResp, suggestResp] = await Promise.all([
+        restGet(`/api/search?q=${encodeURIComponent(question)}`),
+        restPost("/api/tactics/suggest", {
+          goal: question,
+          top_k: 3,
+          active_tags: [],
+        }),
+      ]);
+
+      const lines = [];
+      lines.push("## 🦔 echidnabot · Consultant — composed answer");
+      lines.push("");
+      lines.push(`> ${question.slice(0, 200)}`);
+      lines.push("");
+
+      if (searchResp.status === 200 && Array.isArray(searchResp.data?.results) &&
+          searchResp.data.results.length > 0) {
+        lines.push("### 📚 Related precedent (corpus search)");
+        lines.push("");
+        for (const hit of searchResp.data.results.slice(0, 5)) {
+          const name = hit.theorem ?? hit.name ?? hit.id ?? "?";
+          const prover = hit.prover ?? "?";
+          lines.push(`- \`${name}\` · ${prover}`);
+        }
+        lines.push("");
+      }
+
+      if (suggestResp.status === 200 && Array.isArray(suggestResp.data?.suggestions) &&
+          suggestResp.data.suggestions.length > 0) {
+        lines.push("### 💡 Tactic hints (aspect-tag model)");
+        lines.push("");
+        for (const s of suggestResp.data.suggestions.slice(0, 3)) {
+          const tactic = s.tactic ?? s.text ?? "?";
+          const conf = s.confidence != null ? ` (${(s.confidence * 100).toFixed(0)}%)` : "";
+          lines.push(`- \`${tactic}\`${conf}`);
+        }
+        lines.push("");
+      }
+
+      if (lines.length === 4) {
+        // Header + question, no search/suggest content — surface that.
+        lines.push("_No related precedent or tactic suggestions found in the corpus._");
+        lines.push(
+          "_This response is a composition of /api/search + /api/tactics/suggest; " +
+          "richer free-form Q&A awaits a dedicated /api/consult endpoint upstream._",
+        );
+      }
+
+      return {
+        status: 200,
+        data: {
+          answer: lines.join("\n"),
+          provenance: "echidna-llm-mcp/consultant_qa: search+tactics/suggest composite",
+        },
+      };
+    }
+
     default:
       return { status: 404, data: { error: `Unknown tool: ${toolName}` } };
   }
