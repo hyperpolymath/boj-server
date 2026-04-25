@@ -1,0 +1,122 @@
+# SPDX-License-Identifier: PMPL-1.0-or-later
+# Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+#
+# BoJ Server — fly.io variant Containerfile
+#
+# Identical to Containerfile except Stage 2 uses hexpm/elixir (public) instead
+# of cgr.dev/chainguard/elixir (requires Chainguard auth, unavailable on
+# fly.io's Depot remote builder).
+#
+# Build (fly deploys this automatically via container/fly/fly-*.toml):
+#   fly deploy --dockerfile container/Containerfile.fly ...
+
+# ============================================================================
+# Stage 1: Zig FFI Builder
+# ============================================================================
+
+FROM cgr.dev/chainguard/wolfi-base:latest AS zig-builder
+
+RUN apk add --no-cache zig build-base
+
+WORKDIR /build
+
+COPY ffi/zig/ ffi/zig/
+COPY cartridges/ cartridges/
+
+RUN cd ffi/zig && zig build invoke -Doptimize=ReleaseFast
+
+RUN for ffi_dir in /build/cartridges/*/ffi; do \
+      cart="$(basename "$(dirname "$ffi_dir")")" && \
+      if [ -f "$ffi_dir/build.zig" ]; then \
+        echo "Building ${cart}..." && \
+        cd "$ffi_dir" && \
+        zig build -Doptimize=ReleaseFast 2>/dev/null || \
+          echo "WARN: ${cart} FFI skipped (non-fatal)"; \
+      fi; \
+    done
+
+# ============================================================================
+# Stage 2: Elixir Release Builder (hexpm public image — no auth required)
+# ============================================================================
+
+FROM elixir:1.16-alpine AS mix-builder
+
+WORKDIR /build
+
+COPY elixir/ ./
+
+RUN mix local.hex --force && mix local.rebar --force
+ENV MIX_ENV=prod
+RUN mix deps.get --only prod
+RUN mix compile
+RUN mix release boj_rest
+
+# ============================================================================
+# Stage 3: Runtime Image
+# ============================================================================
+
+FROM cgr.dev/chainguard/wolfi-base:latest
+
+LABEL org.opencontainers.image.title="Bundle of Joy Server" \
+      org.opencontainers.image.description="BoJ REST server — Elixir + Zig FFI cartridge host (fly.io)" \
+      org.opencontainers.image.url="https://github.com/hyperpolymath/boj-server" \
+      org.opencontainers.image.source="https://github.com/hyperpolymath/boj-server" \
+      org.opencontainers.image.vendor="hyperpolymath" \
+      org.opencontainers.image.licenses="PMPL-1.0-or-later" \
+      org.opencontainers.image.authors="Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>"
+
+RUN apk add --no-cache ca-certificates openssl ncurses-libs libstdc++ gcompat
+
+RUN addgroup -S appuser && adduser -S appuser -G appuser
+
+WORKDIR /app
+
+COPY --from=mix-builder /build/_build/prod/rel/boj_rest ./
+
+COPY --from=zig-builder /build/ffi/zig/zig-out/bin/boj-invoke /app/bin/boj-invoke
+RUN chmod +x /app/bin/boj-invoke
+
+RUN mkdir -p /app/cartridges
+COPY --from=zig-builder /build/cartridges/ /tmp/cartridges-src/
+RUN for cart_dir in /tmp/cartridges-src/*/; do \
+      cart="$(basename "$cart_dir")" && \
+      so_dir="${cart_dir}ffi/zig-out/lib" && \
+      if [ -d "$so_dir" ]; then \
+        target="/app/cartridges/${cart}/ffi/zig-out/lib" && \
+        mkdir -p "$target" && \
+        cp -r "${so_dir}/"*.so "$target/" 2>/dev/null || true; \
+      fi; \
+    done && \
+    rm -rf /tmp/cartridges-src
+
+RUN mkdir -p /app-cartridges-meta
+COPY cartridges/ /tmp/carts-meta/
+RUN for cart_dir in /tmp/carts-meta/*/; do \
+      cart="$(basename "$cart_dir")" && \
+      if [ -f "${cart_dir}cartridge.json" ]; then \
+        mkdir -p "/app/cartridges/${cart}" && \
+        cp "${cart_dir}cartridge.json" "/app/cartridges/${cart}/"; \
+      fi; \
+    done && \
+    rm -rf /tmp/carts-meta
+
+RUN mkdir -p /data && chown appuser:appuser /data
+RUN chown -R appuser:appuser /app
+
+ENV BOJ_CARTRIDGES_ROOT=/app/cartridges
+ENV BOJ_INVOKE_CLI=/app/bin/boj-invoke
+ENV PHX_HOST=0.0.0.0
+ENV PORT=7700
+ENV MIX_ENV=prod
+
+VOLUME ["/data"]
+USER appuser
+
+EXPOSE 7700
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
+    CMD /app/bin/boj-invoke /app/cartridges/boj-health/ffi/zig-out/lib/libboj_health.so probe \
+      | grep -q '"ok":true' || exit 1
+
+ENTRYPOINT ["/app/bin/boj_rest"]
+CMD ["start"]

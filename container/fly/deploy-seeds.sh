@@ -56,7 +56,7 @@ for region_code in eu de us ap; do
   fly deploy \
     --app "${app}" \
     --config "${config}" \
-    --dockerfile container/Containerfile \
+    --dockerfile container/Containerfile.fly \
     --remote-only \
     --wait-timeout 900
 

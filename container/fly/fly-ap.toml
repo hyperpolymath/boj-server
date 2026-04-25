@@ -2,7 +2,7 @@
 # Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
 #
 # BoJ Seed Node — Asia-Pacific (Sydney, syd)
-# Deploy: fly deploy --config container/fly/fly-ap.toml  (from repo root)
+# Deploy: fly deploy --config container/fly/fly-ap.toml --dockerfile container/Containerfile.fly  (from repo root)
 
 app            = "boj-seed-ap"
 primary_region = "syd"
