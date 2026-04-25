@@ -1,9 +1,10 @@
-# SPDX-License-Identifier: MPL-2.0
+# SPDX-License-Identifier: PMPL-1.0-or-later
 # Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
 #
 # Container Publish workflow — builds and pushes the container image to
-# GitHub Container Registry (ghcr.io) and Docker Hub on version tag push
-# (v*) or manual dispatch.  Uses the multi-stage Containerfile in container/.
+# GitHub Container Registry (ghcr.io) and optionally Docker Hub on version
+# tag push (v*) or manual dispatch.  Uses Podman + the multi-stage
+# Containerfile in container/.
 name: Container Publish
 
 on:
@@ -24,41 +25,64 @@ jobs:
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772 # v3.4.0
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Log in to Docker Hub
-        if: env.DOCKERHUB_USERNAME != ''
-        uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772 # v3.4.0
-        env:
-          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-
       - name: Extract version metadata
         id: meta
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "image=ghcr.io/${{ github.repository }}" >> "$GITHUB_OUTPUT"
 
-      - name: Build and push container image
-        uses: docker/build-push-action@471d1dc4e07e5cdedd4c2171150001c434f0b7a4 # v6.15.0
-        with:
-          context: .
-          file: container/Containerfile
-          push: true
-          tags: |
-            ghcr.io/${{ github.repository }}:${{ steps.meta.outputs.version }}
-            ghcr.io/${{ github.repository }}:latest
-            ${{ secrets.DOCKERHUB_USERNAME && format('docker.io/{0}/boj-server:{1}', secrets.DOCKERHUB_USERNAME, steps.meta.outputs.version) || '' }}
-            ${{ secrets.DOCKERHUB_USERNAME && format('docker.io/{0}/boj-server:latest', secrets.DOCKERHUB_USERNAME) || '' }}
-          labels: |
-            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
-            org.opencontainers.image.description=Bundle of Joy MCP Server — 99 formally verified cartridges
-            org.opencontainers.image.licenses=MPL-2.0
-            org.opencontainers.image.version=${{ steps.meta.outputs.version }}
+      - name: Check Docker Hub credentials
+        id: dockerhub
+        env:
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+        run: |
+          if [ -n "$DOCKERHUB_USERNAME" ]; then
+            echo "available=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "available=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Log in to GitHub Container Registry
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | \
+            podman login ghcr.io -u "${{ github.actor }}" --password-stdin
+
+      - name: Log in to Docker Hub
+        if: steps.dockerhub.outputs.available == 'true'
+        env:
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+        run: |
+          echo "$DOCKERHUB_TOKEN" | \
+            podman login docker.io -u "$DOCKERHUB_USERNAME" --password-stdin
+
+      - name: Build container image
+        run: |
+          podman build \
+            --file container/Containerfile \
+            --tag "${{ steps.meta.outputs.image }}:${{ steps.meta.outputs.version }}" \
+            --tag "${{ steps.meta.outputs.image }}:latest" \
+            --label "org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}" \
+            --label "org.opencontainers.image.description=Bundle of Joy MCP Server — 99 formally verified cartridges" \
+            --label "org.opencontainers.image.licenses=PMPL-1.0-or-later" \
+            --label "org.opencontainers.image.version=${{ steps.meta.outputs.version }}" \
+            .
+
+      - name: Push to GitHub Container Registry
+        run: |
+          podman push "${{ steps.meta.outputs.image }}:${{ steps.meta.outputs.version }}"
+          podman push "${{ steps.meta.outputs.image }}:latest"
+
+      - name: Tag and push to Docker Hub
+        if: steps.dockerhub.outputs.available == 'true'
+        env:
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+        run: |
+          VERSION="${{ steps.meta.outputs.version }}"
+          SRC="${{ steps.meta.outputs.image }}"
+          DST="docker.io/$DOCKERHUB_USERNAME/boj-server"
+          podman tag "$SRC:$VERSION" "$DST:$VERSION"
+          podman tag "$SRC:latest"   "$DST:latest"
+          podman push "$DST:$VERSION"
+          podman push "$DST:latest"
