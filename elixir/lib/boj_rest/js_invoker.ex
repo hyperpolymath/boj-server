@@ -39,10 +39,14 @@ defmodule BojRest.JsInvoker do
   @doc """
   Invoke `tool_name` on the cartridge at `mod_js_path` with `args`.
 
+  `extra_env` is an optional map of env-var name → value injected into the
+  Deno subprocess for this invocation only (Option A credential forwarding).
+  These override any identically-named vars already in the process environment.
+
   Returns `{:ok, data_map}` on success or `{:error, info_map}` on failure.
   """
-  @spec invoke(String.t(), String.t() | nil, map()) :: result()
-  def invoke(mod_js_path, tool_name, args) do
+  @spec invoke(String.t(), String.t() | nil, map(), map()) :: result()
+  def invoke(mod_js_path, tool_name, args, extra_env \\ %{}) do
     with {:deno, deno} when deno != nil <- {:deno, deno_path()},
          {:runner, runner} when runner != nil <- {:runner, runner_path()},
          {:mod, true} <- {:mod, File.regular?(mod_js_path)} do
@@ -59,7 +63,14 @@ defmodule BojRest.JsInvoker do
         args_json
       ]
 
-      task = Task.async(fn -> System.cmd(deno, cmd_args, stderr_to_stdout: true) end)
+      # Merge extra_env into the inherited process environment so credential
+      # vars (e.g. GITHUB_TOKEN) are visible to the mod.js without being
+      # stored anywhere — they exist only for the lifetime of the subprocess.
+      env_overrides = Enum.map(extra_env, fn {k, v} -> {k, v} end)
+
+      task = Task.async(fn ->
+        System.cmd(deno, cmd_args, stderr_to_stdout: true, env: env_overrides)
+      end)
 
       case Task.yield(task, @timeout_ms) || Task.shutdown(task, :brutal_kill) do
         {:ok, {stdout, 0}} ->

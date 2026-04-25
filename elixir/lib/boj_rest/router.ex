@@ -29,6 +29,13 @@ defmodule BojRest.Router do
 
   @version Mix.Project.config()[:version]
 
+  # Node's X25519 public key — callers use this to encrypt per-invocation
+  # credentials (Option A, docs/AUTH-DESIGN.adoc).
+  get "/.well-known/boj-node-pubkey" do
+    pub_b64 = Base.url_encode64(BojRest.NodeKey.public_key(), padding: false)
+    json(conn, 200, %{pubkey: pub_b64, algorithm: "x25519", version: 1})
+  end
+
   get "/health" do
     body =
       %{
@@ -68,15 +75,14 @@ defmodule BojRest.Router do
   post "/cartridge/:name/invoke" do
     case BojRest.Catalog.get(name) do
       {:ok, cart} ->
-        tool = Map.get(conn.body_params || %{}, "tool")
-        args = Map.get(conn.body_params || %{}, "arguments") || %{}
+        body = conn.body_params || %{}
+        tool = Map.get(body, "tool")
+        args = Map.get(body, "arguments") || %{}
+        is_local = loopback?(conn.remote_ip)
 
-        if is_nil(tool) do
-          json(conn, 400, %{error: "missing-tool-field", cartridge: name})
-        else
-          result = dispatch(cart, tool, args)
-
-          case result do
+        with false <- is_nil(tool),
+             {:ok, creds} <- BojRest.CredentialDecryptor.extract(body, is_local) do
+          case dispatch(cart, tool, args, creds) do
             {:ok, data} ->
               json(conn, 200, data)
 
@@ -88,6 +94,12 @@ defmodule BojRest.Router do
                 info: info
               })
           end
+        else
+          true ->
+            json(conn, 400, %{error: "missing-tool-field", cartridge: name})
+
+          {:error, reason} ->
+            json(conn, 403, %{error: "credential-error", detail: reason})
         end
 
       :not_found ->
@@ -105,18 +117,18 @@ defmodule BojRest.Router do
     |> Plug.Conn.send_resp(status, Jason.encode!(body))
   end
 
-  # Dispatch to the correct invoker based on whether the cartridge has an FFI
-  # (Zig .so) or a JS (mod.js) implementation.
-  #
-  # cartridge.json with "ffi" key → Zig .so via boj-invoke CLI
-  # cartridge.json without "ffi"  → JS mod.js via Deno (JsInvoker)
-  defp dispatch(cart, tool, args) do
+  defp dispatch(cart, tool, args, creds) do
     if Map.has_key?(cart, "ffi") do
-      BojRest.Invoker.invoke(cartridge_so_path(cart), tool, args)
+      BojRest.Invoker.invoke(cartridge_so_path(cart), tool, args, creds)
     else
-      BojRest.JsInvoker.invoke(cartridge_mod_path(cart), tool, args)
+      BojRest.JsInvoker.invoke(cartridge_mod_path(cart), tool, args, creds)
     end
   end
+
+  # True for IPv4 loopback (127.x.x.x) and IPv6 loopback (::1).
+  defp loopback?({127, _, _, _}), do: true
+  defp loopback?({0, 0, 0, 0, 0, 0, 0, 1}), do: true
+  defp loopback?(_), do: false
 
   # Read .so path directly from the manifest's ffi.so_path field.
   defp cartridge_so_path(cart) do

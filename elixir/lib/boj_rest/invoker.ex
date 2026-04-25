@@ -57,18 +57,23 @@ defmodule BojRest.Invoker do
 
   @doc """
   Invoke a tool on a cartridge: runs init, calls invoke, runs deinit.
+
+  `extra_env` is an optional map of env-var name → value injected into the
+  boj-invoke subprocess for this invocation only (Option A credential
+  forwarding). Vars are merged over the inherited environment.
+
   Returns `{:ok, map()}` on success (JSON output parsed).
   """
-  @spec invoke(so_path(), String.t(), map()) :: result()
-  def invoke(so_path, tool_name, args) do
+  @spec invoke(so_path(), String.t(), map(), map()) :: result()
+  def invoke(so_path, tool_name, args, extra_env \\ %{}) do
     args_json = Jason.encode!(args)
-    run(so_path, "invoke", [tool_name, args_json])
+    run(so_path, "invoke", [tool_name, args_json], extra_env)
   end
 
   # ── internals ───────────────────────────────────────────────────────
 
-  @spec run(so_path(), String.t(), [String.t()]) :: result()
-  defp run(so_path, verb, extra_args \\ []) do
+  @spec run(so_path(), String.t(), [String.t()], map()) :: result()
+  defp run(so_path, verb, extra_args \\ [], extra_env \\ %{}) do
     cli = cli_path()
 
     if cli == nil do
@@ -79,11 +84,10 @@ defmodule BojRest.Invoker do
          body: "boj-invoke CLI not found — run `zig build invoke` in ffi/zig/"
        }}
     else
-      # stderr_to_stdout merges the CLI's error-path JSON (which it emits on
-      # stderr) into stdout so we get it in the `{output, exit_code}` tuple.
       cmd_args = [so_path, verb] ++ extra_args
+      env_overrides = Enum.map(extra_env, fn {k, v} -> {k, v} end)
 
-      case System.cmd(cli, cmd_args, stderr_to_stdout: true) do
+      case System.cmd(cli, cmd_args, stderr_to_stdout: true, env: env_overrides) do
         {stdout, @exit_ok} ->
           case Jason.decode(stdout) do
             {:ok, map} -> {:ok, map}

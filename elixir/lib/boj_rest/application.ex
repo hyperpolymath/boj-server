@@ -15,7 +15,10 @@ defmodule BojRest.Application do
     port = Application.get_env(:boj_rest, :port, 7700)
     cartridges_root = Application.get_env(:boj_rest, :cartridges_root)
 
+    data_dir = Application.get_env(:boj_rest, :data_dir, "/data")
+
     children = [
+      {BojRest.NodeKey, data_dir: data_dir},
       {BojRest.Catalog, cartridges_root: cartridges_root},
       {Plug.Cowboy, scheme: :http, plug: BojRest.Router, options: [port: port]}
     ]
