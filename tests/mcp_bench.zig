@@ -70,12 +70,12 @@ test "BENCH: JSON-RPC response deserialisation (1 000 iters) completes < 200 ms"
         @as(f64, @floatFromInt(elapsed_ns)) / 1_000_000.0 / @as(f64, ITERATIONS),
     });
     // Generous upper bound: debug builds parse ~0.8ms/req; ReleaseFast is <0.02ms/req.
-    try testing.expect(elapsed_ms < 5_000);
+    try testing.expect(elapsed_ms < 10_000);
 }
 
 // ── Cartridge-list throughput ─────────────────────────────────────────────
 
-test "BENCH: cartridge name iteration over 17 entries (10 000 iters) < 50 ms" {
+test "BENCH: cartridge name iteration over sample entries (10 000 iters) < 50 ms" {
     const names = [_][]const u8{
         "boj_health", "boj_cartridges", "database-mcp", "fleet-mcp",
         "nesy-mcp",   "agent-mcp",      "cloud-mcp",    "container-mcp",

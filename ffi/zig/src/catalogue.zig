@@ -56,6 +56,7 @@ pub const CapabilityDomain = enum(c_int) {
     lsp = 15,
     dap = 16,
     bsp = 17,
+    code_intel = 18,
 };
 
 /// Menu tier (Teranga/Shield/Ayo).
@@ -362,7 +363,7 @@ pub export fn boj_menu_tier(index: usize) c_int {
 }
 
 /// Get the domain of a cartridge by index.
-/// Returns the domain integer (1-13), or -1 on error.
+/// Returns the domain integer (1-18), or -1 on error.
 pub export fn boj_menu_domain(index: usize) c_int {
     mutex.lock();
     defer mutex.unlock();
