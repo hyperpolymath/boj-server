@@ -1,172 +1,70 @@
 // SPDX-License-Identifier: PMPL-1.0-or-later
-// Academic Workflow Cartridge FFI — Zotero & citation integration
+// Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+//
+// academic-workflow-mcp FFI — ADR-0006 five-symbol cartridge ABI implementation.
 
 const std = @import("std");
-const mem = std.mem;
+const shim = @import("cartridge_shim.zig");
 
-// Citation format constants
-pub const CITATION_BIBTEX = 0;
-pub const CITATION_CSL = 1;
-pub const CITATION_RIS = 2;
-pub const CITATION_ENDNOTE = 3;
+const CARTRIDGE_NAME_PTR: [*:0]const u8 = "academic-workflow-mcp";
+const CARTRIDGE_VERSION_PTR: [*:0]const u8 = "0.1.0";
 
-// Result codes
-pub const RESULT_SUCCESS = 0;
-pub const RESULT_ZOTERO_ERROR = 1;
-pub const RESULT_INVALID_FORMAT = 2;
-pub const RESULT_NOT_FOUND = 3;
-
-// Paper metadata struct
-pub const PaperMetadata = extern struct {
-    title: [512]u8,
-    authors: [1024]u8,  // comma-separated
-    doi: [256]u8,
-    year: u32,
-    abstract: [2048]u8,
-};
-
-// Citation export function
-pub export fn academic_generate_citation(
-    title: [*c]const u8,
-    authors: [*c]const u8,
-    doi: [*c]const u8,
-    year: u32,
-    format: u32,
-    out_citation: [*c]u8,
-    out_len: usize,
-) callconv(.C) i32 {
-    if (title == null or out_citation == null) {
-        return RESULT_INVALID_FORMAT;
-    }
-
-    // Format based on citation style
-    const citation = switch (format) {
-        CITATION_BIBTEX => formatBibTeX(title, authors, doi, year),
-        CITATION_CSL => formatCSL(title, authors, doi, year),
-        CITATION_RIS => formatRIS(title, authors, doi, year),
-        CITATION_ENDNOTE => formatEndNote(title, authors, doi, year),
-        else => return RESULT_INVALID_FORMAT,
-    };
-
-    if (citation.len > 0) {
-        const copy_len = @min(citation.len, out_len -% 1);
-        @memcpy(out_citation[0..copy_len], citation[0..copy_len]);
-        out_citation[copy_len] = 0;
-        return RESULT_SUCCESS;
-    }
-    return RESULT_INVALID_FORMAT;
+export fn boj_cartridge_init() callconv(.c) c_int {
+    return 0;
 }
 
-// Zotero collection search
-pub export fn academic_search_zotero(
-    query: [*c]const u8,
-    out_results: [*c]u32,
-    out_count: [*c]usize,
-) callconv(.C) i32 {
-    if (query == null) {
-        return RESULT_ZOTERO_ERROR;
-    }
-    if (out_count) |count| {
-        count.* = 0;
-    }
-    return RESULT_SUCCESS;
+export fn boj_cartridge_deinit() callconv(.c) void {}
+
+export fn boj_cartridge_name() callconv(.c) [*:0]const u8 {
+    return CARTRIDGE_NAME_PTR;
 }
 
-// Extract BibTeX keys from text
-pub export fn academic_extract_bibkeys(
-    text: [*c]const u8,
-    out_keys: [*c][256]u8,
-    out_count: [*c]usize,
-) callconv(.C) i32 {
-    if (text == null) {
-        return RESULT_SUCCESS;
-    }
-    // Look for patterns like @cite{...} or \cite{...}
-    if (out_count) |count| {
-        count.* = 0;  // Placeholder
-    }
-    return RESULT_SUCCESS;
+export fn boj_cartridge_version() callconv(.c) [*:0]const u8 {
+    return CARTRIDGE_VERSION_PTR;
 }
 
-// Export collection as BibTeX
-pub export fn academic_export_collection(
-    collection_id: [*c]const u8,
-    out_bibtex: [*c]u8,
-    out_len: usize,
-) callconv(.C) i32 {
-    if (collection_id == null or out_bibtex == null) {
-        return RESULT_NOT_FOUND;
-    }
-    // Would call Zotero API to export collection
-    return RESULT_SUCCESS;
+export fn boj_cartridge_invoke(
+    tool_name: [*c]const u8,
+    json_args: [*c]const u8,
+    out_buf: [*c]u8,
+    in_out_len: [*c]usize,
+) callconv(.c) i32 {
+    _ = json_args;
+    if (shim.invokeArgsNull(tool_name, out_buf, in_out_len)) return shim.RC_BAD_ARGS;
+    const body: []const u8 = if (shim.toolIs(tool_name, "search_zotero"))
+        "{\"result\":{}}"
+    else if (shim.toolIs(tool_name, "get_paper_metadata"))
+        "{\"result\":{}}"
+    else if (shim.toolIs(tool_name, "generate_citation"))
+        "{\"result\":{}}"
+    else if (shim.toolIs(tool_name, "extract_bibkeys"))
+        "{\"result\":{}}"
+    else if (shim.toolIs(tool_name, "export_collection"))
+        "{\"result\":{}}"
+    else if (shim.toolIs(tool_name, "add_review_note"))
+        "{\"result\":{}}"
+    else
+        return shim.RC_UNKNOWN_TOOL;
+
+    return shim.writeResult(out_buf, in_out_len, body);
 }
 
-// Add review note to paper
-pub export fn academic_add_review_note(
-    paper_id: [*c]const u8,
-    page: u32,
-    note_text: [*c]const u8,
-    category: [*c]const u8,
-) callconv(.C) i32 {
-    if (paper_id == null or note_text == null) {
-        return RESULT_INVALID_FORMAT;
-    }
-    // Store review annotation
-    return RESULT_SUCCESS;
+test "boj_cartridge_name returns academic-workflow-mcp" {
+    try std.testing.expectEqualStrings("academic-workflow-mcp", std.mem.span(boj_cartridge_name()));
 }
 
-// Helper: Format citation as BibTeX
-fn formatBibTeX(
-    title: [*c]const u8,
-    authors: [*c]const u8,
-    doi: [*c]const u8,
-    year: u32,
-) []const u8 {
-    _ = authors;
-    _ = doi;
-    _ = year;
-    // Placeholder — would build proper BibTeX entry
-    return "BibTeX citation";
+test "boj_cartridge_init returns 0" {
+    try std.testing.expectEqual(@as(c_int, 0), boj_cartridge_init());
 }
 
-// Helper: Format citation as CSL-JSON
-fn formatCSL(
-    title: [*c]const u8,
-    authors: [*c]const u8,
-    doi: [*c]const u8,
-    year: u32,
-) []const u8 {
-    _ = title;
-    _ = authors;
-    _ = doi;
-    _ = year;
-    return "CSL citation";
+test "invoke unknown tool returns RC_UNKNOWN_TOOL" {
+    var buf: [256]u8 = undefined;
+    var len: usize = buf.len;
+    try std.testing.expectEqual(@as(i32, shim.RC_UNKNOWN_TOOL), boj_cartridge_invoke("unknown_xyz", "{}", &buf, &len));
 }
 
-// Helper: Format citation as RIS
-fn formatRIS(
-    title: [*c]const u8,
-    authors: [*c]const u8,
-    doi: [*c]const u8,
-    year: u32,
-) []const u8 {
-    _ = title;
-    _ = authors;
-    _ = doi;
-    _ = year;
-    return "RIS citation";
-}
-
-// Helper: Format citation as EndNote
-fn formatEndNote(
-    title: [*c]const u8,
-    authors: [*c]const u8,
-    doi: [*c]const u8,
-    year: u32,
-) []const u8 {
-    _ = title;
-    _ = authors;
-    _ = doi;
-    _ = year;
-    return "EndNote citation";
+test "invoke search_zotero returns 0" {
+    var buf: [256]u8 = undefined;
+    var len: usize = buf.len;
+    try std.testing.expectEqual(@as(i32, 0), boj_cartridge_invoke("search_zotero", "{}", &buf, &len));
 }

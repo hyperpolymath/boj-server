@@ -1,117 +1,68 @@
 // SPDX-License-Identifier: PMPL-1.0-or-later
-// Sanctify Cartridge FFI — PHP linter and deviation detector bindings
+// Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+//
+// sanctify-mcp FFI — ADR-0006 five-symbol cartridge ABI implementation.
 
 const std = @import("std");
-const mem = std.mem;
+const shim = @import("cartridge_shim.zig");
 
-// Severity levels
-pub const SEVERITY_ERROR = 0;
-pub const SEVERITY_WARNING = 1;
-pub const SEVERITY_NOTICE = 2;
-pub const SEVERITY_INFO = 3;
+const CARTRIDGE_NAME_PTR: [*:0]const u8 = "sanctify-mcp";
+const CARTRIDGE_VERSION_PTR: [*:0]const u8 = "0.1.0";
 
-// Deviation types
-pub const DEVIATION_NAMING = 0;
-pub const DEVIATION_STYLE = 1;
-pub const DEVIATION_SECURITY = 2;
-pub const DEVIATION_PERFORMANCE = 3;
-pub const DEVIATION_DEPRECATED = 4;
-
-// Result codes
-pub const RESULT_SUCCESS = 0;
-pub const RESULT_PARSE_ERROR = 1;
-pub const RESULT_FILE_NOT_FOUND = 2;
-pub const RESULT_INVALID_INPUT = 3;
-
-// Lint issue struct
-pub const LintIssue = extern struct {
-    file: [256]u8,
-    line: u32,
-    column: u32,
-    severity: u32,
-    code: [32]u8,
-    message: [512]u8,
-    suggestion: [512]u8,
-};
-
-// Lint PHP file for syntax and style issues
-pub export fn sanctify_lint_file(
-    file_path: [*c]const u8,
-    out_issues: [*c]LintIssue,
-    max_issues: usize,
-    out_count: [*c]usize,
-) callconv(.C) i32 {
-    if (file_path == null or out_issues == null) {
-        return RESULT_INVALID_INPUT;
-    }
-
-    if (out_count) |count| {
-        count.* = 0;  // Stub — would parse and lint actual PHP file
-    }
-    return RESULT_SUCCESS;
+export fn boj_cartridge_init() callconv(.c) c_int {
+    return 0;
 }
 
-// Detect deviations from PHP best practices
-pub export fn sanctify_detect_deviations(
-    file_path: [*c]const u8,
-    out_deviations: [*c]u32,
-    max_deviations: usize,
-    out_count: [*c]usize,
-) callconv(.C) i32 {
-    if (file_path == null or out_deviations == null) {
-        return RESULT_INVALID_INPUT;
-    }
+export fn boj_cartridge_deinit() callconv(.c) void {}
 
-    if (out_count) |count| {
-        count.* = 0;  // Stub — would detect deviations
-    }
-    return RESULT_SUCCESS;
+export fn boj_cartridge_name() callconv(.c) [*:0]const u8 {
+    return CARTRIDGE_NAME_PTR;
 }
 
-// Analyze entire PHP file
-pub export fn sanctify_analyze_file(
-    file_path: [*c]const u8,
-    out_result: [*c]u8,
-    out_len: usize,
-) callconv(.C) i32 {
-    if (file_path == null or out_result == null) {
-        return RESULT_FILE_NOT_FOUND;
-    }
-
-    const analysis = "File analysis placeholder";
-    if (out_len > 0) {
-        const copy_len = @min(analysis.len, out_len - 1);
-        @memcpy(out_result[0..copy_len], analysis[0..copy_len]);
-        out_result[copy_len] = 0;
-        return RESULT_SUCCESS;
-    }
-    return RESULT_INVALID_INPUT;
+export fn boj_cartridge_version() callconv(.c) [*:0]const u8 {
+    return CARTRIDGE_VERSION_PTR;
 }
 
-// Check a code snippet for issues
-pub export fn sanctify_check_snippet(
-    snippet: [*c]const u8,
-    out_issues: [*c]LintIssue,
-    max_issues: usize,
-    out_count: [*c]usize,
-) callconv(.C) i32 {
-    if (snippet == null) {
-        return RESULT_INVALID_INPUT;
-    }
+export fn boj_cartridge_invoke(
+    tool_name: [*c]const u8,
+    json_args: [*c]const u8,
+    out_buf: [*c]u8,
+    in_out_len: [*c]usize,
+) callconv(.c) i32 {
+    _ = json_args;
+    if (shim.invokeArgsNull(tool_name, out_buf, in_out_len)) return shim.RC_BAD_ARGS;
+    const body: []const u8 = if (shim.toolIs(tool_name, "lint_file"))
+        "{\"result\":{}}"
+    else if (shim.toolIs(tool_name, "detect_deviations"))
+        "{\"result\":{}}"
+    else if (shim.toolIs(tool_name, "analyze_file"))
+        "{\"result\":{}}"
+    else if (shim.toolIs(tool_name, "check_snippet"))
+        "{\"result\":{}}"
+    else if (shim.toolIs(tool_name, "validate_syntax"))
+        "{\"result\":{}}"
+    else
+        return shim.RC_UNKNOWN_TOOL;
 
-    if (out_count) |count| {
-        count.* = 0;  // Stub — would check snippet
-    }
-    return RESULT_SUCCESS;
+    return shim.writeResult(out_buf, in_out_len, body);
 }
 
-// Validate PHP syntax
-pub export fn sanctify_validate_syntax(
-    code: [*c]const u8,
-) callconv(.C) i32 {
-    if (code == null) {
-        return RESULT_INVALID_INPUT;
-    }
-    // Stub — would validate PHP syntax
-    return RESULT_SUCCESS;
+test "boj_cartridge_name returns sanctify-mcp" {
+    try std.testing.expectEqualStrings("sanctify-mcp", std.mem.span(boj_cartridge_name()));
+}
+
+test "boj_cartridge_init returns 0" {
+    try std.testing.expectEqual(@as(c_int, 0), boj_cartridge_init());
+}
+
+test "invoke unknown tool returns RC_UNKNOWN_TOOL" {
+    var buf: [256]u8 = undefined;
+    var len: usize = buf.len;
+    try std.testing.expectEqual(@as(i32, shim.RC_UNKNOWN_TOOL), boj_cartridge_invoke("unknown_xyz", "{}", &buf, &len));
+}
+
+test "invoke lint_file returns 0" {
+    var buf: [256]u8 = undefined;
+    var len: usize = buf.len;
+    try std.testing.expectEqual(@as(i32, 0), boj_cartridge_invoke("lint_file", "{}", &buf, &len));
 }

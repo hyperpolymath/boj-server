@@ -21,8 +21,17 @@
     "content_type": "application/json"
   },
   "ports": {
-    "allowed": [8788],
-    "denied": [22, 23, 25, 135, 139, 445]
+    "allowed": [
+      8788
+    ],
+    "denied": [
+      22,
+      23,
+      25,
+      135,
+      139,
+      445
+    ]
   },
   "tools": [
     {
@@ -40,7 +49,9 @@
             "description": "Species name (e.g., Homo sapiens)"
           }
         },
-        "required": ["gene_name"]
+        "required": [
+          "gene_name"
+        ]
       }
     },
     {
@@ -55,11 +66,16 @@
           },
           "database": {
             "type": "string",
-            "enum": ["chembl", "pubchem"],
+            "enum": [
+              "chembl",
+              "pubchem"
+            ],
             "description": "Database to search (default: chembl)"
           }
         },
-        "required": ["compound_name"]
+        "required": [
+          "compound_name"
+        ]
       }
     },
     {
@@ -74,11 +90,16 @@
           },
           "database": {
             "type": "string",
-            "enum": ["opentargets", "monarch"],
+            "enum": [
+              "opentargets",
+              "monarch"
+            ],
             "description": "Database to search (default: opentargets)"
           }
         },
-        "required": ["disease_name"]
+        "required": [
+          "disease_name"
+        ]
       }
     },
     {
@@ -96,7 +117,9 @@
             "description": "Trial status (e.g., recruiting, completed)"
           }
         },
-        "required": ["query"]
+        "required": [
+          "query"
+        ]
       }
     },
     {
@@ -110,8 +133,21 @@
             "description": "PDB ID of the protein"
           }
         },
-        "required": ["pdb_id"]
+        "required": [
+          "pdb_id"
+        ]
       }
     }
-  ]
+  ],
+  "ffi": {
+    "so_path": "ffi/zig-out/lib/liborigenemcp.so",
+    "abi_version": "ADR-0006",
+    "symbols": [
+      "boj_cartridge_init",
+      "boj_cartridge_deinit",
+      "boj_cartridge_name",
+      "boj_cartridge_version",
+      "boj_cartridge_invoke"
+    ]
+  }
 }

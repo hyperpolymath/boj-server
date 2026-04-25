@@ -21,8 +21,17 @@
     "content_type": "application/json"
   },
   "ports": {
-    "allowed": [3000],
-    "denied": [22, 23, 25, 135, 139, 445]
+    "allowed": [
+      3000
+    ],
+    "denied": [
+      22,
+      23,
+      25,
+      135,
+      139,
+      445
+    ]
   },
   "tools": [
     {
@@ -37,7 +46,10 @@
           },
           "language": {
             "type": "string",
-            "enum": ["en", "ko"],
+            "enum": [
+              "en",
+              "ko"
+            ],
             "description": "Language for agent descriptions (default: en)"
           }
         }
@@ -55,7 +67,10 @@
           },
           "language": {
             "type": "string",
-            "enum": ["en", "ko"],
+            "enum": [
+              "en",
+              "ko"
+            ],
             "description": "Language for agent descriptions (default: en)"
           },
           "limit": {
@@ -77,11 +92,16 @@
           },
           "language": {
             "type": "string",
-            "enum": ["en", "ko"],
+            "enum": [
+              "en",
+              "ko"
+            ],
             "description": "Language for agent descriptions (default: en)"
           }
         },
-        "required": ["keywords"]
+        "required": [
+          "keywords"
+        ]
       }
     },
     {
@@ -103,11 +123,16 @@
           },
           "language": {
             "type": "string",
-            "enum": ["en", "ko"],
+            "enum": [
+              "en",
+              "ko"
+            ],
             "description": "Language for agent files (default: en)"
           }
         },
-        "required": ["agent_ids"]
+        "required": [
+          "agent_ids"
+        ]
       }
     },
     {
@@ -127,5 +152,16 @@
         }
       }
     }
-  ]
+  ],
+  "ffi": {
+    "so_path": "ffi/zig-out/lib/libclaude_agents_power_mcp.so",
+    "abi_version": "ADR-0006",
+    "symbols": [
+      "boj_cartridge_init",
+      "boj_cartridge_deinit",
+      "boj_cartridge_name",
+      "boj_cartridge_version",
+      "boj_cartridge_invoke"
+    ]
+  }
 }

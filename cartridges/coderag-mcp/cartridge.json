@@ -21,8 +21,18 @@
     "content_type": "application/json"
   },
   "ports": {
-    "allowed": [7687, 7474],
-    "denied": [22, 23, 25, 135, 139, 445]
+    "allowed": [
+      7687,
+      7474
+    ],
+    "denied": [
+      22,
+      23,
+      25,
+      135,
+      139,
+      445
+    ]
   },
   "tools": [
     {
@@ -44,7 +54,9 @@
             "description": "Authentication token for private repositories (optional)"
           }
         },
-        "required": ["repository_url"]
+        "required": [
+          "repository_url"
+        ]
       }
     },
     {
@@ -62,7 +74,9 @@
             "description": "Query language (cypher/nl, default: nl)"
           }
         },
-        "required": ["query"]
+        "required": [
+          "query"
+        ]
       }
     },
     {
@@ -79,12 +93,18 @@
             "type": "array",
             "items": {
               "type": "string",
-              "enum": ["ck", "package", "architectural"]
+              "enum": [
+                "ck",
+                "package",
+                "architectural"
+              ]
             },
             "description": "Types of metrics to calculate"
           }
         },
-        "required": ["repository_url"]
+        "required": [
+          "repository_url"
+        ]
       }
     },
     {
@@ -102,7 +122,9 @@
             "description": "URL of the repository (optional)"
           }
         },
-        "required": ["query"]
+        "required": [
+          "query"
+        ]
       }
     },
     {
@@ -116,8 +138,21 @@
             "description": "URL of the repository"
           }
         },
-        "required": ["repository_url"]
+        "required": [
+          "repository_url"
+        ]
       }
     }
-  ]
+  ],
+  "ffi": {
+    "so_path": "ffi/zig-out/lib/libcoderag_mcp.so",
+    "abi_version": "ADR-0006",
+    "symbols": [
+      "boj_cartridge_init",
+      "boj_cartridge_deinit",
+      "boj_cartridge_name",
+      "boj_cartridge_version",
+      "boj_cartridge_invoke"
+    ]
+  }
 }

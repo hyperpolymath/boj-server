@@ -4,10 +4,12 @@
   "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>",
   "name": "academic-workflow-mcp",
   "version": "1.0.0",
-  "description": "Academic workflow — Zotero integration, citations, paper review",
+  "description": "Academic workflow \u2014 Zotero integration, citations, paper review",
   "domain": "Research",
   "tier": "Ayo",
-  "auth": { "method": "none" },
+  "auth": {
+    "method": "none"
+  },
   "author": "Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>",
   "license": "PMPL-1.0-or-later",
   "tools": [
@@ -47,15 +49,24 @@
     "loopback_proof": "IsLoopback 5174"
   },
   "ffi": {
-    "language": "zig",
-    "entry": "ffi/academic_ffi.zig",
-    "so_path": "libacademic_workflow_mcp.so"
+    "so_path": "ffi/zig-out/lib/libacademic_workflow_mcp.so",
+    "abi_version": "ADR-0006",
+    "symbols": [
+      "boj_cartridge_init",
+      "boj_cartridge_deinit",
+      "boj_cartridge_name",
+      "boj_cartridge_version",
+      "boj_cartridge_invoke"
+    ]
   },
   "adapter": {
     "language": "typescript",
     "runtime": "deno",
     "entry": "adapter/mod.ts",
-    "permissions": ["net", "env"]
+    "permissions": [
+      "net",
+      "env"
+    ]
   },
   "loopback": {
     "host": "127.0.0.1",

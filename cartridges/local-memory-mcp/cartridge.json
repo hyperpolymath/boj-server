@@ -22,7 +22,14 @@
   },
   "ports": {
     "allowed": [],
-    "denied": [22, 23, 25, 135, 139, 445]
+    "denied": [
+      22,
+      23,
+      25,
+      135,
+      139,
+      445
+    ]
   },
   "tools": [
     {
@@ -59,7 +66,18 @@
         "properties": {
           "category": {
             "type": "string",
-            "enum": ["pattern", "mistake", "insight", "research", "architecture", "infrastructure", "tool", "workflow", "performance", "security"],
+            "enum": [
+              "pattern",
+              "mistake",
+              "insight",
+              "research",
+              "architecture",
+              "infrastructure",
+              "tool",
+              "workflow",
+              "performance",
+              "security"
+            ],
             "description": "Category of the learning"
           },
           "content": {
@@ -82,7 +100,10 @@
             "description": "Optional project name"
           }
         },
-        "required": ["category", "content"]
+        "required": [
+          "category",
+          "content"
+        ]
       }
     },
     {
@@ -116,7 +137,12 @@
             "type": "array",
             "items": {
               "type": "string",
-              "enum": ["learning", "decision", "entity", "observation"]
+              "enum": [
+                "learning",
+                "decision",
+                "entity",
+                "observation"
+              ]
             },
             "description": "Optional filter by types"
           },
@@ -125,7 +151,9 @@
             "description": "Maximum number of results (default: 10)"
           }
         },
-        "required": ["query"]
+        "required": [
+          "query"
+        ]
       }
     },
     {
@@ -159,7 +187,11 @@
             "description": "Optional project name"
           }
         },
-        "required": ["title", "decision", "reasoning"]
+        "required": [
+          "title",
+          "decision",
+          "reasoning"
+        ]
       }
     },
     {
@@ -181,7 +213,11 @@
             "description": "The fact to record"
           }
         },
-        "required": ["entityName", "entityType", "content"]
+        "required": [
+          "entityName",
+          "entityType",
+          "content"
+        ]
       }
     },
     {
@@ -203,7 +239,9 @@
             "description": "Maximum number of results (default: 10)"
           }
         },
-        "required": ["query"]
+        "required": [
+          "query"
+        ]
       }
     },
     {
@@ -246,7 +284,11 @@
             "description": "Relation weight (0-1)"
           }
         },
-        "required": ["fromEntityId", "toEntityId", "relationType"]
+        "required": [
+          "fromEntityId",
+          "toEntityId",
+          "relationType"
+        ]
       }
     },
     {
@@ -277,7 +319,10 @@
             "description": "Field value"
           }
         },
-        "required": ["field", "value"]
+        "required": [
+          "field",
+          "value"
+        ]
       }
     },
     {
@@ -291,8 +336,21 @@
             "description": "Field name to retrieve"
           }
         },
-        "required": ["field"]
+        "required": [
+          "field"
+        ]
       }
     }
-  ]
+  ],
+  "ffi": {
+    "so_path": "ffi/zig-out/lib/liblocal_memory_mcp.so",
+    "abi_version": "ADR-0006",
+    "symbols": [
+      "boj_cartridge_init",
+      "boj_cartridge_deinit",
+      "boj_cartridge_name",
+      "boj_cartridge_version",
+      "boj_cartridge_invoke"
+    ]
+  }
 }
