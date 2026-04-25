@@ -61,4 +61,9 @@ echo "Running diagnostics..."
 just doctor
 
 echo ""
-echo "Setup complete. Run 'just help-me' for common workflows."
+echo "Setup complete."
+echo ""
+echo "Next steps:"
+echo "  just help-me          — Common workflows"
+echo "  just install-service  — Install systemd services (BoJ REST + coord system)"
+echo "                          Keeps the server alive across reboots."

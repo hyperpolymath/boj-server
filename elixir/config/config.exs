@@ -7,6 +7,8 @@ config :boj_rest,
   cartridges_root:
     System.get_env("BOJ_CARTRIDGES_ROOT") ||
       Path.expand("../../cartridges", __DIR__),
+  data_dir:
+    System.get_env("BOJ_DATA_DIR") || "/data",
   start_server: true
 
 if config_env() == :test, do: import_config("test.exs")

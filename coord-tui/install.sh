@@ -127,6 +127,30 @@ else
     warn "  $ADAPTER_BIN &"
 fi
 
+# ── BoJ REST server service ────────────────────────────────────────────────────
+
+say "Installing BoJ REST server service (port 7700)…"
+
+BOJ_REST_SERVICE_SRC="$BOJ_ROOT/elixir/boj-rest.service"
+BOJ_REST_SERVICE_DST="$SYSTEMD_DIR/boj-rest.service"
+
+if [ ! -f "$BOJ_REST_SERVICE_SRC" ]; then
+    warn "boj-rest.service template not found at $BOJ_REST_SERVICE_SRC — skipping."
+else
+    mkdir -p "${HOME}/.local/share/boj-server"
+    BOJ_ROOT="$BOJ_ROOT" HOME="$HOME" envsubst < "$BOJ_REST_SERVICE_SRC" > "$BOJ_REST_SERVICE_DST"
+    ok "Service: $BOJ_REST_SERVICE_DST"
+
+    if command -v systemctl >/dev/null 2>&1; then
+        systemctl --user daemon-reload
+        systemctl --user enable --now boj-rest
+        ok "Service enabled and started (port 7700)"
+    else
+        warn "systemctl not available — start the server manually:"
+        warn "  cd $BOJ_ROOT/elixir && MIX_ENV=dev mix run --no-halt"
+    fi
+fi
+
 # ── Shell hooks ────────────────────────────────────────────────────────────────
 
 say "Installing shell hooks…"
@@ -143,6 +167,10 @@ done
 printf '\n'
 ok "Installation complete."
 printf '\n'
+printf '  Services running:\n'
+printf '    boj-rest        — Elixir REST server on :7700 (112 cartridges)\n'
+printf '    local-coord-mcp — Zig coord adapter on :7745\n'
+printf '\n'
 printf '  Open a new shell (or run: source %s)\n' "$HOOKS_DEST"
 printf '  then launch a tool to auto-register:\n\n'
 printf '    claude          # registers + sets window title to "claude [<peer_id>]"\n'
@@ -151,5 +179,8 @@ printf '    cursor          # same for Cursor / Vibe\n'
 printf '    codex           # same for Codex\n'
 printf '    coord-tui       # interactive TUI (see all peers + claims)\n'
 printf '\n'
-printf '  Check adapter: systemctl --user status local-coord-mcp\n'
+printf '  Check services:\n'
+printf '    systemctl --user status boj-rest\n'
+printf '    systemctl --user status local-coord-mcp\n'
+printf '    curl http://localhost:7700/health\n'
 printf '\n'

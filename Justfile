@@ -784,6 +784,55 @@ install-hooks:
     @chmod +x .git/hooks/pre-commit
     @echo "Git hooks installed"
 
+# Install systemd user service for the BoJ REST server (port 7700).
+# Also installs the coord system if coord-tui/install.sh is present.
+# After install: systemctl --user status boj-rest
+install-service:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    BOJ_ROOT="$(cd "$(dirname "$(command -v just)")/../../.." && pwd 2>/dev/null || pwd)"
+    BOJ_ROOT="$(pwd)"
+    SYSTEMD_DIR="${HOME}/.config/systemd/user"
+    SERVICE_SRC="elixir/boj-rest.service"
+    SERVICE_DST="$SYSTEMD_DIR/boj-rest.service"
+
+    echo "═══════════════════════════════════════════════════"
+    echo "  BoJ Server — systemd service installer"
+    echo "═══════════════════════════════════════════════════"
+    echo ""
+
+    # 1. Install the BoJ REST service
+    echo "Installing boj-rest.service…"
+    mkdir -p "$SYSTEMD_DIR"
+    mkdir -p "${HOME}/.local/share/boj-server"
+    BOJ_ROOT="$BOJ_ROOT" HOME="$HOME" envsubst < "$SERVICE_SRC" > "$SERVICE_DST"
+    echo "  Written: $SERVICE_DST"
+
+    if command -v systemctl >/dev/null 2>&1; then
+        systemctl --user daemon-reload
+        systemctl --user enable --now boj-rest
+        echo "  Service: enabled + started"
+        systemctl --user status boj-rest --no-pager --lines=5
+    else
+        echo "  WARNING: systemctl not found — start manually:"
+        echo "    cd elixir && MIX_ENV=dev mix run --no-halt"
+    fi
+    echo ""
+
+    # 2. Install coord system (builds Zig adapter + Rust TUI + hooks)
+    if [ -f "coord-tui/install.sh" ]; then
+        echo "Installing coord system (coord-tui/install.sh)…"
+        bash coord-tui/install.sh
+    else
+        echo "coord-tui/install.sh not found — skipping coord install."
+    fi
+
+    echo ""
+    echo "Done. Check service health:"
+    echo "  systemctl --user status boj-rest"
+    echo "  systemctl --user status local-coord-mcp"
+    echo "  curl http://localhost:7700/health"
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # SECURITY
 # ═══════════════════════════════════════════════════════════════════════════════

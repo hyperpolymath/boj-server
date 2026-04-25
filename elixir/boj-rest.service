@@ -1,0 +1,43 @@
+# SPDX-License-Identifier: PMPL-1.0-or-later
+# Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+#
+# boj-rest.service — systemd user unit for the BoJ Elixir REST server.
+#
+# INSTALL (handled automatically by coord-tui/install.sh or `just install-service`):
+#
+#   envsubst < elixir/boj-rest.service \
+#       > ~/.config/systemd/user/boj-rest.service
+#   systemctl --user daemon-reload
+#   systemctl --user enable --now boj-rest
+#
+# TEMPLATE VARIABLES (substituted at install time via envsubst):
+#   $BOJ_ROOT  — absolute path to the boj-server repo root
+#   $HOME      — user home directory (for data dir)
+
+[Unit]
+Description=BoJ REST server (Elixir/Cowboy, port 7700)
+Documentation=file://$BOJ_ROOT/QUICKSTART-USER.adoc
+After=network.target local-coord-mcp.service
+Wants=local-coord-mcp.service
+
+[Service]
+Type=simple
+WorkingDirectory=$BOJ_ROOT/elixir
+
+# Env vars — see elixir/config/config.exs for the full list
+Environment=MIX_ENV=dev
+Environment=BOJ_PORT=7700
+Environment=BOJ_CARTRIDGES_ROOT=$BOJ_ROOT/cartridges
+Environment=BOJ_DATA_DIR=$HOME/.local/share/boj-server
+Environment=BOJ_INVOKE_CLI=$BOJ_ROOT/ffi/zig/zig-out/bin/boj-invoke
+
+ExecStart=/usr/bin/mix run --no-halt
+Restart=on-failure
+RestartSec=5
+
+# Give the Elixir/BEAM VM enough file descriptors for 112 cartridges +
+# one Deno worker port per JS cartridge (up to 256 concurrent workers).
+LimitNOFILE=65536
+
+[Install]
+WantedBy=default.target
