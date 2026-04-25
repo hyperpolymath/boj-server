@@ -1,31 +1,49 @@
 # Build context exclusions for Containerfile / Containerfile.fly
 #
-# Stages need: ffi/zig/ (Stage 1), cartridges/ (Stage 1+3), elixir/ (Stage 2)
-# Everything else adds upload weight without value.
+# Stages need: ffi/zig/ (Stage 1), elixir/ (Stage 2), cartridges/ (Stage 3)
+# .git/ alone can be 500MB+ — excluding it cuts upload from ~1.5 GB to ~50 MB.
 
-# Version control
+# ─── Version control ──────────────────────────────────────────────────────────
 .git/
 .gitmodules
 .gitattributes
 .gitignore
 
-# Documentation
+# ─── Zig build artefacts (regenerated during build) ───────────────────────────
+zig-cache/
+zig-out/
+cartridges/*/ffi/zig-cache/
+cartridges/*/ffi/zig-out/
+
+# ─── Elixir build artefacts ───────────────────────────────────────────────────
+elixir/_build/
+elixir/deps/
+elixir/.elixir_ls/
+elixir/test/
+elixir/benchmarks/
+
+# ─── Documentation ─────────────────────────────────────────────────────────────
+docs/
 *.adoc
 *.md
-*.txt
-LICENSE
-LICENSE-*
+llm-warmup*
+README*
 CHANGELOG*
 CONTRIBUTING*
 SECURITY*
-ROADMAP*
-EXPLAINME*
 QUICKSTART*
-llm-warmup*
-README*
+EXPLAINME*
+ROADMAP*
 CRG-*
+TEST-NEEDS*
+PROOF-NEEDS*
+BOJ_LOGIC*
+FUTURE_PLANS*
+NeSy_SERVERS*
+TOPOLOGY*
+NOTICE
 
-# CI / tooling / meta
+# ─── CI / meta / tooling (not needed in image) ────────────────────────────────
 .github/
 .claude/
 .desktop-tools/
@@ -35,30 +53,29 @@ CRG-*
 Justfile
 justfile
 
-# Container configs (not needed inside the image build)
+# ─── Container configs (not needed inside the image) ──────────────────────────
 container/
 
-# Top-level non-build config files
-*.toml
-*.yaml
-*.yml
-*.ncl
-*.json
-
-# Zig build artefacts (regenerated during build)
-zig-cache/
-zig-out/
-
-# Elixir build artefacts
-elixir/_build/
-elixir/deps/
-elixir/.elixir_ls/
-elixir/test/
-elixir/benchmarks/
-
-# Tools
-tools/
-
-# Submodule directories (not part of this repo's image)
-boj-cartridges/
+# ─── Source directories not used by any Containerfile COPY ────────────────────
 src/
+tools/
+tests/
+scripts/
+setup-scripts/
+reports/
+verification/
+boj-cartridges/
+adapter/
+panll/
+packaging/
+mcp-bridge/
+coord-tui/
+tray/
+site/
+templates/
+schemas/
+generated/
+data/
+configs/
+k8s/
+setup.sh
