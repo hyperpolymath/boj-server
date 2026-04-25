@@ -470,7 +470,7 @@ at_rest:
     - repo: "lcb-website"
       status: "DEPLOYED"
     - repo: "boj-server"
-      status: "PENDING / runtime-only via Rokur"
+      status: "DEPLOYED — .sops.yaml + .env.example wired 2026-04-25"
   pre_commit_hooks:
     - "gitleaks"
     - "plaintext detector"

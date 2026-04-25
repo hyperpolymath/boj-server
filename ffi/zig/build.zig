@@ -347,12 +347,12 @@ pub fn build(b: *std.Build) void {
     const p2p_tests = b.addTest(.{ .root_module = p2p_mod });
     const run_p2p = b.addRunArtifact(p2p_tests);
 
-    const bench_mod = b.createModule(.{
+    const mcp_bench_mod = b.createModule(.{
         .root_source_file = b.path("../../tests/mcp_bench.zig"),
         .target = target,
         .optimize = optimize,
     });
-    const bench_tests = b.addTest(.{ .root_module = bench_mod });
+    const bench_tests = b.addTest(.{ .root_module = mcp_bench_mod });
     const run_bench = b.addRunArtifact(bench_tests);
 
     const protocol_step = b.step("protocol-tests", "Run protocol-layer Zig tests");

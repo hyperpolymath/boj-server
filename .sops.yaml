@@ -1,0 +1,17 @@
+# SPDX-License-Identifier: PMPL-1.0-or-later
+# SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+#
+# SOPS creation rules for boj-server.
+# Public age recipient below is safe to commit; only the matching secret key
+# (kept at ~/.config/sops/age/keys.txt, NEVER in this repo) can decrypt.
+#
+# Any file path matched by a rule below is auto-encrypted on `sops -e -i FILE`
+# and auto-decrypted on `sops -d FILE`.
+
+creation_rules:
+  # Convention: anything ending `.enc.yaml` / `.enc.json` / `.enc.env` is ciphertext.
+  - path_regex: \.enc\.(ya?ml|json|toml|env)$
+    age: age1jsaw33jj6gv75csgt0a0lyh8zufzyhzewv5308yccjenn8k34cgq4273pe
+  # Convention: anything inside `secrets/` is ciphertext (belt + braces).
+  - path_regex: secrets/.*\.(ya?ml|json|toml|env)$
+    age: age1jsaw33jj6gv75csgt0a0lyh8zufzyhzewv5308yccjenn8k34cgq4273pe
