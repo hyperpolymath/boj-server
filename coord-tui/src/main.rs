@@ -140,6 +140,7 @@ struct App {
     input: String,
     msg: String,
     last_refresh: Instant,
+    sidebar_open: bool,
 }
 
 impl App {
@@ -157,6 +158,7 @@ impl App {
             input: String::new(),
             msg: String::from("Connecting…"),
             last_refresh: Instant::now() - Duration::from_secs(60),
+            sidebar_open: true,
         }
     }
 
@@ -300,6 +302,8 @@ const CYAN_BOLD: Style = Style::new().fg(Color::Cyan).add_modifier(Modifier::BOL
 
 fn draw(f: &mut Frame, app: &App) {
     let area = f.area();
+    let show_sidebar = app.sidebar_open && area.width >= 80;
+
     let chunks = Layout::vertical([
         Constraint::Length(1),
         Constraint::Min(6),
@@ -308,9 +312,30 @@ fn draw(f: &mut Frame, app: &App) {
     ]).split(area);
 
     draw_header(f, app, chunks[0]);
-    draw_peers(f, app, chunks[1]);
-    draw_claims(f, app, chunks[2]);
     draw_footer(f, app, chunks[3]);
+
+    if show_sidebar {
+        const SIDEBAR_W: u16 = 24;
+        // Span sidebar across both the peers and claims rows.
+        let mid = Rect::new(
+            chunks[1].x, chunks[1].y,
+            chunks[1].width, chunks[1].height + chunks[2].height,
+        );
+        let cols = Layout::horizontal([
+            Constraint::Min(1),
+            Constraint::Length(SIDEBAR_W),
+        ]).split(mid);
+        let rows = Layout::vertical([
+            Constraint::Min(6),
+            Constraint::Min(4),
+        ]).split(cols[0]);
+        draw_peers(f, app, rows[0]);
+        draw_claims(f, app, rows[1]);
+        draw_sidebar(f, app, cols[1]);
+    } else {
+        draw_peers(f, app, chunks[1]);
+        draw_claims(f, app, chunks[2]);
+    }
 
     match app.mode {
         Mode::Claiming | Mode::Statusing => draw_input(f, app, area),
@@ -364,13 +389,14 @@ fn draw_peers(f: &mut Frame, app: &App, area: Rect) {
                   Cell::from(ctx), Cell::from(st)])
     }).collect();
 
-    let widths = [
-        Constraint::Length(22),
-        Constraint::Length(9),
-        Constraint::Length(11),
-        Constraint::Length(14),
-        Constraint::Min(18),
-    ];
+    // Narrower columns when the sidebar is visible to stay within 80 cols.
+    let widths = if app.sidebar_open {
+        [Constraint::Length(18), Constraint::Length(8), Constraint::Length(8),
+         Constraint::Length(10), Constraint::Min(8)]
+    } else {
+        [Constraint::Length(22), Constraint::Length(9), Constraint::Length(11),
+         Constraint::Length(14), Constraint::Min(18)]
+    };
     let mut state = app.peer_sel.clone();
     f.render_stateful_widget(
         Table::new(rows, widths)
@@ -416,9 +442,71 @@ fn draw_claims(f: &mut Frame, app: &App, area: Rect) {
     );
 }
 
+fn draw_sidebar(f: &mut Frame, _app: &App, area: Rect) {
+    let block = Block::bordered()
+        .title(" Commands  [\\] hide ")
+        .border_style(Style::new().fg(Color::DarkGray));
+    let inner = block.inner(area);
+    f.render_widget(block, area);
+
+    let sec = |s: &'static str| Line::from(Span::styled(s, CYAN_BOLD));
+    let key = |k: &'static str, d: &'static str| {
+        Line::from(vec![Span::styled(k, HIGHLIGHT), Span::raw(d)])
+    };
+    let cmd = |s: &'static str| Line::from(Span::styled(s, Style::new().fg(Color::Gray)));
+    let dim = |s: &'static str| Line::from(Span::styled(s, DIM));
+
+    let lines: Vec<Line> = vec![
+        sec(" TUI keys"),
+        Line::from(""),
+        key("  c  ", " claim task"),
+        key("  s  ", " set status"),
+        key("  p  ", " heartbeat"),
+        key("  R  ", " refresh"),
+        key(" Tab ", " switch panel"),
+        key("  ?  ", " full help"),
+        key("  q  ", " quit"),
+        Line::from(""),
+        sec(" Shell helpers"),
+        Line::from(""),
+        cmd("  coord-peers"),
+        cmd("  coord-claims"),
+        cmd("  coord-claim <task>"),
+        cmd("  coord-status <s>"),
+        cmd("  coord-whoami"),
+        Line::from(""),
+        sec(" just coord-*"),
+        Line::from(""),
+        cmd("  just coord"),
+        cmd("  just coord-peers"),
+        cmd("  just coord-claims"),
+        cmd("  just coord-claim"),
+        cmd("  just coord-status"),
+        cmd("  just coord-health"),
+        Line::from(""),
+        sec(" Register"),
+        Line::from(""),
+        cmd("  claude / gemini"),
+        cmd("  cursor / vibe"),
+        dim("    (auto via hooks)"),
+        cmd("  coord-tui --id"),
+        dim("    --kind <kind>"),
+    ];
+
+    f.render_widget(Paragraph::new(lines), inner);
+}
+
 fn draw_footer(f: &mut Frame, app: &App, area: Rect) {
-    let keys = match app.mode {
-        Mode::Normal => " [c]laim  [s]tatus  [p]rogress  [Tab]panel  [R]efresh  [?]help  [q]uit ",
+    let normal_keys;
+    let keys: &str = match app.mode {
+        Mode::Normal => {
+            let cmd_hint = if app.sidebar_open { "[\\]hide" } else { "[\\]cmd" };
+            normal_keys = format!(
+                " [c]laim  [s]tatus  [p]rogress  [Tab]panel  [R]efresh  {}  [?]help  [q]uit ",
+                cmd_hint
+            );
+            &normal_keys
+        }
         Mode::Claiming | Mode::Statusing => " [Enter]confirm  [Esc]cancel ",
         Mode::Help => " [Esc] or [?] to close help ",
     };
@@ -606,6 +694,7 @@ fn main() -> io::Result<()> {
                             KeyCode::Down | KeyCode::Char('j') => app.nav_down(),
                             KeyCode::Up   | KeyCode::Char('k') => app.nav_up(),
                             KeyCode::Char('?') => { app.mode = Mode::Help; }
+                            KeyCode::Char('\\') => { app.sidebar_open = !app.sidebar_open; }
                             _ => {}
                         }
                     }
