@@ -95,7 +95,7 @@ struct Claim {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-enum Mode { Normal, Claiming, Statusing }
+enum Mode { Normal, Claiming, Statusing, Help }
 
 #[derive(Clone, Debug, PartialEq)]
 enum Focus { Peers, Claims }
@@ -312,8 +312,10 @@ fn draw(f: &mut Frame, app: &App) {
     draw_claims(f, app, chunks[2]);
     draw_footer(f, app, chunks[3]);
 
-    if app.mode != Mode::Normal {
-        draw_input(f, app, area);
+    match app.mode {
+        Mode::Claiming | Mode::Statusing => draw_input(f, app, area),
+        Mode::Help => draw_help(f, app, area),
+        Mode::Normal => {}
     }
 }
 
@@ -416,8 +418,9 @@ fn draw_claims(f: &mut Frame, app: &App, area: Rect) {
 
 fn draw_footer(f: &mut Frame, app: &App, area: Rect) {
     let keys = match app.mode {
-        Mode::Normal => " [c]laim  [s]tatus  [p]rogress  [Tab]panel  [R]efresh  [q]uit ",
+        Mode::Normal => " [c]laim  [s]tatus  [p]rogress  [Tab]panel  [R]efresh  [?]help  [q]uit ",
         Mode::Claiming | Mode::Statusing => " [Enter]confirm  [Esc]cancel ",
+        Mode::Help => " [Esc] or [?] to close help ",
     };
     f.render_widget(
         Paragraph::new(Line::from(vec![
@@ -429,11 +432,59 @@ fn draw_footer(f: &mut Frame, app: &App, area: Rect) {
     );
 }
 
+fn draw_help(f: &mut Frame, app: &App, area: Rect) {
+    let peer_id  = app.peer_id.as_deref().unwrap_or("(not registered)");
+    let token    = app.token.as_deref().unwrap_or("");
+    let tok_disp = if token.len() >= 8 { format!("{}…", &token[..8]) } else { "(none)".into() };
+
+    let lines: Vec<Line> = vec![
+        Line::from(vec![Span::styled(" Keys ", CYAN_BOLD)]),
+        Line::from(""),
+        Line::from(vec![Span::styled("  c  ", HIGHLIGHT), Span::raw(" claim a task (mutex — first wins)")]),
+        Line::from(vec![Span::styled("  s  ", HIGHLIGHT), Span::raw(" set your status text")]),
+        Line::from(vec![Span::styled("  p  ", HIGHLIGHT), Span::raw(" heartbeat on selected claim (keep-alive)")]),
+        Line::from(vec![Span::styled(" Tab ", HIGHLIGHT), Span::raw(" switch focus: Peers / Claims")]),
+        Line::from(vec![Span::styled("  R  ", HIGHLIGHT), Span::raw(" force refresh now")]),
+        Line::from(vec![Span::styled("j/k ↑↓", HIGHLIGHT), Span::raw(" navigate rows")]),
+        Line::from(vec![Span::styled("  q  ", HIGHLIGHT), Span::raw(" quit")]),
+        Line::from(""),
+        Line::from(vec![Span::styled(" Shell helpers (source coord-hooks.sh) ", CYAN_BOLD)]),
+        Line::from(""),
+        Line::from("  coord-peers           list all active peers"),
+        Line::from("  coord-claims          list all active task claims"),
+        Line::from("  coord-claim <task>    claim a task from the terminal"),
+        Line::from("  coord-status <text>   set your status from the terminal"),
+        Line::from("  coord-whoami          show your peer ID and token"),
+        Line::from(""),
+        Line::from(vec![Span::styled(" Register a new window ", CYAN_BOLD)]),
+        Line::from(""),
+        Line::from("  claude / gemini / vibe / cursor / codex  (auto via hooks)"),
+        Line::from("  coord-tui --id --kind claude              (manual)"),
+        Line::from("  coord-tui --id --kind vibe --context vibe (for Vibe/IDE)"),
+        Line::from(""),
+        Line::from(vec![Span::styled(" This session ", CYAN_BOLD)]),
+        Line::from(""),
+        Line::from(format!("  Peer ID : {}", peer_id)),
+        Line::from(format!("  Token   : {}", tok_disp)),
+        Line::from(format!("  Adapter : {}", app.url)),
+    ];
+
+    let popup_h = (lines.len() + 4) as u16;
+    let popup = centered(70, popup_h, area);
+    let block = Block::bordered()
+        .title(" Help — press ? or Esc to close ")
+        .border_style(Style::new().fg(Color::Cyan));
+    let inner = block.inner(popup);
+    f.render_widget(Clear, popup);
+    f.render_widget(block, popup);
+    f.render_widget(Paragraph::new(lines).style(Style::new().fg(Color::White)), inner);
+}
+
 fn draw_input(f: &mut Frame, app: &App, area: Rect) {
     let label = match app.mode {
         Mode::Claiming  => " Claim task (press Enter): ",
         Mode::Statusing => " Set status (press Enter): ",
-        Mode::Normal    => unreachable!(),
+        Mode::Normal | Mode::Help => unreachable!(),
     };
     let popup = centered(62, 3, area);
     let block = Block::bordered()
@@ -554,7 +605,14 @@ fn main() -> io::Result<()> {
                             }
                             KeyCode::Down | KeyCode::Char('j') => app.nav_down(),
                             KeyCode::Up   | KeyCode::Char('k') => app.nav_up(),
+                            KeyCode::Char('?') => { app.mode = Mode::Help; }
                             _ => {}
+                        }
+                    }
+                    Mode::Help => {
+                        if key.code == KeyCode::Esc || key.code == KeyCode::Char('q')
+                            || key.code == KeyCode::Char('?') {
+                            app.mode = Mode::Normal;
                         }
                     }
                     Mode::Claiming | Mode::Statusing => match key.code {
