@@ -1,0 +1,40 @@
+# SPDX-License-Identifier: PMPL-1.0-or-later
+# Copyright (c) 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+#
+# NEUROSYM.a2ml — Neurosymbolic integration config for echidna-llm-mcp
+
+[metadata]
+version = "1.0.0"
+last-updated = "2026-04-25"
+
+[role]
+# This cartridge does not perform any symbolic reasoning or neural inference
+# itself. It is a transport shim. Both layers live upstream in echidna:
+# - symbolic: provers/, verification/, dispatch.rs
+# - neural: src/julia/ (GNN, premise selection, tactic ranking)
+
+is-symbolic-engine = false
+is-neural-engine = false
+exposes-neurosym = true   # via echidna's combined endpoints
+
+[exposed-tools]
+# Tools that route to neurosymbolic backends in echidna:
+[[exposed-tools.tool]]
+name = "suggest_tactics"
+neural-component = "echidna /gnn/rank (Julia GNN endpoint)"
+symbolic-component = "echidna prover dispatch"
+
+[[exposed-tools.tool]]
+name = "rank_premises"
+neural-component = "echidna /gnn/rank"
+symbolic-component = "premise filter"
+
+[hypatia-scanning]
+# Hypatia (estate-wide neurosymbolic CI/CD intelligence) scans this
+# cartridge as part of boj-server's parent scan. No cartridge-specific
+# Hypatia config needed.
+inherits-from = "boj-server"
+
+[invariants]
+no-local-models = "This cartridge ships no model weights, no inference code. All AI happens upstream in echidna."
+no-bypass = "Tool callers cannot reach echidna's neural endpoints by other means through this cartridge — only the documented suggest_tactics / rank_premises path."

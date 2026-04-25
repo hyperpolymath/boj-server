@@ -1,0 +1,57 @@
+# SPDX-License-Identifier: PMPL-1.0-or-later
+# Copyright (c) 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+#
+# STATE.a2ml — echidna-llm-mcp cartridge state
+
+[metadata]
+project = "echidna-llm-mcp"
+version = "0.3.0"
+last-updated = "2026-04-25"
+status = "active"
+
+[project-context]
+name = "echidna-llm-mcp"
+purpose = """
+BoJ cartridge exposing echidna's proof engine to AI assistants via
+JSON-RPC. 15 tools mapping 1:1 to echidna REST endpoints, addressable
+across all 113 ProverKind variants by slug.
+"""
+completion-percentage = 90
+
+[position]
+phase = "production"
+maturity = "stable"
+
+[components]
+deno-transport = { status = "shipping", path = "mod.js" }
+zig-adapter = { status = "shipping", path = "adapter/", note = "Zig 0.15.2 build fix landed afbab20 (2026-04-25)" }
+ffi = { status = "shipping", path = "ffi/echidna_llm_ffi.zig" }
+call-protocol = { status = "shipping", path = "docs/CALL-PROTOCOL.adoc" }
+
+[dependencies]
+parent-repo = "boj-server (loader, security, threat-model)"
+upstream = "echidna (REST endpoints, prover catalogue)"
+
+[blockers-and-issues]
+issues = []
+
+[critical-next-actions]
+actions = [
+  "Track echidna REST surface drift — when echidna gains new endpoints, mirror in CALL-PROTOCOL.adoc",
+  "Watch for BoJ loader signature/auth changes that might affect cartridge invocation",
+]
+
+[recent-history]
+[[recent-history.entry]]
+date = "2026-04-25"
+ref = "afbab20"
+note = "Zig 0.15.2 cartridge build fix (4 sub-issues: API drift + libc + 16 pub fns + missing init arg)"
+
+[[recent-history.entry]]
+date = "2026-04-25"
+note = "RSR scaffolding added: LICENSE, SECURITY.md, CONTRIBUTING.md, EXPLAINME.adoc, .machine_readable/6a2/"
+
+[[recent-history.entry]]
+date = "2026-04-24"
+ref = "1fef110, c5188a8"
+note = "V-lang seam sweep — removed historical V-lang references after V-lang ban"

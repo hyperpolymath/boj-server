@@ -1,0 +1,39 @@
+# SPDX-License-Identifier: PMPL-1.0-or-later
+# Copyright (c) 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+#
+# AGENTIC.a2ml — AI agent constraints + capabilities for echidna-llm-mcp
+
+[metadata]
+version = "1.0.0"
+last-updated = "2026-04-25"
+
+[agent-permissions]
+can-edit-source = true       # mod.js, ffi/, adapter/
+can-edit-tests = true        # ffi tests
+can-edit-docs = true         # CALL-PROTOCOL, README, EXPLAINME
+can-edit-config = true       # cartridge.json
+can-edit-protocol = false    # ABI changes need parent boj-server review
+
+[agent-constraints]
+# What agents must NOT do:
+# - Add new tools without updating CALL-PROTOCOL.adoc
+# - Hardcode prover slugs (delegate to echidna's provers.a2ml at runtime)
+# - Bypass the parent BoJ loader for production traffic
+# - Use V-lang (banned 2026-04-10) — Zig only
+# - Use npm/Bun/pnpm — Deno only
+# - Use believe_me / unsafeCoerce / Obj.magic / similar dangerous patterns
+
+[automation-hooks]
+# on-enter: Read parent boj-server STATE.a2ml + this STATE.a2ml + CALL-PROTOCOL
+# on-edit-tool: Update CALL-PROTOCOL.adoc + bump cartridge.json version
+# on-build-fail: Check Zig version >= 0.15.2; check FFI exports marked `pub`
+# on-commit: Run zig build + zig build test on FFI changes
+
+[trust-policy]
+inherits-from = "boj-server (loader, signature verification, threat model)"
+adds = "none — cartridge introduces no new privileged operations"
+
+[exceptions]
+# No carve-outs from estate-wide rules at the cartridge level.
+# The companion echidnabot-mcp is a documented exception in its own
+# AGENTIC.a2ml — sunsets to fold back into a BoJ cartridge.

@@ -1,0 +1,69 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+= echidna-llm-mcp — Show Me The Receipts
+:toc:
+:icons: font
+
+The README makes claims. This file backs them up with evidence.
+
+== Key Claims From README
+
+[quote, README "Overview"]
+____
+A BoJ cartridge exposing the echidna proof engine to AI assistants
+through a 15-tool MCP-shaped surface. Routes calls to echidna's REST
+API and translates responses back to JSON-RPC.
+____
+
+*Evidence — 15 tools*: see `docs/CALL-PROTOCOL.adoc` for the
+authoritative tool list. Each tool maps 1:1 to a documented echidna
+REST endpoint.
+
+*Evidence — 105 prover backends accessible*: tools accept a `prover`
+slug parameter; valid slugs are enumerated in echidna's
+`.machine_readable/provers.a2ml` (113 ProverKind variants as of
+2026-04-24). The cartridge does not maintain its own prover list —
+it delegates resolution to echidna at request time.
+
+[quote, README "Transport"]
+____
+Two transports are supported: a Deno `mod.js` runtime (canonical) and
+an optional Zig native adapter for low-latency direct invocation.
+____
+
+*Evidence — Deno transport*: `mod.js` (root of cartridge) implements
+the full tool surface and is the path used by BoJ loader by default.
+
+*Evidence — Zig adapter*: `adapter/echidna_llm_adapter.zig` ships a
+multi-port listener (REST/gRPC/GraphQL) that calls into the FFI at
+`ffi/echidna_llm_ffi.zig`. As of 2026-04-25 the build has been migrated
+to Zig 0.15.2 (commit `afbab20`); previously the adapter would not
+compile on stable Zig.
+
+== Caveats
+
+*Caveat — auth is loader's responsibility*. The cartridge does not
+authenticate callers. It assumes the BoJ loader gates access (FFI
+boundary is process-internal). Standalone use (without BoJ loader)
+exposes the cartridge to any caller with FFI/HTTP reach.
+
+*Caveat — endpoint configurability*. The Zig adapter reads
+`BOJ_ENDPOINT` from the environment; default is `http://127.0.0.1:7700`.
+The Deno transport reads from cartridge config. Mismatch between the
+two paths is currently silent; ensure both reference the same echidna
+host when running the adapter alongside the Deno runtime.
+
+*Caveat — V-lang adapter removed*. Earlier the cartridge had a V-lang
+intermediate layer; that was deleted during the V-lang ban (2026-04-10).
+The Zig replacement is what landed; some older docs may reference V-lang.
+Sweep is documented in commits `1fef110`, `c5188a8`.
+
+== Trust Inheritance From Parent
+
+The cartridge inherits boj-server's:
+
+- License (MPL-2.0 as legal fallback for PMPL-1.0-or-later)
+- Vulnerability reporting flow (see `SECURITY.md`)
+- Threat model (`.machine_readable/threat-model.a2ml`)
+- Loader-level signature verification
+
+The cartridge adds no new privileged operations.

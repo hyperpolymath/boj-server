@@ -1,0 +1,35 @@
+# SPDX-License-Identifier: PMPL-1.0-or-later
+# Copyright (c) 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+#
+# ⚓ ANCHOR: echidna-llm-mcp
+# Canonical identity + recalibration anchor for the echidna-llm-mcp BoJ
+# cartridge.
+
+id      = "org.hyperpolymath.boj-server.cartridges.echidna-llm-mcp"
+version = "0.3.0"
+clade   = "boj-cartridge"
+status  = "active"
+
+# No SSG — cartridge is a runtime component, not a static-site source.
+
+[relationships]
+parents = [
+  "org.hyperpolymath.boj-server",   # hosted in (loader)
+  "org.hyperpolymath.echidna",      # delegated to (proof engine)
+]
+
+siblings = [
+  # All other boj-server cartridges
+]
+
+[recalibration]
+# When this anchor becomes stale, walk the following:
+# 1. Verify echidna REST surface compatibility (docs/CALL-PROTOCOL.adoc vs echidna's actual endpoints)
+# 2. Check Zig version still supported (currently 0.15.2+)
+# 3. Confirm cartridge ABI compatibility with current boj-server loader
+# 4. Re-verify slug catalogue alignment (echidna's provers.a2ml unchanged enums)
+triggers = [
+  "echidna major version bump",
+  "boj-server loader ABI change",
+  "Zig stdlib API breaking change (next major)",
+]
