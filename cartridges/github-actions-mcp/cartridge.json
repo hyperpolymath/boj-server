@@ -7,7 +7,10 @@
   "description": "GitHub Actions CI/CD cartridge -- workflow listing, run management, job/step inspection, artifact download, log retrieval, workflow dispatch, secret listing, environment browsing, cache management, runner listing, re-run, and cancellation via the GitHub Actions API",
   "domain": "CI/CD",
   "tier": "Ayo",
-  "protocols": ["MCP", "REST"],
+  "protocols": [
+    "MCP",
+    "REST"
+  ],
   "auth": {
     "method": "bearer_token",
     "env_var": "GITHUB_TOKEN",
@@ -25,10 +28,19 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "owner": { "type": "string", "description": "Repository owner" },
-          "repo": { "type": "string", "description": "Repository name" }
+          "owner": {
+            "type": "string",
+            "description": "Repository owner"
+          },
+          "repo": {
+            "type": "string",
+            "description": "Repository name"
+          }
         },
-        "required": ["owner", "repo"]
+        "required": [
+          "owner",
+          "repo"
+        ]
       }
     },
     {
@@ -37,14 +49,35 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "owner": { "type": "string", "description": "Repository owner" },
-          "repo": { "type": "string", "description": "Repository name" },
-          "workflow_id": { "type": "string", "description": "Workflow ID or filename (e.g. 'ci.yml')" },
-          "branch": { "type": "string", "description": "Filter by branch" },
-          "status": { "type": "string", "description": "Filter: queued, in_progress, completed, success, failure" },
-          "per_page": { "type": "number", "description": "Results per page (default 25, max 100)" }
+          "owner": {
+            "type": "string",
+            "description": "Repository owner"
+          },
+          "repo": {
+            "type": "string",
+            "description": "Repository name"
+          },
+          "workflow_id": {
+            "type": "string",
+            "description": "Workflow ID or filename (e.g. 'ci.yml')"
+          },
+          "branch": {
+            "type": "string",
+            "description": "Filter by branch"
+          },
+          "status": {
+            "type": "string",
+            "description": "Filter: queued, in_progress, completed, success, failure"
+          },
+          "per_page": {
+            "type": "number",
+            "description": "Results per page (default 25, max 100)"
+          }
         },
-        "required": ["owner", "repo"]
+        "required": [
+          "owner",
+          "repo"
+        ]
       }
     },
     {
@@ -53,11 +86,24 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "owner": { "type": "string", "description": "Repository owner" },
-          "repo": { "type": "string", "description": "Repository name" },
-          "run_id": { "type": "number", "description": "Workflow run ID" }
+          "owner": {
+            "type": "string",
+            "description": "Repository owner"
+          },
+          "repo": {
+            "type": "string",
+            "description": "Repository name"
+          },
+          "run_id": {
+            "type": "number",
+            "description": "Workflow run ID"
+          }
         },
-        "required": ["owner", "repo", "run_id"]
+        "required": [
+          "owner",
+          "repo",
+          "run_id"
+        ]
       }
     },
     {
@@ -66,12 +112,28 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "owner": { "type": "string", "description": "Repository owner" },
-          "repo": { "type": "string", "description": "Repository name" },
-          "run_id": { "type": "number", "description": "Workflow run ID" },
-          "filter": { "type": "string", "description": "Filter: latest, all" }
+          "owner": {
+            "type": "string",
+            "description": "Repository owner"
+          },
+          "repo": {
+            "type": "string",
+            "description": "Repository name"
+          },
+          "run_id": {
+            "type": "number",
+            "description": "Workflow run ID"
+          },
+          "filter": {
+            "type": "string",
+            "description": "Filter: latest, all"
+          }
         },
-        "required": ["owner", "repo", "run_id"]
+        "required": [
+          "owner",
+          "repo",
+          "run_id"
+        ]
       }
     },
     {
@@ -80,11 +142,24 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "owner": { "type": "string", "description": "Repository owner" },
-          "repo": { "type": "string", "description": "Repository name" },
-          "run_id": { "type": "number", "description": "Workflow run ID" }
+          "owner": {
+            "type": "string",
+            "description": "Repository owner"
+          },
+          "repo": {
+            "type": "string",
+            "description": "Repository name"
+          },
+          "run_id": {
+            "type": "number",
+            "description": "Workflow run ID"
+          }
         },
-        "required": ["owner", "repo", "run_id"]
+        "required": [
+          "owner",
+          "repo",
+          "run_id"
+        ]
       }
     },
     {
@@ -93,11 +168,24 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "owner": { "type": "string", "description": "Repository owner" },
-          "repo": { "type": "string", "description": "Repository name" },
-          "run_id": { "type": "number", "description": "Workflow run ID" }
+          "owner": {
+            "type": "string",
+            "description": "Repository owner"
+          },
+          "repo": {
+            "type": "string",
+            "description": "Repository name"
+          },
+          "run_id": {
+            "type": "number",
+            "description": "Workflow run ID"
+          }
         },
-        "required": ["owner", "repo", "run_id"]
+        "required": [
+          "owner",
+          "repo",
+          "run_id"
+        ]
       }
     },
     {
@@ -106,13 +194,33 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "owner": { "type": "string", "description": "Repository owner" },
-          "repo": { "type": "string", "description": "Repository name" },
-          "workflow_id": { "type": "string", "description": "Workflow ID or filename" },
-          "ref": { "type": "string", "description": "Git ref (branch or tag)" },
-          "inputs": { "type": "object", "description": "Workflow input parameters" }
+          "owner": {
+            "type": "string",
+            "description": "Repository owner"
+          },
+          "repo": {
+            "type": "string",
+            "description": "Repository name"
+          },
+          "workflow_id": {
+            "type": "string",
+            "description": "Workflow ID or filename"
+          },
+          "ref": {
+            "type": "string",
+            "description": "Git ref (branch or tag)"
+          },
+          "inputs": {
+            "type": "object",
+            "description": "Workflow input parameters"
+          }
         },
-        "required": ["owner", "repo", "workflow_id", "ref"]
+        "required": [
+          "owner",
+          "repo",
+          "workflow_id",
+          "ref"
+        ]
       }
     },
     {
@@ -121,12 +229,28 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "owner": { "type": "string", "description": "Repository owner" },
-          "repo": { "type": "string", "description": "Repository name" },
-          "run_id": { "type": "number", "description": "Workflow run ID" },
-          "failed_only": { "type": "boolean", "description": "Re-run only failed jobs (default false)" }
+          "owner": {
+            "type": "string",
+            "description": "Repository owner"
+          },
+          "repo": {
+            "type": "string",
+            "description": "Repository name"
+          },
+          "run_id": {
+            "type": "number",
+            "description": "Workflow run ID"
+          },
+          "failed_only": {
+            "type": "boolean",
+            "description": "Re-run only failed jobs (default false)"
+          }
         },
-        "required": ["owner", "repo", "run_id"]
+        "required": [
+          "owner",
+          "repo",
+          "run_id"
+        ]
       }
     },
     {
@@ -135,11 +259,24 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "owner": { "type": "string", "description": "Repository owner" },
-          "repo": { "type": "string", "description": "Repository name" },
-          "run_id": { "type": "number", "description": "Workflow run ID" }
+          "owner": {
+            "type": "string",
+            "description": "Repository owner"
+          },
+          "repo": {
+            "type": "string",
+            "description": "Repository name"
+          },
+          "run_id": {
+            "type": "number",
+            "description": "Workflow run ID"
+          }
         },
-        "required": ["owner", "repo", "run_id"]
+        "required": [
+          "owner",
+          "repo",
+          "run_id"
+        ]
       }
     },
     {
@@ -148,10 +285,19 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "owner": { "type": "string", "description": "Repository owner" },
-          "repo": { "type": "string", "description": "Repository name" }
+          "owner": {
+            "type": "string",
+            "description": "Repository owner"
+          },
+          "repo": {
+            "type": "string",
+            "description": "Repository name"
+          }
         },
-        "required": ["owner", "repo"]
+        "required": [
+          "owner",
+          "repo"
+        ]
       }
     },
     {
@@ -160,10 +306,19 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "owner": { "type": "string", "description": "Repository owner" },
-          "repo": { "type": "string", "description": "Repository name" }
+          "owner": {
+            "type": "string",
+            "description": "Repository owner"
+          },
+          "repo": {
+            "type": "string",
+            "description": "Repository name"
+          }
         },
-        "required": ["owner", "repo"]
+        "required": [
+          "owner",
+          "repo"
+        ]
       }
     },
     {
@@ -172,13 +327,39 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "owner": { "type": "string", "description": "Repository owner" },
-          "repo": { "type": "string", "description": "Repository name" },
-          "key": { "type": "string", "description": "Filter by cache key prefix" },
-          "sort": { "type": "string", "description": "Sort: created_at, last_accessed_at, size_in_bytes" }
+          "owner": {
+            "type": "string",
+            "description": "Repository owner"
+          },
+          "repo": {
+            "type": "string",
+            "description": "Repository name"
+          },
+          "key": {
+            "type": "string",
+            "description": "Filter by cache key prefix"
+          },
+          "sort": {
+            "type": "string",
+            "description": "Sort: created_at, last_accessed_at, size_in_bytes"
+          }
         },
-        "required": ["owner", "repo"]
+        "required": [
+          "owner",
+          "repo"
+        ]
       }
     }
-  ]
+  ],
+  "ffi": {
+    "so_path": "ffi/zig-out/lib/libgithub_actions_mcp.so",
+    "abi_version": "ADR-0006",
+    "symbols": [
+      "boj_cartridge_init",
+      "boj_cartridge_deinit",
+      "boj_cartridge_name",
+      "boj_cartridge_version",
+      "boj_cartridge_invoke"
+    ]
+  }
 }

@@ -7,7 +7,10 @@
   "description": "Prometheus monitoring cartridge -- instant and range queries (PromQL), target discovery, alert rule listing, label/value browsing, metric metadata, series listing, and runtime/build info via the Prometheus HTTP API v1",
   "domain": "Monitoring",
   "tier": "Ayo",
-  "protocols": ["MCP", "REST"],
+  "protocols": [
+    "MCP",
+    "REST"
+  ],
   "auth": {
     "method": "bearer_token",
     "env_var": "PROMETHEUS_TOKEN",
@@ -24,10 +27,18 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "query": { "type": "string", "description": "PromQL expression" },
-          "time": { "type": "string", "description": "Evaluation timestamp (ISO 8601 or Unix, default: now)" }
+          "query": {
+            "type": "string",
+            "description": "PromQL expression"
+          },
+          "time": {
+            "type": "string",
+            "description": "Evaluation timestamp (ISO 8601 or Unix, default: now)"
+          }
         },
-        "required": ["query"]
+        "required": [
+          "query"
+        ]
       }
     },
     {
@@ -36,12 +47,29 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "query": { "type": "string", "description": "PromQL expression" },
-          "start": { "type": "string", "description": "Start timestamp (ISO 8601 or Unix)" },
-          "end": { "type": "string", "description": "End timestamp (ISO 8601 or Unix)" },
-          "step": { "type": "string", "description": "Query resolution step (e.g. '15s', '1m', '5m')" }
+          "query": {
+            "type": "string",
+            "description": "PromQL expression"
+          },
+          "start": {
+            "type": "string",
+            "description": "Start timestamp (ISO 8601 or Unix)"
+          },
+          "end": {
+            "type": "string",
+            "description": "End timestamp (ISO 8601 or Unix)"
+          },
+          "step": {
+            "type": "string",
+            "description": "Query resolution step (e.g. '15s', '1m', '5m')"
+          }
         },
-        "required": ["query", "start", "end", "step"]
+        "required": [
+          "query",
+          "start",
+          "end",
+          "step"
+        ]
       }
     },
     {
@@ -50,7 +78,10 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "state": { "type": "string", "description": "Filter by state: active, dropped, any" }
+          "state": {
+            "type": "string",
+            "description": "Filter by state: active, dropped, any"
+          }
         }
       }
     },
@@ -68,8 +99,14 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "start": { "type": "string", "description": "Start timestamp for label window" },
-          "end": { "type": "string", "description": "End timestamp for label window" }
+          "start": {
+            "type": "string",
+            "description": "Start timestamp for label window"
+          },
+          "end": {
+            "type": "string",
+            "description": "End timestamp for label window"
+          }
         }
       }
     },
@@ -79,11 +116,22 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "label": { "type": "string", "description": "Label name (e.g. 'job', 'instance', '__name__')" },
-          "start": { "type": "string", "description": "Start timestamp" },
-          "end": { "type": "string", "description": "End timestamp" }
+          "label": {
+            "type": "string",
+            "description": "Label name (e.g. 'job', 'instance', '__name__')"
+          },
+          "start": {
+            "type": "string",
+            "description": "Start timestamp"
+          },
+          "end": {
+            "type": "string",
+            "description": "End timestamp"
+          }
         },
-        "required": ["label"]
+        "required": [
+          "label"
+        ]
       }
     },
     {
@@ -92,8 +140,14 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "metric": { "type": "string", "description": "Metric name or prefix" },
-          "limit": { "type": "number", "description": "Max metadata entries" }
+          "metric": {
+            "type": "string",
+            "description": "Metric name or prefix"
+          },
+          "limit": {
+            "type": "number",
+            "description": "Max metadata entries"
+          }
         }
       }
     },
@@ -103,12 +157,34 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "match": { "type": "string", "description": "Series selector (e.g. '{job=\"node\"}')" },
-          "start": { "type": "string", "description": "Start timestamp" },
-          "end": { "type": "string", "description": "End timestamp" }
+          "match": {
+            "type": "string",
+            "description": "Series selector (e.g. '{job=\"node\"}')"
+          },
+          "start": {
+            "type": "string",
+            "description": "Start timestamp"
+          },
+          "end": {
+            "type": "string",
+            "description": "End timestamp"
+          }
         },
-        "required": ["match"]
+        "required": [
+          "match"
+        ]
       }
     }
-  ]
+  ],
+  "ffi": {
+    "so_path": "ffi/zig-out/lib/libprometheus_mcp.so",
+    "abi_version": "ADR-0006",
+    "symbols": [
+      "boj_cartridge_init",
+      "boj_cartridge_deinit",
+      "boj_cartridge_name",
+      "boj_cartridge_version",
+      "boj_cartridge_invoke"
+    ]
+  }
 }

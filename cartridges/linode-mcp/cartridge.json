@@ -7,7 +7,10 @@
   "description": "Linode/Akamai cloud infrastructure cartridge -- instances, volumes, domains, NodeBalancers, StackScripts, images, regions, firewalls, and account management",
   "domain": "Cloud",
   "tier": "Ayo",
-  "protocols": ["MCP", "REST"],
+  "protocols": [
+    "MCP",
+    "REST"
+  ],
   "auth": {
     "method": "bearer_token",
     "env_var": "LINODE_TOKEN",
@@ -25,8 +28,14 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "page": { "type": "number", "description": "Page number (default 1)" },
-          "page_size": { "type": "number", "description": "Results per page (default 100, max 500)" }
+          "page": {
+            "type": "number",
+            "description": "Page number (default 1)"
+          },
+          "page_size": {
+            "type": "number",
+            "description": "Results per page (default 100, max 500)"
+          }
         }
       }
     },
@@ -36,9 +45,14 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "linode_id": { "type": "number", "description": "Numeric Linode instance ID" }
+          "linode_id": {
+            "type": "number",
+            "description": "Numeric Linode instance ID"
+          }
         },
-        "required": ["linode_id"]
+        "required": [
+          "linode_id"
+        ]
       }
     },
     {
@@ -47,23 +61,81 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "label": { "type": "string", "description": "Linode label (3-64 characters, alphanumeric, dashes, underscores)" },
-          "region": { "type": "string", "description": "Region ID (e.g. us-east, us-central, eu-west, ap-south, ap-southeast, ca-central)" },
-          "type": { "type": "string", "description": "Instance type (e.g. g6-nanode-1, g6-standard-2, g6-dedicated-4, g7-highmem-2)" },
-          "image": { "type": "string", "description": "Image ID (e.g. linode/ubuntu24.04, linode/debian12, linode/fedora41, linode/alpine3.20)" },
-          "root_pass": { "type": "string", "description": "Root password for the Linode (if no authorized keys)" },
-          "authorized_keys": { "type": "array", "items": { "type": "string" }, "description": "SSH public keys to install" },
-          "authorized_users": { "type": "array", "items": { "type": "string" }, "description": "Linode usernames whose keys to install" },
-          "booted": { "type": "boolean", "description": "Boot on creation (default true)" },
-          "backups_enabled": { "type": "boolean", "description": "Enable backup service" },
-          "swap_size": { "type": "number", "description": "Swap size in MB (default 512)" },
-          "private_ip": { "type": "boolean", "description": "Add private IP" },
-          "tags": { "type": "array", "items": { "type": "string" }, "description": "Tags to apply" },
-          "group": { "type": "string", "description": "Display group (deprecated but supported)" },
-          "stackscript_id": { "type": "number", "description": "StackScript ID to run on first boot" },
-          "stackscript_data": { "type": "object", "description": "UDF data for the StackScript" }
+          "label": {
+            "type": "string",
+            "description": "Linode label (3-64 characters, alphanumeric, dashes, underscores)"
+          },
+          "region": {
+            "type": "string",
+            "description": "Region ID (e.g. us-east, us-central, eu-west, ap-south, ap-southeast, ca-central)"
+          },
+          "type": {
+            "type": "string",
+            "description": "Instance type (e.g. g6-nanode-1, g6-standard-2, g6-dedicated-4, g7-highmem-2)"
+          },
+          "image": {
+            "type": "string",
+            "description": "Image ID (e.g. linode/ubuntu24.04, linode/debian12, linode/fedora41, linode/alpine3.20)"
+          },
+          "root_pass": {
+            "type": "string",
+            "description": "Root password for the Linode (if no authorized keys)"
+          },
+          "authorized_keys": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "SSH public keys to install"
+          },
+          "authorized_users": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Linode usernames whose keys to install"
+          },
+          "booted": {
+            "type": "boolean",
+            "description": "Boot on creation (default true)"
+          },
+          "backups_enabled": {
+            "type": "boolean",
+            "description": "Enable backup service"
+          },
+          "swap_size": {
+            "type": "number",
+            "description": "Swap size in MB (default 512)"
+          },
+          "private_ip": {
+            "type": "boolean",
+            "description": "Add private IP"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Tags to apply"
+          },
+          "group": {
+            "type": "string",
+            "description": "Display group (deprecated but supported)"
+          },
+          "stackscript_id": {
+            "type": "number",
+            "description": "StackScript ID to run on first boot"
+          },
+          "stackscript_data": {
+            "type": "object",
+            "description": "UDF data for the StackScript"
+          }
         },
-        "required": ["label", "region", "type"]
+        "required": [
+          "label",
+          "region",
+          "type"
+        ]
       }
     },
     {
@@ -72,9 +144,14 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "linode_id": { "type": "number", "description": "Numeric Linode instance ID to delete" }
+          "linode_id": {
+            "type": "number",
+            "description": "Numeric Linode instance ID to delete"
+          }
         },
-        "required": ["linode_id"]
+        "required": [
+          "linode_id"
+        ]
       }
     },
     {
@@ -83,10 +160,18 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "linode_id": { "type": "number", "description": "Linode instance ID" },
-          "config_id": { "type": "number", "description": "Configuration profile ID to boot with (optional)" }
+          "linode_id": {
+            "type": "number",
+            "description": "Linode instance ID"
+          },
+          "config_id": {
+            "type": "number",
+            "description": "Configuration profile ID to boot with (optional)"
+          }
         },
-        "required": ["linode_id"]
+        "required": [
+          "linode_id"
+        ]
       }
     },
     {
@@ -95,9 +180,14 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "linode_id": { "type": "number", "description": "Linode instance ID" }
+          "linode_id": {
+            "type": "number",
+            "description": "Linode instance ID"
+          }
         },
-        "required": ["linode_id"]
+        "required": [
+          "linode_id"
+        ]
       }
     },
     {
@@ -106,10 +196,18 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "linode_id": { "type": "number", "description": "Linode instance ID" },
-          "config_id": { "type": "number", "description": "Configuration profile ID to boot with (optional)" }
+          "linode_id": {
+            "type": "number",
+            "description": "Linode instance ID"
+          },
+          "config_id": {
+            "type": "number",
+            "description": "Configuration profile ID to boot with (optional)"
+          }
         },
-        "required": ["linode_id"]
+        "required": [
+          "linode_id"
+        ]
       }
     },
     {
@@ -118,8 +216,14 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "page": { "type": "number", "description": "Page number" },
-          "page_size": { "type": "number", "description": "Results per page" }
+          "page": {
+            "type": "number",
+            "description": "Page number"
+          },
+          "page_size": {
+            "type": "number",
+            "description": "Results per page"
+          }
         }
       }
     },
@@ -129,14 +233,38 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "label": { "type": "string", "description": "Volume label" },
-          "size": { "type": "number", "description": "Size in GB (min 10, max 10240)" },
-          "region": { "type": "string", "description": "Region ID (required if not attaching to a Linode)" },
-          "linode_id": { "type": "number", "description": "Linode ID to attach to (optional)" },
-          "config_id": { "type": "number", "description": "Config profile ID to attach to (optional)" },
-          "tags": { "type": "array", "items": { "type": "string" }, "description": "Tags to apply" }
+          "label": {
+            "type": "string",
+            "description": "Volume label"
+          },
+          "size": {
+            "type": "number",
+            "description": "Size in GB (min 10, max 10240)"
+          },
+          "region": {
+            "type": "string",
+            "description": "Region ID (required if not attaching to a Linode)"
+          },
+          "linode_id": {
+            "type": "number",
+            "description": "Linode ID to attach to (optional)"
+          },
+          "config_id": {
+            "type": "number",
+            "description": "Config profile ID to attach to (optional)"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Tags to apply"
+          }
         },
-        "required": ["label", "size"]
+        "required": [
+          "label",
+          "size"
+        ]
       }
     },
     {
@@ -145,8 +273,14 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "page": { "type": "number", "description": "Page number" },
-          "page_size": { "type": "number", "description": "Results per page" }
+          "page": {
+            "type": "number",
+            "description": "Page number"
+          },
+          "page_size": {
+            "type": "number",
+            "description": "Results per page"
+          }
         }
       }
     },
@@ -156,15 +290,45 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "domain": { "type": "string", "description": "Domain name (e.g. example.com)" },
-          "type": { "type": "string", "description": "Domain type: master or slave" },
-          "soa_email": { "type": "string", "description": "SOA email address (required for master)" },
-          "master_ips": { "type": "array", "items": { "type": "string" }, "description": "Master IPs (required for slave)" },
-          "group": { "type": "string", "description": "Display group" },
-          "description": { "type": "string", "description": "Domain description" },
-          "tags": { "type": "array", "items": { "type": "string" }, "description": "Tags to apply" }
+          "domain": {
+            "type": "string",
+            "description": "Domain name (e.g. example.com)"
+          },
+          "type": {
+            "type": "string",
+            "description": "Domain type: master or slave"
+          },
+          "soa_email": {
+            "type": "string",
+            "description": "SOA email address (required for master)"
+          },
+          "master_ips": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Master IPs (required for slave)"
+          },
+          "group": {
+            "type": "string",
+            "description": "Display group"
+          },
+          "description": {
+            "type": "string",
+            "description": "Domain description"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Tags to apply"
+          }
         },
-        "required": ["domain", "type"]
+        "required": [
+          "domain",
+          "type"
+        ]
       }
     },
     {
@@ -173,8 +337,14 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "page": { "type": "number", "description": "Page number" },
-          "page_size": { "type": "number", "description": "Results per page" }
+          "page": {
+            "type": "number",
+            "description": "Page number"
+          },
+          "page_size": {
+            "type": "number",
+            "description": "Results per page"
+          }
         }
       }
     },
@@ -184,9 +354,18 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "page": { "type": "number", "description": "Page number" },
-          "page_size": { "type": "number", "description": "Results per page" },
-          "mine": { "type": "boolean", "description": "Show only your StackScripts (default false)" }
+          "page": {
+            "type": "number",
+            "description": "Page number"
+          },
+          "page_size": {
+            "type": "number",
+            "description": "Results per page"
+          },
+          "mine": {
+            "type": "boolean",
+            "description": "Show only your StackScripts (default false)"
+          }
         }
       }
     },
@@ -196,8 +375,14 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "page": { "type": "number", "description": "Page number" },
-          "page_size": { "type": "number", "description": "Results per page" }
+          "page": {
+            "type": "number",
+            "description": "Page number"
+          },
+          "page_size": {
+            "type": "number",
+            "description": "Results per page"
+          }
         }
       }
     },
@@ -215,8 +400,14 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "page": { "type": "number", "description": "Page number" },
-          "page_size": { "type": "number", "description": "Results per page" }
+          "page": {
+            "type": "number",
+            "description": "Page number"
+          },
+          "page_size": {
+            "type": "number",
+            "description": "Results per page"
+          }
         }
       }
     },
@@ -226,12 +417,30 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "label": { "type": "string", "description": "Firewall label" },
-          "rules": { "type": "object", "description": "Rules object with inbound and outbound arrays" },
-          "devices": { "type": "object", "description": "Devices to apply to (linodes: [id], nodebalancers: [id])" },
-          "tags": { "type": "array", "items": { "type": "string" }, "description": "Tags to apply" }
+          "label": {
+            "type": "string",
+            "description": "Firewall label"
+          },
+          "rules": {
+            "type": "object",
+            "description": "Rules object with inbound and outbound arrays"
+          },
+          "devices": {
+            "type": "object",
+            "description": "Devices to apply to (linodes: [id], nodebalancers: [id])"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Tags to apply"
+          }
         },
-        "required": ["label", "rules"]
+        "required": [
+          "label",
+          "rules"
+        ]
       }
     },
     {
@@ -242,5 +451,16 @@
         "properties": {}
       }
     }
-  ]
+  ],
+  "ffi": {
+    "so_path": "ffi/zig-out/lib/liblinode_mcp.so",
+    "abi_version": "ADR-0006",
+    "symbols": [
+      "boj_cartridge_init",
+      "boj_cartridge_deinit",
+      "boj_cartridge_name",
+      "boj_cartridge_version",
+      "boj_cartridge_invoke"
+    ]
+  }
 }

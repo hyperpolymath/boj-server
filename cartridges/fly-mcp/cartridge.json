@@ -7,7 +7,10 @@
   "description": "Fly.io Machines API v1 cartridge -- app, machine, volume, secret, region, IP, and certificate management",
   "domain": "Cloud",
   "tier": "Ayo",
-  "protocols": ["MCP", "REST"],
+  "protocols": [
+    "MCP",
+    "REST"
+  ],
   "auth": {
     "method": "bearer_token",
     "env_var": "FLY_API_TOKEN",
@@ -24,7 +27,10 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "org_slug": { "type": "string", "description": "Organisation slug (default: personal)" }
+          "org_slug": {
+            "type": "string",
+            "description": "Organisation slug (default: personal)"
+          }
         }
       }
     },
@@ -34,9 +40,14 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "app_name": { "type": "string", "description": "App name" }
+          "app_name": {
+            "type": "string",
+            "description": "App name"
+          }
         },
-        "required": ["app_name"]
+        "required": [
+          "app_name"
+        ]
       }
     },
     {
@@ -45,11 +56,22 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "app_name": { "type": "string", "description": "App name (must be globally unique)" },
-          "org_slug": { "type": "string", "description": "Organisation slug (default: personal)" },
-          "network": { "type": "string", "description": "Network name to join (optional)" }
+          "app_name": {
+            "type": "string",
+            "description": "App name (must be globally unique)"
+          },
+          "org_slug": {
+            "type": "string",
+            "description": "Organisation slug (default: personal)"
+          },
+          "network": {
+            "type": "string",
+            "description": "Network name to join (optional)"
+          }
         },
-        "required": ["app_name"]
+        "required": [
+          "app_name"
+        ]
       }
     },
     {
@@ -58,9 +80,14 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "app_name": { "type": "string", "description": "App name to destroy" }
+          "app_name": {
+            "type": "string",
+            "description": "App name to destroy"
+          }
         },
-        "required": ["app_name"]
+        "required": [
+          "app_name"
+        ]
       }
     },
     {
@@ -69,11 +96,22 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "app_name": { "type": "string", "description": "App name" },
-          "include_deleted": { "type": "boolean", "description": "Include deleted machines (default false)" },
-          "region": { "type": "string", "description": "Filter by region code (e.g. lhr, iad, sin)" }
+          "app_name": {
+            "type": "string",
+            "description": "App name"
+          },
+          "include_deleted": {
+            "type": "boolean",
+            "description": "Include deleted machines (default false)"
+          },
+          "region": {
+            "type": "string",
+            "description": "Filter by region code (e.g. lhr, iad, sin)"
+          }
         },
-        "required": ["app_name"]
+        "required": [
+          "app_name"
+        ]
       }
     },
     {
@@ -82,10 +120,19 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "app_name": { "type": "string", "description": "App name" },
-          "machine_id": { "type": "string", "description": "Machine ID" }
+          "app_name": {
+            "type": "string",
+            "description": "App name"
+          },
+          "machine_id": {
+            "type": "string",
+            "description": "Machine ID"
+          }
         },
-        "required": ["app_name", "machine_id"]
+        "required": [
+          "app_name",
+          "machine_id"
+        ]
       }
     },
     {
@@ -94,12 +141,27 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "app_name": { "type": "string", "description": "App name" },
-          "name": { "type": "string", "description": "Machine name (optional)" },
-          "region": { "type": "string", "description": "Region code (e.g. lhr, iad, sin, cdg, nrt)" },
-          "config": { "type": "object", "description": "Machine config (image, guest: {cpus, memory_mb}, services, env, auto_destroy)" }
+          "app_name": {
+            "type": "string",
+            "description": "App name"
+          },
+          "name": {
+            "type": "string",
+            "description": "Machine name (optional)"
+          },
+          "region": {
+            "type": "string",
+            "description": "Region code (e.g. lhr, iad, sin, cdg, nrt)"
+          },
+          "config": {
+            "type": "object",
+            "description": "Machine config (image, guest: {cpus, memory_mb}, services, env, auto_destroy)"
+          }
         },
-        "required": ["app_name", "config"]
+        "required": [
+          "app_name",
+          "config"
+        ]
       }
     },
     {
@@ -108,10 +170,19 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "app_name": { "type": "string", "description": "App name" },
-          "machine_id": { "type": "string", "description": "Machine ID" }
+          "app_name": {
+            "type": "string",
+            "description": "App name"
+          },
+          "machine_id": {
+            "type": "string",
+            "description": "Machine ID"
+          }
         },
-        "required": ["app_name", "machine_id"]
+        "required": [
+          "app_name",
+          "machine_id"
+        ]
       }
     },
     {
@@ -120,11 +191,23 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "app_name": { "type": "string", "description": "App name" },
-          "machine_id": { "type": "string", "description": "Machine ID" },
-          "signal": { "type": "string", "description": "Signal to send (e.g. SIGTERM, SIGKILL). Default SIGTERM." }
+          "app_name": {
+            "type": "string",
+            "description": "App name"
+          },
+          "machine_id": {
+            "type": "string",
+            "description": "Machine ID"
+          },
+          "signal": {
+            "type": "string",
+            "description": "Signal to send (e.g. SIGTERM, SIGKILL). Default SIGTERM."
+          }
         },
-        "required": ["app_name", "machine_id"]
+        "required": [
+          "app_name",
+          "machine_id"
+        ]
       }
     },
     {
@@ -133,11 +216,23 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "app_name": { "type": "string", "description": "App name" },
-          "machine_id": { "type": "string", "description": "Machine ID" },
-          "timeout": { "type": "string", "description": "Timeout for graceful shutdown (e.g. '30s')" }
+          "app_name": {
+            "type": "string",
+            "description": "App name"
+          },
+          "machine_id": {
+            "type": "string",
+            "description": "Machine ID"
+          },
+          "timeout": {
+            "type": "string",
+            "description": "Timeout for graceful shutdown (e.g. '30s')"
+          }
         },
-        "required": ["app_name", "machine_id"]
+        "required": [
+          "app_name",
+          "machine_id"
+        ]
       }
     },
     {
@@ -146,11 +241,23 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "app_name": { "type": "string", "description": "App name" },
-          "machine_id": { "type": "string", "description": "Machine ID" },
-          "force": { "type": "boolean", "description": "Force destroy even if running (default false)" }
+          "app_name": {
+            "type": "string",
+            "description": "App name"
+          },
+          "machine_id": {
+            "type": "string",
+            "description": "Machine ID"
+          },
+          "force": {
+            "type": "boolean",
+            "description": "Force destroy even if running (default false)"
+          }
         },
-        "required": ["app_name", "machine_id"]
+        "required": [
+          "app_name",
+          "machine_id"
+        ]
       }
     },
     {
@@ -159,9 +266,14 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "app_name": { "type": "string", "description": "App name" }
+          "app_name": {
+            "type": "string",
+            "description": "App name"
+          }
         },
-        "required": ["app_name"]
+        "required": [
+          "app_name"
+        ]
       }
     },
     {
@@ -170,14 +282,37 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "app_name": { "type": "string", "description": "App name" },
-          "name": { "type": "string", "description": "Volume name" },
-          "region": { "type": "string", "description": "Region code" },
-          "size_gb": { "type": "number", "description": "Size in GB (min 1)" },
-          "encrypted": { "type": "boolean", "description": "Encrypt volume (default true)" },
-          "snapshot_id": { "type": "string", "description": "Snapshot ID to restore from (optional)" }
+          "app_name": {
+            "type": "string",
+            "description": "App name"
+          },
+          "name": {
+            "type": "string",
+            "description": "Volume name"
+          },
+          "region": {
+            "type": "string",
+            "description": "Region code"
+          },
+          "size_gb": {
+            "type": "number",
+            "description": "Size in GB (min 1)"
+          },
+          "encrypted": {
+            "type": "boolean",
+            "description": "Encrypt volume (default true)"
+          },
+          "snapshot_id": {
+            "type": "string",
+            "description": "Snapshot ID to restore from (optional)"
+          }
         },
-        "required": ["app_name", "name", "region", "size_gb"]
+        "required": [
+          "app_name",
+          "name",
+          "region",
+          "size_gb"
+        ]
       }
     },
     {
@@ -186,9 +321,14 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "app_name": { "type": "string", "description": "App name" }
+          "app_name": {
+            "type": "string",
+            "description": "App name"
+          }
         },
-        "required": ["app_name"]
+        "required": [
+          "app_name"
+        ]
       }
     },
     {
@@ -197,10 +337,19 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "app_name": { "type": "string", "description": "App name" },
-          "secrets": { "type": "object", "description": "Key-value map of secrets to set" }
+          "app_name": {
+            "type": "string",
+            "description": "App name"
+          },
+          "secrets": {
+            "type": "object",
+            "description": "Key-value map of secrets to set"
+          }
         },
-        "required": ["app_name", "secrets"]
+        "required": [
+          "app_name",
+          "secrets"
+        ]
       }
     },
     {
@@ -209,10 +358,19 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "app_name": { "type": "string", "description": "App name" },
-          "key": { "type": "string", "description": "Secret key name to delete" }
+          "app_name": {
+            "type": "string",
+            "description": "App name"
+          },
+          "key": {
+            "type": "string",
+            "description": "Secret key name to delete"
+          }
         },
-        "required": ["app_name", "key"]
+        "required": [
+          "app_name",
+          "key"
+        ]
       }
     },
     {
@@ -221,9 +379,14 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "app_name": { "type": "string", "description": "App name" }
+          "app_name": {
+            "type": "string",
+            "description": "App name"
+          }
         },
-        "required": ["app_name"]
+        "required": [
+          "app_name"
+        ]
       }
     },
     {
@@ -232,10 +395,19 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "app_name": { "type": "string", "description": "App name" },
-          "hostname": { "type": "string", "description": "Hostname for the certificate (e.g. example.com)" }
+          "app_name": {
+            "type": "string",
+            "description": "App name"
+          },
+          "hostname": {
+            "type": "string",
+            "description": "Hostname for the certificate (e.g. example.com)"
+          }
         },
-        "required": ["app_name", "hostname"]
+        "required": [
+          "app_name",
+          "hostname"
+        ]
       }
     },
     {
@@ -252,11 +424,22 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "app_name": { "type": "string", "description": "App name" },
-          "type": { "type": "string", "description": "IP type: v4 or v6 (default v6)" },
-          "region": { "type": "string", "description": "Region for shared IPv4 (optional)" }
+          "app_name": {
+            "type": "string",
+            "description": "App name"
+          },
+          "type": {
+            "type": "string",
+            "description": "IP type: v4 or v6 (default v6)"
+          },
+          "region": {
+            "type": "string",
+            "description": "Region for shared IPv4 (optional)"
+          }
         },
-        "required": ["app_name"]
+        "required": [
+          "app_name"
+        ]
       }
     },
     {
@@ -265,11 +448,31 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "app_name": { "type": "string", "description": "App name" },
-          "ip_address_id": { "type": "string", "description": "IP address ID to release" }
+          "app_name": {
+            "type": "string",
+            "description": "App name"
+          },
+          "ip_address_id": {
+            "type": "string",
+            "description": "IP address ID to release"
+          }
         },
-        "required": ["app_name", "ip_address_id"]
+        "required": [
+          "app_name",
+          "ip_address_id"
+        ]
       }
     }
-  ]
+  ],
+  "ffi": {
+    "so_path": "ffi/zig-out/lib/libfly_mcp.so",
+    "abi_version": "ADR-0006",
+    "symbols": [
+      "boj_cartridge_init",
+      "boj_cartridge_deinit",
+      "boj_cartridge_name",
+      "boj_cartridge_version",
+      "boj_cartridge_invoke"
+    ]
+  }
 }

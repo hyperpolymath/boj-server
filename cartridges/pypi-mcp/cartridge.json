@@ -7,7 +7,10 @@
   "description": "PyPI registry cartridge -- Python package search, metadata retrieval, version listing, download stats, dependency analysis, maintainer lookup, classifier browsing, and vulnerability advisory queries via the PyPI JSON API and Warehouse API",
   "domain": "Registry",
   "tier": "Ayo",
-  "protocols": ["MCP", "REST"],
+  "protocols": [
+    "MCP",
+    "REST"
+  ],
   "auth": {
     "method": "bearer_token",
     "env_var": "PYPI_TOKEN",
@@ -27,11 +30,22 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "query": { "type": "string", "description": "Search query (package name, keywords, description)" },
-          "page": { "type": "number", "description": "Page number (default 1)" },
-          "classifier": { "type": "string", "description": "Trove classifier filter (e.g. 'Programming Language :: Python :: 3')" }
+          "query": {
+            "type": "string",
+            "description": "Search query (package name, keywords, description)"
+          },
+          "page": {
+            "type": "number",
+            "description": "Page number (default 1)"
+          },
+          "classifier": {
+            "type": "string",
+            "description": "Trove classifier filter (e.g. 'Programming Language :: Python :: 3')"
+          }
         },
-        "required": ["query"]
+        "required": [
+          "query"
+        ]
       }
     },
     {
@@ -40,9 +54,14 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "name": { "type": "string", "description": "Package name (e.g. 'requests', 'django', 'numpy')" }
+          "name": {
+            "type": "string",
+            "description": "Package name (e.g. 'requests', 'django', 'numpy')"
+          }
         },
-        "required": ["name"]
+        "required": [
+          "name"
+        ]
       }
     },
     {
@@ -51,10 +70,19 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "name": { "type": "string", "description": "Package name" },
-          "version": { "type": "string", "description": "Version string (e.g. '2.31.0')" }
+          "name": {
+            "type": "string",
+            "description": "Package name"
+          },
+          "version": {
+            "type": "string",
+            "description": "Version string (e.g. '2.31.0')"
+          }
         },
-        "required": ["name", "version"]
+        "required": [
+          "name",
+          "version"
+        ]
       }
     },
     {
@@ -63,9 +91,14 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "name": { "type": "string", "description": "Package name" }
+          "name": {
+            "type": "string",
+            "description": "Package name"
+          }
         },
-        "required": ["name"]
+        "required": [
+          "name"
+        ]
       }
     },
     {
@@ -74,10 +107,18 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "name": { "type": "string", "description": "Package name" },
-          "period": { "type": "string", "description": "Period: 'last-day', 'last-week', 'last-month' (default 'last-month')" }
+          "name": {
+            "type": "string",
+            "description": "Package name"
+          },
+          "period": {
+            "type": "string",
+            "description": "Period: 'last-day', 'last-week', 'last-month' (default 'last-month')"
+          }
         },
-        "required": ["name"]
+        "required": [
+          "name"
+        ]
       }
     },
     {
@@ -86,10 +127,19 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "name": { "type": "string", "description": "Package name" },
-          "version": { "type": "string", "description": "Version to inspect (e.g. '2.31.0')" }
+          "name": {
+            "type": "string",
+            "description": "Package name"
+          },
+          "version": {
+            "type": "string",
+            "description": "Version to inspect (e.g. '2.31.0')"
+          }
         },
-        "required": ["name", "version"]
+        "required": [
+          "name",
+          "version"
+        ]
       }
     },
     {
@@ -98,10 +148,19 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "name": { "type": "string", "description": "Package name" },
-          "version": { "type": "string", "description": "Version to inspect" }
+          "name": {
+            "type": "string",
+            "description": "Package name"
+          },
+          "version": {
+            "type": "string",
+            "description": "Version to inspect"
+          }
         },
-        "required": ["name", "version"]
+        "required": [
+          "name",
+          "version"
+        ]
       }
     },
     {
@@ -110,9 +169,14 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "name": { "type": "string", "description": "Package name" }
+          "name": {
+            "type": "string",
+            "description": "Package name"
+          }
         },
-        "required": ["name"]
+        "required": [
+          "name"
+        ]
       }
     },
     {
@@ -121,9 +185,14 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "name": { "type": "string", "description": "Package name" }
+          "name": {
+            "type": "string",
+            "description": "Package name"
+          }
         },
-        "required": ["name"]
+        "required": [
+          "name"
+        ]
       }
     },
     {
@@ -132,10 +201,18 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "name": { "type": "string", "description": "Package name" },
-          "version": { "type": "string", "description": "Version to check (omit for latest)" }
+          "name": {
+            "type": "string",
+            "description": "Package name"
+          },
+          "version": {
+            "type": "string",
+            "description": "Version to check (omit for latest)"
+          }
         },
-        "required": ["name"]
+        "required": [
+          "name"
+        ]
       }
     },
     {
@@ -144,10 +221,26 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "name": { "type": "string", "description": "Package name" }
+          "name": {
+            "type": "string",
+            "description": "Package name"
+          }
         },
-        "required": ["name"]
+        "required": [
+          "name"
+        ]
       }
     }
-  ]
+  ],
+  "ffi": {
+    "so_path": "ffi/zig-out/lib/libpypi_mcp.so",
+    "abi_version": "ADR-0006",
+    "symbols": [
+      "boj_cartridge_init",
+      "boj_cartridge_deinit",
+      "boj_cartridge_name",
+      "boj_cartridge_version",
+      "boj_cartridge_invoke"
+    ]
+  }
 }

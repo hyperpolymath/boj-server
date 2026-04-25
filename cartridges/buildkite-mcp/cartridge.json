@@ -7,7 +7,10 @@
   "description": "Buildkite CI/CD cartridge -- pipeline listing, build management, job inspection, artifact retrieval, agent listing, annotation creation, build triggering, log retrieval, environment listing, and build cancellation via the Buildkite REST API",
   "domain": "CI/CD",
   "tier": "Ayo",
-  "protocols": ["MCP", "REST"],
+  "protocols": [
+    "MCP",
+    "REST"
+  ],
   "auth": {
     "method": "bearer_token",
     "env_var": "BUILDKITE_API_TOKEN",
@@ -24,11 +27,22 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "organization": { "type": "string", "description": "Organization slug" },
-          "page": { "type": "number", "description": "Page number" },
-          "per_page": { "type": "number", "description": "Results per page (default 30)" }
+          "organization": {
+            "type": "string",
+            "description": "Organization slug"
+          },
+          "page": {
+            "type": "number",
+            "description": "Page number"
+          },
+          "per_page": {
+            "type": "number",
+            "description": "Results per page (default 30)"
+          }
         },
-        "required": ["organization"]
+        "required": [
+          "organization"
+        ]
       }
     },
     {
@@ -37,10 +51,19 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "organization": { "type": "string", "description": "Organization slug" },
-          "pipeline": { "type": "string", "description": "Pipeline slug" }
+          "organization": {
+            "type": "string",
+            "description": "Organization slug"
+          },
+          "pipeline": {
+            "type": "string",
+            "description": "Pipeline slug"
+          }
         },
-        "required": ["organization", "pipeline"]
+        "required": [
+          "organization",
+          "pipeline"
+        ]
       }
     },
     {
@@ -49,14 +72,35 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "organization": { "type": "string", "description": "Organization slug" },
-          "pipeline": { "type": "string", "description": "Pipeline slug" },
-          "state": { "type": "string", "description": "Filter: running, scheduled, passed, failed, canceled, blocked" },
-          "branch": { "type": "string", "description": "Filter by branch" },
-          "page": { "type": "number", "description": "Page number" },
-          "per_page": { "type": "number", "description": "Results per page" }
+          "organization": {
+            "type": "string",
+            "description": "Organization slug"
+          },
+          "pipeline": {
+            "type": "string",
+            "description": "Pipeline slug"
+          },
+          "state": {
+            "type": "string",
+            "description": "Filter: running, scheduled, passed, failed, canceled, blocked"
+          },
+          "branch": {
+            "type": "string",
+            "description": "Filter by branch"
+          },
+          "page": {
+            "type": "number",
+            "description": "Page number"
+          },
+          "per_page": {
+            "type": "number",
+            "description": "Results per page"
+          }
         },
-        "required": ["organization", "pipeline"]
+        "required": [
+          "organization",
+          "pipeline"
+        ]
       }
     },
     {
@@ -65,11 +109,24 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "organization": { "type": "string", "description": "Organization slug" },
-          "pipeline": { "type": "string", "description": "Pipeline slug" },
-          "build_number": { "type": "number", "description": "Build number" }
+          "organization": {
+            "type": "string",
+            "description": "Organization slug"
+          },
+          "pipeline": {
+            "type": "string",
+            "description": "Pipeline slug"
+          },
+          "build_number": {
+            "type": "number",
+            "description": "Build number"
+          }
         },
-        "required": ["organization", "pipeline", "build_number"]
+        "required": [
+          "organization",
+          "pipeline",
+          "build_number"
+        ]
       }
     },
     {
@@ -78,14 +135,37 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "organization": { "type": "string", "description": "Organization slug" },
-          "pipeline": { "type": "string", "description": "Pipeline slug" },
-          "commit": { "type": "string", "description": "Git commit SHA (or 'HEAD')" },
-          "branch": { "type": "string", "description": "Git branch" },
-          "message": { "type": "string", "description": "Build message" },
-          "env": { "type": "object", "description": "Environment variables" }
+          "organization": {
+            "type": "string",
+            "description": "Organization slug"
+          },
+          "pipeline": {
+            "type": "string",
+            "description": "Pipeline slug"
+          },
+          "commit": {
+            "type": "string",
+            "description": "Git commit SHA (or 'HEAD')"
+          },
+          "branch": {
+            "type": "string",
+            "description": "Git branch"
+          },
+          "message": {
+            "type": "string",
+            "description": "Build message"
+          },
+          "env": {
+            "type": "object",
+            "description": "Environment variables"
+          }
         },
-        "required": ["organization", "pipeline", "commit", "branch"]
+        "required": [
+          "organization",
+          "pipeline",
+          "commit",
+          "branch"
+        ]
       }
     },
     {
@@ -94,11 +174,24 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "organization": { "type": "string", "description": "Organization slug" },
-          "pipeline": { "type": "string", "description": "Pipeline slug" },
-          "build_number": { "type": "number", "description": "Build number" }
+          "organization": {
+            "type": "string",
+            "description": "Organization slug"
+          },
+          "pipeline": {
+            "type": "string",
+            "description": "Pipeline slug"
+          },
+          "build_number": {
+            "type": "number",
+            "description": "Build number"
+          }
         },
-        "required": ["organization", "pipeline", "build_number"]
+        "required": [
+          "organization",
+          "pipeline",
+          "build_number"
+        ]
       }
     },
     {
@@ -107,11 +200,24 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "organization": { "type": "string", "description": "Organization slug" },
-          "pipeline": { "type": "string", "description": "Pipeline slug" },
-          "build_number": { "type": "number", "description": "Build number" }
+          "organization": {
+            "type": "string",
+            "description": "Organization slug"
+          },
+          "pipeline": {
+            "type": "string",
+            "description": "Pipeline slug"
+          },
+          "build_number": {
+            "type": "number",
+            "description": "Build number"
+          }
         },
-        "required": ["organization", "pipeline", "build_number"]
+        "required": [
+          "organization",
+          "pipeline",
+          "build_number"
+        ]
       }
     },
     {
@@ -120,12 +226,29 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "organization": { "type": "string", "description": "Organization slug" },
-          "pipeline": { "type": "string", "description": "Pipeline slug" },
-          "build_number": { "type": "number", "description": "Build number" },
-          "job_id": { "type": "string", "description": "Job UUID" }
+          "organization": {
+            "type": "string",
+            "description": "Organization slug"
+          },
+          "pipeline": {
+            "type": "string",
+            "description": "Pipeline slug"
+          },
+          "build_number": {
+            "type": "number",
+            "description": "Build number"
+          },
+          "job_id": {
+            "type": "string",
+            "description": "Job UUID"
+          }
         },
-        "required": ["organization", "pipeline", "build_number", "job_id"]
+        "required": [
+          "organization",
+          "pipeline",
+          "build_number",
+          "job_id"
+        ]
       }
     },
     {
@@ -134,11 +257,24 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "organization": { "type": "string", "description": "Organization slug" },
-          "pipeline": { "type": "string", "description": "Pipeline slug" },
-          "build_number": { "type": "number", "description": "Build number" }
+          "organization": {
+            "type": "string",
+            "description": "Organization slug"
+          },
+          "pipeline": {
+            "type": "string",
+            "description": "Pipeline slug"
+          },
+          "build_number": {
+            "type": "number",
+            "description": "Build number"
+          }
         },
-        "required": ["organization", "pipeline", "build_number"]
+        "required": [
+          "organization",
+          "pipeline",
+          "build_number"
+        ]
       }
     },
     {
@@ -147,12 +283,34 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "organization": { "type": "string", "description": "Organization slug" },
-          "page": { "type": "number", "description": "Page number" },
-          "per_page": { "type": "number", "description": "Results per page" }
+          "organization": {
+            "type": "string",
+            "description": "Organization slug"
+          },
+          "page": {
+            "type": "number",
+            "description": "Page number"
+          },
+          "per_page": {
+            "type": "number",
+            "description": "Results per page"
+          }
         },
-        "required": ["organization"]
+        "required": [
+          "organization"
+        ]
       }
     }
-  ]
+  ],
+  "ffi": {
+    "so_path": "ffi/zig-out/lib/libbuildkite_mcp.so",
+    "abi_version": "ADR-0006",
+    "symbols": [
+      "boj_cartridge_init",
+      "boj_cartridge_deinit",
+      "boj_cartridge_name",
+      "boj_cartridge_version",
+      "boj_cartridge_invoke"
+    ]
+  }
 }

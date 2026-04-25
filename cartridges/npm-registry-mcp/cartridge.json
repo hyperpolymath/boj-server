@@ -7,7 +7,10 @@
   "description": "npm registry cartridge -- package search, metadata retrieval, version listing, download stats, dependency analysis, maintainer lookup, and audit advisory queries via the npm registry API",
   "domain": "Registry",
   "tier": "Ayo",
-  "protocols": ["MCP", "REST"],
+  "protocols": [
+    "MCP",
+    "REST"
+  ],
   "auth": {
     "method": "bearer_token",
     "env_var": "NPM_TOKEN",
@@ -26,14 +29,34 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "query": { "type": "string", "description": "Search query (package name, keywords, description)" },
-          "size": { "type": "number", "description": "Number of results (default 20, max 250)" },
-          "from": { "type": "number", "description": "Offset for pagination (default 0)" },
-          "quality": { "type": "number", "description": "Quality weight 0.0-1.0 (default 0.65)" },
-          "popularity": { "type": "number", "description": "Popularity weight 0.0-1.0 (default 0.98)" },
-          "maintenance": { "type": "number", "description": "Maintenance weight 0.0-1.0 (default 0.5)" }
+          "query": {
+            "type": "string",
+            "description": "Search query (package name, keywords, description)"
+          },
+          "size": {
+            "type": "number",
+            "description": "Number of results (default 20, max 250)"
+          },
+          "from": {
+            "type": "number",
+            "description": "Offset for pagination (default 0)"
+          },
+          "quality": {
+            "type": "number",
+            "description": "Quality weight 0.0-1.0 (default 0.65)"
+          },
+          "popularity": {
+            "type": "number",
+            "description": "Popularity weight 0.0-1.0 (default 0.98)"
+          },
+          "maintenance": {
+            "type": "number",
+            "description": "Maintenance weight 0.0-1.0 (default 0.5)"
+          }
         },
-        "required": ["query"]
+        "required": [
+          "query"
+        ]
       }
     },
     {
@@ -42,9 +65,14 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "name": { "type": "string", "description": "Package name (e.g. 'lodash', '@scope/pkg')" }
+          "name": {
+            "type": "string",
+            "description": "Package name (e.g. 'lodash', '@scope/pkg')"
+          }
         },
-        "required": ["name"]
+        "required": [
+          "name"
+        ]
       }
     },
     {
@@ -53,10 +81,19 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "name": { "type": "string", "description": "Package name" },
-          "version": { "type": "string", "description": "Semver version (e.g. '4.17.21') or dist-tag (e.g. 'latest')" }
+          "name": {
+            "type": "string",
+            "description": "Package name"
+          },
+          "version": {
+            "type": "string",
+            "description": "Semver version (e.g. '4.17.21') or dist-tag (e.g. 'latest')"
+          }
         },
-        "required": ["name", "version"]
+        "required": [
+          "name",
+          "version"
+        ]
       }
     },
     {
@@ -65,9 +102,14 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "name": { "type": "string", "description": "Package name" }
+          "name": {
+            "type": "string",
+            "description": "Package name"
+          }
         },
-        "required": ["name"]
+        "required": [
+          "name"
+        ]
       }
     },
     {
@@ -76,10 +118,19 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "name": { "type": "string", "description": "Package name" },
-          "period": { "type": "string", "description": "Time period: last-day, last-week, last-month, last-year, or date range YYYY-MM-DD:YYYY-MM-DD" }
+          "name": {
+            "type": "string",
+            "description": "Package name"
+          },
+          "period": {
+            "type": "string",
+            "description": "Time period: last-day, last-week, last-month, last-year, or date range YYYY-MM-DD:YYYY-MM-DD"
+          }
         },
-        "required": ["name", "period"]
+        "required": [
+          "name",
+          "period"
+        ]
       }
     },
     {
@@ -88,11 +139,24 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "name": { "type": "string", "description": "Package name" },
-          "start": { "type": "string", "description": "Start date (YYYY-MM-DD)" },
-          "end": { "type": "string", "description": "End date (YYYY-MM-DD)" }
+          "name": {
+            "type": "string",
+            "description": "Package name"
+          },
+          "start": {
+            "type": "string",
+            "description": "Start date (YYYY-MM-DD)"
+          },
+          "end": {
+            "type": "string",
+            "description": "End date (YYYY-MM-DD)"
+          }
         },
-        "required": ["name", "start", "end"]
+        "required": [
+          "name",
+          "start",
+          "end"
+        ]
       }
     },
     {
@@ -101,10 +165,18 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "name": { "type": "string", "description": "Package name" },
-          "version": { "type": "string", "description": "Version to inspect (default: latest)" }
+          "name": {
+            "type": "string",
+            "description": "Package name"
+          },
+          "version": {
+            "type": "string",
+            "description": "Version to inspect (default: latest)"
+          }
         },
-        "required": ["name"]
+        "required": [
+          "name"
+        ]
       }
     },
     {
@@ -113,9 +185,14 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "name": { "type": "string", "description": "Package name" }
+          "name": {
+            "type": "string",
+            "description": "Package name"
+          }
         },
-        "required": ["name"]
+        "required": [
+          "name"
+        ]
       }
     },
     {
@@ -124,9 +201,14 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "name": { "type": "string", "description": "Package name" }
+          "name": {
+            "type": "string",
+            "description": "Package name"
+          }
         },
-        "required": ["name"]
+        "required": [
+          "name"
+        ]
       }
     },
     {
@@ -135,10 +217,18 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "name": { "type": "string", "description": "Package name" },
-          "version_range": { "type": "string", "description": "Semver range to check (e.g. '>=4.0.0 <4.17.21')" }
+          "name": {
+            "type": "string",
+            "description": "Package name"
+          },
+          "version_range": {
+            "type": "string",
+            "description": "Semver range to check (e.g. '>=4.0.0 <4.17.21')"
+          }
         },
-        "required": ["name"]
+        "required": [
+          "name"
+        ]
       }
     },
     {
@@ -147,10 +237,19 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "name": { "type": "string", "description": "Package name" },
-          "version": { "type": "string", "description": "Version to check provenance for" }
+          "name": {
+            "type": "string",
+            "description": "Package name"
+          },
+          "version": {
+            "type": "string",
+            "description": "Version to check provenance for"
+          }
         },
-        "required": ["name", "version"]
+        "required": [
+          "name",
+          "version"
+        ]
       }
     },
     {
@@ -159,10 +258,26 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "name": { "type": "string", "description": "Package name" }
+          "name": {
+            "type": "string",
+            "description": "Package name"
+          }
         },
-        "required": ["name"]
+        "required": [
+          "name"
+        ]
       }
     }
-  ]
+  ],
+  "ffi": {
+    "so_path": "ffi/zig-out/lib/libnpm_registry_mcp.so",
+    "abi_version": "ADR-0006",
+    "symbols": [
+      "boj_cartridge_init",
+      "boj_cartridge_deinit",
+      "boj_cartridge_name",
+      "boj_cartridge_version",
+      "boj_cartridge_invoke"
+    ]
+  }
 }

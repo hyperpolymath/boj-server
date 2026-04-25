@@ -7,7 +7,10 @@
   "description": "crates.io registry cartridge -- Rust crate search, metadata retrieval, version listing, download stats, dependency analysis, owner management, category browsing, and reverse dependency lookup via the crates.io API",
   "domain": "Registry",
   "tier": "Ayo",
-  "protocols": ["MCP", "REST"],
+  "protocols": [
+    "MCP",
+    "REST"
+  ],
   "auth": {
     "method": "bearer_token",
     "env_var": "CRATES_IO_TOKEN",
@@ -25,13 +28,30 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "query": { "type": "string", "description": "Search query (crate name, keywords, description)" },
-          "page": { "type": "number", "description": "Page number (default 1)" },
-          "per_page": { "type": "number", "description": "Results per page (default 10, max 100)" },
-          "sort": { "type": "string", "description": "Sort order: relevance, downloads, recent-downloads, recent-updates, new, alpha" },
-          "category": { "type": "string", "description": "Filter by category slug (e.g. 'web-programming', 'parsing')" }
+          "query": {
+            "type": "string",
+            "description": "Search query (crate name, keywords, description)"
+          },
+          "page": {
+            "type": "number",
+            "description": "Page number (default 1)"
+          },
+          "per_page": {
+            "type": "number",
+            "description": "Results per page (default 10, max 100)"
+          },
+          "sort": {
+            "type": "string",
+            "description": "Sort order: relevance, downloads, recent-downloads, recent-updates, new, alpha"
+          },
+          "category": {
+            "type": "string",
+            "description": "Filter by category slug (e.g. 'web-programming', 'parsing')"
+          }
         },
-        "required": ["query"]
+        "required": [
+          "query"
+        ]
       }
     },
     {
@@ -40,9 +60,14 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "name": { "type": "string", "description": "Crate name (e.g. 'serde', 'tokio', 'clap')" }
+          "name": {
+            "type": "string",
+            "description": "Crate name (e.g. 'serde', 'tokio', 'clap')"
+          }
         },
-        "required": ["name"]
+        "required": [
+          "name"
+        ]
       }
     },
     {
@@ -51,10 +76,19 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "name": { "type": "string", "description": "Crate name" },
-          "version": { "type": "string", "description": "Semver version (e.g. '1.0.210')" }
+          "name": {
+            "type": "string",
+            "description": "Crate name"
+          },
+          "version": {
+            "type": "string",
+            "description": "Semver version (e.g. '1.0.210')"
+          }
         },
-        "required": ["name", "version"]
+        "required": [
+          "name",
+          "version"
+        ]
       }
     },
     {
@@ -63,9 +97,14 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "name": { "type": "string", "description": "Crate name" }
+          "name": {
+            "type": "string",
+            "description": "Crate name"
+          }
         },
-        "required": ["name"]
+        "required": [
+          "name"
+        ]
       }
     },
     {
@@ -74,9 +113,14 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "name": { "type": "string", "description": "Crate name" }
+          "name": {
+            "type": "string",
+            "description": "Crate name"
+          }
         },
-        "required": ["name"]
+        "required": [
+          "name"
+        ]
       }
     },
     {
@@ -85,10 +129,19 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "name": { "type": "string", "description": "Crate name" },
-          "version": { "type": "string", "description": "Version to inspect (e.g. '1.0.210')" }
+          "name": {
+            "type": "string",
+            "description": "Crate name"
+          },
+          "version": {
+            "type": "string",
+            "description": "Version to inspect (e.g. '1.0.210')"
+          }
         },
-        "required": ["name", "version"]
+        "required": [
+          "name",
+          "version"
+        ]
       }
     },
     {
@@ -97,11 +150,22 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "name": { "type": "string", "description": "Crate name" },
-          "page": { "type": "number", "description": "Page number (default 1)" },
-          "per_page": { "type": "number", "description": "Results per page (default 10, max 100)" }
+          "name": {
+            "type": "string",
+            "description": "Crate name"
+          },
+          "page": {
+            "type": "number",
+            "description": "Page number (default 1)"
+          },
+          "per_page": {
+            "type": "number",
+            "description": "Results per page (default 10, max 100)"
+          }
         },
-        "required": ["name"]
+        "required": [
+          "name"
+        ]
       }
     },
     {
@@ -110,9 +174,14 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "name": { "type": "string", "description": "Crate name" }
+          "name": {
+            "type": "string",
+            "description": "Crate name"
+          }
         },
-        "required": ["name"]
+        "required": [
+          "name"
+        ]
       }
     },
     {
@@ -121,7 +190,10 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "sort": { "type": "string", "description": "Sort order: alpha, crates (by crate count)" }
+          "sort": {
+            "type": "string",
+            "description": "Sort order: alpha, crates (by crate count)"
+          }
         }
       }
     },
@@ -131,9 +203,14 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "slug": { "type": "string", "description": "Category slug (e.g. 'web-programming', 'parsing', 'cryptography')" }
+          "slug": {
+            "type": "string",
+            "description": "Category slug (e.g. 'web-programming', 'parsing', 'cryptography')"
+          }
         },
-        "required": ["slug"]
+        "required": [
+          "slug"
+        ]
       }
     },
     {
@@ -142,9 +219,18 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "sort": { "type": "string", "description": "Sort order: alpha, crates (by crate count)" },
-          "page": { "type": "number", "description": "Page number" },
-          "per_page": { "type": "number", "description": "Results per page" }
+          "sort": {
+            "type": "string",
+            "description": "Sort order: alpha, crates (by crate count)"
+          },
+          "page": {
+            "type": "number",
+            "description": "Page number"
+          },
+          "per_page": {
+            "type": "number",
+            "description": "Results per page"
+          }
         }
       }
     },
@@ -154,9 +240,14 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "login": { "type": "string", "description": "crates.io login name (GitHub username)" }
+          "login": {
+            "type": "string",
+            "description": "crates.io login name (GitHub username)"
+          }
         },
-        "required": ["login"]
+        "required": [
+          "login"
+        ]
       }
     },
     {
@@ -165,11 +256,31 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "name": { "type": "string", "description": "Crate name" },
-          "version": { "type": "string", "description": "Version to inspect" }
+          "name": {
+            "type": "string",
+            "description": "Crate name"
+          },
+          "version": {
+            "type": "string",
+            "description": "Version to inspect"
+          }
         },
-        "required": ["name", "version"]
+        "required": [
+          "name",
+          "version"
+        ]
       }
     }
-  ]
+  ],
+  "ffi": {
+    "so_path": "ffi/zig-out/lib/libcrates_mcp.so",
+    "abi_version": "ADR-0006",
+    "symbols": [
+      "boj_cartridge_init",
+      "boj_cartridge_deinit",
+      "boj_cartridge_name",
+      "boj_cartridge_version",
+      "boj_cartridge_invoke"
+    ]
+  }
 }

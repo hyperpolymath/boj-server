@@ -7,7 +7,10 @@
   "description": "Sentry error tracking cartridge -- issue listing, event retrieval, project browsing, release management, DSN lookup, team listing, tag search, error resolution, breadcrumb inspection, and performance transaction queries via the Sentry API",
   "domain": "Monitoring",
   "tier": "Ayo",
-  "protocols": ["MCP", "REST"],
+  "protocols": [
+    "MCP",
+    "REST"
+  ],
   "auth": {
     "method": "bearer_token",
     "env_var": "SENTRY_AUTH_TOKEN",
@@ -24,13 +27,31 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "organization": { "type": "string", "description": "Organization slug" },
-          "project": { "type": "string", "description": "Project slug" },
-          "query": { "type": "string", "description": "Search query (e.g. 'is:unresolved level:error')" },
-          "sort": { "type": "string", "description": "Sort: date, new, priority, freq, user" },
-          "limit": { "type": "number", "description": "Max results (default 25)" }
+          "organization": {
+            "type": "string",
+            "description": "Organization slug"
+          },
+          "project": {
+            "type": "string",
+            "description": "Project slug"
+          },
+          "query": {
+            "type": "string",
+            "description": "Search query (e.g. 'is:unresolved level:error')"
+          },
+          "sort": {
+            "type": "string",
+            "description": "Sort: date, new, priority, freq, user"
+          },
+          "limit": {
+            "type": "number",
+            "description": "Max results (default 25)"
+          }
         },
-        "required": ["organization", "project"]
+        "required": [
+          "organization",
+          "project"
+        ]
       }
     },
     {
@@ -39,9 +60,14 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "issue_id": { "type": "string", "description": "Sentry issue ID" }
+          "issue_id": {
+            "type": "string",
+            "description": "Sentry issue ID"
+          }
         },
-        "required": ["issue_id"]
+        "required": [
+          "issue_id"
+        ]
       }
     },
     {
@@ -50,11 +76,22 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "issue_id": { "type": "string", "description": "Sentry issue ID" },
-          "full": { "type": "boolean", "description": "Include full event details (default false)" },
-          "limit": { "type": "number", "description": "Max results" }
+          "issue_id": {
+            "type": "string",
+            "description": "Sentry issue ID"
+          },
+          "full": {
+            "type": "boolean",
+            "description": "Include full event details (default false)"
+          },
+          "limit": {
+            "type": "number",
+            "description": "Max results"
+          }
         },
-        "required": ["issue_id"]
+        "required": [
+          "issue_id"
+        ]
       }
     },
     {
@@ -63,10 +100,19 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "issue_id": { "type": "string", "description": "Sentry issue ID" },
-          "status": { "type": "string", "description": "Status: resolved, unresolved, ignored" }
+          "issue_id": {
+            "type": "string",
+            "description": "Sentry issue ID"
+          },
+          "status": {
+            "type": "string",
+            "description": "Status: resolved, unresolved, ignored"
+          }
         },
-        "required": ["issue_id", "status"]
+        "required": [
+          "issue_id",
+          "status"
+        ]
       }
     },
     {
@@ -75,9 +121,14 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "organization": { "type": "string", "description": "Organization slug" }
+          "organization": {
+            "type": "string",
+            "description": "Organization slug"
+          }
         },
-        "required": ["organization"]
+        "required": [
+          "organization"
+        ]
       }
     },
     {
@@ -86,11 +137,22 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "organization": { "type": "string", "description": "Organization slug" },
-          "project": { "type": "string", "description": "Project slug" },
-          "limit": { "type": "number", "description": "Max results" }
+          "organization": {
+            "type": "string",
+            "description": "Organization slug"
+          },
+          "project": {
+            "type": "string",
+            "description": "Project slug"
+          },
+          "limit": {
+            "type": "number",
+            "description": "Max results"
+          }
         },
-        "required": ["organization"]
+        "required": [
+          "organization"
+        ]
       }
     },
     {
@@ -99,10 +161,19 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "organization": { "type": "string", "description": "Organization slug" },
-          "project": { "type": "string", "description": "Project slug" }
+          "organization": {
+            "type": "string",
+            "description": "Organization slug"
+          },
+          "project": {
+            "type": "string",
+            "description": "Project slug"
+          }
         },
-        "required": ["organization", "project"]
+        "required": [
+          "organization",
+          "project"
+        ]
       }
     },
     {
@@ -111,9 +182,14 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "organization": { "type": "string", "description": "Organization slug" }
+          "organization": {
+            "type": "string",
+            "description": "Organization slug"
+          }
         },
-        "required": ["organization"]
+        "required": [
+          "organization"
+        ]
       }
     },
     {
@@ -122,11 +198,23 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "organization": { "type": "string", "description": "Organization slug" },
-          "project": { "type": "string", "description": "Project slug" },
-          "key": { "type": "string", "description": "Tag key to inspect (e.g. 'browser', 'os', 'environment')" }
+          "organization": {
+            "type": "string",
+            "description": "Organization slug"
+          },
+          "project": {
+            "type": "string",
+            "description": "Project slug"
+          },
+          "key": {
+            "type": "string",
+            "description": "Tag key to inspect (e.g. 'browser', 'os', 'environment')"
+          }
         },
-        "required": ["organization", "project"]
+        "required": [
+          "organization",
+          "project"
+        ]
       }
     },
     {
@@ -135,14 +223,43 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "organization": { "type": "string", "description": "Organization slug" },
-          "project": { "type": "string", "description": "Project slug" },
-          "query": { "type": "string", "description": "Search query for transactions" },
-          "sort": { "type": "string", "description": "Sort: p50, p75, p95, frequency, failure_rate" },
-          "limit": { "type": "number", "description": "Max results" }
+          "organization": {
+            "type": "string",
+            "description": "Organization slug"
+          },
+          "project": {
+            "type": "string",
+            "description": "Project slug"
+          },
+          "query": {
+            "type": "string",
+            "description": "Search query for transactions"
+          },
+          "sort": {
+            "type": "string",
+            "description": "Sort: p50, p75, p95, frequency, failure_rate"
+          },
+          "limit": {
+            "type": "number",
+            "description": "Max results"
+          }
         },
-        "required": ["organization", "project"]
+        "required": [
+          "organization",
+          "project"
+        ]
       }
     }
-  ]
+  ],
+  "ffi": {
+    "so_path": "ffi/zig-out/lib/libsentry_mcp.so",
+    "abi_version": "ADR-0006",
+    "symbols": [
+      "boj_cartridge_init",
+      "boj_cartridge_deinit",
+      "boj_cartridge_name",
+      "boj_cartridge_version",
+      "boj_cartridge_invoke"
+    ]
+  }
 }

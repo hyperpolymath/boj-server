@@ -4,7 +4,7 @@
   "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>",
   "name": "github-api-mcp",
   "version": "0.1.0",
-  "description": "GitHub REST API \u2014 repos, issues, PRs, search",
+  "description": "GitHub REST API — repos, issues, PRs, search",
   "domain": "development",
   "tier": "Ayo",
   "protocols": [
@@ -217,5 +217,16 @@
         ]
       }
     }
-  ]
+  ],
+  "ffi": {
+    "so_path": "ffi/zig-out/lib/libgithub_api_mcp.so",
+    "abi_version": "ADR-0006",
+    "symbols": [
+      "boj_cartridge_init",
+      "boj_cartridge_deinit",
+      "boj_cartridge_name",
+      "boj_cartridge_version",
+      "boj_cartridge_invoke"
+    ]
+  }
 }

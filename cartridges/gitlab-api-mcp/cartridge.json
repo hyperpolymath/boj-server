@@ -4,7 +4,7 @@
   "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>",
   "name": "gitlab-api-mcp",
   "version": "0.1.0",
-  "description": "GitLab REST API \u2014 projects, issues, MRs",
+  "description": "GitLab REST API — projects, issues, MRs",
   "domain": "development",
   "tier": "Ayo",
   "protocols": [
@@ -199,5 +199,16 @@
         ]
       }
     }
-  ]
+  ],
+  "ffi": {
+    "so_path": "ffi/zig-out/lib/libgitlab_api_mcp.so",
+    "abi_version": "ADR-0006",
+    "symbols": [
+      "boj_cartridge_init",
+      "boj_cartridge_deinit",
+      "boj_cartridge_name",
+      "boj_cartridge_version",
+      "boj_cartridge_invoke"
+    ]
+  }
 }

@@ -7,12 +7,18 @@
   "description": "Google Sheets cartridge -- spreadsheet metadata retrieval, cell range reading, sheet listing, named range access, cell value writing, row appending, sheet creation, formula evaluation, conditional format listing, and pivot table access via the Google Sheets API v4",
   "domain": "Productivity",
   "tier": "Ayo",
-  "protocols": ["MCP", "REST"],
+  "protocols": [
+    "MCP",
+    "REST"
+  ],
   "auth": {
     "method": "oauth2",
     "env_var": "GOOGLE_SHEETS_ACCESS_TOKEN",
     "credential_source": "vault-mcp",
-    "scopes": ["https://www.googleapis.com/auth/spreadsheets.readonly", "https://www.googleapis.com/auth/spreadsheets"]
+    "scopes": [
+      "https://www.googleapis.com/auth/spreadsheets.readonly",
+      "https://www.googleapis.com/auth/spreadsheets"
+    ]
   },
   "api": {
     "base_url": "https://sheets.googleapis.com/v4",
@@ -25,9 +31,14 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "spreadsheet_id": { "type": "string", "description": "Google Sheets spreadsheet ID (from URL)" }
+          "spreadsheet_id": {
+            "type": "string",
+            "description": "Google Sheets spreadsheet ID (from URL)"
+          }
         },
-        "required": ["spreadsheet_id"]
+        "required": [
+          "spreadsheet_id"
+        ]
       }
     },
     {
@@ -36,11 +47,23 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "spreadsheet_id": { "type": "string", "description": "Spreadsheet ID" },
-          "range": { "type": "string", "description": "A1 notation range (e.g. 'Sheet1!A1:D10', 'A:A')" },
-          "value_render": { "type": "string", "description": "How values are rendered: FORMATTED_VALUE, UNFORMATTED_VALUE, FORMULA (default FORMATTED_VALUE)" }
+          "spreadsheet_id": {
+            "type": "string",
+            "description": "Spreadsheet ID"
+          },
+          "range": {
+            "type": "string",
+            "description": "A1 notation range (e.g. 'Sheet1!A1:D10', 'A:A')"
+          },
+          "value_render": {
+            "type": "string",
+            "description": "How values are rendered: FORMATTED_VALUE, UNFORMATTED_VALUE, FORMULA (default FORMATTED_VALUE)"
+          }
         },
-        "required": ["spreadsheet_id", "range"]
+        "required": [
+          "spreadsheet_id",
+          "range"
+        ]
       }
     },
     {
@@ -49,9 +72,14 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "spreadsheet_id": { "type": "string", "description": "Spreadsheet ID" }
+          "spreadsheet_id": {
+            "type": "string",
+            "description": "Spreadsheet ID"
+          }
         },
-        "required": ["spreadsheet_id"]
+        "required": [
+          "spreadsheet_id"
+        ]
       }
     },
     {
@@ -60,9 +88,14 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "spreadsheet_id": { "type": "string", "description": "Spreadsheet ID" }
+          "spreadsheet_id": {
+            "type": "string",
+            "description": "Spreadsheet ID"
+          }
         },
-        "required": ["spreadsheet_id"]
+        "required": [
+          "spreadsheet_id"
+        ]
       }
     },
     {
@@ -71,12 +104,28 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "spreadsheet_id": { "type": "string", "description": "Spreadsheet ID" },
-          "range": { "type": "string", "description": "A1 notation range to write to" },
-          "values": { "type": "string", "description": "JSON array of arrays representing rows (e.g. '[[\"A\",\"B\"],[\"C\",\"D\"]]')" },
-          "value_input": { "type": "string", "description": "How input is interpreted: RAW, USER_ENTERED (default USER_ENTERED)" }
+          "spreadsheet_id": {
+            "type": "string",
+            "description": "Spreadsheet ID"
+          },
+          "range": {
+            "type": "string",
+            "description": "A1 notation range to write to"
+          },
+          "values": {
+            "type": "string",
+            "description": "JSON array of arrays representing rows (e.g. '[[\"A\",\"B\"],[\"C\",\"D\"]]')"
+          },
+          "value_input": {
+            "type": "string",
+            "description": "How input is interpreted: RAW, USER_ENTERED (default USER_ENTERED)"
+          }
         },
-        "required": ["spreadsheet_id", "range", "values"]
+        "required": [
+          "spreadsheet_id",
+          "range",
+          "values"
+        ]
       }
     },
     {
@@ -85,12 +134,28 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "spreadsheet_id": { "type": "string", "description": "Spreadsheet ID" },
-          "range": { "type": "string", "description": "A1 notation range indicating the table to append to (e.g. 'Sheet1!A:E')" },
-          "values": { "type": "string", "description": "JSON array of arrays representing rows to append" },
-          "value_input": { "type": "string", "description": "How input is interpreted: RAW, USER_ENTERED (default USER_ENTERED)" }
+          "spreadsheet_id": {
+            "type": "string",
+            "description": "Spreadsheet ID"
+          },
+          "range": {
+            "type": "string",
+            "description": "A1 notation range indicating the table to append to (e.g. 'Sheet1!A:E')"
+          },
+          "values": {
+            "type": "string",
+            "description": "JSON array of arrays representing rows to append"
+          },
+          "value_input": {
+            "type": "string",
+            "description": "How input is interpreted: RAW, USER_ENTERED (default USER_ENTERED)"
+          }
         },
-        "required": ["spreadsheet_id", "range", "values"]
+        "required": [
+          "spreadsheet_id",
+          "range",
+          "values"
+        ]
       }
     },
     {
@@ -99,12 +164,27 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "spreadsheet_id": { "type": "string", "description": "Spreadsheet ID" },
-          "title": { "type": "string", "description": "Title for the new sheet" },
-          "row_count": { "type": "number", "description": "Number of rows (default 1000)" },
-          "column_count": { "type": "number", "description": "Number of columns (default 26)" }
+          "spreadsheet_id": {
+            "type": "string",
+            "description": "Spreadsheet ID"
+          },
+          "title": {
+            "type": "string",
+            "description": "Title for the new sheet"
+          },
+          "row_count": {
+            "type": "number",
+            "description": "Number of rows (default 1000)"
+          },
+          "column_count": {
+            "type": "number",
+            "description": "Number of columns (default 26)"
+          }
         },
-        "required": ["spreadsheet_id", "title"]
+        "required": [
+          "spreadsheet_id",
+          "title"
+        ]
       }
     },
     {
@@ -113,11 +193,23 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "spreadsheet_id": { "type": "string", "description": "Spreadsheet ID" },
-          "ranges": { "type": "string", "description": "Comma-separated A1 notation ranges" },
-          "value_render": { "type": "string", "description": "How values are rendered (default FORMATTED_VALUE)" }
+          "spreadsheet_id": {
+            "type": "string",
+            "description": "Spreadsheet ID"
+          },
+          "ranges": {
+            "type": "string",
+            "description": "Comma-separated A1 notation ranges"
+          },
+          "value_render": {
+            "type": "string",
+            "description": "How values are rendered (default FORMATTED_VALUE)"
+          }
         },
-        "required": ["spreadsheet_id", "ranges"]
+        "required": [
+          "spreadsheet_id",
+          "ranges"
+        ]
       }
     },
     {
@@ -126,10 +218,19 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "spreadsheet_id": { "type": "string", "description": "Spreadsheet ID" },
-          "sheet_id": { "type": "number", "description": "Sheet ID (numeric, from sheet properties)" }
+          "spreadsheet_id": {
+            "type": "string",
+            "description": "Spreadsheet ID"
+          },
+          "sheet_id": {
+            "type": "number",
+            "description": "Sheet ID (numeric, from sheet properties)"
+          }
         },
-        "required": ["spreadsheet_id", "sheet_id"]
+        "required": [
+          "spreadsheet_id",
+          "sheet_id"
+        ]
       }
     },
     {
@@ -138,10 +239,26 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "spreadsheet_id": { "type": "string", "description": "Spreadsheet ID" }
+          "spreadsheet_id": {
+            "type": "string",
+            "description": "Spreadsheet ID"
+          }
         },
-        "required": ["spreadsheet_id"]
+        "required": [
+          "spreadsheet_id"
+        ]
       }
     }
-  ]
+  ],
+  "ffi": {
+    "so_path": "ffi/zig-out/lib/libgoogle_sheets_mcp.so",
+    "abi_version": "ADR-0006",
+    "symbols": [
+      "boj_cartridge_init",
+      "boj_cartridge_deinit",
+      "boj_cartridge_name",
+      "boj_cartridge_version",
+      "boj_cartridge_invoke"
+    ]
+  }
 }

@@ -7,7 +7,10 @@
   "description": "Render REST API v1 cartridge -- services, deploys, env groups, custom domains, jobs, suspend/resume, and bandwidth monitoring",
   "domain": "Cloud",
   "tier": "Ayo",
-  "protocols": ["MCP", "REST"],
+  "protocols": [
+    "MCP",
+    "REST"
+  ],
   "auth": {
     "method": "bearer_token",
     "env_var": "RENDER_API_KEY",
@@ -25,13 +28,34 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "cursor": { "type": "string", "description": "Pagination cursor from previous response" },
-          "limit": { "type": "number", "description": "Results per page (default 20, max 100)" },
-          "name": { "type": "string", "description": "Filter by service name (partial match)" },
-          "type": { "type": "string", "description": "Filter by type: web_service, static_site, background_worker, private_service, cron_job" },
-          "region": { "type": "string", "description": "Filter by region (e.g. oregon, ohio, frankfurt, singapore)" },
-          "suspended": { "type": "string", "description": "Filter by suspended status: suspended, not_suspended" },
-          "env": { "type": "string", "description": "Filter by environment: docker, node, python, go, ruby, rust, elixir, static" }
+          "cursor": {
+            "type": "string",
+            "description": "Pagination cursor from previous response"
+          },
+          "limit": {
+            "type": "number",
+            "description": "Results per page (default 20, max 100)"
+          },
+          "name": {
+            "type": "string",
+            "description": "Filter by service name (partial match)"
+          },
+          "type": {
+            "type": "string",
+            "description": "Filter by type: web_service, static_site, background_worker, private_service, cron_job"
+          },
+          "region": {
+            "type": "string",
+            "description": "Filter by region (e.g. oregon, ohio, frankfurt, singapore)"
+          },
+          "suspended": {
+            "type": "string",
+            "description": "Filter by suspended status: suspended, not_suspended"
+          },
+          "env": {
+            "type": "string",
+            "description": "Filter by environment: docker, node, python, go, ruby, rust, elixir, static"
+          }
         }
       }
     },
@@ -41,9 +65,14 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "service_id": { "type": "string", "description": "Service ID (e.g. srv-abc123)" }
+          "service_id": {
+            "type": "string",
+            "description": "Service ID (e.g. srv-abc123)"
+          }
         },
-        "required": ["service_id"]
+        "required": [
+          "service_id"
+        ]
       }
     },
     {
@@ -52,20 +81,62 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "name": { "type": "string", "description": "Service name" },
-          "type": { "type": "string", "description": "Service type: web_service, static_site, background_worker, private_service, cron_job" },
-          "repo": { "type": "string", "description": "Git repository URL (e.g. https://github.com/user/repo)" },
-          "branch": { "type": "string", "description": "Branch to deploy (default: main)" },
-          "region": { "type": "string", "description": "Deployment region (e.g. oregon, frankfurt)" },
-          "plan": { "type": "string", "description": "Plan name: free, starter, standard, pro, pro_plus, pro_max, pro_ultra" },
-          "env_vars": { "type": "array", "items": { "type": "object" }, "description": "Environment variables (key, value pairs)" },
-          "build_command": { "type": "string", "description": "Custom build command" },
-          "start_command": { "type": "string", "description": "Custom start command" },
-          "docker_image": { "type": "string", "description": "Docker image URL (alternative to repo)" },
-          "auto_deploy": { "type": "boolean", "description": "Auto-deploy on push (default true)" },
-          "health_check_path": { "type": "string", "description": "Health check endpoint path" }
+          "name": {
+            "type": "string",
+            "description": "Service name"
+          },
+          "type": {
+            "type": "string",
+            "description": "Service type: web_service, static_site, background_worker, private_service, cron_job"
+          },
+          "repo": {
+            "type": "string",
+            "description": "Git repository URL (e.g. https://github.com/user/repo)"
+          },
+          "branch": {
+            "type": "string",
+            "description": "Branch to deploy (default: main)"
+          },
+          "region": {
+            "type": "string",
+            "description": "Deployment region (e.g. oregon, frankfurt)"
+          },
+          "plan": {
+            "type": "string",
+            "description": "Plan name: free, starter, standard, pro, pro_plus, pro_max, pro_ultra"
+          },
+          "env_vars": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            },
+            "description": "Environment variables (key, value pairs)"
+          },
+          "build_command": {
+            "type": "string",
+            "description": "Custom build command"
+          },
+          "start_command": {
+            "type": "string",
+            "description": "Custom start command"
+          },
+          "docker_image": {
+            "type": "string",
+            "description": "Docker image URL (alternative to repo)"
+          },
+          "auto_deploy": {
+            "type": "boolean",
+            "description": "Auto-deploy on push (default true)"
+          },
+          "health_check_path": {
+            "type": "string",
+            "description": "Health check endpoint path"
+          }
         },
-        "required": ["name", "type"]
+        "required": [
+          "name",
+          "type"
+        ]
       }
     },
     {
@@ -74,9 +145,14 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "service_id": { "type": "string", "description": "Service ID to delete" }
+          "service_id": {
+            "type": "string",
+            "description": "Service ID to delete"
+          }
         },
-        "required": ["service_id"]
+        "required": [
+          "service_id"
+        ]
       }
     },
     {
@@ -85,11 +161,22 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "service_id": { "type": "string", "description": "Service ID" },
-          "cursor": { "type": "string", "description": "Pagination cursor" },
-          "limit": { "type": "number", "description": "Results per page (default 20)" }
+          "service_id": {
+            "type": "string",
+            "description": "Service ID"
+          },
+          "cursor": {
+            "type": "string",
+            "description": "Pagination cursor"
+          },
+          "limit": {
+            "type": "number",
+            "description": "Results per page (default 20)"
+          }
         },
-        "required": ["service_id"]
+        "required": [
+          "service_id"
+        ]
       }
     },
     {
@@ -98,10 +185,18 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "service_id": { "type": "string", "description": "Service ID" },
-          "clear_cache": { "type": "boolean", "description": "Clear build cache before deploy (default false)" }
+          "service_id": {
+            "type": "string",
+            "description": "Service ID"
+          },
+          "clear_cache": {
+            "type": "boolean",
+            "description": "Clear build cache before deploy (default false)"
+          }
         },
-        "required": ["service_id"]
+        "required": [
+          "service_id"
+        ]
       }
     },
     {
@@ -110,10 +205,19 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "service_id": { "type": "string", "description": "Service ID" },
-          "deploy_id": { "type": "string", "description": "Deploy ID (e.g. dep-abc123)" }
+          "service_id": {
+            "type": "string",
+            "description": "Service ID"
+          },
+          "deploy_id": {
+            "type": "string",
+            "description": "Deploy ID (e.g. dep-abc123)"
+          }
         },
-        "required": ["service_id", "deploy_id"]
+        "required": [
+          "service_id",
+          "deploy_id"
+        ]
       }
     },
     {
@@ -122,9 +226,18 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "cursor": { "type": "string", "description": "Pagination cursor" },
-          "limit": { "type": "number", "description": "Results per page" },
-          "name": { "type": "string", "description": "Filter by name" }
+          "cursor": {
+            "type": "string",
+            "description": "Pagination cursor"
+          },
+          "limit": {
+            "type": "number",
+            "description": "Results per page"
+          },
+          "name": {
+            "type": "string",
+            "description": "Filter by name"
+          }
         }
       }
     },
@@ -134,9 +247,14 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "env_group_id": { "type": "string", "description": "Env group ID (e.g. evg-abc123)" }
+          "env_group_id": {
+            "type": "string",
+            "description": "Env group ID (e.g. evg-abc123)"
+          }
         },
-        "required": ["env_group_id"]
+        "required": [
+          "env_group_id"
+        ]
       }
     },
     {
@@ -145,11 +263,22 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "service_id": { "type": "string", "description": "Service ID" },
-          "cursor": { "type": "string", "description": "Pagination cursor" },
-          "limit": { "type": "number", "description": "Results per page" }
+          "service_id": {
+            "type": "string",
+            "description": "Service ID"
+          },
+          "cursor": {
+            "type": "string",
+            "description": "Pagination cursor"
+          },
+          "limit": {
+            "type": "number",
+            "description": "Results per page"
+          }
         },
-        "required": ["service_id"]
+        "required": [
+          "service_id"
+        ]
       }
     },
     {
@@ -158,10 +287,19 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "service_id": { "type": "string", "description": "Service ID" },
-          "name": { "type": "string", "description": "Domain name (e.g. app.example.com)" }
+          "service_id": {
+            "type": "string",
+            "description": "Service ID"
+          },
+          "name": {
+            "type": "string",
+            "description": "Domain name (e.g. app.example.com)"
+          }
         },
-        "required": ["service_id", "name"]
+        "required": [
+          "service_id",
+          "name"
+        ]
       }
     },
     {
@@ -170,12 +308,26 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "service_id": { "type": "string", "description": "Service ID" },
-          "cursor": { "type": "string", "description": "Pagination cursor" },
-          "limit": { "type": "number", "description": "Results per page" },
-          "status": { "type": "string", "description": "Filter by status: pending, running, succeeded, failed" }
+          "service_id": {
+            "type": "string",
+            "description": "Service ID"
+          },
+          "cursor": {
+            "type": "string",
+            "description": "Pagination cursor"
+          },
+          "limit": {
+            "type": "number",
+            "description": "Results per page"
+          },
+          "status": {
+            "type": "string",
+            "description": "Filter by status: pending, running, succeeded, failed"
+          }
         },
-        "required": ["service_id"]
+        "required": [
+          "service_id"
+        ]
       }
     },
     {
@@ -184,11 +336,23 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "service_id": { "type": "string", "description": "Service ID" },
-          "start_command": { "type": "string", "description": "Command to execute" },
-          "plan_id": { "type": "string", "description": "Plan for the job (optional, defaults to service plan)" }
+          "service_id": {
+            "type": "string",
+            "description": "Service ID"
+          },
+          "start_command": {
+            "type": "string",
+            "description": "Command to execute"
+          },
+          "plan_id": {
+            "type": "string",
+            "description": "Plan for the job (optional, defaults to service plan)"
+          }
         },
-        "required": ["service_id", "start_command"]
+        "required": [
+          "service_id",
+          "start_command"
+        ]
       }
     },
     {
@@ -197,9 +361,14 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "service_id": { "type": "string", "description": "Service ID to suspend" }
+          "service_id": {
+            "type": "string",
+            "description": "Service ID to suspend"
+          }
         },
-        "required": ["service_id"]
+        "required": [
+          "service_id"
+        ]
       }
     },
     {
@@ -208,9 +377,14 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "service_id": { "type": "string", "description": "Service ID to resume" }
+          "service_id": {
+            "type": "string",
+            "description": "Service ID to resume"
+          }
         },
-        "required": ["service_id"]
+        "required": [
+          "service_id"
+        ]
       }
     },
     {
@@ -219,10 +393,26 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "service_id": { "type": "string", "description": "Service ID" }
+          "service_id": {
+            "type": "string",
+            "description": "Service ID"
+          }
         },
-        "required": ["service_id"]
+        "required": [
+          "service_id"
+        ]
       }
     }
-  ]
+  ],
+  "ffi": {
+    "so_path": "ffi/zig-out/lib/librender_mcp.so",
+    "abi_version": "ADR-0006",
+    "symbols": [
+      "boj_cartridge_init",
+      "boj_cartridge_deinit",
+      "boj_cartridge_name",
+      "boj_cartridge_version",
+      "boj_cartridge_invoke"
+    ]
+  }
 }

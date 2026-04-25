@@ -7,9 +7,19 @@
   "description": "Toolchain orchestrator. Mints, provisions, and configures language toolchains composed from lsp-mcp, dap-mcp, lang-mcp, and bsp-mcp. Integrates with PanLL panels via Groove and supports collaborative Burble sessions for pair-debugging and pair-programming workflows.",
   "domain": "Language Tools",
   "tier": "Ayo",
-  "protocols": ["MCP", "REST"],
-  "auth": { "method": "none", "env_var": null, "credential_source": null },
-  "api": { "base_url": "local://toolchain-mcp", "content_type": "application/json" },
+  "protocols": [
+    "MCP",
+    "REST"
+  ],
+  "auth": {
+    "method": "none",
+    "env_var": null,
+    "credential_source": null
+  },
+  "api": {
+    "base_url": "local://toolchain-mcp",
+    "content_type": "application/json"
+  },
   "tools": [
     {
       "name": "toolchain_mint",
@@ -17,16 +27,36 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "language": { "type": "string", "description": "Primary language for the toolchain (e.g. 'affinescript', 'rust', 'ocaml')" },
-          "workspace_root": { "type": "string", "description": "Workspace root directory path" },
+          "language": {
+            "type": "string",
+            "description": "Primary language for the toolchain (e.g. 'affinescript', 'rust', 'ocaml')"
+          },
+          "workspace_root": {
+            "type": "string",
+            "description": "Workspace root directory path"
+          },
           "servers": {
             "type": "array",
-            "items": { "type": "string", "enum": ["lsp", "dap", "bsp", "lang"] },
+            "items": {
+              "type": "string",
+              "enum": [
+                "lsp",
+                "dap",
+                "bsp",
+                "lang"
+              ]
+            },
             "description": "Toolserver types to include (default: all available)"
           },
-          "name": { "type": "string", "description": "Human-readable toolchain name" }
+          "name": {
+            "type": "string",
+            "description": "Human-readable toolchain name"
+          }
         },
-        "required": ["language", "workspace_root"]
+        "required": [
+          "language",
+          "workspace_root"
+        ]
       }
     },
     {
@@ -35,12 +65,26 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "toolchain_id": { "type": "string", "description": "Toolchain ID from toolchain_mint" },
-          "lsp_command": { "type": "string", "description": "LSP server command override (default: derived from language)" },
-          "dap_command": { "type": "string", "description": "DAP adapter command override" },
-          "bsp_command": { "type": "string", "description": "BSP server command override" }
+          "toolchain_id": {
+            "type": "string",
+            "description": "Toolchain ID from toolchain_mint"
+          },
+          "lsp_command": {
+            "type": "string",
+            "description": "LSP server command override (default: derived from language)"
+          },
+          "dap_command": {
+            "type": "string",
+            "description": "DAP adapter command override"
+          },
+          "bsp_command": {
+            "type": "string",
+            "description": "BSP server command override"
+          }
         },
-        "required": ["toolchain_id"]
+        "required": [
+          "toolchain_id"
+        ]
       }
     },
     {
@@ -49,13 +93,19 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "toolchain_id": { "type": "string", "description": "Toolchain ID" },
+          "toolchain_id": {
+            "type": "string",
+            "description": "Toolchain ID"
+          },
           "settings": {
             "type": "object",
             "description": "Configuration map. Keys: lsp, dap, bsp, lang (server-specific sub-objects), plus top-level: format_on_save (bool), diagnostics_debounce_ms (number), telemetry (bool)"
           }
         },
-        "required": ["toolchain_id", "settings"]
+        "required": [
+          "toolchain_id",
+          "settings"
+        ]
       }
     },
     {
@@ -64,7 +114,10 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "toolchain_id": { "type": "string", "description": "Toolchain ID (omit to list all)" }
+          "toolchain_id": {
+            "type": "string",
+            "description": "Toolchain ID (omit to list all)"
+          }
         },
         "required": []
       }
@@ -84,11 +137,23 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "toolchain_id": { "type": "string", "description": "Toolchain ID to bind" },
-          "groove_endpoint": { "type": "string", "description": "Groove endpoint URL (e.g. groove://panel.local/dev/toolchain)" },
-          "panel_id": { "type": "string", "description": "Target PanLL panel ID (optional — omit to broadcast)" }
+          "toolchain_id": {
+            "type": "string",
+            "description": "Toolchain ID to bind"
+          },
+          "groove_endpoint": {
+            "type": "string",
+            "description": "Groove endpoint URL (e.g. groove://panel.local/dev/toolchain)"
+          },
+          "panel_id": {
+            "type": "string",
+            "description": "Target PanLL panel ID (optional — omit to broadcast)"
+          }
         },
-        "required": ["toolchain_id", "groove_endpoint"]
+        "required": [
+          "toolchain_id",
+          "groove_endpoint"
+        ]
       }
     },
     {
@@ -97,11 +162,26 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "toolchain_id": { "type": "string", "description": "Toolchain ID" },
-          "room": { "type": "string", "description": "Burble room name to join (creates a new room if omitted)" },
-          "role": { "type": "string", "enum": ["host", "guest"], "description": "Session role (default: host for new rooms, guest for existing)" }
+          "toolchain_id": {
+            "type": "string",
+            "description": "Toolchain ID"
+          },
+          "room": {
+            "type": "string",
+            "description": "Burble room name to join (creates a new room if omitted)"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "host",
+              "guest"
+            ],
+            "description": "Session role (default: host for new rooms, guest for existing)"
+          }
         },
-        "required": ["toolchain_id"]
+        "required": [
+          "toolchain_id"
+        ]
       }
     },
     {
@@ -110,10 +190,26 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "toolchain_id": { "type": "string", "description": "Toolchain ID to stop" }
+          "toolchain_id": {
+            "type": "string",
+            "description": "Toolchain ID to stop"
+          }
         },
-        "required": ["toolchain_id"]
+        "required": [
+          "toolchain_id"
+        ]
       }
     }
-  ]
+  ],
+  "ffi": {
+    "so_path": "ffi/zig-out/lib/libtoolchain_mcp.so",
+    "abi_version": "ADR-0006",
+    "symbols": [
+      "boj_cartridge_init",
+      "boj_cartridge_deinit",
+      "boj_cartridge_name",
+      "boj_cartridge_version",
+      "boj_cartridge_invoke"
+    ]
+  }
 }

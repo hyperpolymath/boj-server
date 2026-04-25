@@ -4,7 +4,7 @@
   "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>",
   "name": "observe-mcp",
   "version": "0.1.0",
-  "description": "Unified observability \u2014 metrics, logs, traces (Prometheus, Grafana, Loki, Jaeger)",
+  "description": "Unified observability — metrics, logs, traces (Prometheus, Grafana, Loki, Jaeger)",
   "domain": "observability",
   "tier": "Ayo",
   "protocols": [
@@ -120,5 +120,16 @@
         ]
       }
     }
-  ]
+  ],
+  "ffi": {
+    "so_path": "ffi/zig-out/lib/libobserve_mcp.so",
+    "abi_version": "ADR-0006",
+    "symbols": [
+      "boj_cartridge_init",
+      "boj_cartridge_deinit",
+      "boj_cartridge_name",
+      "boj_cartridge_version",
+      "boj_cartridge_invoke"
+    ]
+  }
 }

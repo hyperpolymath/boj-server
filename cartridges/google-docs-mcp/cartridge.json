@@ -7,12 +7,18 @@
   "description": "Google Docs cartridge -- document retrieval, content reading, text search, heading extraction, comment listing, suggestion browsing, revision history, named range access, document creation, and text insertion via the Google Docs API v1",
   "domain": "Productivity",
   "tier": "Ayo",
-  "protocols": ["MCP", "REST"],
+  "protocols": [
+    "MCP",
+    "REST"
+  ],
   "auth": {
     "method": "oauth2",
     "env_var": "GOOGLE_DOCS_ACCESS_TOKEN",
     "credential_source": "vault-mcp",
-    "scopes": ["https://www.googleapis.com/auth/documents.readonly", "https://www.googleapis.com/auth/documents"]
+    "scopes": [
+      "https://www.googleapis.com/auth/documents.readonly",
+      "https://www.googleapis.com/auth/documents"
+    ]
   },
   "api": {
     "base_url": "https://docs.googleapis.com/v1",
@@ -25,9 +31,14 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "document_id": { "type": "string", "description": "Google Docs document ID (from URL)" }
+          "document_id": {
+            "type": "string",
+            "description": "Google Docs document ID (from URL)"
+          }
         },
-        "required": ["document_id"]
+        "required": [
+          "document_id"
+        ]
       }
     },
     {
@@ -36,9 +47,14 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "document_id": { "type": "string", "description": "Document ID" }
+          "document_id": {
+            "type": "string",
+            "description": "Document ID"
+          }
         },
-        "required": ["document_id"]
+        "required": [
+          "document_id"
+        ]
       }
     },
     {
@@ -47,9 +63,14 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "document_id": { "type": "string", "description": "Document ID" }
+          "document_id": {
+            "type": "string",
+            "description": "Document ID"
+          }
         },
-        "required": ["document_id"]
+        "required": [
+          "document_id"
+        ]
       }
     },
     {
@@ -58,10 +79,19 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "document_id": { "type": "string", "description": "Document ID" },
-          "query": { "type": "string", "description": "Text to search for" }
+          "document_id": {
+            "type": "string",
+            "description": "Document ID"
+          },
+          "query": {
+            "type": "string",
+            "description": "Text to search for"
+          }
         },
-        "required": ["document_id", "query"]
+        "required": [
+          "document_id",
+          "query"
+        ]
       }
     },
     {
@@ -70,10 +100,18 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "document_id": { "type": "string", "description": "Document ID" },
-          "include_resolved": { "type": "boolean", "description": "Include resolved comments (default false)" }
+          "document_id": {
+            "type": "string",
+            "description": "Document ID"
+          },
+          "include_resolved": {
+            "type": "boolean",
+            "description": "Include resolved comments (default false)"
+          }
         },
-        "required": ["document_id"]
+        "required": [
+          "document_id"
+        ]
       }
     },
     {
@@ -82,9 +120,14 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "document_id": { "type": "string", "description": "Document ID" }
+          "document_id": {
+            "type": "string",
+            "description": "Document ID"
+          }
         },
-        "required": ["document_id"]
+        "required": [
+          "document_id"
+        ]
       }
     },
     {
@@ -93,10 +136,18 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "document_id": { "type": "string", "description": "Document ID" },
-          "limit": { "type": "number", "description": "Max revisions to return (default 10)" }
+          "document_id": {
+            "type": "string",
+            "description": "Document ID"
+          },
+          "limit": {
+            "type": "number",
+            "description": "Max revisions to return (default 10)"
+          }
         },
-        "required": ["document_id"]
+        "required": [
+          "document_id"
+        ]
       }
     },
     {
@@ -105,9 +156,14 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "document_id": { "type": "string", "description": "Document ID" }
+          "document_id": {
+            "type": "string",
+            "description": "Document ID"
+          }
         },
-        "required": ["document_id"]
+        "required": [
+          "document_id"
+        ]
       }
     },
     {
@@ -116,9 +172,14 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "title": { "type": "string", "description": "Document title" }
+          "title": {
+            "type": "string",
+            "description": "Document title"
+          }
         },
-        "required": ["title"]
+        "required": [
+          "title"
+        ]
       }
     },
     {
@@ -127,12 +188,36 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "document_id": { "type": "string", "description": "Document ID" },
-          "text": { "type": "string", "description": "Text to insert" },
-          "index": { "type": "number", "description": "Character index to insert at (1 = start of body)" }
+          "document_id": {
+            "type": "string",
+            "description": "Document ID"
+          },
+          "text": {
+            "type": "string",
+            "description": "Text to insert"
+          },
+          "index": {
+            "type": "number",
+            "description": "Character index to insert at (1 = start of body)"
+          }
         },
-        "required": ["document_id", "text", "index"]
+        "required": [
+          "document_id",
+          "text",
+          "index"
+        ]
       }
     }
-  ]
+  ],
+  "ffi": {
+    "so_path": "ffi/zig-out/lib/libgoogle_docs_mcp.so",
+    "abi_version": "ADR-0006",
+    "symbols": [
+      "boj_cartridge_init",
+      "boj_cartridge_deinit",
+      "boj_cartridge_name",
+      "boj_cartridge_version",
+      "boj_cartridge_invoke"
+    ]
+  }
 }

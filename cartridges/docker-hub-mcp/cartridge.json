@@ -7,7 +7,10 @@
   "description": "Docker Hub container registry cartridge -- image search, repository management, tag listing, manifest inspection, namespace browsing, and pull rate limit tracking with JWT auth",
   "domain": "Container",
   "tier": "Ayo",
-  "protocols": ["MCP", "REST"],
+  "protocols": [
+    "MCP",
+    "REST"
+  ],
   "auth": {
     "method": "bearer",
     "token_type": "jwt",
@@ -29,12 +32,26 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "query": { "type": "string", "description": "Search query (e.g. 'nginx', 'python')" },
-          "page": { "type": "number", "description": "Page number (default 1)" },
-          "page_size": { "type": "number", "description": "Results per page (default 25, max 100)" },
-          "is_official": { "type": "boolean", "description": "Filter for official images only" }
+          "query": {
+            "type": "string",
+            "description": "Search query (e.g. 'nginx', 'python')"
+          },
+          "page": {
+            "type": "number",
+            "description": "Page number (default 1)"
+          },
+          "page_size": {
+            "type": "number",
+            "description": "Results per page (default 25, max 100)"
+          },
+          "is_official": {
+            "type": "boolean",
+            "description": "Filter for official images only"
+          }
         },
-        "required": ["query"]
+        "required": [
+          "query"
+        ]
       }
     },
     {
@@ -43,10 +60,19 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "namespace": { "type": "string", "description": "Repository namespace (e.g. 'library', 'myorg')" },
-          "name": { "type": "string", "description": "Repository name (e.g. 'nginx', 'alpine')" }
+          "namespace": {
+            "type": "string",
+            "description": "Repository namespace (e.g. 'library', 'myorg')"
+          },
+          "name": {
+            "type": "string",
+            "description": "Repository name (e.g. 'nginx', 'alpine')"
+          }
         },
-        "required": ["namespace", "name"]
+        "required": [
+          "namespace",
+          "name"
+        ]
       }
     },
     {
@@ -55,13 +81,31 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "namespace": { "type": "string", "description": "Repository namespace" },
-          "name": { "type": "string", "description": "Repository name" },
-          "page": { "type": "number", "description": "Page number (default 1)" },
-          "page_size": { "type": "number", "description": "Results per page (default 25, max 100)" },
-          "ordering": { "type": "string", "description": "Sort order: last_updated, -last_updated, name, -name" }
+          "namespace": {
+            "type": "string",
+            "description": "Repository namespace"
+          },
+          "name": {
+            "type": "string",
+            "description": "Repository name"
+          },
+          "page": {
+            "type": "number",
+            "description": "Page number (default 1)"
+          },
+          "page_size": {
+            "type": "number",
+            "description": "Results per page (default 25, max 100)"
+          },
+          "ordering": {
+            "type": "string",
+            "description": "Sort order: last_updated, -last_updated, name, -name"
+          }
         },
-        "required": ["namespace", "name"]
+        "required": [
+          "namespace",
+          "name"
+        ]
       }
     },
     {
@@ -70,11 +114,24 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "namespace": { "type": "string", "description": "Repository namespace" },
-          "name": { "type": "string", "description": "Repository name" },
-          "tag": { "type": "string", "description": "Tag name (e.g. 'latest', '3.19')" }
+          "namespace": {
+            "type": "string",
+            "description": "Repository namespace"
+          },
+          "name": {
+            "type": "string",
+            "description": "Repository name"
+          },
+          "tag": {
+            "type": "string",
+            "description": "Tag name (e.g. 'latest', '3.19')"
+          }
         },
-        "required": ["namespace", "name", "tag"]
+        "required": [
+          "namespace",
+          "name",
+          "tag"
+        ]
       }
     },
     {
@@ -91,11 +148,24 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "namespace": { "type": "string", "description": "Repository namespace" },
-          "name": { "type": "string", "description": "Repository name" },
-          "reference": { "type": "string", "description": "Tag name or digest (e.g. 'latest', 'sha256:abc...')" }
+          "namespace": {
+            "type": "string",
+            "description": "Repository namespace"
+          },
+          "name": {
+            "type": "string",
+            "description": "Repository name"
+          },
+          "reference": {
+            "type": "string",
+            "description": "Tag name or digest (e.g. 'latest', 'sha256:abc...')"
+          }
         },
-        "required": ["namespace", "name", "reference"]
+        "required": [
+          "namespace",
+          "name",
+          "reference"
+        ]
       }
     },
     {
@@ -104,11 +174,24 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "namespace": { "type": "string", "description": "Repository namespace" },
-          "name": { "type": "string", "description": "Repository name" },
-          "tag": { "type": "string", "description": "Tag to delete" }
+          "namespace": {
+            "type": "string",
+            "description": "Repository namespace"
+          },
+          "name": {
+            "type": "string",
+            "description": "Repository name"
+          },
+          "tag": {
+            "type": "string",
+            "description": "Tag to delete"
+          }
         },
-        "required": ["namespace", "name", "tag"]
+        "required": [
+          "namespace",
+          "name",
+          "tag"
+        ]
       }
     },
     {
@@ -133,13 +216,31 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "namespace": { "type": "string", "description": "Namespace to create the repository in" },
-          "name": { "type": "string", "description": "Repository name" },
-          "description": { "type": "string", "description": "Short description" },
-          "full_description": { "type": "string", "description": "Full description (Markdown)" },
-          "is_private": { "type": "boolean", "description": "Whether the repository is private (default false)" }
+          "namespace": {
+            "type": "string",
+            "description": "Namespace to create the repository in"
+          },
+          "name": {
+            "type": "string",
+            "description": "Repository name"
+          },
+          "description": {
+            "type": "string",
+            "description": "Short description"
+          },
+          "full_description": {
+            "type": "string",
+            "description": "Full description (Markdown)"
+          },
+          "is_private": {
+            "type": "boolean",
+            "description": "Whether the repository is private (default false)"
+          }
         },
-        "required": ["namespace", "name"]
+        "required": [
+          "namespace",
+          "name"
+        ]
       }
     },
     {
@@ -148,10 +249,19 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "namespace": { "type": "string", "description": "Repository namespace" },
-          "name": { "type": "string", "description": "Repository name" }
+          "namespace": {
+            "type": "string",
+            "description": "Repository namespace"
+          },
+          "name": {
+            "type": "string",
+            "description": "Repository name"
+          }
         },
-        "required": ["namespace", "name"]
+        "required": [
+          "namespace",
+          "name"
+        ]
       }
     },
     {
@@ -160,10 +270,19 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "namespace": { "type": "string", "description": "Repository namespace" },
-          "name": { "type": "string", "description": "Repository name" }
+          "namespace": {
+            "type": "string",
+            "description": "Repository namespace"
+          },
+          "name": {
+            "type": "string",
+            "description": "Repository name"
+          }
         },
-        "required": ["namespace", "name"]
+        "required": [
+          "namespace",
+          "name"
+        ]
       }
     },
     {
@@ -172,8 +291,14 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "page": { "type": "number", "description": "Page number" },
-          "page_size": { "type": "number", "description": "Results per page" }
+          "page": {
+            "type": "number",
+            "description": "Page number"
+          },
+          "page_size": {
+            "type": "number",
+            "description": "Results per page"
+          }
         }
       }
     },
@@ -183,10 +308,19 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "namespace": { "type": "string", "description": "Repository namespace" },
-          "name": { "type": "string", "description": "Repository name" }
+          "namespace": {
+            "type": "string",
+            "description": "Repository namespace"
+          },
+          "name": {
+            "type": "string",
+            "description": "Repository name"
+          }
         },
-        "required": ["namespace", "name"]
+        "required": [
+          "namespace",
+          "name"
+        ]
       }
     },
     {
@@ -195,10 +329,19 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "namespace": { "type": "string", "description": "Repository namespace" },
-          "name": { "type": "string", "description": "Repository name" }
+          "namespace": {
+            "type": "string",
+            "description": "Repository namespace"
+          },
+          "name": {
+            "type": "string",
+            "description": "Repository name"
+          }
         },
-        "required": ["namespace", "name"]
+        "required": [
+          "namespace",
+          "name"
+        ]
       }
     },
     {
@@ -207,10 +350,26 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "username": { "type": "string", "description": "Docker Hub username" }
+          "username": {
+            "type": "string",
+            "description": "Docker Hub username"
+          }
         },
-        "required": ["username"]
+        "required": [
+          "username"
+        ]
       }
     }
-  ]
+  ],
+  "ffi": {
+    "so_path": "ffi/zig-out/lib/libdocker_hub_mcp.so",
+    "abi_version": "ADR-0006",
+    "symbols": [
+      "boj_cartridge_init",
+      "boj_cartridge_deinit",
+      "boj_cartridge_name",
+      "boj_cartridge_version",
+      "boj_cartridge_invoke"
+    ]
+  }
 }

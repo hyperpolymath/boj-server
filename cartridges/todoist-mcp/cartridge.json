@@ -7,7 +7,10 @@
   "description": "Todoist task manager cartridge -- task search, project listing, task creation, task completion, label management, comment retrieval, section browsing, filter queries, activity log access, and productivity stats via the Todoist REST API v2",
   "domain": "Productivity",
   "tier": "Ayo",
-  "protocols": ["MCP", "REST"],
+  "protocols": [
+    "MCP",
+    "REST"
+  ],
   "auth": {
     "method": "bearer_token",
     "env_var": "TODOIST_API_TOKEN",
@@ -24,9 +27,18 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "project_id": { "type": "string", "description": "Filter by project ID" },
-          "label": { "type": "string", "description": "Filter by label name" },
-          "filter": { "type": "string", "description": "Todoist filter expression (e.g. 'today', 'overdue', 'priority 1')" }
+          "project_id": {
+            "type": "string",
+            "description": "Filter by project ID"
+          },
+          "label": {
+            "type": "string",
+            "description": "Filter by label name"
+          },
+          "filter": {
+            "type": "string",
+            "description": "Todoist filter expression (e.g. 'today', 'overdue', 'priority 1')"
+          }
         }
       }
     },
@@ -36,9 +48,14 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "task_id": { "type": "string", "description": "Task ID" }
+          "task_id": {
+            "type": "string",
+            "description": "Task ID"
+          }
         },
-        "required": ["task_id"]
+        "required": [
+          "task_id"
+        ]
       }
     },
     {
@@ -47,15 +64,38 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "content": { "type": "string", "description": "Task title/content" },
-          "description": { "type": "string", "description": "Task description (markdown)" },
-          "project_id": { "type": "string", "description": "Project to add task to" },
-          "due_string": { "type": "string", "description": "Natural language due date (e.g. 'tomorrow', 'next Monday')" },
-          "due_date": { "type": "string", "description": "Due date in YYYY-MM-DD format" },
-          "priority": { "type": "number", "description": "Priority 1-4 (4 = urgent)" },
-          "labels": { "type": "string", "description": "Comma-separated label names" }
+          "content": {
+            "type": "string",
+            "description": "Task title/content"
+          },
+          "description": {
+            "type": "string",
+            "description": "Task description (markdown)"
+          },
+          "project_id": {
+            "type": "string",
+            "description": "Project to add task to"
+          },
+          "due_string": {
+            "type": "string",
+            "description": "Natural language due date (e.g. 'tomorrow', 'next Monday')"
+          },
+          "due_date": {
+            "type": "string",
+            "description": "Due date in YYYY-MM-DD format"
+          },
+          "priority": {
+            "type": "number",
+            "description": "Priority 1-4 (4 = urgent)"
+          },
+          "labels": {
+            "type": "string",
+            "description": "Comma-separated label names"
+          }
         },
-        "required": ["content"]
+        "required": [
+          "content"
+        ]
       }
     },
     {
@@ -64,9 +104,14 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "task_id": { "type": "string", "description": "Task ID to complete" }
+          "task_id": {
+            "type": "string",
+            "description": "Task ID to complete"
+          }
         },
-        "required": ["task_id"]
+        "required": [
+          "task_id"
+        ]
       }
     },
     {
@@ -83,9 +128,14 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "project_id": { "type": "string", "description": "Project ID" }
+          "project_id": {
+            "type": "string",
+            "description": "Project ID"
+          }
         },
-        "required": ["project_id"]
+        "required": [
+          "project_id"
+        ]
       }
     },
     {
@@ -102,8 +152,14 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "task_id": { "type": "string", "description": "Task ID (mutually exclusive with project_id)" },
-          "project_id": { "type": "string", "description": "Project ID (mutually exclusive with task_id)" }
+          "task_id": {
+            "type": "string",
+            "description": "Task ID (mutually exclusive with project_id)"
+          },
+          "project_id": {
+            "type": "string",
+            "description": "Project ID (mutually exclusive with task_id)"
+          }
         }
       }
     },
@@ -113,9 +169,14 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "project_id": { "type": "string", "description": "Project ID" }
+          "project_id": {
+            "type": "string",
+            "description": "Project ID"
+          }
         },
-        "required": ["project_id"]
+        "required": [
+          "project_id"
+        ]
       }
     },
     {
@@ -124,10 +185,27 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "project_id": { "type": "string", "description": "Filter by project ID" },
-          "limit": { "type": "number", "description": "Max results (default 30)" }
+          "project_id": {
+            "type": "string",
+            "description": "Filter by project ID"
+          },
+          "limit": {
+            "type": "number",
+            "description": "Max results (default 30)"
+          }
         }
       }
     }
-  ]
+  ],
+  "ffi": {
+    "so_path": "ffi/zig-out/lib/libtodoist_mcp.so",
+    "abi_version": "ADR-0006",
+    "symbols": [
+      "boj_cartridge_init",
+      "boj_cartridge_deinit",
+      "boj_cartridge_name",
+      "boj_cartridge_version",
+      "boj_cartridge_invoke"
+    ]
+  }
 }

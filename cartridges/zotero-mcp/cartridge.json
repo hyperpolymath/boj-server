@@ -7,7 +7,10 @@
   "description": "Zotero reference manager cartridge -- library search, item retrieval, collection browsing, tag management, attachment access, citation export, note extraction, saved search execution, group library access, and bibliography generation via the Zotero Web API v3",
   "domain": "Research",
   "tier": "Ayo",
-  "protocols": ["MCP", "REST"],
+  "protocols": [
+    "MCP",
+    "REST"
+  ],
   "auth": {
     "method": "bearer_token",
     "env_var": "ZOTERO_API_KEY",
@@ -25,12 +28,26 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "query": { "type": "string", "description": "Search query (title, author, tag, full-text)" },
-          "item_type": { "type": "string", "description": "Filter by item type (e.g. 'journalArticle', 'book', 'conferencePaper')" },
-          "limit": { "type": "number", "description": "Max results (default 25, max 100)" },
-          "sort": { "type": "string", "description": "Sort field: dateAdded, dateModified, title, creator, itemType" }
+          "query": {
+            "type": "string",
+            "description": "Search query (title, author, tag, full-text)"
+          },
+          "item_type": {
+            "type": "string",
+            "description": "Filter by item type (e.g. 'journalArticle', 'book', 'conferencePaper')"
+          },
+          "limit": {
+            "type": "number",
+            "description": "Max results (default 25, max 100)"
+          },
+          "sort": {
+            "type": "string",
+            "description": "Sort field: dateAdded, dateModified, title, creator, itemType"
+          }
         },
-        "required": ["query"]
+        "required": [
+          "query"
+        ]
       }
     },
     {
@@ -39,9 +56,14 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "item_key": { "type": "string", "description": "Zotero item key (8-character alphanumeric)" }
+          "item_key": {
+            "type": "string",
+            "description": "Zotero item key (8-character alphanumeric)"
+          }
         },
-        "required": ["item_key"]
+        "required": [
+          "item_key"
+        ]
       }
     },
     {
@@ -50,7 +72,10 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "parent_key": { "type": "string", "description": "Parent collection key (omit for top-level)" }
+          "parent_key": {
+            "type": "string",
+            "description": "Parent collection key (omit for top-level)"
+          }
         }
       }
     },
@@ -60,11 +85,22 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "collection_key": { "type": "string", "description": "Collection key" },
-          "limit": { "type": "number", "description": "Max results (default 25)" },
-          "sort": { "type": "string", "description": "Sort field" }
+          "collection_key": {
+            "type": "string",
+            "description": "Collection key"
+          },
+          "limit": {
+            "type": "number",
+            "description": "Max results (default 25)"
+          },
+          "sort": {
+            "type": "string",
+            "description": "Sort field"
+          }
         },
-        "required": ["collection_key"]
+        "required": [
+          "collection_key"
+        ]
       }
     },
     {
@@ -73,7 +109,10 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "limit": { "type": "number", "description": "Max results (default 50)" }
+          "limit": {
+            "type": "number",
+            "description": "Max results (default 50)"
+          }
         }
       }
     },
@@ -83,10 +122,18 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "tag": { "type": "string", "description": "Tag name" },
-          "limit": { "type": "number", "description": "Max results" }
+          "tag": {
+            "type": "string",
+            "description": "Tag name"
+          },
+          "limit": {
+            "type": "number",
+            "description": "Max results"
+          }
         },
-        "required": ["tag"]
+        "required": [
+          "tag"
+        ]
       }
     },
     {
@@ -95,9 +142,14 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "item_key": { "type": "string", "description": "Parent item key" }
+          "item_key": {
+            "type": "string",
+            "description": "Parent item key"
+          }
         },
-        "required": ["item_key"]
+        "required": [
+          "item_key"
+        ]
       }
     },
     {
@@ -106,10 +158,18 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "item_key": { "type": "string", "description": "Item key" },
-          "format": { "type": "string", "description": "Export format: bibtex, ris, csljson, refer, coins (default bibtex)" }
+          "item_key": {
+            "type": "string",
+            "description": "Item key"
+          },
+          "format": {
+            "type": "string",
+            "description": "Export format: bibtex, ris, csljson, refer, coins (default bibtex)"
+          }
         },
-        "required": ["item_key"]
+        "required": [
+          "item_key"
+        ]
       }
     },
     {
@@ -118,9 +178,14 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "item_key": { "type": "string", "description": "Parent item key" }
+          "item_key": {
+            "type": "string",
+            "description": "Parent item key"
+          }
         },
-        "required": ["item_key"]
+        "required": [
+          "item_key"
+        ]
       }
     },
     {
@@ -145,11 +210,30 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "item_keys": { "type": "string", "description": "Comma-separated item keys" },
-          "style": { "type": "string", "description": "CSL style ID (e.g. 'apa', 'chicago-note-bibliography', 'ieee')" }
+          "item_keys": {
+            "type": "string",
+            "description": "Comma-separated item keys"
+          },
+          "style": {
+            "type": "string",
+            "description": "CSL style ID (e.g. 'apa', 'chicago-note-bibliography', 'ieee')"
+          }
         },
-        "required": ["item_keys"]
+        "required": [
+          "item_keys"
+        ]
       }
     }
-  ]
+  ],
+  "ffi": {
+    "so_path": "ffi/zig-out/lib/libzotero_mcp.so",
+    "abi_version": "ADR-0006",
+    "symbols": [
+      "boj_cartridge_init",
+      "boj_cartridge_deinit",
+      "boj_cartridge_name",
+      "boj_cartridge_version",
+      "boj_cartridge_invoke"
+    ]
+  }
 }

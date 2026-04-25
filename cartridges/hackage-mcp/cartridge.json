@@ -7,7 +7,10 @@
   "description": "Hackage registry cartridge -- Haskell package search, metadata retrieval, version listing, download stats, dependency analysis, reverse dependency lookup, maintainer listing, deprecated status, and cabal file retrieval via the Hackage API",
   "domain": "Registry",
   "tier": "Ayo",
-  "protocols": ["MCP", "REST"],
+  "protocols": [
+    "MCP",
+    "REST"
+  ],
   "auth": {
     "method": "basic",
     "env_var": "HACKAGE_CREDENTIALS",
@@ -24,10 +27,18 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "query": { "type": "string", "description": "Search query (package name, synopsis)" },
-          "page": { "type": "number", "description": "Page number (default 0)" }
+          "query": {
+            "type": "string",
+            "description": "Search query (package name, synopsis)"
+          },
+          "page": {
+            "type": "number",
+            "description": "Page number (default 0)"
+          }
         },
-        "required": ["query"]
+        "required": [
+          "query"
+        ]
       }
     },
     {
@@ -36,9 +47,14 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "name": { "type": "string", "description": "Package name (e.g. 'aeson', 'lens', 'servant')" }
+          "name": {
+            "type": "string",
+            "description": "Package name (e.g. 'aeson', 'lens', 'servant')"
+          }
         },
-        "required": ["name"]
+        "required": [
+          "name"
+        ]
       }
     },
     {
@@ -47,10 +63,19 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "name": { "type": "string", "description": "Package name" },
-          "version": { "type": "string", "description": "Version string (e.g. '2.2.3.0')" }
+          "name": {
+            "type": "string",
+            "description": "Package name"
+          },
+          "version": {
+            "type": "string",
+            "description": "Version string (e.g. '2.2.3.0')"
+          }
         },
-        "required": ["name", "version"]
+        "required": [
+          "name",
+          "version"
+        ]
       }
     },
     {
@@ -59,9 +84,14 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "name": { "type": "string", "description": "Package name" }
+          "name": {
+            "type": "string",
+            "description": "Package name"
+          }
         },
-        "required": ["name"]
+        "required": [
+          "name"
+        ]
       }
     },
     {
@@ -70,9 +100,14 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "name": { "type": "string", "description": "Package name" }
+          "name": {
+            "type": "string",
+            "description": "Package name"
+          }
         },
-        "required": ["name"]
+        "required": [
+          "name"
+        ]
       }
     },
     {
@@ -81,10 +116,19 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "name": { "type": "string", "description": "Package name" },
-          "version": { "type": "string", "description": "Version to inspect" }
+          "name": {
+            "type": "string",
+            "description": "Package name"
+          },
+          "version": {
+            "type": "string",
+            "description": "Version to inspect"
+          }
         },
-        "required": ["name", "version"]
+        "required": [
+          "name",
+          "version"
+        ]
       }
     },
     {
@@ -93,9 +137,14 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "name": { "type": "string", "description": "Package name" }
+          "name": {
+            "type": "string",
+            "description": "Package name"
+          }
         },
-        "required": ["name"]
+        "required": [
+          "name"
+        ]
       }
     },
     {
@@ -104,9 +153,14 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "name": { "type": "string", "description": "Package name" }
+          "name": {
+            "type": "string",
+            "description": "Package name"
+          }
         },
-        "required": ["name"]
+        "required": [
+          "name"
+        ]
       }
     },
     {
@@ -115,9 +169,14 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "name": { "type": "string", "description": "Package name" }
+          "name": {
+            "type": "string",
+            "description": "Package name"
+          }
         },
-        "required": ["name"]
+        "required": [
+          "name"
+        ]
       }
     },
     {
@@ -126,10 +185,19 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "name": { "type": "string", "description": "Package name" },
-          "version": { "type": "string", "description": "Version to retrieve" }
+          "name": {
+            "type": "string",
+            "description": "Package name"
+          },
+          "version": {
+            "type": "string",
+            "description": "Version to retrieve"
+          }
         },
-        "required": ["name", "version"]
+        "required": [
+          "name",
+          "version"
+        ]
       }
     },
     {
@@ -138,7 +206,10 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "page": { "type": "number", "description": "Page number (default 0)" }
+          "page": {
+            "type": "number",
+            "description": "Page number (default 0)"
+          }
         }
       }
     },
@@ -148,10 +219,26 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "username": { "type": "string", "description": "Hackage username" }
+          "username": {
+            "type": "string",
+            "description": "Hackage username"
+          }
         },
-        "required": ["username"]
+        "required": [
+          "username"
+        ]
       }
     }
-  ]
+  ],
+  "ffi": {
+    "so_path": "ffi/zig-out/lib/libhackage_mcp.so",
+    "abi_version": "ADR-0006",
+    "symbols": [
+      "boj_cartridge_init",
+      "boj_cartridge_deinit",
+      "boj_cartridge_name",
+      "boj_cartridge_version",
+      "boj_cartridge_invoke"
+    ]
+  }
 }

@@ -7,7 +7,10 @@
   "description": "Anthropic Messages API cartridge -- send messages to Claude models, count tokens, manage multi-turn conversations",
   "domain": "AI",
   "tier": "Ayo",
-  "protocols": ["MCP", "REST"],
+  "protocols": [
+    "MCP",
+    "REST"
+  ],
   "auth": {
     "method": "api_key_header",
     "header": "x-api-key",
@@ -34,10 +37,21 @@
             "items": {
               "type": "object",
               "properties": {
-                "role": { "type": "string", "enum": ["user", "assistant"] },
-                "content": { "type": "string" }
+                "role": {
+                  "type": "string",
+                  "enum": [
+                    "user",
+                    "assistant"
+                  ]
+                },
+                "content": {
+                  "type": "string"
+                }
               },
-              "required": ["role", "content"]
+              "required": [
+                "role",
+                "content"
+              ]
             },
             "minItems": 1
           },
@@ -61,7 +75,9 @@
             "default": 1.0
           }
         },
-        "required": ["messages"]
+        "required": [
+          "messages"
+        ]
       }
     },
     {
@@ -76,10 +92,21 @@
             "items": {
               "type": "object",
               "properties": {
-                "role": { "type": "string", "enum": ["user", "assistant"] },
-                "content": { "type": "string" }
+                "role": {
+                  "type": "string",
+                  "enum": [
+                    "user",
+                    "assistant"
+                  ]
+                },
+                "content": {
+                  "type": "string"
+                }
               },
-              "required": ["role", "content"]
+              "required": [
+                "role",
+                "content"
+              ]
             },
             "minItems": 1
           },
@@ -93,7 +120,9 @@
             "description": "System prompt to include in the count."
           }
         },
-        "required": ["messages"]
+        "required": [
+          "messages"
+        ]
       }
     },
     {
@@ -104,5 +133,16 @@
         "properties": {}
       }
     }
-  ]
+  ],
+  "ffi": {
+    "so_path": "ffi/zig-out/lib/libclaude_ai_mcp.so",
+    "abi_version": "ADR-0006",
+    "symbols": [
+      "boj_cartridge_init",
+      "boj_cartridge_deinit",
+      "boj_cartridge_name",
+      "boj_cartridge_version",
+      "boj_cartridge_invoke"
+    ]
+  }
 }

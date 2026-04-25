@@ -7,7 +7,10 @@
   "description": "Hex.pm registry cartridge -- Elixir/Erlang package search, metadata retrieval, version listing, download stats, dependency analysis, owner listing, retirement status, and API key management via the Hex API",
   "domain": "Registry",
   "tier": "Ayo",
-  "protocols": ["MCP", "REST"],
+  "protocols": [
+    "MCP",
+    "REST"
+  ],
   "auth": {
     "method": "bearer_token",
     "env_var": "HEX_API_KEY",
@@ -24,11 +27,22 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "query": { "type": "string", "description": "Search query (package name, description)" },
-          "page": { "type": "number", "description": "Page number (default 1)" },
-          "sort": { "type": "string", "description": "Sort order: name, inserted_at, updated_at, total_downloads, recent_downloads" }
+          "query": {
+            "type": "string",
+            "description": "Search query (package name, description)"
+          },
+          "page": {
+            "type": "number",
+            "description": "Page number (default 1)"
+          },
+          "sort": {
+            "type": "string",
+            "description": "Sort order: name, inserted_at, updated_at, total_downloads, recent_downloads"
+          }
         },
-        "required": ["query"]
+        "required": [
+          "query"
+        ]
       }
     },
     {
@@ -37,9 +51,14 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "name": { "type": "string", "description": "Package name (e.g. 'phoenix', 'ecto', 'plug')" }
+          "name": {
+            "type": "string",
+            "description": "Package name (e.g. 'phoenix', 'ecto', 'plug')"
+          }
         },
-        "required": ["name"]
+        "required": [
+          "name"
+        ]
       }
     },
     {
@@ -48,10 +67,19 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "name": { "type": "string", "description": "Package name" },
-          "version": { "type": "string", "description": "Version string (e.g. '1.7.14')" }
+          "name": {
+            "type": "string",
+            "description": "Package name"
+          },
+          "version": {
+            "type": "string",
+            "description": "Version string (e.g. '1.7.14')"
+          }
         },
-        "required": ["name", "version"]
+        "required": [
+          "name",
+          "version"
+        ]
       }
     },
     {
@@ -60,9 +88,14 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "name": { "type": "string", "description": "Package name" }
+          "name": {
+            "type": "string",
+            "description": "Package name"
+          }
         },
-        "required": ["name"]
+        "required": [
+          "name"
+        ]
       }
     },
     {
@@ -71,9 +104,14 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "name": { "type": "string", "description": "Package name" }
+          "name": {
+            "type": "string",
+            "description": "Package name"
+          }
         },
-        "required": ["name"]
+        "required": [
+          "name"
+        ]
       }
     },
     {
@@ -82,10 +120,19 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "name": { "type": "string", "description": "Package name" },
-          "version": { "type": "string", "description": "Release version to inspect" }
+          "name": {
+            "type": "string",
+            "description": "Package name"
+          },
+          "version": {
+            "type": "string",
+            "description": "Release version to inspect"
+          }
         },
-        "required": ["name", "version"]
+        "required": [
+          "name",
+          "version"
+        ]
       }
     },
     {
@@ -94,9 +141,14 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "name": { "type": "string", "description": "Package name" }
+          "name": {
+            "type": "string",
+            "description": "Package name"
+          }
         },
-        "required": ["name"]
+        "required": [
+          "name"
+        ]
       }
     },
     {
@@ -105,10 +157,19 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "name": { "type": "string", "description": "Package name" },
-          "version": { "type": "string", "description": "Release version to check" }
+          "name": {
+            "type": "string",
+            "description": "Package name"
+          },
+          "version": {
+            "type": "string",
+            "description": "Release version to check"
+          }
         },
-        "required": ["name", "version"]
+        "required": [
+          "name",
+          "version"
+        ]
       }
     },
     {
@@ -117,9 +178,14 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "username": { "type": "string", "description": "Hex.pm username" }
+          "username": {
+            "type": "string",
+            "description": "Hex.pm username"
+          }
         },
-        "required": ["username"]
+        "required": [
+          "username"
+        ]
       }
     },
     {
@@ -128,10 +194,26 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "username": { "type": "string", "description": "Hex.pm username" }
+          "username": {
+            "type": "string",
+            "description": "Hex.pm username"
+          }
         },
-        "required": ["username"]
+        "required": [
+          "username"
+        ]
       }
     }
-  ]
+  ],
+  "ffi": {
+    "so_path": "ffi/zig-out/lib/libhex_mcp.so",
+    "abi_version": "ADR-0006",
+    "symbols": [
+      "boj_cartridge_init",
+      "boj_cartridge_deinit",
+      "boj_cartridge_name",
+      "boj_cartridge_version",
+      "boj_cartridge_invoke"
+    ]
+  }
 }

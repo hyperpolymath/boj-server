@@ -7,9 +7,19 @@
   "description": "Generic Language Server Protocol (LSP 3.17) gateway. Spawns any LSP server as a persistent subprocess, manages the JSON-RPC 2.0 over stdio session, and exposes text document operations (open, change, hover, completion, goto-definition, references, diagnostics, formatting) as MCP tools.",
   "domain": "Language Tools",
   "tier": "Ayo",
-  "protocols": ["MCP", "REST"],
-  "auth": { "method": "none", "env_var": null, "credential_source": null },
-  "api": { "base_url": "local://lsp-mcp", "content_type": "application/json" },
+  "protocols": [
+    "MCP",
+    "REST"
+  ],
+  "auth": {
+    "method": "none",
+    "env_var": null,
+    "credential_source": null
+  },
+  "api": {
+    "base_url": "local://lsp-mcp",
+    "content_type": "application/json"
+  },
   "tools": [
     {
       "name": "lsp_start",
@@ -17,11 +27,25 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "command": { "type": "string", "description": "Language server executable (e.g. 'rust-analyzer', 'affinescript server --stdio', 'clangd')" },
-          "args": { "type": "array", "items": { "type": "string" }, "description": "Additional command arguments" },
-          "workspace_root": { "type": "string", "description": "Workspace root directory path" }
+          "command": {
+            "type": "string",
+            "description": "Language server executable (e.g. 'rust-analyzer', 'affinescript server --stdio', 'clangd')"
+          },
+          "args": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Additional command arguments"
+          },
+          "workspace_root": {
+            "type": "string",
+            "description": "Workspace root directory path"
+          }
         },
-        "required": ["command"]
+        "required": [
+          "command"
+        ]
       }
     },
     {
@@ -30,11 +54,23 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "session_id": { "type": "string", "description": "Session ID from lsp_start" },
-          "root_uri": { "type": "string", "description": "Workspace root as a file:// URI" },
-          "client_name": { "type": "string", "description": "Client name reported to server (default: boj-lsp-mcp)" }
+          "session_id": {
+            "type": "string",
+            "description": "Session ID from lsp_start"
+          },
+          "root_uri": {
+            "type": "string",
+            "description": "Workspace root as a file:// URI"
+          },
+          "client_name": {
+            "type": "string",
+            "description": "Client name reported to server (default: boj-lsp-mcp)"
+          }
         },
-        "required": ["session_id", "root_uri"]
+        "required": [
+          "session_id",
+          "root_uri"
+        ]
       }
     },
     {
@@ -43,12 +79,29 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "session_id": { "type": "string", "description": "Session ID" },
-          "uri": { "type": "string", "description": "Document URI (file://...)" },
-          "language_id": { "type": "string", "description": "Language ID (e.g. 'affinescript', 'rust', 'ocaml')" },
-          "text": { "type": "string", "description": "Full document text" }
+          "session_id": {
+            "type": "string",
+            "description": "Session ID"
+          },
+          "uri": {
+            "type": "string",
+            "description": "Document URI (file://...)"
+          },
+          "language_id": {
+            "type": "string",
+            "description": "Language ID (e.g. 'affinescript', 'rust', 'ocaml')"
+          },
+          "text": {
+            "type": "string",
+            "description": "Full document text"
+          }
         },
-        "required": ["session_id", "uri", "language_id", "text"]
+        "required": [
+          "session_id",
+          "uri",
+          "language_id",
+          "text"
+        ]
       }
     },
     {
@@ -57,12 +110,28 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "session_id": { "type": "string", "description": "Session ID" },
-          "uri": { "type": "string", "description": "Document URI" },
-          "text": { "type": "string", "description": "Full updated document text" },
-          "version": { "type": "number", "description": "Document version counter (increment each change)" }
+          "session_id": {
+            "type": "string",
+            "description": "Session ID"
+          },
+          "uri": {
+            "type": "string",
+            "description": "Document URI"
+          },
+          "text": {
+            "type": "string",
+            "description": "Full updated document text"
+          },
+          "version": {
+            "type": "number",
+            "description": "Document version counter (increment each change)"
+          }
         },
-        "required": ["session_id", "uri", "text"]
+        "required": [
+          "session_id",
+          "uri",
+          "text"
+        ]
       }
     },
     {
@@ -71,10 +140,19 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "session_id": { "type": "string", "description": "Session ID" },
-          "uri": { "type": "string", "description": "Document URI" }
+          "session_id": {
+            "type": "string",
+            "description": "Session ID"
+          },
+          "uri": {
+            "type": "string",
+            "description": "Document URI"
+          }
         },
-        "required": ["session_id", "uri"]
+        "required": [
+          "session_id",
+          "uri"
+        ]
       }
     },
     {
@@ -83,12 +161,29 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "session_id": { "type": "string", "description": "Session ID" },
-          "uri": { "type": "string", "description": "Document URI" },
-          "line": { "type": "number", "description": "0-based line number" },
-          "col": { "type": "number", "description": "0-based character offset" }
+          "session_id": {
+            "type": "string",
+            "description": "Session ID"
+          },
+          "uri": {
+            "type": "string",
+            "description": "Document URI"
+          },
+          "line": {
+            "type": "number",
+            "description": "0-based line number"
+          },
+          "col": {
+            "type": "number",
+            "description": "0-based character offset"
+          }
         },
-        "required": ["session_id", "uri", "line", "col"]
+        "required": [
+          "session_id",
+          "uri",
+          "line",
+          "col"
+        ]
       }
     },
     {
@@ -97,13 +192,33 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "session_id": { "type": "string", "description": "Session ID" },
-          "uri": { "type": "string", "description": "Document URI" },
-          "line": { "type": "number", "description": "0-based line number" },
-          "col": { "type": "number", "description": "0-based character offset" },
-          "trigger_char": { "type": "string", "description": "Optional trigger character (e.g. '.' or ':')" }
+          "session_id": {
+            "type": "string",
+            "description": "Session ID"
+          },
+          "uri": {
+            "type": "string",
+            "description": "Document URI"
+          },
+          "line": {
+            "type": "number",
+            "description": "0-based line number"
+          },
+          "col": {
+            "type": "number",
+            "description": "0-based character offset"
+          },
+          "trigger_char": {
+            "type": "string",
+            "description": "Optional trigger character (e.g. '.' or ':')"
+          }
         },
-        "required": ["session_id", "uri", "line", "col"]
+        "required": [
+          "session_id",
+          "uri",
+          "line",
+          "col"
+        ]
       }
     },
     {
@@ -112,12 +227,29 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "session_id": { "type": "string", "description": "Session ID" },
-          "uri": { "type": "string", "description": "Document URI" },
-          "line": { "type": "number", "description": "0-based line number" },
-          "col": { "type": "number", "description": "0-based character offset" }
+          "session_id": {
+            "type": "string",
+            "description": "Session ID"
+          },
+          "uri": {
+            "type": "string",
+            "description": "Document URI"
+          },
+          "line": {
+            "type": "number",
+            "description": "0-based line number"
+          },
+          "col": {
+            "type": "number",
+            "description": "0-based character offset"
+          }
         },
-        "required": ["session_id", "uri", "line", "col"]
+        "required": [
+          "session_id",
+          "uri",
+          "line",
+          "col"
+        ]
       }
     },
     {
@@ -126,13 +258,33 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "session_id": { "type": "string", "description": "Session ID" },
-          "uri": { "type": "string", "description": "Document URI" },
-          "line": { "type": "number", "description": "0-based line number" },
-          "col": { "type": "number", "description": "0-based character offset" },
-          "include_declaration": { "type": "boolean", "description": "Include the declaration site (default: true)" }
+          "session_id": {
+            "type": "string",
+            "description": "Session ID"
+          },
+          "uri": {
+            "type": "string",
+            "description": "Document URI"
+          },
+          "line": {
+            "type": "number",
+            "description": "0-based line number"
+          },
+          "col": {
+            "type": "number",
+            "description": "0-based character offset"
+          },
+          "include_declaration": {
+            "type": "boolean",
+            "description": "Include the declaration site (default: true)"
+          }
         },
-        "required": ["session_id", "uri", "line", "col"]
+        "required": [
+          "session_id",
+          "uri",
+          "line",
+          "col"
+        ]
       }
     },
     {
@@ -141,10 +293,18 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "session_id": { "type": "string", "description": "Session ID" },
-          "uri": { "type": "string", "description": "Document URI (optional — omit for all documents)" }
+          "session_id": {
+            "type": "string",
+            "description": "Session ID"
+          },
+          "uri": {
+            "type": "string",
+            "description": "Document URI (optional — omit for all documents)"
+          }
         },
-        "required": ["session_id"]
+        "required": [
+          "session_id"
+        ]
       }
     },
     {
@@ -153,12 +313,27 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "session_id": { "type": "string", "description": "Session ID" },
-          "uri": { "type": "string", "description": "Document URI" },
-          "tab_size": { "type": "number", "description": "Indentation width (default: 2)" },
-          "insert_spaces": { "type": "boolean", "description": "Use spaces instead of tabs (default: true)" }
+          "session_id": {
+            "type": "string",
+            "description": "Session ID"
+          },
+          "uri": {
+            "type": "string",
+            "description": "Document URI"
+          },
+          "tab_size": {
+            "type": "number",
+            "description": "Indentation width (default: 2)"
+          },
+          "insert_spaces": {
+            "type": "boolean",
+            "description": "Use spaces instead of tabs (default: true)"
+          }
         },
-        "required": ["session_id", "uri"]
+        "required": [
+          "session_id",
+          "uri"
+        ]
       }
     },
     {
@@ -167,10 +342,26 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "session_id": { "type": "string", "description": "Session ID to stop" }
+          "session_id": {
+            "type": "string",
+            "description": "Session ID to stop"
+          }
         },
-        "required": ["session_id"]
+        "required": [
+          "session_id"
+        ]
       }
     }
-  ]
+  ],
+  "ffi": {
+    "so_path": "ffi/zig-out/lib/liblsp_mcp.so",
+    "abi_version": "ADR-0006",
+    "symbols": [
+      "boj_cartridge_init",
+      "boj_cartridge_deinit",
+      "boj_cartridge_name",
+      "boj_cartridge_version",
+      "boj_cartridge_invoke"
+    ]
+  }
 }

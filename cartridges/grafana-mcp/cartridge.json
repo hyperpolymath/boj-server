@@ -7,7 +7,10 @@
   "description": "Grafana monitoring cartridge -- dashboard CRUD, panel queries, alert rule management, annotation creation, datasource listing, folder browsing, org info, snapshot management, health checks, and search via the Grafana HTTP API",
   "domain": "Monitoring",
   "tier": "Ayo",
-  "protocols": ["MCP", "REST"],
+  "protocols": [
+    "MCP",
+    "REST"
+  ],
   "auth": {
     "method": "bearer_token",
     "env_var": "GRAFANA_API_TOKEN",
@@ -24,10 +27,22 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "query": { "type": "string", "description": "Search query (dashboard title, description)" },
-          "tag": { "type": "string", "description": "Filter by tag" },
-          "folder_id": { "type": "number", "description": "Filter by folder ID" },
-          "limit": { "type": "number", "description": "Max results (default 25)" }
+          "query": {
+            "type": "string",
+            "description": "Search query (dashboard title, description)"
+          },
+          "tag": {
+            "type": "string",
+            "description": "Filter by tag"
+          },
+          "folder_id": {
+            "type": "number",
+            "description": "Filter by folder ID"
+          },
+          "limit": {
+            "type": "number",
+            "description": "Max results (default 25)"
+          }
         }
       }
     },
@@ -37,9 +52,14 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "uid": { "type": "string", "description": "Dashboard UID" }
+          "uid": {
+            "type": "string",
+            "description": "Dashboard UID"
+          }
         },
-        "required": ["uid"]
+        "required": [
+          "uid"
+        ]
       }
     },
     {
@@ -48,11 +68,22 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "dashboard": { "type": "object", "description": "Dashboard JSON model" },
-          "folder_uid": { "type": "string", "description": "Target folder UID" },
-          "overwrite": { "type": "boolean", "description": "Overwrite if exists (default false)" }
+          "dashboard": {
+            "type": "object",
+            "description": "Dashboard JSON model"
+          },
+          "folder_uid": {
+            "type": "string",
+            "description": "Target folder UID"
+          },
+          "overwrite": {
+            "type": "boolean",
+            "description": "Overwrite if exists (default false)"
+          }
         },
-        "required": ["dashboard"]
+        "required": [
+          "dashboard"
+        ]
       }
     },
     {
@@ -61,9 +92,14 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "uid": { "type": "string", "description": "Dashboard UID to delete" }
+          "uid": {
+            "type": "string",
+            "description": "Dashboard UID to delete"
+          }
         },
-        "required": ["uid"]
+        "required": [
+          "uid"
+        ]
       }
     },
     {
@@ -72,12 +108,27 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "datasource_uid": { "type": "string", "description": "Datasource UID" },
-          "query": { "type": "string", "description": "Query expression (PromQL, InfluxQL, etc.)" },
-          "from": { "type": "string", "description": "Start time (ISO 8601 or relative e.g. 'now-1h')" },
-          "to": { "type": "string", "description": "End time (ISO 8601 or relative e.g. 'now')" }
+          "datasource_uid": {
+            "type": "string",
+            "description": "Datasource UID"
+          },
+          "query": {
+            "type": "string",
+            "description": "Query expression (PromQL, InfluxQL, etc.)"
+          },
+          "from": {
+            "type": "string",
+            "description": "Start time (ISO 8601 or relative e.g. 'now-1h')"
+          },
+          "to": {
+            "type": "string",
+            "description": "End time (ISO 8601 or relative e.g. 'now')"
+          }
         },
-        "required": ["datasource_uid", "query"]
+        "required": [
+          "datasource_uid",
+          "query"
+        ]
       }
     },
     {
@@ -86,9 +137,18 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "state": { "type": "string", "description": "Filter by state: alerting, pending, ok, no_data" },
-          "folder_uid": { "type": "string", "description": "Filter by folder UID" },
-          "limit": { "type": "number", "description": "Max results" }
+          "state": {
+            "type": "string",
+            "description": "Filter by state: alerting, pending, ok, no_data"
+          },
+          "folder_uid": {
+            "type": "string",
+            "description": "Filter by folder UID"
+          },
+          "limit": {
+            "type": "number",
+            "description": "Max results"
+          }
         }
       }
     },
@@ -98,13 +158,33 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "text": { "type": "string", "description": "Annotation text" },
-          "dashboard_uid": { "type": "string", "description": "Dashboard UID (optional, global if omitted)" },
-          "panel_id": { "type": "number", "description": "Panel ID within dashboard" },
-          "tags": { "type": "array", "items": { "type": "string" }, "description": "Tags for the annotation" },
-          "time": { "type": "number", "description": "Epoch milliseconds (default: now)" }
+          "text": {
+            "type": "string",
+            "description": "Annotation text"
+          },
+          "dashboard_uid": {
+            "type": "string",
+            "description": "Dashboard UID (optional, global if omitted)"
+          },
+          "panel_id": {
+            "type": "number",
+            "description": "Panel ID within dashboard"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Tags for the annotation"
+          },
+          "time": {
+            "type": "number",
+            "description": "Epoch milliseconds (default: now)"
+          }
         },
-        "required": ["text"]
+        "required": [
+          "text"
+        ]
       }
     },
     {
@@ -121,7 +201,10 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "limit": { "type": "number", "description": "Max results" }
+          "limit": {
+            "type": "number",
+            "description": "Max results"
+          }
         }
       }
     },
@@ -133,5 +216,16 @@
         "properties": {}
       }
     }
-  ]
+  ],
+  "ffi": {
+    "so_path": "ffi/zig-out/lib/libgrafana_mcp.so",
+    "abi_version": "ADR-0006",
+    "symbols": [
+      "boj_cartridge_init",
+      "boj_cartridge_deinit",
+      "boj_cartridge_name",
+      "boj_cartridge_version",
+      "boj_cartridge_invoke"
+    ]
+  }
 }

@@ -7,7 +7,10 @@
   "description": "CircleCI CI/CD cartridge -- pipeline listing, workflow management, job inspection, artifact retrieval, project listing, environment variable browsing, pipeline triggering, job cancellation, and insight queries via the CircleCI API v2",
   "domain": "CI/CD",
   "tier": "Ayo",
-  "protocols": ["MCP", "REST"],
+  "protocols": [
+    "MCP",
+    "REST"
+  ],
   "auth": {
     "method": "bearer_token",
     "env_var": "CIRCLECI_TOKEN",
@@ -24,11 +27,22 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "project_slug": { "type": "string", "description": "Project slug (e.g. 'gh/owner/repo')" },
-          "branch": { "type": "string", "description": "Filter by branch" },
-          "page_token": { "type": "string", "description": "Pagination token" }
+          "project_slug": {
+            "type": "string",
+            "description": "Project slug (e.g. 'gh/owner/repo')"
+          },
+          "branch": {
+            "type": "string",
+            "description": "Filter by branch"
+          },
+          "page_token": {
+            "type": "string",
+            "description": "Pagination token"
+          }
         },
-        "required": ["project_slug"]
+        "required": [
+          "project_slug"
+        ]
       }
     },
     {
@@ -37,9 +51,14 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "pipeline_id": { "type": "string", "description": "Pipeline UUID" }
+          "pipeline_id": {
+            "type": "string",
+            "description": "Pipeline UUID"
+          }
         },
-        "required": ["pipeline_id"]
+        "required": [
+          "pipeline_id"
+        ]
       }
     },
     {
@@ -48,10 +67,18 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "pipeline_id": { "type": "string", "description": "Pipeline UUID" },
-          "page_token": { "type": "string", "description": "Pagination token" }
+          "pipeline_id": {
+            "type": "string",
+            "description": "Pipeline UUID"
+          },
+          "page_token": {
+            "type": "string",
+            "description": "Pagination token"
+          }
         },
-        "required": ["pipeline_id"]
+        "required": [
+          "pipeline_id"
+        ]
       }
     },
     {
@@ -60,9 +87,14 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "workflow_id": { "type": "string", "description": "Workflow UUID" }
+          "workflow_id": {
+            "type": "string",
+            "description": "Workflow UUID"
+          }
         },
-        "required": ["workflow_id"]
+        "required": [
+          "workflow_id"
+        ]
       }
     },
     {
@@ -71,10 +103,18 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "workflow_id": { "type": "string", "description": "Workflow UUID" },
-          "page_token": { "type": "string", "description": "Pagination token" }
+          "workflow_id": {
+            "type": "string",
+            "description": "Workflow UUID"
+          },
+          "page_token": {
+            "type": "string",
+            "description": "Pagination token"
+          }
         },
-        "required": ["workflow_id"]
+        "required": [
+          "workflow_id"
+        ]
       }
     },
     {
@@ -83,10 +123,19 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "job_number": { "type": "number", "description": "Job number" },
-          "project_slug": { "type": "string", "description": "Project slug" }
+          "job_number": {
+            "type": "number",
+            "description": "Job number"
+          },
+          "project_slug": {
+            "type": "string",
+            "description": "Project slug"
+          }
         },
-        "required": ["project_slug", "job_number"]
+        "required": [
+          "project_slug",
+          "job_number"
+        ]
       }
     },
     {
@@ -95,12 +144,26 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "project_slug": { "type": "string", "description": "Project slug" },
-          "branch": { "type": "string", "description": "Git branch" },
-          "tag": { "type": "string", "description": "Git tag (mutually exclusive with branch)" },
-          "parameters": { "type": "object", "description": "Pipeline parameters" }
+          "project_slug": {
+            "type": "string",
+            "description": "Project slug"
+          },
+          "branch": {
+            "type": "string",
+            "description": "Git branch"
+          },
+          "tag": {
+            "type": "string",
+            "description": "Git tag (mutually exclusive with branch)"
+          },
+          "parameters": {
+            "type": "object",
+            "description": "Pipeline parameters"
+          }
         },
-        "required": ["project_slug"]
+        "required": [
+          "project_slug"
+        ]
       }
     },
     {
@@ -109,9 +172,14 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "workflow_id": { "type": "string", "description": "Workflow UUID" }
+          "workflow_id": {
+            "type": "string",
+            "description": "Workflow UUID"
+          }
         },
-        "required": ["workflow_id"]
+        "required": [
+          "workflow_id"
+        ]
       }
     },
     {
@@ -120,10 +188,26 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "project_slug": { "type": "string", "description": "Project slug" }
+          "project_slug": {
+            "type": "string",
+            "description": "Project slug"
+          }
         },
-        "required": ["project_slug"]
+        "required": [
+          "project_slug"
+        ]
       }
     }
-  ]
+  ],
+  "ffi": {
+    "so_path": "ffi/zig-out/lib/libcircleci_mcp.so",
+    "abi_version": "ADR-0006",
+    "symbols": [
+      "boj_cartridge_init",
+      "boj_cartridge_deinit",
+      "boj_cartridge_name",
+      "boj_cartridge_version",
+      "boj_cartridge_invoke"
+    ]
+  }
 }

@@ -7,9 +7,19 @@
   "description": "Multi-language session manager for the nextgen-languages family: Eclexia, AffineScript, BetLang, Ephapax, MyLang, WokeLang, Anvomidav, Phronesis, Error-lang, Julia-the-Viper, Me-dialect, Oblibeny. Tracks per-language sessions, delegates type-checking and evaluation to each language's CLI tool, and provides a unified interface across all dialects.",
   "domain": "Languages",
   "tier": "Ayo",
-  "protocols": ["MCP", "REST"],
-  "auth": { "method": "none", "env_var": null, "credential_source": null },
-  "api": { "base_url": "local://lang-mcp", "content_type": "application/json" },
+  "protocols": [
+    "MCP",
+    "REST"
+  ],
+  "auth": {
+    "method": "none",
+    "env_var": null,
+    "credential_source": null
+  },
+  "api": {
+    "base_url": "local://lang-mcp",
+    "content_type": "application/json"
+  },
   "tools": [
     {
       "name": "lang_list",
@@ -17,7 +27,10 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "check_installed": { "type": "boolean", "description": "Probe PATH for each CLI binary (default: true)" }
+          "check_installed": {
+            "type": "boolean",
+            "description": "Probe PATH for each CLI binary (default: true)"
+          }
         },
         "required": []
       }
@@ -28,11 +41,26 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "language": { "type": "string", "description": "Language name: eclexia | affinescript | betlang | ephapax | mylang | wokelang | anvomidav | phronesis | error_lang | julia_the_viper | me_dialect | oblibeny" },
-          "dialect_mode": { "type": "string", "enum": ["pure", "jtv"], "description": "Dialect mode: pure (default) or jtv (Julia-the-Viper injected)" },
-          "name": { "type": "string", "description": "Human-readable session name" }
+          "language": {
+            "type": "string",
+            "description": "Language name: eclexia | affinescript | betlang | ephapax | mylang | wokelang | anvomidav | phronesis | error_lang | julia_the_viper | me_dialect | oblibeny"
+          },
+          "dialect_mode": {
+            "type": "string",
+            "enum": [
+              "pure",
+              "jtv"
+            ],
+            "description": "Dialect mode: pure (default) or jtv (Julia-the-Viper injected)"
+          },
+          "name": {
+            "type": "string",
+            "description": "Human-readable session name"
+          }
         },
-        "required": ["language"]
+        "required": [
+          "language"
+        ]
       }
     },
     {
@@ -41,9 +69,14 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "session_id": { "type": "string", "description": "Session ID from lang_session_create" }
+          "session_id": {
+            "type": "string",
+            "description": "Session ID from lang_session_create"
+          }
         },
-        "required": ["session_id"]
+        "required": [
+          "session_id"
+        ]
       }
     },
     {
@@ -52,11 +85,23 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "session_id": { "type": "string", "description": "Session ID" },
-          "source": { "type": "string", "description": "Source code to type-check" },
-          "filename": { "type": "string", "description": "Virtual filename for diagnostic reporting (default: input.<ext>)" }
+          "session_id": {
+            "type": "string",
+            "description": "Session ID"
+          },
+          "source": {
+            "type": "string",
+            "description": "Source code to type-check"
+          },
+          "filename": {
+            "type": "string",
+            "description": "Virtual filename for diagnostic reporting (default: input.<ext>)"
+          }
         },
-        "required": ["session_id", "source"]
+        "required": [
+          "session_id",
+          "source"
+        ]
       }
     },
     {
@@ -65,10 +110,19 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "session_id": { "type": "string", "description": "Session ID" },
-          "source": { "type": "string", "description": "Source code to evaluate" }
+          "session_id": {
+            "type": "string",
+            "description": "Session ID"
+          },
+          "source": {
+            "type": "string",
+            "description": "Source code to evaluate"
+          }
         },
-        "required": ["session_id", "source"]
+        "required": [
+          "session_id",
+          "source"
+        ]
       }
     },
     {
@@ -77,11 +131,23 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "session_id": { "type": "string", "description": "Session ID" },
-          "source": { "type": "string", "description": "Source code to compile" },
-          "target": { "type": "string", "description": "Compilation target (language-specific; default: wasm for AffineScript, native for others)" }
+          "session_id": {
+            "type": "string",
+            "description": "Session ID"
+          },
+          "source": {
+            "type": "string",
+            "description": "Source code to compile"
+          },
+          "target": {
+            "type": "string",
+            "description": "Compilation target (language-specific; default: wasm for AffineScript, native for others)"
+          }
         },
-        "required": ["session_id", "source"]
+        "required": [
+          "session_id",
+          "source"
+        ]
       }
     },
     {
@@ -90,12 +156,29 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "session_id": { "type": "string", "description": "Session ID" },
-          "source": { "type": "string", "description": "Source code" },
-          "line": { "type": "number", "description": "1-based line number" },
-          "col": { "type": "number", "description": "1-based column number" }
+          "session_id": {
+            "type": "string",
+            "description": "Session ID"
+          },
+          "source": {
+            "type": "string",
+            "description": "Source code"
+          },
+          "line": {
+            "type": "number",
+            "description": "1-based line number"
+          },
+          "col": {
+            "type": "number",
+            "description": "1-based column number"
+          }
         },
-        "required": ["session_id", "source", "line", "col"]
+        "required": [
+          "session_id",
+          "source",
+          "line",
+          "col"
+        ]
       }
     },
     {
@@ -104,12 +187,29 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "session_id": { "type": "string", "description": "Session ID" },
-          "source": { "type": "string", "description": "Source code" },
-          "line": { "type": "number", "description": "1-based line number" },
-          "col": { "type": "number", "description": "1-based column number" }
+          "session_id": {
+            "type": "string",
+            "description": "Session ID"
+          },
+          "source": {
+            "type": "string",
+            "description": "Source code"
+          },
+          "line": {
+            "type": "number",
+            "description": "1-based line number"
+          },
+          "col": {
+            "type": "number",
+            "description": "1-based column number"
+          }
         },
-        "required": ["session_id", "source", "line", "col"]
+        "required": [
+          "session_id",
+          "source",
+          "line",
+          "col"
+        ]
       }
     },
     {
@@ -118,10 +218,26 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "session_id": { "type": "string", "description": "Session ID to close" }
+          "session_id": {
+            "type": "string",
+            "description": "Session ID to close"
+          }
         },
-        "required": ["session_id"]
+        "required": [
+          "session_id"
+        ]
       }
     }
-  ]
+  ],
+  "ffi": {
+    "so_path": "ffi/zig-out/lib/liblang_mcp.so",
+    "abi_version": "ADR-0006",
+    "symbols": [
+      "boj_cartridge_init",
+      "boj_cartridge_deinit",
+      "boj_cartridge_name",
+      "boj_cartridge_version",
+      "boj_cartridge_invoke"
+    ]
+  }
 }

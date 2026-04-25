@@ -7,7 +7,10 @@
   "description": "opam registry cartridge -- OCaml package search, metadata retrieval, version listing, dependency analysis, reverse dependency lookup, maintainer listing, and repository browsing via the opam.ocaml.org API",
   "domain": "Registry",
   "tier": "Ayo",
-  "protocols": ["MCP", "REST"],
+  "protocols": [
+    "MCP",
+    "REST"
+  ],
   "auth": {
     "method": "none",
     "env_var": null,
@@ -24,10 +27,18 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "query": { "type": "string", "description": "Search query (package name, synopsis, tags)" },
-          "page": { "type": "number", "description": "Page number (default 1)" }
+          "query": {
+            "type": "string",
+            "description": "Search query (package name, synopsis, tags)"
+          },
+          "page": {
+            "type": "number",
+            "description": "Page number (default 1)"
+          }
         },
-        "required": ["query"]
+        "required": [
+          "query"
+        ]
       }
     },
     {
@@ -36,9 +47,14 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "name": { "type": "string", "description": "Package name (e.g. 'dune', 'lwt', 'ppx_deriving')" }
+          "name": {
+            "type": "string",
+            "description": "Package name (e.g. 'dune', 'lwt', 'ppx_deriving')"
+          }
         },
-        "required": ["name"]
+        "required": [
+          "name"
+        ]
       }
     },
     {
@@ -47,10 +63,19 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "name": { "type": "string", "description": "Package name" },
-          "version": { "type": "string", "description": "Version string (e.g. '3.16.0')" }
+          "name": {
+            "type": "string",
+            "description": "Package name"
+          },
+          "version": {
+            "type": "string",
+            "description": "Version string (e.g. '3.16.0')"
+          }
         },
-        "required": ["name", "version"]
+        "required": [
+          "name",
+          "version"
+        ]
       }
     },
     {
@@ -59,9 +84,14 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "name": { "type": "string", "description": "Package name" }
+          "name": {
+            "type": "string",
+            "description": "Package name"
+          }
         },
-        "required": ["name"]
+        "required": [
+          "name"
+        ]
       }
     },
     {
@@ -70,10 +100,19 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "name": { "type": "string", "description": "Package name" },
-          "version": { "type": "string", "description": "Version to inspect" }
+          "name": {
+            "type": "string",
+            "description": "Package name"
+          },
+          "version": {
+            "type": "string",
+            "description": "Version to inspect"
+          }
         },
-        "required": ["name", "version"]
+        "required": [
+          "name",
+          "version"
+        ]
       }
     },
     {
@@ -82,10 +121,18 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "name": { "type": "string", "description": "Package name" },
-          "page": { "type": "number", "description": "Page number (default 1)" }
+          "name": {
+            "type": "string",
+            "description": "Package name"
+          },
+          "page": {
+            "type": "number",
+            "description": "Page number (default 1)"
+          }
         },
-        "required": ["name"]
+        "required": [
+          "name"
+        ]
       }
     },
     {
@@ -94,9 +141,14 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "name": { "type": "string", "description": "Package name" }
+          "name": {
+            "type": "string",
+            "description": "Package name"
+          }
         },
-        "required": ["name"]
+        "required": [
+          "name"
+        ]
       }
     },
     {
@@ -105,9 +157,14 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "name": { "type": "string", "description": "Package name" }
+          "name": {
+            "type": "string",
+            "description": "Package name"
+          }
         },
-        "required": ["name"]
+        "required": [
+          "name"
+        ]
       }
     },
     {
@@ -116,8 +173,14 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "page": { "type": "number", "description": "Page number (default 1)" },
-          "per_page": { "type": "number", "description": "Results per page (default 50)" }
+          "page": {
+            "type": "number",
+            "description": "Page number (default 1)"
+          },
+          "per_page": {
+            "type": "number",
+            "description": "Results per page (default 50)"
+          }
         }
       }
     },
@@ -127,11 +190,31 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "name": { "type": "string", "description": "Package name" },
-          "version": { "type": "string", "description": "Version to inspect" }
+          "name": {
+            "type": "string",
+            "description": "Package name"
+          },
+          "version": {
+            "type": "string",
+            "description": "Version to inspect"
+          }
         },
-        "required": ["name", "version"]
+        "required": [
+          "name",
+          "version"
+        ]
       }
     }
-  ]
+  ],
+  "ffi": {
+    "so_path": "ffi/zig-out/lib/libopam_mcp.so",
+    "abi_version": "ADR-0006",
+    "symbols": [
+      "boj_cartridge_init",
+      "boj_cartridge_deinit",
+      "boj_cartridge_name",
+      "boj_cartridge_version",
+      "boj_cartridge_invoke"
+    ]
+  }
 }

@@ -4,7 +4,7 @@
   "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath)",
   "name": "iac-mcp",
   "version": "0.1.0",
-  "description": "Infrastructure-as-Code gateway. Manages Terraform/OpenTofu plan\u2192apply\u2192destroy lifecycle with state machine enforcement.",
+  "description": "Infrastructure-as-Code gateway. Manages Terraform/OpenTofu plan→apply→destroy lifecycle with state machine enforcement.",
   "domain": "Infrastructure",
   "tier": "Ayo",
   "protocols": [
@@ -153,5 +153,16 @@
         ]
       }
     }
-  ]
+  ],
+  "ffi": {
+    "so_path": "ffi/zig-out/lib/libiac_mcp.so",
+    "abi_version": "ADR-0006",
+    "symbols": [
+      "boj_cartridge_init",
+      "boj_cartridge_deinit",
+      "boj_cartridge_name",
+      "boj_cartridge_version",
+      "boj_cartridge_invoke"
+    ]
+  }
 }

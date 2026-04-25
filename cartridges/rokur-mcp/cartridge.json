@@ -4,7 +4,7 @@
   "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>",
   "name": "rokur-mcp",
   "version": "0.1.0",
-  "description": "Rokur \u2014 Svalinn secrets GUI authorisation layer",
+  "description": "Rokur — Svalinn secrets GUI authorisation layer",
   "domain": "security",
   "tier": "Ayo",
   "protocols": [
@@ -70,5 +70,16 @@
         "properties": {}
       }
     }
-  ]
+  ],
+  "ffi": {
+    "so_path": "ffi/zig-out/lib/librokur_mcp.so",
+    "abi_version": "ADR-0006",
+    "symbols": [
+      "boj_cartridge_init",
+      "boj_cartridge_deinit",
+      "boj_cartridge_name",
+      "boj_cartridge_version",
+      "boj_cartridge_invoke"
+    ]
+  }
 }

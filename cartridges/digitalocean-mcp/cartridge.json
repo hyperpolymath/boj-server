@@ -7,7 +7,10 @@
   "description": "DigitalOcean cloud infrastructure cartridge -- droplets, volumes, domains, SSH keys, snapshots, databases, Kubernetes, firewalls, load balancers, and account management",
   "domain": "Cloud",
   "tier": "Ayo",
-  "protocols": ["MCP", "REST"],
+  "protocols": [
+    "MCP",
+    "REST"
+  ],
   "auth": {
     "method": "bearer_token",
     "env_var": "DIGITALOCEAN_TOKEN",
@@ -25,10 +28,22 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "page": { "type": "number", "description": "Page number (default 1)" },
-          "per_page": { "type": "number", "description": "Results per page (default 20, max 200)" },
-          "tag_name": { "type": "string", "description": "Filter by tag name" },
-          "name": { "type": "string", "description": "Filter by exact droplet name" }
+          "page": {
+            "type": "number",
+            "description": "Page number (default 1)"
+          },
+          "per_page": {
+            "type": "number",
+            "description": "Results per page (default 20, max 200)"
+          },
+          "tag_name": {
+            "type": "string",
+            "description": "Filter by tag name"
+          },
+          "name": {
+            "type": "string",
+            "description": "Filter by exact droplet name"
+          }
         }
       }
     },
@@ -38,9 +53,14 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "droplet_id": { "type": "number", "description": "Numeric droplet ID" }
+          "droplet_id": {
+            "type": "number",
+            "description": "Numeric droplet ID"
+          }
         },
-        "required": ["droplet_id"]
+        "required": [
+          "droplet_id"
+        ]
       }
     },
     {
@@ -49,20 +69,70 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "name": { "type": "string", "description": "Droplet hostname" },
-          "region": { "type": "string", "description": "Region slug (e.g. nyc1, sfo3, ams3, lon1, fra1, sgp1, blr1, syd1)" },
-          "size": { "type": "string", "description": "Size slug (e.g. s-1vcpu-1gb, s-2vcpu-2gb, s-4vcpu-8gb, g-2vcpu-8gb)" },
-          "image": { "type": "string", "description": "Image slug or ID (e.g. ubuntu-24-04-x64, debian-12-x64, fedora-41-x64)" },
-          "ssh_keys": { "type": "array", "items": { "type": "string" }, "description": "SSH key IDs or fingerprints to install" },
-          "backups": { "type": "boolean", "description": "Enable weekly backups (default false)" },
-          "ipv6": { "type": "boolean", "description": "Enable IPv6 (default false)" },
-          "monitoring": { "type": "boolean", "description": "Enable monitoring agent (default false)" },
-          "user_data": { "type": "string", "description": "Cloud-init user data (cloud-config or script)" },
-          "tags": { "type": "array", "items": { "type": "string" }, "description": "Tags to apply to the droplet" },
-          "vpc_uuid": { "type": "string", "description": "VPC UUID to place the droplet in" },
-          "volumes": { "type": "array", "items": { "type": "string" }, "description": "Volume IDs to attach" }
+          "name": {
+            "type": "string",
+            "description": "Droplet hostname"
+          },
+          "region": {
+            "type": "string",
+            "description": "Region slug (e.g. nyc1, sfo3, ams3, lon1, fra1, sgp1, blr1, syd1)"
+          },
+          "size": {
+            "type": "string",
+            "description": "Size slug (e.g. s-1vcpu-1gb, s-2vcpu-2gb, s-4vcpu-8gb, g-2vcpu-8gb)"
+          },
+          "image": {
+            "type": "string",
+            "description": "Image slug or ID (e.g. ubuntu-24-04-x64, debian-12-x64, fedora-41-x64)"
+          },
+          "ssh_keys": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "SSH key IDs or fingerprints to install"
+          },
+          "backups": {
+            "type": "boolean",
+            "description": "Enable weekly backups (default false)"
+          },
+          "ipv6": {
+            "type": "boolean",
+            "description": "Enable IPv6 (default false)"
+          },
+          "monitoring": {
+            "type": "boolean",
+            "description": "Enable monitoring agent (default false)"
+          },
+          "user_data": {
+            "type": "string",
+            "description": "Cloud-init user data (cloud-config or script)"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Tags to apply to the droplet"
+          },
+          "vpc_uuid": {
+            "type": "string",
+            "description": "VPC UUID to place the droplet in"
+          },
+          "volumes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Volume IDs to attach"
+          }
         },
-        "required": ["name", "region", "size", "image"]
+        "required": [
+          "name",
+          "region",
+          "size",
+          "image"
+        ]
       }
     },
     {
@@ -71,9 +141,14 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "droplet_id": { "type": "number", "description": "Numeric droplet ID to delete" }
+          "droplet_id": {
+            "type": "number",
+            "description": "Numeric droplet ID to delete"
+          }
         },
-        "required": ["droplet_id"]
+        "required": [
+          "droplet_id"
+        ]
       }
     },
     {
@@ -82,13 +157,31 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "droplet_id": { "type": "number", "description": "Numeric droplet ID" },
-          "type": { "type": "string", "description": "Action type: power_on, power_off, reboot, shutdown, power_cycle, rebuild, resize, rename" },
-          "image": { "type": "string", "description": "Image slug or ID (required for rebuild)" },
-          "size": { "type": "string", "description": "Size slug (required for resize)" },
-          "name": { "type": "string", "description": "New name (required for rename)" }
+          "droplet_id": {
+            "type": "number",
+            "description": "Numeric droplet ID"
+          },
+          "type": {
+            "type": "string",
+            "description": "Action type: power_on, power_off, reboot, shutdown, power_cycle, rebuild, resize, rename"
+          },
+          "image": {
+            "type": "string",
+            "description": "Image slug or ID (required for rebuild)"
+          },
+          "size": {
+            "type": "string",
+            "description": "Size slug (required for resize)"
+          },
+          "name": {
+            "type": "string",
+            "description": "New name (required for rename)"
+          }
         },
-        "required": ["droplet_id", "type"]
+        "required": [
+          "droplet_id",
+          "type"
+        ]
       }
     },
     {
@@ -97,10 +190,22 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "page": { "type": "number", "description": "Page number" },
-          "per_page": { "type": "number", "description": "Results per page" },
-          "region": { "type": "string", "description": "Filter by region slug" },
-          "name": { "type": "string", "description": "Filter by exact volume name" }
+          "page": {
+            "type": "number",
+            "description": "Page number"
+          },
+          "per_page": {
+            "type": "number",
+            "description": "Results per page"
+          },
+          "region": {
+            "type": "string",
+            "description": "Filter by region slug"
+          },
+          "name": {
+            "type": "string",
+            "description": "Filter by exact volume name"
+          }
         }
       }
     },
@@ -110,15 +215,43 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "name": { "type": "string", "description": "Volume name" },
-          "size_gigabytes": { "type": "number", "description": "Size in GB (min 1, max 16384)" },
-          "region": { "type": "string", "description": "Region slug (e.g. nyc1)" },
-          "description": { "type": "string", "description": "Volume description" },
-          "filesystem_type": { "type": "string", "description": "Filesystem type: ext4 or xfs" },
-          "tags": { "type": "array", "items": { "type": "string" }, "description": "Tags to apply" },
-          "snapshot_id": { "type": "string", "description": "Snapshot ID to create volume from" }
+          "name": {
+            "type": "string",
+            "description": "Volume name"
+          },
+          "size_gigabytes": {
+            "type": "number",
+            "description": "Size in GB (min 1, max 16384)"
+          },
+          "region": {
+            "type": "string",
+            "description": "Region slug (e.g. nyc1)"
+          },
+          "description": {
+            "type": "string",
+            "description": "Volume description"
+          },
+          "filesystem_type": {
+            "type": "string",
+            "description": "Filesystem type: ext4 or xfs"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Tags to apply"
+          },
+          "snapshot_id": {
+            "type": "string",
+            "description": "Snapshot ID to create volume from"
+          }
         },
-        "required": ["name", "size_gigabytes", "region"]
+        "required": [
+          "name",
+          "size_gigabytes",
+          "region"
+        ]
       }
     },
     {
@@ -127,8 +260,14 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "page": { "type": "number", "description": "Page number" },
-          "per_page": { "type": "number", "description": "Results per page" }
+          "page": {
+            "type": "number",
+            "description": "Page number"
+          },
+          "per_page": {
+            "type": "number",
+            "description": "Results per page"
+          }
         }
       }
     },
@@ -138,10 +277,18 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "name": { "type": "string", "description": "Domain name (e.g. example.com)" },
-          "ip_address": { "type": "string", "description": "IP address to create an initial A record" }
+          "name": {
+            "type": "string",
+            "description": "Domain name (e.g. example.com)"
+          },
+          "ip_address": {
+            "type": "string",
+            "description": "IP address to create an initial A record"
+          }
         },
-        "required": ["name"]
+        "required": [
+          "name"
+        ]
       }
     },
     {
@@ -150,8 +297,14 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "page": { "type": "number", "description": "Page number" },
-          "per_page": { "type": "number", "description": "Results per page" }
+          "page": {
+            "type": "number",
+            "description": "Page number"
+          },
+          "per_page": {
+            "type": "number",
+            "description": "Results per page"
+          }
         }
       }
     },
@@ -161,9 +314,18 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "page": { "type": "number", "description": "Page number" },
-          "per_page": { "type": "number", "description": "Results per page" },
-          "resource_type": { "type": "string", "description": "Filter by type: droplet or volume" }
+          "page": {
+            "type": "number",
+            "description": "Page number"
+          },
+          "per_page": {
+            "type": "number",
+            "description": "Results per page"
+          },
+          "resource_type": {
+            "type": "string",
+            "description": "Filter by type: droplet or volume"
+          }
         }
       }
     },
@@ -173,10 +335,19 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "droplet_id": { "type": "number", "description": "Droplet ID to snapshot" },
-          "name": { "type": "string", "description": "Snapshot name" }
+          "droplet_id": {
+            "type": "number",
+            "description": "Droplet ID to snapshot"
+          },
+          "name": {
+            "type": "string",
+            "description": "Snapshot name"
+          }
         },
-        "required": ["droplet_id", "name"]
+        "required": [
+          "droplet_id",
+          "name"
+        ]
       }
     },
     {
@@ -185,9 +356,18 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "page": { "type": "number", "description": "Page number" },
-          "per_page": { "type": "number", "description": "Results per page" },
-          "tag_name": { "type": "string", "description": "Filter by tag" }
+          "page": {
+            "type": "number",
+            "description": "Page number"
+          },
+          "per_page": {
+            "type": "number",
+            "description": "Results per page"
+          },
+          "tag_name": {
+            "type": "string",
+            "description": "Filter by tag"
+          }
         }
       }
     },
@@ -197,8 +377,14 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "page": { "type": "number", "description": "Page number" },
-          "per_page": { "type": "number", "description": "Results per page" }
+          "page": {
+            "type": "number",
+            "description": "Page number"
+          },
+          "per_page": {
+            "type": "number",
+            "description": "Results per page"
+          }
         }
       }
     },
@@ -208,13 +394,44 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "name": { "type": "string", "description": "Firewall name" },
-          "inbound_rules": { "type": "array", "items": { "type": "object" }, "description": "Inbound rules (protocol, ports, sources)" },
-          "outbound_rules": { "type": "array", "items": { "type": "object" }, "description": "Outbound rules (protocol, ports, destinations)" },
-          "droplet_ids": { "type": "array", "items": { "type": "number" }, "description": "Droplet IDs to apply to" },
-          "tags": { "type": "array", "items": { "type": "string" }, "description": "Tags to apply to" }
+          "name": {
+            "type": "string",
+            "description": "Firewall name"
+          },
+          "inbound_rules": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            },
+            "description": "Inbound rules (protocol, ports, sources)"
+          },
+          "outbound_rules": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            },
+            "description": "Outbound rules (protocol, ports, destinations)"
+          },
+          "droplet_ids": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            },
+            "description": "Droplet IDs to apply to"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Tags to apply to"
+          }
         },
-        "required": ["name", "inbound_rules", "outbound_rules"]
+        "required": [
+          "name",
+          "inbound_rules",
+          "outbound_rules"
+        ]
       }
     },
     {
@@ -223,8 +440,14 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "page": { "type": "number", "description": "Page number" },
-          "per_page": { "type": "number", "description": "Results per page" }
+          "page": {
+            "type": "number",
+            "description": "Page number"
+          },
+          "per_page": {
+            "type": "number",
+            "description": "Results per page"
+          }
         }
       }
     },
@@ -244,5 +467,16 @@
         "properties": {}
       }
     }
-  ]
+  ],
+  "ffi": {
+    "so_path": "ffi/zig-out/lib/libdigitalocean_mcp.so",
+    "abi_version": "ADR-0006",
+    "symbols": [
+      "boj_cartridge_init",
+      "boj_cartridge_deinit",
+      "boj_cartridge_name",
+      "boj_cartridge_version",
+      "boj_cartridge_invoke"
+    ]
+  }
 }

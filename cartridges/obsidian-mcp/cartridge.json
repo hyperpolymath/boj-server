@@ -7,7 +7,10 @@
   "description": "Obsidian vault cartridge -- note search, content retrieval, backlink navigation, tag browsing, graph analysis, dataview queries, frontmatter extraction, daily notes, template listing, and vault statistics via the Obsidian Local REST API",
   "domain": "Knowledge",
   "tier": "Ayo",
-  "protocols": ["MCP", "REST"],
+  "protocols": [
+    "MCP",
+    "REST"
+  ],
   "auth": {
     "method": "bearer_token",
     "env_var": "OBSIDIAN_REST_API_KEY",
@@ -24,10 +27,18 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "query": { "type": "string", "description": "Search query (note title, content, tags)" },
-          "context_length": { "type": "number", "description": "Characters of context around matches (default 100)" }
+          "query": {
+            "type": "string",
+            "description": "Search query (note title, content, tags)"
+          },
+          "context_length": {
+            "type": "number",
+            "description": "Characters of context around matches (default 100)"
+          }
         },
-        "required": ["query"]
+        "required": [
+          "query"
+        ]
       }
     },
     {
@@ -36,9 +47,14 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "path": { "type": "string", "description": "Note path relative to vault root (e.g. 'Projects/my-note.md')" }
+          "path": {
+            "type": "string",
+            "description": "Note path relative to vault root (e.g. 'Projects/my-note.md')"
+          }
         },
-        "required": ["path"]
+        "required": [
+          "path"
+        ]
       }
     },
     {
@@ -47,8 +63,14 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "folder": { "type": "string", "description": "Folder path to list (omit for vault root)" },
-          "recursive": { "type": "boolean", "description": "Include subfolders (default true)" }
+          "folder": {
+            "type": "string",
+            "description": "Folder path to list (omit for vault root)"
+          },
+          "recursive": {
+            "type": "boolean",
+            "description": "Include subfolders (default true)"
+          }
         }
       }
     },
@@ -58,9 +80,14 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "path": { "type": "string", "description": "Note path to find backlinks for" }
+          "path": {
+            "type": "string",
+            "description": "Note path to find backlinks for"
+          }
         },
-        "required": ["path"]
+        "required": [
+          "path"
+        ]
       }
     },
     {
@@ -69,9 +96,14 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "path": { "type": "string", "description": "Note path to find outgoing links for" }
+          "path": {
+            "type": "string",
+            "description": "Note path to find outgoing links for"
+          }
         },
-        "required": ["path"]
+        "required": [
+          "path"
+        ]
       }
     },
     {
@@ -88,9 +120,14 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "tag": { "type": "string", "description": "Tag name (with or without '#' prefix)" }
+          "tag": {
+            "type": "string",
+            "description": "Tag name (with or without '#' prefix)"
+          }
         },
-        "required": ["tag"]
+        "required": [
+          "tag"
+        ]
       }
     },
     {
@@ -99,9 +136,14 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "path": { "type": "string", "description": "Note path relative to vault root" }
+          "path": {
+            "type": "string",
+            "description": "Note path relative to vault root"
+          }
         },
-        "required": ["path"]
+        "required": [
+          "path"
+        ]
       }
     },
     {
@@ -110,7 +152,10 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "date": { "type": "string", "description": "Date in YYYY-MM-DD format (omit for today)" }
+          "date": {
+            "type": "string",
+            "description": "Date in YYYY-MM-DD format (omit for today)"
+          }
         }
       }
     },
@@ -128,9 +173,14 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "query": { "type": "string", "description": "Dataview query (DQL syntax)" }
+          "query": {
+            "type": "string",
+            "description": "Dataview query (DQL syntax)"
+          }
         },
-        "required": ["query"]
+        "required": [
+          "query"
+        ]
       }
     },
     {
@@ -141,5 +191,16 @@
         "properties": {}
       }
     }
-  ]
+  ],
+  "ffi": {
+    "so_path": "ffi/zig-out/lib/libobsidian_mcp.so",
+    "abi_version": "ADR-0006",
+    "symbols": [
+      "boj_cartridge_init",
+      "boj_cartridge_deinit",
+      "boj_cartridge_name",
+      "boj_cartridge_version",
+      "boj_cartridge_invoke"
+    ]
+  }
 }

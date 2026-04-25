@@ -7,7 +7,10 @@
   "description": "Railway GraphQL API v2 cartridge -- project, service, deployment, environment variable, domain, log, and metrics management",
   "domain": "Cloud",
   "tier": "Ayo",
-  "protocols": ["MCP", "GraphQL"],
+  "protocols": [
+    "MCP",
+    "GraphQL"
+  ],
   "auth": {
     "method": "bearer_token",
     "env_var": "RAILWAY_TOKEN",
@@ -25,8 +28,14 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "limit": { "type": "number", "description": "Maximum number of projects to return (default 25)" },
-          "after": { "type": "string", "description": "Cursor for pagination (from previous response)" }
+          "limit": {
+            "type": "number",
+            "description": "Maximum number of projects to return (default 25)"
+          },
+          "after": {
+            "type": "string",
+            "description": "Cursor for pagination (from previous response)"
+          }
         }
       }
     },
@@ -36,9 +45,14 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "project_id": { "type": "string", "description": "Railway project ID" }
+          "project_id": {
+            "type": "string",
+            "description": "Railway project ID"
+          }
         },
-        "required": ["project_id"]
+        "required": [
+          "project_id"
+        ]
       }
     },
     {
@@ -47,13 +61,30 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "name": { "type": "string", "description": "Project name" },
-          "description": { "type": "string", "description": "Project description (optional)" },
-          "default_environment_name": { "type": "string", "description": "Name for the default environment (default: production)" },
-          "is_public": { "type": "boolean", "description": "Whether the project is public (default false)" },
-          "repo": { "type": "object", "description": "GitHub repo to connect (fullRepoName: 'owner/repo')" }
+          "name": {
+            "type": "string",
+            "description": "Project name"
+          },
+          "description": {
+            "type": "string",
+            "description": "Project description (optional)"
+          },
+          "default_environment_name": {
+            "type": "string",
+            "description": "Name for the default environment (default: production)"
+          },
+          "is_public": {
+            "type": "boolean",
+            "description": "Whether the project is public (default false)"
+          },
+          "repo": {
+            "type": "object",
+            "description": "GitHub repo to connect (fullRepoName: 'owner/repo')"
+          }
         },
-        "required": ["name"]
+        "required": [
+          "name"
+        ]
       }
     },
     {
@@ -62,9 +93,14 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "project_id": { "type": "string", "description": "Railway project ID to delete" }
+          "project_id": {
+            "type": "string",
+            "description": "Railway project ID to delete"
+          }
         },
-        "required": ["project_id"]
+        "required": [
+          "project_id"
+        ]
       }
     },
     {
@@ -73,9 +109,14 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "project_id": { "type": "string", "description": "Railway project ID" }
+          "project_id": {
+            "type": "string",
+            "description": "Railway project ID"
+          }
         },
-        "required": ["project_id"]
+        "required": [
+          "project_id"
+        ]
       }
     },
     {
@@ -84,9 +125,14 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "service_id": { "type": "string", "description": "Railway service ID" }
+          "service_id": {
+            "type": "string",
+            "description": "Railway service ID"
+          }
         },
-        "required": ["service_id"]
+        "required": [
+          "service_id"
+        ]
       }
     },
     {
@@ -95,11 +141,23 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "project_id": { "type": "string", "description": "Railway project ID" },
-          "name": { "type": "string", "description": "Service name" },
-          "source": { "type": "object", "description": "Service source (image or repo). For Docker: {image: 'image:tag'}. For GitHub: {repo: 'owner/repo'}" }
+          "project_id": {
+            "type": "string",
+            "description": "Railway project ID"
+          },
+          "name": {
+            "type": "string",
+            "description": "Service name"
+          },
+          "source": {
+            "type": "object",
+            "description": "Service source (image or repo). For Docker: {image: 'image:tag'}. For GitHub: {repo: 'owner/repo'}"
+          }
         },
-        "required": ["project_id", "name"]
+        "required": [
+          "project_id",
+          "name"
+        ]
       }
     },
     {
@@ -108,10 +166,19 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "service_id": { "type": "string", "description": "Railway service ID" },
-          "environment_id": { "type": "string", "description": "Environment ID to restart in" }
+          "service_id": {
+            "type": "string",
+            "description": "Railway service ID"
+          },
+          "environment_id": {
+            "type": "string",
+            "description": "Environment ID to restart in"
+          }
         },
-        "required": ["service_id", "environment_id"]
+        "required": [
+          "service_id",
+          "environment_id"
+        ]
       }
     },
     {
@@ -120,12 +187,26 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "service_id": { "type": "string", "description": "Railway service ID" },
-          "environment_id": { "type": "string", "description": "Filter by environment ID (optional)" },
-          "limit": { "type": "number", "description": "Maximum results (default 10)" },
-          "status": { "type": "string", "description": "Filter by status (SUCCESS, FAILED, BUILDING, DEPLOYING, CRASHED)" }
+          "service_id": {
+            "type": "string",
+            "description": "Railway service ID"
+          },
+          "environment_id": {
+            "type": "string",
+            "description": "Filter by environment ID (optional)"
+          },
+          "limit": {
+            "type": "number",
+            "description": "Maximum results (default 10)"
+          },
+          "status": {
+            "type": "string",
+            "description": "Filter by status (SUCCESS, FAILED, BUILDING, DEPLOYING, CRASHED)"
+          }
         },
-        "required": ["service_id"]
+        "required": [
+          "service_id"
+        ]
       }
     },
     {
@@ -134,9 +215,14 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "deployment_id": { "type": "string", "description": "Railway deployment ID" }
+          "deployment_id": {
+            "type": "string",
+            "description": "Railway deployment ID"
+          }
         },
-        "required": ["deployment_id"]
+        "required": [
+          "deployment_id"
+        ]
       }
     },
     {
@@ -145,10 +231,19 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "service_id": { "type": "string", "description": "Railway service ID" },
-          "environment_id": { "type": "string", "description": "Environment ID to redeploy in" }
+          "service_id": {
+            "type": "string",
+            "description": "Railway service ID"
+          },
+          "environment_id": {
+            "type": "string",
+            "description": "Environment ID to redeploy in"
+          }
         },
-        "required": ["service_id", "environment_id"]
+        "required": [
+          "service_id",
+          "environment_id"
+        ]
       }
     },
     {
@@ -157,9 +252,14 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "deployment_id": { "type": "string", "description": "Deployment ID to rollback to" }
+          "deployment_id": {
+            "type": "string",
+            "description": "Deployment ID to rollback to"
+          }
         },
-        "required": ["deployment_id"]
+        "required": [
+          "deployment_id"
+        ]
       }
     },
     {
@@ -168,11 +268,24 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "project_id": { "type": "string", "description": "Railway project ID" },
-          "service_id": { "type": "string", "description": "Railway service ID" },
-          "environment_id": { "type": "string", "description": "Environment ID" }
+          "project_id": {
+            "type": "string",
+            "description": "Railway project ID"
+          },
+          "service_id": {
+            "type": "string",
+            "description": "Railway service ID"
+          },
+          "environment_id": {
+            "type": "string",
+            "description": "Environment ID"
+          }
         },
-        "required": ["project_id", "service_id", "environment_id"]
+        "required": [
+          "project_id",
+          "service_id",
+          "environment_id"
+        ]
       }
     },
     {
@@ -181,13 +294,34 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "project_id": { "type": "string", "description": "Railway project ID" },
-          "service_id": { "type": "string", "description": "Railway service ID" },
-          "environment_id": { "type": "string", "description": "Environment ID" },
-          "name": { "type": "string", "description": "Variable name" },
-          "value": { "type": "string", "description": "Variable value" }
+          "project_id": {
+            "type": "string",
+            "description": "Railway project ID"
+          },
+          "service_id": {
+            "type": "string",
+            "description": "Railway service ID"
+          },
+          "environment_id": {
+            "type": "string",
+            "description": "Environment ID"
+          },
+          "name": {
+            "type": "string",
+            "description": "Variable name"
+          },
+          "value": {
+            "type": "string",
+            "description": "Variable value"
+          }
         },
-        "required": ["project_id", "service_id", "environment_id", "name", "value"]
+        "required": [
+          "project_id",
+          "service_id",
+          "environment_id",
+          "name",
+          "value"
+        ]
       }
     },
     {
@@ -196,12 +330,29 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "project_id": { "type": "string", "description": "Railway project ID" },
-          "service_id": { "type": "string", "description": "Railway service ID" },
-          "environment_id": { "type": "string", "description": "Environment ID" },
-          "name": { "type": "string", "description": "Variable name to delete" }
+          "project_id": {
+            "type": "string",
+            "description": "Railway project ID"
+          },
+          "service_id": {
+            "type": "string",
+            "description": "Railway service ID"
+          },
+          "environment_id": {
+            "type": "string",
+            "description": "Environment ID"
+          },
+          "name": {
+            "type": "string",
+            "description": "Variable name to delete"
+          }
         },
-        "required": ["project_id", "service_id", "environment_id", "name"]
+        "required": [
+          "project_id",
+          "service_id",
+          "environment_id",
+          "name"
+        ]
       }
     },
     {
@@ -210,10 +361,19 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "service_id": { "type": "string", "description": "Railway service ID" },
-          "environment_id": { "type": "string", "description": "Environment ID" }
+          "service_id": {
+            "type": "string",
+            "description": "Railway service ID"
+          },
+          "environment_id": {
+            "type": "string",
+            "description": "Environment ID"
+          }
         },
-        "required": ["service_id", "environment_id"]
+        "required": [
+          "service_id",
+          "environment_id"
+        ]
       }
     },
     {
@@ -222,11 +382,24 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "service_id": { "type": "string", "description": "Railway service ID" },
-          "environment_id": { "type": "string", "description": "Environment ID" },
-          "domain": { "type": "string", "description": "Custom domain (e.g. example.com)" }
+          "service_id": {
+            "type": "string",
+            "description": "Railway service ID"
+          },
+          "environment_id": {
+            "type": "string",
+            "description": "Environment ID"
+          },
+          "domain": {
+            "type": "string",
+            "description": "Custom domain (e.g. example.com)"
+          }
         },
-        "required": ["service_id", "environment_id", "domain"]
+        "required": [
+          "service_id",
+          "environment_id",
+          "domain"
+        ]
       }
     },
     {
@@ -235,11 +408,22 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "deployment_id": { "type": "string", "description": "Railway deployment ID" },
-          "limit": { "type": "number", "description": "Maximum log lines (default 100)" },
-          "filter": { "type": "string", "description": "Filter string for log content (optional)" }
+          "deployment_id": {
+            "type": "string",
+            "description": "Railway deployment ID"
+          },
+          "limit": {
+            "type": "number",
+            "description": "Maximum log lines (default 100)"
+          },
+          "filter": {
+            "type": "string",
+            "description": "Filter string for log content (optional)"
+          }
         },
-        "required": ["deployment_id"]
+        "required": [
+          "deployment_id"
+        ]
       }
     },
     {
@@ -248,14 +432,43 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "service_id": { "type": "string", "description": "Railway service ID" },
-          "environment_id": { "type": "string", "description": "Environment ID" },
-          "start_date": { "type": "string", "description": "Start date ISO 8601 (e.g. 2026-03-01T00:00:00Z)" },
-          "end_date": { "type": "string", "description": "End date ISO 8601" },
-          "resolution": { "type": "string", "description": "Metric resolution (1m, 5m, 1h, 1d)" }
+          "service_id": {
+            "type": "string",
+            "description": "Railway service ID"
+          },
+          "environment_id": {
+            "type": "string",
+            "description": "Environment ID"
+          },
+          "start_date": {
+            "type": "string",
+            "description": "Start date ISO 8601 (e.g. 2026-03-01T00:00:00Z)"
+          },
+          "end_date": {
+            "type": "string",
+            "description": "End date ISO 8601"
+          },
+          "resolution": {
+            "type": "string",
+            "description": "Metric resolution (1m, 5m, 1h, 1d)"
+          }
         },
-        "required": ["service_id", "environment_id"]
+        "required": [
+          "service_id",
+          "environment_id"
+        ]
       }
     }
-  ]
+  ],
+  "ffi": {
+    "so_path": "ffi/zig-out/lib/librailway_mcp.so",
+    "abi_version": "ADR-0006",
+    "symbols": [
+      "boj_cartridge_init",
+      "boj_cartridge_deinit",
+      "boj_cartridge_name",
+      "boj_cartridge_version",
+      "boj_cartridge_invoke"
+    ]
+  }
 }

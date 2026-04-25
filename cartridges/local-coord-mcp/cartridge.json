@@ -628,5 +628,16 @@
       "name": "coord_sweep_watchdog"
     }
   ],
-  "version": "0.9.0"
+  "version": "0.9.0",
+  "ffi": {
+    "so_path": "ffi/zig-out/lib/liblocal_coord_mcp.so",
+    "abi_version": "ADR-0006",
+    "symbols": [
+      "boj_cartridge_init",
+      "boj_cartridge_deinit",
+      "boj_cartridge_name",
+      "boj_cartridge_version",
+      "boj_cartridge_invoke"
+    ]
+  }
 }
