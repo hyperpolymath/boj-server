@@ -48,6 +48,12 @@ struct Cli {
     /// Coord adapter base URL.
     #[arg(long, env = "COORD_BACKEND_URL", default_value = "http://127.0.0.1:7745")]
     url: String,
+
+    /// Silent registration mode: register, write ~/.cache/coord-tui/peer.env,
+    /// print peer_id to stdout, then exit immediately (no TUI).
+    /// Used by shell hooks triggered on tool launch.
+    #[arg(long)]
+    id: bool,
 }
 
 // ─── HTTP ─────────────────────────────────────────────────────────────────────
@@ -460,11 +466,41 @@ fn detect_context() -> String {
         .unwrap_or_else(|| "shell".to_owned())
 }
 
+// ─── Silent registration ──────────────────────────────────────────────────────
+
+fn silent_register(url: &str, kind: &str, context: &str) {
+    let body = json!({
+        "client_kind": kind,
+        "context":     context,
+        "role":        "journeyman"
+    });
+    let Ok(v) = post(url, "coord_register", &body) else { return };
+    if !v["success"].as_bool().unwrap_or(false) { return }
+
+    let peer_id = v["peer_id"].as_str().unwrap_or("");
+    let token   = v["token"].as_str().unwrap_or("");
+    if peer_id.is_empty() { return }
+
+    let home     = std::env::var("HOME").unwrap_or_default();
+    let cache    = std::path::Path::new(&home).join(".cache").join("coord-tui");
+    let _        = std::fs::create_dir_all(&cache);
+    let env_path = cache.join("peer.env");
+    let _        = std::fs::write(&env_path, format!(
+        "BOJ_COORD_PEER_ID={peer_id}\nBOJ_COORD_TOKEN={token}\n"
+    ));
+    println!("{peer_id}");
+}
+
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
 fn main() -> io::Result<()> {
     let cli = Cli::parse();
     let context = cli.context.unwrap_or_else(detect_context);
+
+    if cli.id {
+        silent_register(&cli.url, &cli.kind, &context);
+        return Ok(());
+    }
 
     let mut app = App::new(cli.url, cli.kind, context);
     app.register();
