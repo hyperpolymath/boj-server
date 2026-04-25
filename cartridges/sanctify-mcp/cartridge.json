@@ -1,0 +1,55 @@
+{
+  "$schema": "https://boj.dev/schemas/cartridge/v1.json",
+  "spdx": "PMPL-1.0-or-later",
+  "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath)",
+  "name": "sanctify-mcp",
+  "version": "1.0.0",
+  "description": "Sanctify Cartridge — PHP lint and deviation detection tools",
+  "author": "Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>",
+  "license": "PMPL-1.0-or-later",
+  "tools": [
+    {
+      "id": "lint_file",
+      "name": "Lint File",
+      "description": "Lint PHP file for syntax and style issues"
+    },
+    {
+      "id": "detect_deviations",
+      "name": "Detect Deviations",
+      "description": "Detect deviations from PHP best practices (naming, style, security)"
+    },
+    {
+      "id": "analyze_file",
+      "name": "Analyze File",
+      "description": "Comprehensive analysis of PHP file (syntax, style, deviations)"
+    },
+    {
+      "id": "check_snippet",
+      "name": "Check Snippet",
+      "description": "Check a PHP code snippet for lint issues"
+    },
+    {
+      "id": "validate_syntax",
+      "name": "Validate Syntax",
+      "description": "Validate PHP syntax (without execution)"
+    }
+  ],
+  "abi": {
+    "interface": "abi/Sanctify.idr",
+    "loopback_proof": "IsLoopback 5176"
+  },
+  "ffi": {
+    "language": "zig",
+    "entry": "ffi/sanctify_ffi.zig"
+  },
+  "adapter": {
+    "language": "typescript",
+    "runtime": "deno",
+    "entry": "adapter/mod.ts",
+    "permissions": ["net", "env"]
+  },
+  "loopback": {
+    "host": "127.0.0.1",
+    "port": 5176
+  }
+}
