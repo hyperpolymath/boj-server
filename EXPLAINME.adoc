@@ -81,7 +81,32 @@ This is the Model-Controller-Processor pattern: cartridges are pluggable service
 * **Credential decryption**: `elixir/test/credential_decryptor_test.exs` — 12 tests; X25519 ECDH round-trip, ChaCha20-Poly1305
 * **Node keypair**: `elixir/test/node_key_test.exs` — 7 tests; ECDH consistency, persistence
 * **JS invoker**: `elixir/test/js_invoker_test.exs` — 8 tests; deno_path detection, mod missing, E2E invoke
-* **Property tests**: StreamData installed (`stream_data ~> 1.1`); harnesses pending (see `TEST-NEEDS.md`)
+* **Invoker**: `elixir/test/invoker_test.exs` — 15 tests; cli_path resolution, exit-code classification, probe/name/version/invoke, extra_env
+* **JS worker pool**: `elixir/test/js_worker_pool_test.exs` — 9 tests; pool_size, consistent-hash routing, fallback, E2E
+* **Trust policy**: `elixir/test/trust_policy_test.exs` — 11 tests; X-Trust-Level enforcement, loopback bypass, auth methods
+* **Properties (StreamData)**: `elixir/test/catalog_properties_test.exs` — 10 properties; round-trips, structural invariants, CredentialDecryptor
+* **Contract tests**: `elixir/test/contract_test.exs` — 15 tests; Catalog↔Router, NodeKey↔CredentialDecryptor, Router↔Invoker
+* **Aspect tests**: `elixir/test/aspect_test.exs` — 15 tests; no-crash, content-type, security, idempotency
+* **Total**: 173 tests (10 properties + 163 regular), 0 failures
+
+== Seed Node Infrastructure
+
+Four continental seed nodes are live on fly.io (deployed 2026-04-25):
+
+[cols="1,1,1"]
+|===
+| Node | fly.io App | Region
+
+| EU West | boj-seed-eu | lhr (London)
+| EU Central | boj-seed-de | fra (Frankfurt)
+| US East | boj-seed-us | iad (Virginia)
+| Asia-Pacific | boj-seed-ap | syd (Sydney)
+|===
+
+Operative URLs: `https://boj-seed-{eu,de,us,ap}.fly.dev`
+Custom domains (`eu/de/us/ap.boj.hyperpolymath.dev`) pending DNS delegation at registrar — see `container/fly/DNS-SETUP.adoc`.
+
+Build: `container/Containerfile.fly` — lean 3-stage build (boj-invoke only, ~3 min Stage 1). Seed nodes serve all 111 JS cartridges via the Deno worker pool. Full `.so` compilation is a separate image build target.
 
 == Questions?
 

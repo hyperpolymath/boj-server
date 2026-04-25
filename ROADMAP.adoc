@@ -6,14 +6,16 @@
 
 A distributed, formally verified catalogue of developer server capabilities. AI goes to ONE place instead of hunting across dozens of MCP/LSP/etc servers. Community-hosted nodes share the load.
 
-== Current Status: v1.0.1 Recovery (Grade D Alpha)
+== Current Status: v1.1.0 Active (Grade C)
 
-Core Elixir/BEAM REST layer is live: 112 cartridges auto-discovered at startup,
-JS dispatch via persistent Deno worker pool, Zig FFI path for `.so` cartridges,
-X25519/ChaCha20-Poly1305 Option A credential forwarding, 50 ExUnit tests passing.
-V-lang adapter migration complete (0 `.v` files). All 112 cartridges have
-`cartridge.json` metadata + `mod.js` tool handlers.  Grade C dogfooding requires
-expanding to 165+ tests (see `TEST-NEEDS.md`).
+Core Elixir/BEAM REST layer is live: 111 cartridges with Zig FFI (`.so`) + 1 JS-only
+(model-router-mcp) auto-discovered at startup, JS dispatch via persistent Deno worker
+pool, Zig FFI path for `.so` cartridges, X25519/ChaCha20-Poly1305 credential
+forwarding with Options A+B wired (CredentialDecryptor → Invoker extra_env),
+X-Trust-Level enforcement live (BojRest.TrustPolicy).  173 ExUnit tests passing
+(10 properties + 163 regular, 0 failures).  All 4 fly.io seed nodes LIVE:
+boj-seed-eu (lhr), boj-seed-de (fra), boj-seed-us (iad), boj-seed-ap (syd).
+V-lang adapter migration complete (0 `.v` files).  Grade C achieved 2026-04-25.
 
 == Milestones
 
@@ -43,7 +45,7 @@ expanding to 165+ tests (see `TEST-NEEDS.md`).
 
 * [x] Gossip protocol implementation (IPv6, node discovery)
 * [x] Hash attestation (binary verification for community nodes)
-* [x] Seed node setup (4 family nodes across 4 continents)
+* [x] Seed node setup (4 fly.io nodes: boj-seed-eu.fly.dev, boj-seed-de.fly.dev, boj-seed-us.fly.dev, boj-seed-ap.fly.dev — LIVE 2026-04-25)
 * [ ] Load-aware routing (requests to healthiest node)
 * [x] Auto-SDP (Software Defined Perimeter for nodes)
 * [ ] DoQ/DoH for encrypted DNS resolution
@@ -87,6 +89,9 @@ JS cartridge dispatch (the large remaining gap — 99 of 106 cartridges use `mod
 * [x] Fix `cartridge_so_path/1` to read `cart["ffi"]["so_path"]` from the manifest instead of hardcoding the derivation
 * [x] `BojRest.JsWorkerPool` + `BojRest.JsWorker` — persistent Deno worker pool (Phase 2); consistent hash on mod path for module-cache locality; `JsInvoker` fork-per-call as fallback when pool absent
 * [ ] End-to-end test: `curl POST /cartridge/boj-health/invoke` (Zig) + `curl POST /cartridge/local-memory-mcp/invoke` (JS)
+* [x] Phase 8: 4 fly.io seed nodes deployed (lhr/fra/iad/syd), 2/2 health checks, Containerfile.fly lean build
+* [x] Phase 9 (partial): BojRest.TrustPolicy X-Trust-Level enforcement, credential forwarding Options A+B (CredentialDecryptor → Invoker extra_env)
+* [x] 173 ExUnit tests, Grade C achieved (10 properties + 163 regular, 0 failures)
 
 Gateway sidecar (`http-capability-gateway` in front of boj-server):
 
