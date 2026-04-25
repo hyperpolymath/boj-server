@@ -56,6 +56,36 @@ Highlights:
 
 Formally verified core in Idris2 (`cartridges/local-coord-mcp/abi/LocalCoord/`); Zig FFI; Deno/Node MCP bridge with input hardening (rate limiting, prompt-injection detection with unicode-normalisation, error sanitisation).
 
+=== coord-tui — human interface for local-coord-mcp
+
+`coord-tui` is the companion terminal UI for `local-coord-mcp`. It lives
+here in `coord-tui/` and also has its own dedicated repository:
+
+https://github.com/hyperpolymath/coord-tui
+
+What it provides beyond the MCP tools themselves:
+
+* *Live dashboard* — Peers and Claims panels in a ratatui TUI,
+  auto-refreshed every 5 s.
+* *Commands sidebar* — always-visible key reference, shell helpers, and
+  `just coord-*` recipes (toggle with `\`).
+* *Window titling* — every terminal tab shows its peer ID automatically.
+* *Shell helpers* — `coord-peers`, `coord-claims`, `coord-claim`,
+  `coord-status`, `coord-whoami` — coordination without opening the TUI.
+* *One-command install* — `bash coord-tui/install.sh` sets up everything
+  on a new machine.
+
+[source,bash]
+----
+# New machine setup
+bash coord-tui/install.sh
+
+# Then open your tools normally — registration and titling are automatic
+claude
+gemini
+vibe
+----
+
 == Glama AAA posture
 
 This server targets Glama's AAA tier. Posture:
