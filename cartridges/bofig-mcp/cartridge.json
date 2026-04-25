@@ -1,0 +1,60 @@
+{
+  "$schema": "https://boj.dev/schemas/cartridge/v1.json",
+  "spdx": "PMPL-1.0-or-later",
+  "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath)",
+  "name": "bofig-mcp",
+  "version": "1.0.0",
+  "description": "Bofig Cartridge — Evidence graph query tools for investigative workflows",
+  "author": "Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>",
+  "license": "PMPL-1.0-or-later",
+  "tools": [
+    {
+      "id": "query_evidence",
+      "name": "Query Evidence",
+      "description": "Query evidence by ID from the graph database"
+    },
+    {
+      "id": "search_evidence",
+      "name": "Search Evidence",
+      "description": "Search evidence by keyword (title, description, source)"
+    },
+    {
+      "id": "get_connections",
+      "name": "Get Connections",
+      "description": "Get all connections/relationships for an entity in the graph"
+    },
+    {
+      "id": "find_path",
+      "name": "Find Path",
+      "description": "Find shortest path between two entities in the evidence graph"
+    },
+    {
+      "id": "execute_query",
+      "name": "Execute Query",
+      "description": "Execute a custom graph query"
+    },
+    {
+      "id": "get_graph_stats",
+      "name": "Get Graph Stats",
+      "description": "Get overall statistics about the evidence graph"
+    }
+  ],
+  "abi": {
+    "interface": "abi/Bofig.idr",
+    "loopback_proof": "IsLoopback 5178"
+  },
+  "ffi": {
+    "language": "zig",
+    "entry": "ffi/bofig_ffi.zig"
+  },
+  "adapter": {
+    "language": "typescript",
+    "runtime": "deno",
+    "entry": "adapter/mod.ts",
+    "permissions": ["net", "env"]
+  },
+  "loopback": {
+    "host": "127.0.0.1",
+    "port": 5178
+  }
+}

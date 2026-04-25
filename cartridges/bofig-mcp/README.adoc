@@ -1,0 +1,80 @@
+= Bofig Cartridge
+:toc: preamble
+:author: Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+:date: 2026-04-25
+:spdx: PMPL-1.0-or-later
+
+// SPDX-License-Identifier: PMPL-1.0-or-later
+
+Evidence graph query interface for investigative journalism workflows — search evidence, find connections, analyze relationships in complex networks.
+
+== Features
+
+- **Evidence Queries** — Retrieve evidence by ID with metadata (source, confidence, date)
+- **Keyword Search** — Search evidence across documents, interviews, datasets, media
+- **Connection Discovery** — Find relationships and connections between entities
+- **Path Analysis** — Shortest path finding between entities in the graph
+- **Custom Queries** — Execute graph queries (Cypher-like syntax)
+- **Graph Analytics** — Get statistics on nodes and edges
+
+== Architecture
+
+[cols="1,3"]
+|===
+| Component | Purpose
+
+| `abi/Bofig.idr`
+| Idris2 interface with evidence types (Document, Interview, Dataset, Analysis, Media, Archive)
+  and connection/relationship definitions.
+
+| `ffi/bofig_ffi.zig`
+| Zig bindings for evidence graph database queries.
+
+| `adapter/mod.ts`
+| Deno MCP server exposing evidence-graph tools.
+  Runs on `127.0.0.1:5178` (loopback only).
+
+| `cartridge.json`
+| Tool manifest with 6 MCP tools for evidence analysis.
+|===
+
+== MCP Tools
+
+=== `query_evidence`
+Retrieve evidence record by ID with full metadata (source type, confidence level, date collected, description).
+
+=== `search_evidence`
+Search evidence by keyword across all fields (titles, descriptions, source types, content).
+
+=== `get_connections`
+Retrieve all relationships and connections for an entity in the evidence graph.
+
+=== `find_path`
+Compute shortest path between two entities, useful for analyzing degrees of separation.
+
+=== `execute_query`
+Execute custom graph query using graph query syntax (similar to Cypher).
+
+=== `get_graph_stats`
+Retrieve overall statistics: total nodes, total edges, last updated timestamp.
+
+== Integration
+
+Connects to bofig (evidence graph) via:
+- **Evidence database** for record storage and retrieval
+- **Relationship index** for connection queries
+- **Graph algorithms** for path finding and analysis
+- **Search engine** for full-text evidence discovery
+
+Loopback proof pinning: `IsLoopback 5178` at compile-time.
+
+== Use Cases
+
+- **Investigative Research** — Discover connections and relationships in complex networks
+- **Fact Checking** — Trace evidence chains and corroboration paths
+- **Narrative Analysis** — Identify key entities and relationship patterns
+- **Story Development** — Build and validate investigative narratives
+
+== License
+
+PMPL-1.0-or-later (MPL-2.0 legal fallback).
