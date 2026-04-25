@@ -4,16 +4,19 @@
 # BoJ Server — fly.io variant Containerfile
 #
 # Differences from Containerfile (Chainguard-native):
-#   Stage 2: elixir:1.16 (official Debian/glibc) instead of cgr.dev/chainguard/elixir
-#            (Chainguard Elixir requires authentication not available on fly.io's
-#            Depot remote builder)
+#   Stage 1: builds boj-invoke only (skip cartridge .so compilation — reduces
+#            build time from ~50 min to ~3 min; seed nodes serve JS path for
+#            all cartridges until a full image build is triggered separately)
+#   Stage 2: elixir:1.16 (official Debian/glibc) — Chainguard Elixir requires
+#            auth unavailable on fly.io's Depot remote builder
 #   Stage 3: wolfi-base packages corrected for wolfi APK index (glibc-native,
-#            no gcompat, ncurses instead of ncurses-libs)
+#            no gcompat; ncurses not ncurses-libs); HEALTHCHECK uses HTTP
+#            (curl /health) rather than boj-invoke so no .so file is required
 #
 # Deploy: fly deploy --dockerfile container/Containerfile.fly ...  (from repo root)
 
 # ============================================================================
-# Stage 1: Zig FFI Builder
+# Stage 1: Zig FFI Builder (boj-invoke only)
 # ============================================================================
 
 FROM cgr.dev/chainguard/wolfi-base:latest AS zig-builder
@@ -23,19 +26,11 @@ RUN apk add --no-cache zig build-base
 WORKDIR /build
 
 COPY ffi/zig/ ffi/zig/
-COPY cartridges/ cartridges/
 
+# Build only the boj-invoke dispatch CLI — skip cartridge .so compilation.
+# Seed nodes primarily serve federation/gossip; cartridge FFI can be added
+# in a dedicated image build (see container/Containerfile for full build).
 RUN cd ffi/zig && zig build invoke -Doptimize=ReleaseFast
-
-RUN for ffi_dir in /build/cartridges/*/ffi; do \
-      cart="$(basename "$(dirname "$ffi_dir")")" && \
-      if [ -f "$ffi_dir/build.zig" ]; then \
-        echo "Building ${cart}..." && \
-        cd "$ffi_dir" && \
-        zig build -Doptimize=ReleaseFast 2>/dev/null || \
-          echo "WARN: ${cart} FFI skipped (non-fatal)"; \
-      fi; \
-    done
 
 # ============================================================================
 # Stage 2: Elixir Release Builder
@@ -61,15 +56,15 @@ RUN mix release boj_rest
 FROM cgr.dev/chainguard/wolfi-base:latest
 
 LABEL org.opencontainers.image.title="Bundle of Joy Server" \
-      org.opencontainers.image.description="BoJ REST server — Elixir + Zig FFI cartridge host (fly.io)" \
+      org.opencontainers.image.description="BoJ REST server — Elixir + Zig FFI cartridge host (fly.io seed)" \
       org.opencontainers.image.url="https://github.com/hyperpolymath/boj-server" \
       org.opencontainers.image.source="https://github.com/hyperpolymath/boj-server" \
       org.opencontainers.image.vendor="hyperpolymath" \
       org.opencontainers.image.licenses="PMPL-1.0-or-later" \
       org.opencontainers.image.authors="Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>"
 
-# wolfi uses glibc natively — no gcompat needed; ncurses not ncurses-libs
-RUN apk add --no-cache ca-certificates openssl ncurses libstdc++ libssl3
+# wolfi is glibc-native: no gcompat; ncurses not ncurses-libs; add curl for healthcheck
+RUN apk add --no-cache ca-certificates openssl ncurses libstdc++ libssl3 curl
 
 RUN addgroup -S appuser && adduser -S appuser -G appuser
 
@@ -80,19 +75,8 @@ COPY --from=mix-builder /build/_build/prod/rel/boj_rest ./
 COPY --from=zig-builder /build/ffi/zig/zig-out/bin/boj-invoke /app/bin/boj-invoke
 RUN chmod +x /app/bin/boj-invoke
 
+# Copy cartridge metadata (cartridge.json) — no .so files in this seed image
 RUN mkdir -p /app/cartridges
-COPY --from=zig-builder /build/cartridges/ /tmp/cartridges-src/
-RUN for cart_dir in /tmp/cartridges-src/*/; do \
-      cart="$(basename "$cart_dir")" && \
-      so_dir="${cart_dir}ffi/zig-out/lib" && \
-      if [ -d "$so_dir" ]; then \
-        target="/app/cartridges/${cart}/ffi/zig-out/lib" && \
-        mkdir -p "$target" && \
-        cp -r "${so_dir}/"*.so "$target/" 2>/dev/null || true; \
-      fi; \
-    done && \
-    rm -rf /tmp/cartridges-src
-
 COPY cartridges/ /tmp/carts-meta/
 RUN for cart_dir in /tmp/carts-meta/*/; do \
       cart="$(basename "$cart_dir")" && \
@@ -117,9 +101,9 @@ USER appuser
 
 EXPOSE 7700
 
-HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
-    CMD /app/bin/boj-invoke /app/cartridges/boj-health/ffi/zig-out/lib/libboj_health.so probe \
-      | grep -q '"ok":true' || exit 1
+# Health check via HTTP endpoint (no .so dependency)
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+    CMD curl -sf http://localhost:7700/health | grep -q ok || exit 1
 
 ENTRYPOINT ["/app/bin/boj_rest"]
 CMD ["start"]
