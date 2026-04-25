@@ -7,7 +7,10 @@
   "description": "AffineScript language cartridge -- type checking, parsing, formatting, linting, compiling, hover/goto-def/completion queries, error explanation, stdlib browsing, and syntax reference for the AffineScript language (substructural type system with affine/linear types, algebraic effects)",
   "domain": "Languages",
   "tier": "Ayo",
-  "protocols": ["MCP", "REST"],
+  "protocols": [
+    "MCP",
+    "REST"
+  ],
   "auth": {
     "method": "none",
     "env_var": null,
@@ -24,10 +27,18 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "source": { "type": "string", "description": "AffineScript source code to check" },
-          "filename": { "type": "string", "description": "Virtual filename for error reporting (default: input.as)" }
+          "source": {
+            "type": "string",
+            "description": "AffineScript source code to check"
+          },
+          "filename": {
+            "type": "string",
+            "description": "Virtual filename for error reporting (default: input.as)"
+          }
         },
-        "required": ["source"]
+        "required": [
+          "source"
+        ]
       }
     },
     {
@@ -36,9 +47,14 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "source": { "type": "string", "description": "AffineScript source code to parse" }
+          "source": {
+            "type": "string",
+            "description": "AffineScript source code to parse"
+          }
         },
-        "required": ["source"]
+        "required": [
+          "source"
+        ]
       }
     },
     {
@@ -47,11 +63,22 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "source": { "type": "string", "description": "AffineScript source code to format" },
-          "tab_size": { "type": "number", "description": "Indentation width (default: 2)" },
-          "use_tabs": { "type": "boolean", "description": "Use tabs instead of spaces (default: false)" }
+          "source": {
+            "type": "string",
+            "description": "AffineScript source code to format"
+          },
+          "tab_size": {
+            "type": "number",
+            "description": "Indentation width (default: 2)"
+          },
+          "use_tabs": {
+            "type": "boolean",
+            "description": "Use tabs instead of spaces (default: false)"
+          }
         },
-        "required": ["source"]
+        "required": [
+          "source"
+        ]
       }
     },
     {
@@ -60,9 +87,14 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "code": { "type": "string", "description": "Error code (e.g. 'E0301', 'E2001', 'W0001')" }
+          "code": {
+            "type": "string",
+            "description": "Error code (e.g. 'E0301', 'E2001', 'W0001')"
+          }
         },
-        "required": ["code"]
+        "required": [
+          "code"
+        ]
       }
     },
     {
@@ -71,10 +103,18 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "query": { "type": "string", "description": "Search query (type name, function name, or category like 'collections', 'io', 'effects')" },
-          "category": { "type": "string", "description": "Filter by category: types, functions, effects, traits" }
+          "query": {
+            "type": "string",
+            "description": "Search query (type name, function name, or category like 'collections', 'io', 'effects')"
+          },
+          "category": {
+            "type": "string",
+            "description": "Filter by category: types, functions, effects, traits"
+          }
         },
-        "required": ["query"]
+        "required": [
+          "query"
+        ]
       }
     },
     {
@@ -83,9 +123,14 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "construct": { "type": "string", "description": "Language construct to look up (e.g. 'fn', 'match', 'effect', 'linear', 'borrow', 'handler')" }
+          "construct": {
+            "type": "string",
+            "description": "Language construct to look up (e.g. 'fn', 'match', 'effect', 'linear', 'borrow', 'handler')"
+          }
         },
-        "required": ["construct"]
+        "required": [
+          "construct"
+        ]
       }
     },
     {
@@ -94,9 +139,14 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "source": { "type": "string", "description": "AffineScript expression or snippet to evaluate" }
+          "source": {
+            "type": "string",
+            "description": "AffineScript expression or snippet to evaluate"
+          }
         },
-        "required": ["source"]
+        "required": [
+          "source"
+        ]
       }
     },
     {
@@ -105,10 +155,18 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "source": { "type": "string", "description": "AffineScript source code to lint" },
-          "filename": { "type": "string", "description": "Virtual filename for diagnostic reporting (default: input.as)" }
+          "source": {
+            "type": "string",
+            "description": "AffineScript source code to lint"
+          },
+          "filename": {
+            "type": "string",
+            "description": "Virtual filename for diagnostic reporting (default: input.as)"
+          }
         },
-        "required": ["source"]
+        "required": [
+          "source"
+        ]
       }
     },
     {
@@ -117,11 +175,22 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "source": { "type": "string", "description": "AffineScript source code to compile" },
-          "target": { "type": "string", "description": "Compilation target: 'wasm' (default), 'wasm-gc', or 'julia'" },
-          "filename": { "type": "string", "description": "Virtual filename for diagnostic reporting (default: input.as)" }
+          "source": {
+            "type": "string",
+            "description": "AffineScript source code to compile"
+          },
+          "target": {
+            "type": "string",
+            "description": "Compilation target: 'wasm' (default), 'wasm-gc', or 'julia'"
+          },
+          "filename": {
+            "type": "string",
+            "description": "Virtual filename for diagnostic reporting (default: input.as)"
+          }
         },
-        "required": ["source"]
+        "required": [
+          "source"
+        ]
       }
     },
     {
@@ -130,11 +199,24 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "source": { "type": "string", "description": "AffineScript source code" },
-          "line": { "type": "number", "description": "1-based line number" },
-          "col": { "type": "number", "description": "1-based column number" }
+          "source": {
+            "type": "string",
+            "description": "AffineScript source code"
+          },
+          "line": {
+            "type": "number",
+            "description": "1-based line number"
+          },
+          "col": {
+            "type": "number",
+            "description": "1-based column number"
+          }
         },
-        "required": ["source", "line", "col"]
+        "required": [
+          "source",
+          "line",
+          "col"
+        ]
       }
     },
     {
@@ -143,11 +225,24 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "source": { "type": "string", "description": "AffineScript source code" },
-          "line": { "type": "number", "description": "1-based line number" },
-          "col": { "type": "number", "description": "1-based column number" }
+          "source": {
+            "type": "string",
+            "description": "AffineScript source code"
+          },
+          "line": {
+            "type": "number",
+            "description": "1-based line number"
+          },
+          "col": {
+            "type": "number",
+            "description": "1-based column number"
+          }
         },
-        "required": ["source", "line", "col"]
+        "required": [
+          "source",
+          "line",
+          "col"
+        ]
       }
     },
     {
@@ -156,12 +251,36 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "source": { "type": "string", "description": "AffineScript source code" },
-          "line": { "type": "number", "description": "1-based line number" },
-          "col": { "type": "number", "description": "1-based column number" }
+          "source": {
+            "type": "string",
+            "description": "AffineScript source code"
+          },
+          "line": {
+            "type": "number",
+            "description": "1-based line number"
+          },
+          "col": {
+            "type": "number",
+            "description": "1-based column number"
+          }
         },
-        "required": ["source", "line", "col"]
+        "required": [
+          "source",
+          "line",
+          "col"
+        ]
       }
     }
-  ]
+  ],
+  "ffi": {
+    "so_path": "ffi/zig-out/lib/libaffinescript_mcp.so",
+    "abi_version": "ADR-0006",
+    "symbols": [
+      "boj_cartridge_init",
+      "boj_cartridge_deinit",
+      "boj_cartridge_name",
+      "boj_cartridge_version",
+      "boj_cartridge_invoke"
+    ]
+  }
 }

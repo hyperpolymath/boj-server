@@ -7,7 +7,10 @@
   "description": "Airtable cartridge -- base listing, table schema retrieval, record search, record creation, record update, field listing, view browsing, webhook management, comment access, and revision history via the Airtable REST API",
   "domain": "Productivity",
   "tier": "Ayo",
-  "protocols": ["MCP", "REST"],
+  "protocols": [
+    "MCP",
+    "REST"
+  ],
   "auth": {
     "method": "bearer_token",
     "env_var": "AIRTABLE_API_KEY",
@@ -24,7 +27,10 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "offset": { "type": "string", "description": "Pagination offset token" }
+          "offset": {
+            "type": "string",
+            "description": "Pagination offset token"
+          }
         }
       }
     },
@@ -34,9 +40,14 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "base_id": { "type": "string", "description": "Airtable base ID (e.g. 'appXXXXXXXXXXXXXX')" }
+          "base_id": {
+            "type": "string",
+            "description": "Airtable base ID (e.g. 'appXXXXXXXXXXXXXX')"
+          }
         },
-        "required": ["base_id"]
+        "required": [
+          "base_id"
+        ]
       }
     },
     {
@@ -45,16 +56,43 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "base_id": { "type": "string", "description": "Base ID" },
-          "table_name": { "type": "string", "description": "Table name or ID" },
-          "filter_formula": { "type": "string", "description": "Airtable formula for filtering (e.g. \"{Status} = 'Active'\")" },
-          "sort_field": { "type": "string", "description": "Field name to sort by" },
-          "sort_direction": { "type": "string", "description": "Sort direction: asc or desc" },
-          "max_records": { "type": "number", "description": "Maximum records to return (default 100)" },
-          "view": { "type": "string", "description": "View name or ID to use" },
-          "fields": { "type": "string", "description": "Comma-separated field names to include" }
+          "base_id": {
+            "type": "string",
+            "description": "Base ID"
+          },
+          "table_name": {
+            "type": "string",
+            "description": "Table name or ID"
+          },
+          "filter_formula": {
+            "type": "string",
+            "description": "Airtable formula for filtering (e.g. \"{Status} = 'Active'\")"
+          },
+          "sort_field": {
+            "type": "string",
+            "description": "Field name to sort by"
+          },
+          "sort_direction": {
+            "type": "string",
+            "description": "Sort direction: asc or desc"
+          },
+          "max_records": {
+            "type": "number",
+            "description": "Maximum records to return (default 100)"
+          },
+          "view": {
+            "type": "string",
+            "description": "View name or ID to use"
+          },
+          "fields": {
+            "type": "string",
+            "description": "Comma-separated field names to include"
+          }
         },
-        "required": ["base_id", "table_name"]
+        "required": [
+          "base_id",
+          "table_name"
+        ]
       }
     },
     {
@@ -63,11 +101,24 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "base_id": { "type": "string", "description": "Base ID" },
-          "table_name": { "type": "string", "description": "Table name or ID" },
-          "record_id": { "type": "string", "description": "Record ID (e.g. 'recXXXXXXXXXXXXXX')" }
+          "base_id": {
+            "type": "string",
+            "description": "Base ID"
+          },
+          "table_name": {
+            "type": "string",
+            "description": "Table name or ID"
+          },
+          "record_id": {
+            "type": "string",
+            "description": "Record ID (e.g. 'recXXXXXXXXXXXXXX')"
+          }
         },
-        "required": ["base_id", "table_name", "record_id"]
+        "required": [
+          "base_id",
+          "table_name",
+          "record_id"
+        ]
       }
     },
     {
@@ -76,11 +127,24 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "base_id": { "type": "string", "description": "Base ID" },
-          "table_name": { "type": "string", "description": "Table name or ID" },
-          "fields": { "type": "string", "description": "JSON object of field name-value pairs" }
+          "base_id": {
+            "type": "string",
+            "description": "Base ID"
+          },
+          "table_name": {
+            "type": "string",
+            "description": "Table name or ID"
+          },
+          "fields": {
+            "type": "string",
+            "description": "JSON object of field name-value pairs"
+          }
         },
-        "required": ["base_id", "table_name", "fields"]
+        "required": [
+          "base_id",
+          "table_name",
+          "fields"
+        ]
       }
     },
     {
@@ -89,12 +153,29 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "base_id": { "type": "string", "description": "Base ID" },
-          "table_name": { "type": "string", "description": "Table name or ID" },
-          "record_id": { "type": "string", "description": "Record ID" },
-          "fields": { "type": "string", "description": "JSON object of field name-value pairs to update" }
+          "base_id": {
+            "type": "string",
+            "description": "Base ID"
+          },
+          "table_name": {
+            "type": "string",
+            "description": "Table name or ID"
+          },
+          "record_id": {
+            "type": "string",
+            "description": "Record ID"
+          },
+          "fields": {
+            "type": "string",
+            "description": "JSON object of field name-value pairs to update"
+          }
         },
-        "required": ["base_id", "table_name", "record_id", "fields"]
+        "required": [
+          "base_id",
+          "table_name",
+          "record_id",
+          "fields"
+        ]
       }
     },
     {
@@ -103,10 +184,19 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "base_id": { "type": "string", "description": "Base ID" },
-          "table_name": { "type": "string", "description": "Table name or ID" }
+          "base_id": {
+            "type": "string",
+            "description": "Base ID"
+          },
+          "table_name": {
+            "type": "string",
+            "description": "Table name or ID"
+          }
         },
-        "required": ["base_id", "table_name"]
+        "required": [
+          "base_id",
+          "table_name"
+        ]
       }
     },
     {
@@ -115,10 +205,19 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "base_id": { "type": "string", "description": "Base ID" },
-          "table_name": { "type": "string", "description": "Table name or ID" }
+          "base_id": {
+            "type": "string",
+            "description": "Base ID"
+          },
+          "table_name": {
+            "type": "string",
+            "description": "Table name or ID"
+          }
         },
-        "required": ["base_id", "table_name"]
+        "required": [
+          "base_id",
+          "table_name"
+        ]
       }
     },
     {
@@ -127,9 +226,14 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "base_id": { "type": "string", "description": "Base ID" }
+          "base_id": {
+            "type": "string",
+            "description": "Base ID"
+          }
         },
-        "required": ["base_id"]
+        "required": [
+          "base_id"
+        ]
       }
     },
     {
@@ -138,12 +242,36 @@
       "inputSchema": {
         "type": "object",
         "properties": {
-          "base_id": { "type": "string", "description": "Base ID" },
-          "table_name": { "type": "string", "description": "Table name or ID" },
-          "record_id": { "type": "string", "description": "Record ID" }
+          "base_id": {
+            "type": "string",
+            "description": "Base ID"
+          },
+          "table_name": {
+            "type": "string",
+            "description": "Table name or ID"
+          },
+          "record_id": {
+            "type": "string",
+            "description": "Record ID"
+          }
         },
-        "required": ["base_id", "table_name", "record_id"]
+        "required": [
+          "base_id",
+          "table_name",
+          "record_id"
+        ]
       }
     }
-  ]
+  ],
+  "ffi": {
+    "so_path": "ffi/zig-out/lib/libairtable_mcp.so",
+    "abi_version": "ADR-0006",
+    "symbols": [
+      "boj_cartridge_init",
+      "boj_cartridge_deinit",
+      "boj_cartridge_name",
+      "boj_cartridge_version",
+      "boj_cartridge_invoke"
+    ]
+  }
 }
