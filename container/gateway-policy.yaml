@@ -1,0 +1,70 @@
+# SPDX-License-Identifier: PMPL-1.0-or-later
+# Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+#
+# BoJ Server — http-capability-gateway verb governance policy (DSL v1)
+#
+# Sits in front of boj-server (port 7700). Gateway listens on port 7800
+# (override PORT env var). Backend: BACKEND_URL=http://127.0.0.1:7700
+#
+# Route surface (all 5 boj-server routes are covered):
+#   GET  /health                        — public, liveness probe
+#   GET  /menu                          — public, cartridge menu
+#   GET  /cartridges                    — public, cartridge name list
+#   GET  /cartridge/:name               — public, cartridge metadata
+#   POST /cartridge/:name/invoke        — auth-required for keyed cartridges
+#                                         (public fallback until catalog-mode lands)
+#
+# Phase 1 (this file): static policy, all invoke calls public.
+# Phase 2 (catalog-mode): gateway reads BOJ_CARTRIDGES_ROOT/*/cartridge.json
+#   at boot and auto-derives per-cartridge exposure from auth.method:
+#     "none"    → "public"
+#     "api-key" → "authenticated"
+#   Replaces this file entirely; zero ongoing maintenance.
+# See ROADMAP.adoc §v1.1.0 and docs/gateway-catalog-integration.adoc.
+
+dsl_version: "1"
+
+governance:
+  # Global default: only GET is allowed on any path not listed below.
+  # Prevents stray PUT / PATCH / DELETE / OPTIONS from reaching boj-server.
+  global_verbs:
+    - GET
+
+  routes:
+    # Liveness + readiness probe
+    - path: "^/health$"
+      verbs: [GET]
+      exposure: public
+      narrative: "Liveness probe — no auth required"
+
+    # Cartridge menu (human-readable catalogue with tiers)
+    - path: "^/menu$"
+      verbs: [GET]
+      exposure: public
+      narrative: "Cartridge menu — public read"
+
+    # Cartridge name list
+    - path: "^/cartridges$"
+      verbs: [GET]
+      exposure: public
+      narrative: "Cartridge inventory — public read"
+
+    # Per-cartridge metadata (cartridge.json contents)
+    - path: "^/cartridge/[^/]+$"
+      verbs: [GET]
+      exposure: public
+      narrative: "Cartridge metadata — public read"
+
+    # Tool invocation — POST only, no other verbs.
+    # Phase 1: public exposure (no auth wired yet in boj-server).
+    # Phase 2: replaced by per-cartridge rules generated from auth.method.
+    - path: "^/cartridge/[^/]+/invoke$"
+      verbs: [POST]
+      exposure: public
+      narrative: "Tool invocation — Phase 1 public; Phase 2 auto-derived from cartridge auth.method"
+
+stealth:
+  # Return 404 (not 403) for denied requests so the route surface does
+  # not advertise which paths exist to unauthenticated callers.
+  enabled: true
+  status_code: 404

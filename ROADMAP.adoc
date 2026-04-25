@@ -73,10 +73,26 @@ metadata parity before Grade C dogfooding.
 === v1.0.1 — Adapter Migration Recovery (P0, In Progress)
 
 * [ ] Remove remaining V-lang adapters across `cartridges/` (56 `.v` files as of 2026-04-12)
-* [ ] Ensure every cartridge has `cartridge.json` metadata (currently 65 files)
-* [ ] Ensure every cartridge has `mod.js` tool handlers (currently 64 files)
+* [x] Ensure every cartridge has `cartridge.json` metadata (all 106 cartridges covered 2026-04-25)
+* [x] Ensure every cartridge has `mod.js` tool handlers (all 106 cartridges covered 2026-04-25)
 * [ ] Re-run cartridge matrix build/tests and update `TEST-NEEDS.md` with current evidence
 * [ ] Refresh repo documentation claims after migration closure (counts, completion text, handover docs)
+
+=== v1.1.0 — JS Dispatch + Gateway Sidecar
+
+JS cartridge dispatch (the large remaining gap — 99 of 106 cartridges use `mod.js`, not Zig `.so`):
+
+* [ ] `BojRest.JsInvoker` — shells out to `deno run mod.js` per invocation (Phase 1: fork-per-call, ~50 ms overhead acceptable for initial traffic)
+* [ ] Router dispatch branch: if `cart["ffi"]` key present → `Invoker` (Zig path); else → `JsInvoker` (Deno path)
+* [ ] Fix `cartridge_so_path/1` to read `cart["ffi"]["so_path"]` from the manifest instead of hardcoding the derivation
+* [ ] End-to-end test: `curl POST /cartridge/boj-health/invoke` (Zig) + `curl POST /cartridge/local-memory-mcp/invoke` (JS)
+
+Gateway sidecar (`http-capability-gateway` in front of boj-server):
+
+* [ ] Add `gateway-policy.yaml` (done — `container/gateway-policy.yaml`) to dev compose as optional sidecar
+* [ ] Implement `PolicyLoader.load_from_boj_catalog/1` in `http-capability-gateway` — reads `BOJ_CARTRIDGES_ROOT/*/cartridge.json` at boot, infers per-cartridge invoke exposure from `auth.method` (`none` → `public`, `api-key`/`bearer` → `authenticated`). Zero manual policy maintenance thereafter. See `docs/gateway-catalog-integration.adoc`.
+* [ ] Update `compose.dev.yaml` with gateway sidecar entry (port 7800 → boj-rest:7700)
+* [ ] Retire static `gateway-policy.yaml` once catalog mode is live
 
 == Future Directions
 

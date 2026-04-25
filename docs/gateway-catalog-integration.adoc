@@ -1,0 +1,151 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+// Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+= BoJ Gateway — Catalog-Driven Auto-Policy (Design)
+:toc:
+:toc-placement: preamble
+
+Describes how `http-capability-gateway` will auto-derive its verb-governance
+policy from the BoJ cartridge catalog so that adding a cartridge never
+requires a manual policy update.
+
+== The Drift Problem
+
+`container/gateway-policy.yaml` handles boj-server's five routes.  The four
+read-only routes (`/health`, `/menu`, `/cartridges`, `/cartridge/:name`) are
+permanently public and never change.
+
+The fifth route, `POST /cartridge/:name/invoke`, is different: some cartridges
+require credentials (`api-key`, `bearer`) while others are fully public.
+Without auto-sync, operators must remember to update the gateway policy every
+time a keyed cartridge is added.  In an estate with 100+ cartridges this is an
+inevitable maintenance failure mode.
+
+== The Fix: `PolicyLoader.load_from_boj_catalog/1`
+
+A new loader mode in `http-capability-gateway` reads
+`$BOJ_CARTRIDGES_ROOT/*/cartridge.json` at startup and synthesises per-cartridge
+invoke rules.  The source of truth is already present in every
+`cartridge.json`:
+
+[source,json]
+----
+"auth": {
+  "method": "none"        // → exposure: public
+}
+----
+
+[source,json]
+----
+"auth": {
+  "method": "api-key",    // → exposure: authenticated
+  "env_var": "GITHUB_TOKEN"
+}
+----
+
+=== Exposure Inference Table
+
+[cols="2,2"]
+|===
+| `auth.method` | Gateway exposure
+
+| `none`        | `public`
+| `api-key`     | `authenticated`
+| `bearer`      | `authenticated`
+| `oauth`       | `authenticated`
+| _(anything else)_ | `authenticated` (fail-safe)
+|===
+
+=== Generated Policy Shape
+
+For each cartridge the loader emits two rules:
+
+[source,yaml]
+----
+# metadata read — always public
+- path: "^/cartridge/boj-health$"
+  verbs: [GET]
+  exposure: public
+
+# tool invocation — derived from auth.method
+- path: "^/cartridge/boj-health/invoke$"
+  verbs: [POST]
+  exposure: public       # because auth.method = "none"
+----
+
+[source,yaml]
+----
+- path: "^/cartridge/notifyhub-mcp/invoke$"
+  verbs: [POST]
+  exposure: authenticated  # because auth.method = "api-key"
+----
+
+These are merged with the static base rules for `/health`, `/menu`,
+`/cartridges`.
+
+No changes to `cartridge.json` schema are needed.  The inference is fully
+deterministic from existing fields.
+
+== Gateway Changes Required
+
+Two changes to `http-capability-gateway`:
+
+=== 1. `PolicyLoader.load_from_boj_catalog/1`
+
+[source,elixir]
+----
+@spec load_from_boj_catalog(catalog_root :: String.t()) :: {:ok, map()} | {:error, String.t()}
+def load_from_boj_catalog(catalog_root) do
+  # Scan cartridges/*/cartridge.json, infer per-cartridge rules,
+  # merge with static base policy for /health /menu /cartridges.
+end
+----
+
+=== 2. Config trigger
+
+[source,elixir]
+----
+config :http_capability_gateway,
+  catalog_integration: [
+    enabled: true,
+    root: System.get_env("BOJ_CARTRIDGES_ROOT", "/app/cartridges")
+  ]
+----
+
+When `enabled: true`, `Application.start/2` calls `load_from_boj_catalog/1`
+instead of `load_from_file/1`.  The static `gateway-policy.yaml` is retained
+only as a fallback if the catalog root is unreachable.
+
+== Compose / Container Integration
+
+[source,yaml]
+----
+services:
+  boj-gateway:
+    image: http-capability-gateway:latest
+    ports: ["7800:4000"]
+    environment:
+      BACKEND_URL: http://boj-rest:7700
+      BOJ_CARTRIDGES_ROOT: /workspace/cartridges
+      CATALOG_INTEGRATION_ENABLED: "true"
+    volumes:
+      - ..:/workspace:ro,z   # same mount as boj-rest dev compose
+----
+
+The gateway shares the read-only workspace mount and reads the same
+`cartridge.json` files boj-server uses.  No extra file sync needed.
+
+== Rollout Plan
+
+. *Phase 1 (done)*: static `container/gateway-policy.yaml`, all invoke calls
+  public.  Ships with boj-server; usable immediately when gateway is deployed.
+. *Phase 2*: implement `PolicyLoader.load_from_boj_catalog/1` in
+  `http-capability-gateway`.  Update `compose.dev.yaml` to add gateway
+  sidecar.  Retire the static file.
+. *Phase 3*: wire `:authenticated` trust check in boj-server's Invoker so
+  keyed-cartridge invoke calls that lack the credential are rejected at the
+  Elixir layer too (defence-in-depth behind the gateway).
+
+== Non-Changes
+
+`cartridge.json` schema is **not** extended.  The inference table above is
+the complete spec.  No new `"gateway"` section, no new fields.
