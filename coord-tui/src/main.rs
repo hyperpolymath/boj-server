@@ -195,8 +195,8 @@ impl App {
             }
         }
 
-        // Claims via health snapshot
-        if let Ok(v) = post(&self.url, "coord_health", &json!({"token": token})) {
+        // Claims via dedicated list endpoint
+        if let Ok(v) = post(&self.url, "coord_list_claims", &json!({"token": token})) {
             self.claims = v["active_claims"]
                 .as_array()
                 .unwrap_or(&vec![])

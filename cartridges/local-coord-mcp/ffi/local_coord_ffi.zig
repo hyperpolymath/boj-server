@@ -896,6 +896,38 @@ pub export fn coord_count_claims(token_ptr: [*]const u8, token_len: c_int) c_int
     return n;
 }
 
+/// Read the task name of active claim at slot `claim_idx` (0-based over all 64 slots).
+/// Writes the task name into `out` (max `out_cap` bytes). Returns bytes written, or
+/// -1 if token invalid / slot inactive / out of range.
+/// Use alongside coord_count_claims to iterate: call with idx 0..MAX_CLAIMS-1,
+/// skip -1 results.
+pub export fn coord_read_claim_task(token_ptr: [*]const u8, token_len: c_int, claim_idx: c_int, out: [*]u8, out_cap: c_int) c_int {
+    mutex.lock();
+    defer mutex.unlock();
+    if (!validateToken(token_ptr, token_len)) return -1;
+    if (claim_idx < 0 or claim_idx >= MAX_CLAIMS) return -1;
+    const c = &claims[@intCast(claim_idx)];
+    if (!c.active) return -1;
+    const len: usize = @min(@as(usize, c.task_name_len), @as(usize, @intCast(out_cap)));
+    if (len > 0) @memcpy(out[0..len], c.task_name[0..len]);
+    return @intCast(len);
+}
+
+/// Read the peer suffix (4-byte printable hex) of the holder of active claim `claim_idx`.
+/// Writes into `out` (must be >= 4 bytes). Returns 4 on success, -1 otherwise.
+pub export fn coord_read_claim_holder_suffix(token_ptr: [*]const u8, token_len: c_int, claim_idx: c_int, out: [*]u8) c_int {
+    mutex.lock();
+    defer mutex.unlock();
+    if (!validateToken(token_ptr, token_len)) return -1;
+    if (claim_idx < 0 or claim_idx >= MAX_CLAIMS) return -1;
+    const c = &claims[@intCast(claim_idx)];
+    if (!c.active) return -1;
+    const p = &peers[c.holder_idx];
+    if (!p.active) return -1;
+    @memcpy(out[0..4], &p.suffix);
+    return 4;
+}
+
 /// Count track-record entries in the ring (saturates at MAX_TRACK).
 /// Returns count, -1 on bad token.
 pub export fn coord_count_track(token_ptr: [*]const u8, token_len: c_int) c_int {

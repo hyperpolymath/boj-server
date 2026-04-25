@@ -866,6 +866,40 @@ fn dispatch(tool: []const u8, body: []const u8, resp: []u8, allocator: std.mem.A
         return .{ .status = 200, .body = body_out };
     }
 
+    if (std.mem.eql(u8, tool, "coord_list_claims")) {
+        const parsed = std.json.parseFromSlice(std.json.Value, allocator, body, .{}) catch return .{ .status = 400, .body = errJson(resp, "invalid json") };
+        defer parsed.deinit();
+        const token_val = parsed.value.object.get("token") orelse return .{ .status = 400, .body = errJson(resp, "missing token") };
+        var token: [16]u8 = undefined;
+        if (!parseToken(token_val.string, &token)) return .{ .status = 400, .body = errJson(resp, "invalid token hex") };
+
+        var stream = std.io.fixedBufferStream(resp);
+        const w = stream.writer();
+        w.writeAll("{\"success\":true,\"active_claims\":[") catch return .{ .status = 500, .body = errJson(resp, "buffer overflow") };
+        var first = true;
+        var ci: c_int = 0;
+        while (ci < 64) : (ci += 1) {
+            var task_buf: [128]u8 = undefined;
+            const task_len = ffi.coord_read_claim_task(&token, 16, ci, &task_buf, @intCast(task_buf.len));
+            if (task_len < 0) continue;
+            const task_slice = task_buf[0..@intCast(task_len)];
+            var holder_suffix: [4]u8 = undefined;
+            const hs_rc = ffi.coord_read_claim_holder_suffix(&token, 16, ci, &holder_suffix);
+            if (!first) w.writeByte(',') catch return .{ .status = 500, .body = errJson(resp, "buffer overflow") };
+            first = false;
+            w.writeAll("{\"task\":") catch return .{ .status = 500, .body = errJson(resp, "buffer overflow") };
+            writeJsonString(w, task_slice) catch return .{ .status = 500, .body = errJson(resp, "buffer overflow") };
+            if (hs_rc == 4) {
+                std.fmt.format(w, ",\"holder\":\"{s}\"", .{holder_suffix}) catch return .{ .status = 500, .body = errJson(resp, "buffer overflow") };
+            } else {
+                w.writeAll(",\"holder\":\"\"") catch return .{ .status = 500, .body = errJson(resp, "buffer overflow") };
+            }
+            w.writeByte('}') catch return .{ .status = 500, .body = errJson(resp, "buffer overflow") };
+        }
+        w.writeAll("]}") catch return .{ .status = 500, .body = errJson(resp, "buffer overflow") };
+        return .{ .status = 200, .body = resp[0..stream.pos] };
+    }
+
     if (std.mem.eql(u8, tool, "coord_health")) {
         const parsed = std.json.parseFromSlice(std.json.Value, allocator, body, .{}) catch return .{ .status = 400, .body = errJson(resp, "invalid json") };
         defer parsed.deinit();
