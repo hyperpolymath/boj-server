@@ -5,6 +5,9 @@
   "name": "ephapax-mcp",
   "version": "1.0.0",
   "description": "Ephapax Cartridge — Proof-compiler query tools for formal verification workflows",
+  "domain": "Formal Verification",
+  "tier": "Ayo",
+  "auth": { "method": "none" },
   "author": "Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>",
   "license": "PMPL-1.0-or-later",
   "tools": [
@@ -40,7 +43,8 @@
   },
   "ffi": {
     "language": "zig",
-    "entry": "ffi/ephapax_ffi.zig"
+    "entry": "ffi/ephapax_ffi.zig",
+    "so_path": "libephapax_mcp.so"
   },
   "adapter": {
     "language": "typescript",

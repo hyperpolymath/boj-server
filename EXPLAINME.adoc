@@ -7,20 +7,20 @@ The README makes claims. This file backs them up.
 
 [quote, README]
 ____
-BoJ (Bundle of Joy) is a unified MCP server that consolidates all hyperpolymath tooling into a single endpoint — GitHub, GitLab, Cloudflare, Vercel, Verpex, Gmail, Calendar, browser automation, research, ML, and 50+ open-source cartridges.
+BoJ (Bundle of Joy) is a unified MCP server that consolidates all hyperpolymath tooling into a single endpoint — GitHub, GitLab, Cloudflare, Vercel, Verpex, Gmail, Calendar, browser automation, research, ML, and 110+ open-source cartridges.
 ____
 
-This is the Model-Controller-Processor pattern: cartridges are pluggable service wrappers (90+ total), the MCP bridge translates Claude tool calls to cartridge invocations, and a REST API provides non-MCP access.
+This is the Model-Controller-Processor pattern: cartridges are pluggable service wrappers (112 total), the Elixir/BEAM REST layer dispatches tool calls to cartridge invocations (Zig FFI path for `.so` cartridges, Deno worker pool for JS cartridges), and a REST API provides non-MCP access.
 
 == Two Verifiable Claims from How-It-Works
 
 === Claim 1: Cartridge Orchestration Via Auto-Discovery
 
-**Location**: `mcp-bridge/lib/cartridge-loader.ts` (TypeScript cartridge discovery and initialization)
+**Location**: `elixir/lib/boj_rest/catalog.ex` (Elixir GenServer cartridge discovery and initialization)
 
-**How verified**: The cartridge loader scans `cartridges/*/cartridge.json`, reads tool schemas from each, and registers them dynamically with the MCP server. README (§Features) claims "50+ open-source cartridges." The loader validates each manifest, checks for required `name`, `version`, `tools` fields, and prevents duplicate tool names. This enables the "unified endpoint" claim: a single MCP server exposes the union of all cartridges' tools without hardcoding each one.
+**How verified**: `BojRest.Catalog` scans `cartridges/*/cartridge.json` at startup, reads tool schemas from each, and stores them in an ETS table. It validates `name`, `version`, `tools` required fields and prevents duplicate names. 112 cartridges are auto-discovered. This enables the "unified endpoint" claim: a single REST server exposes the union of all cartridges' tools without hardcoding each one.
 
-**Caveat**: Auto-discovery is runtime dynamic; there is no compile-time verification that all cartridge schemas are valid JSON Schema. A malformed `cartridge.json` will error at MCP startup, not build time. The authoritative manifest format is Nickel (closed decision `boj-cartridge-manifest-format-dd.md`); migration from JSON is future work.
+**Caveat**: Auto-discovery is runtime dynamic; there is no compile-time verification that all cartridge schemas are valid JSON Schema. A malformed `cartridge.json` is silently skipped at startup. The authoritative manifest format is Nickel (closed decision `boj-cartridge-manifest-format-dd.md`); migration from JSON is future work.
 
 === Claim 2: PanLL Grid Layout Auto-Wiring for Panel Cartridges
 
@@ -41,7 +41,7 @@ This is the Model-Controller-Processor pattern: cartridges are pluggable service
 | gossamer, burble, ephapax, hypatia, verisimdb, typed-wasm — universal ABI/FFI pattern across the estate
 
 | *Pluggable cartridge architecture*
-| 96 cartridge directories (`cartridges/*/`), each with `abi/`, `ffi/`, `adapter/` structure; auto-discovered at startup via manifest scan
+| 112 cartridge directories (`cartridges/*/`), each with `abi/`, `ffi/`, `mod.js` structure; auto-discovered at startup via manifest scan
 | echidna (prover orchestration as cartridges), hypatia (rule composition), gitbot-fleet (bot cartridges per service)
 
 | *PanLL ReScript workspace layer*
@@ -49,11 +49,11 @@ This is the Model-Controller-Processor pattern: cartridges are pluggable service
 | idaptik (game UI panels), gossamer-powered SPAs, PanLL monorepo panels estate-wide
 
 | *panic-attack security gate*
-| Pre-commit `panic-attack assail` enforces PA001-PA025 across all 96 cartridges; security module (`lib/security.js`) tests cover injection, unicode bypass, SSRF
+| Pre-commit `panic-attack assail` enforces PA001-PA025 across all 112 cartridges; security module tests cover injection, unicode bypass, SSRF
 | Every RSR repo in the estate; panicbot wraps it in CI
 
-| *Deno runtime*
-| MCP bridge (`mcp-bridge/`) uses Deno-compatible patterns; cartridge test harness (`tests/*.ts`) runs under Deno
+| *Elixir/BEAM + Deno runtime*
+| `elixir/` REST layer dispatches invocations: Zig FFI path (`.so` cartridges) or persistent `BojRest.JsWorkerPool` (112 JS cartridges via Deno); X25519/ChaCha20-Poly1305 credential forwarding
 | nextgen-languages (Deno test runner), standards (Deno axel-protocol tests), 0-ai-gatekeeper-protocol (Deno 36 tests)
 |===
 
@@ -63,26 +63,25 @@ This is the Model-Controller-Processor pattern: cartridges are pluggable service
 |===
 | Path | What's There
 
-| `mcp-bridge/main.js` | MCP server entry point; JSON-RPC stdio transport for Claude Code
-| `mcp-bridge/lib/security.js` | Prompt injection detection, rate limiting, input validation, error sanitization
-| `mcp-bridge/lib/api-clients.js` | GitHub, GitLab API passthroughs and BoJ REST API wrappers
-| `mcp-bridge/lib/tools.js` | MCP tool schema definitions for all cartridge tools
-| `mcp-bridge/lib/logger.js` | Structured JSON logging to stderr
-| `mcp-bridge/lib/version.js` | Single source of truth for server name and version
-| `mcp-bridge/lib/offline-menu.js` | Static cartridge catalogue for offline/inspection mode
-| `cartridges/*/` | 96 cartridge directories, each with abi/, ffi/, adapter/ structure
+| `elixir/lib/boj_rest/router.ex` | Plug router — health, pubkey, menu, invoke dispatch
+| `elixir/lib/boj_rest/catalog.ex` | ETS-backed cartridge registry; scans cartridges/*/cartridge.json at startup
+| `elixir/lib/boj_rest/js_worker_pool.ex` | Persistent Deno worker pool; consistent hash on mod path for cache locality
+| `elixir/lib/boj_rest/js_worker.ex` | GenServer wrapping a single Deno port; newline-delimited JSON protocol
+| `elixir/lib/boj_rest/node_key.ex` | X25519 keypair persistence; ChaCha20-Poly1305 credential decryption
+| `elixir/priv/js_pool_worker.js` | Deno-side pool worker; module cache, env isolation per request
+| `cartridges/*/` | 112 cartridge directories, each with abi/, ffi/, mod.js structure
 | `src/abi/Boj/` | Idris2 ABI definitions (Protocol, Domain, Catalogue, Safety, etc.)
 | `panll/` | ReScript/TEA panel framework for UI workspace layer
 |===
 
 == Testing Critical Paths
 
-* **Security module**: `tests/security_test.js` — injection detection, unicode bypass prevention, rate limiting, input validation
-* **Smoke tests**: `tests/smoke_test.ts` — CLI, MCP protocol, health check, cartridge schemas
-* **E2E tests**: `tests/e2e_mcp_test.ts` — MCP server lifecycle, tool invocation, error handling
-* **Property tests**: `tests/p2p_cartridge_properties_test.ts` — cartridge invariants, schema compliance
-* **Aspect security**: `tests/aspect_security_test.ts` — injection, sandboxing, credential handling, SSRF prevention
-* **Integration**: `tests/integration.sh` — end-to-end MCP server ↔ cartridge invocation
+* **Catalog**: `elixir/test/catalog_test.exs` — 11 tests; required fields, tool registry, auth method, tier validation
+* **Router**: `elixir/test/router_test.exs` — 12 tests; health, pubkey, menu, dispatch, 400/404 error paths
+* **Credential decryption**: `elixir/test/credential_decryptor_test.exs` — 12 tests; X25519 ECDH round-trip, ChaCha20-Poly1305
+* **Node keypair**: `elixir/test/node_key_test.exs` — 7 tests; ECDH consistency, persistence
+* **JS invoker**: `elixir/test/js_invoker_test.exs` — 8 tests; deno_path detection, mod missing, E2E invoke
+* **Property tests**: StreamData installed (`stream_data ~> 1.1`); harnesses pending (see `TEST-NEEDS.md`)
 
 == Questions?
 

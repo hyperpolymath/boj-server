@@ -10,7 +10,7 @@ toc::[]
 
 == What is BoJ Server?
 
-Bundle of Joy (BoJ) Server is a cartridge-based MCP protocol gateway. Each cartridge (database-mcp, fleet-mcp, nesy-mcp, etc.) is a formally verified Idris2 ABI + Zig FFI + unified adapter triple. The server exposes REST (port 7700), gRPC (7701), GraphQL (7702), and SSE (7703) endpoints. 99 cartridges cover databases, clouds, messaging, CI/CD, git forges, secrets, queues, proofs, and more.
+Bundle of Joy (BoJ) Server is a cartridge-based MCP protocol gateway. Each cartridge (database-mcp, fleet-mcp, nesy-mcp, etc.) is a formally verified Idris2 ABI + Zig FFI + Deno/JS adapter triple. The server exposes REST (port 7700) via Elixir/BEAM with Zig FFI for `.so` cartridges and a persistent Deno worker pool for JS cartridges. 112 cartridges cover databases, clouds, messaging, CI/CD, git forges, secrets, queues, proofs, and more.
 
 Three-class architecture: Class 1 (simple CLI), Class 2 (orchestrator with webhooks/MQTT), Class 3 (BEAM multiplier for global scale).
 
@@ -69,18 +69,16 @@ just build
 
 == First Run
 
-Build the V-lang adapter and start the server:
+Start the Elixir/BEAM server:
 
 [source,bash]
 ----
 just run
 ----
 
-This builds the Zig FFI, then compiles the V-lang adapter, then starts:
+This starts the BEAM application, auto-discovers all 112 cartridges, and launches the Deno worker pool for JS dispatch:
 
 - REST API on http://localhost:7700
-- gRPC on port 7701
-- GraphQL on port 7702
 
 Check health:
 
@@ -98,7 +96,7 @@ Type-check the core ABI and run one FFI test:
 just test-smoke
 ----
 
-Full test suite (catalogue + 17 cartridge FFIs):
+Full test suite (Elixir ExUnit — catalog, router, crypto, JS dispatch):
 
 [source,bash]
 ----
@@ -175,9 +173,9 @@ just heal     # Attempt automatic repair
 ----
 src/abi/               Idris2 ABI (Catalogue.idr, Protocol.idr, etc.)
 ffi/zig/               Zig FFI (catalogue.zig, loader.zig)
-adapter/v/             V-lang triple adapter (REST+gRPC+GraphQL)
-cartridges/            One dir per cartridge (70+ total)
-  database-mcp/        Example: Idris2 ABI + Zig FFI + V adapter
+elixir/                Elixir/BEAM REST server (Catalog, Router, JsWorkerPool)
+cartridges/            One dir per cartridge (112 total)
+  database-mcp/        Example: Idris2 ABI + Zig FFI + mod.js adapter
 container/             Stapeln container ecosystem
 tools/cartridge-minter Rust CLI for minting new cartridges
 .machine_readable/     State, policies, contractiles

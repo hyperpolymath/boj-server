@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: PMPL-1.0-or-later
 # TOPOLOGY.md — BoJ Server Component Matrix
 #
-# Auto-generated 2026-04-09. 97 cartridges across 6 tiers.
+# Updated 2026-04-25. 112 cartridges across 6 tiers.
 
 ## Ports
 
@@ -13,7 +13,7 @@
 | 7703 | SSE (Server-Sent Events) | Running |
 | 7745 | local-coord-mcp (loopback only) | Running |
 
-## Cartridge Matrix (97 total)
+## Cartridge Matrix (112 total)
 
 ### Tier 1 — High-Value APIs (11)
 | Cartridge | Domain |

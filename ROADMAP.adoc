@@ -8,12 +8,12 @@ A distributed, formally verified catalogue of developer server capabilities. AI 
 
 == Current Status: v1.0.1 Recovery (Grade D Alpha)
 
-Core architecture through v1.0.0 is in place (18 cartridges with shared-library
-loading, 307 tests passing, Umoja federation, PanLL panel), but a migration
-inventory gap remains. As of 2026-04-12 there are 56 V-lang adapter files still
-present under `cartridges/` (excluding sidelined notes), with metadata coverage at
-65 `cartridge.json` files and 64 `mod.js` files. Priority is adapter retirement +
-metadata parity before Grade C dogfooding.
+Core Elixir/BEAM REST layer is live: 112 cartridges auto-discovered at startup,
+JS dispatch via persistent Deno worker pool, Zig FFI path for `.so` cartridges,
+X25519/ChaCha20-Poly1305 Option A credential forwarding, 50 ExUnit tests passing.
+V-lang adapter migration complete (0 `.v` files). All 112 cartridges have
+`cartridge.json` metadata + `mod.js` tool handlers.  Grade C dogfooding requires
+expanding to 165+ tests (see `TEST-NEEDS.md`).
 
 == Milestones
 
@@ -73,8 +73,8 @@ metadata parity before Grade C dogfooding.
 === v1.0.1 — Adapter Migration Recovery (P0, In Progress)
 
 * [x] Remove remaining V-lang adapters across `cartridges/` (confirmed 0 `.v` files 2026-04-25 — cleanup completed 2026-04-12)
-* [x] Ensure every cartridge has `cartridge.json` metadata (all 106 cartridges covered 2026-04-25)
-* [x] Ensure every cartridge has `mod.js` tool handlers (all 106 cartridges covered 2026-04-25)
+* [x] Ensure every cartridge has `cartridge.json` metadata (all 112 cartridges covered 2026-04-25)
+* [x] Ensure every cartridge has `mod.js` tool handlers (all 112 cartridges covered 2026-04-25)
 * [ ] Re-run cartridge matrix build/tests and update `TEST-NEEDS.md` with current evidence
 * [ ] Refresh repo documentation claims after migration closure (counts, completion text, handover docs)
 

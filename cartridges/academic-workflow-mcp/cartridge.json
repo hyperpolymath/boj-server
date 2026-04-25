@@ -2,6 +2,9 @@
   "name": "academic-workflow-mcp",
   "version": "1.0.0",
   "description": "Academic workflow — Zotero integration, citations, paper review",
+  "domain": "Research",
+  "tier": "Ayo",
+  "auth": { "method": "none" },
   "author": "Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>",
   "license": "PMPL-1.0-or-later",
   "tools": [
@@ -42,7 +45,8 @@
   },
   "ffi": {
     "language": "zig",
-    "entry": "ffi/academic_ffi.zig"
+    "entry": "ffi/academic_ffi.zig",
+    "so_path": "libacademic_workflow_mcp.so"
   },
   "adapter": {
     "language": "typescript",

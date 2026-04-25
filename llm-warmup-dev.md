@@ -14,15 +14,19 @@
 Every cartridge implements a formally verified triple:
 
 ```
-Idris2 ABI  →  Zig FFI  →  V-lang Adapter
-(proofs)       (native)     (REST+gRPC+GraphQL)
+Idris2 ABI  →  Zig FFI  →  Deno/JS Adapter
+(proofs)       (native)     (mod.js per cartridge)
 ```
+
+The Elixir/BEAM REST layer dispatches invocations:
+- If `cartridge.json` has an `"ffi"` key → `BojRest.Invoker` (Zig `.so` path)
+- Otherwise → `BojRest.JsWorkerPool` (persistent Deno worker pool)
 
 ### Three-Class Architecture
 
 | Class | Focus | Technology |
 |-------|-------|------------|
-| 1 | Simple Track | CLI/curl, self-contained V-lang adapters |
+| 1 | Simple Track | CLI/curl, self-contained cartridge invocation |
 | 2 | Orchestrator | Webhooks (HMAC-SHA256), MQTT, WebSockets |
 | 3 | Multiplier | Elixir/BEAM for massive concurrency |
 
@@ -44,21 +48,41 @@ ffi/zig/                    Zig FFI (C-compatible)
   src/catalogue.zig         Catalogue mount/unmount operations
   src/loader.zig            Dynamic cartridge loader
 
-adapter/v/                  V-lang triple adapter
-  src/main.v                Unified console on port 9000
-  src/class_2_orchestrator/ Advanced gateway (WS/MQTT/Webhook)
+elixir/                     Elixir/BEAM REST server
+  lib/boj_rest/
+    application.ex          OTP supervisor tree
+    router.ex               Plug router (health/pubkey/menu/invoke)
+    catalog.ex              ETS-backed cartridge registry
+    invoker.ex              Zig FFI dispatch
+    js_invoker.ex           Fork-per-call Deno fallback
+    js_worker.ex            GenServer wrapping a Deno port
+    js_worker_pool.ex       Consistent-hash pool of JsWorkers
+    node_key.ex             X25519 keypair + ChaCha20-Poly1305 decrypt
+    credential_decryptor.ex Credential envelope decryption
+  priv/js_pool_worker.js    Deno-side pool worker (module cache, env isolation)
+  test/                     50 ExUnit tests (catalog, router, crypto, JS dispatch)
+  config/                   config.exs / test.exs
 
-cartridges/                 70+ cartridge directories
+cartridges/                 112 cartridge directories
   database-mcp/             Example cartridge
     abi/database-mcp.ipkg   Idris2 ABI
     abi/Database/Mcp.idr    Idris2 source
     ffi/build.zig           Zig FFI
-    adapter/                V-lang adapter
+    ffi/database_ffi.zig    FFI implementation
+    mod.js                  Deno/JS tool handler (handleTool export)
+    cartridge.json          Manifest (name, version, tools, auth, ffi, loopback)
 
 container/                  Stapeln container ecosystem
   Containerfile             Multi-stage OCI (Chainguard base)
   compose.toml              selur-compose orchestration
+  compose.dev.yaml          Dev compose with gateway sidecar (port 7800)
+  gateway-policy.yaml       Static gateway policy (to be retired once catalog mode is live)
   vordr.toml                Runtime monitoring
+
+web-ecosystem/
+  http-capability-gateway/  Capability gateway sidecar
+    lib/http_capability_gateway/
+      policy_loader.ex      load_from_boj_catalog/1 — auto-generates policy from cartridge.json
 
 tools/cartridge-minter/     Rust CLI for minting new cartridges
   Cargo.toml
@@ -86,11 +110,10 @@ panll/src/                  PanLL panel (ReScript/TEA)
 ```bash
 just build            # Build all Zig FFI layers (catalogue + cartridges)
 just build-release    # Optimized build (-Doptimize=ReleaseFast)
-just build-adapter    # Build V-lang adapter binary
-just run              # Build + start server (REST 7700, gRPC 7701, GraphQL 7702)
+just run              # Start Elixir/BEAM server (REST 7700, auto-discovers 112 cartridges)
 just serve            # Server + Cloudflare tunnel
-just test             # All FFI tests (catalogue + 17 cartridges)
-just test-smoke       # Quick: typecheck core ABI + one FFI test
+just test             # Elixir ExUnit test suite (mix test)
+just test-smoke       # Quick: typecheck core ABI + ExUnit smoke
 just verify           # typecheck + verify-no-believe-me + build + test
 just typecheck        # Type-check all Idris2 ABI files
 just verify-no-believe-me  # Scan for unsound constructs
@@ -112,8 +135,8 @@ just build:
 
 just run:
   1. just build
-  2. v -cc gcc ... adapter/v/src/main.v  (V-lang adapter)
-  3. exec adapter/v/boj-server
+  2. cd elixir && mix deps.get && mix run --no-halt
+  (BEAM starts, Catalog scans cartridges/, JsWorkerPool spawns Deno workers)
 ```
 
 ## Idris2 ABI Conventions
@@ -131,19 +154,55 @@ just run:
 - Format: `zig fmt`
 - Benchmarks: `zig build bench`
 
-## V-lang Adapter
+## JS/Deno Adapter Conventions
 
-The unified console exposes three protocol interfaces:
-- REST on port 7700
-- gRPC on port 7701
-- GraphQL on port 7702
+Each cartridge's `mod.js` exports:
+```javascript
+export async function handleTool(toolId, args) {
+  // returns { status: 200, data: { ... } }
+}
+```
 
-Build: `v -cc gcc -cflags "-L$(pwd)/ffi/zig/zig-out/lib" adapter/v/src/main.v`
+The Deno worker pool (`BojRest.JsWorkerPool`) maintains N persistent Deno processes
+(default 5). Requests are routed via consistent hash on `mod.js` path to maximise
+module cache hits. `BojRest.JsWorker` communicates via newline-delimited JSON over
+stdin/stdout.
+
+## Cartridge Manifest (cartridge.json)
+
+Required fields: `name`, `version`, `description`, `domain`, `tier`, `auth`, `tools`
+
+```json
+{
+  "name": "example-mcp",
+  "version": "1.0.0",
+  "description": "...",
+  "domain": "Infrastructure",
+  "tier": "Ayo",
+  "auth": { "method": "none" },
+  "tools": [{ "id": "do_thing", "name": "Do Thing", "description": "..." }],
+  "ffi": { "language": "zig", "entry": "ffi/example_ffi.zig", "so_path": "libexample_mcp.so" },
+  "loopback": { "host": "127.0.0.1", "port": 5100 }
+}
+```
+
+If `ffi` key is present, `BojRest.Invoker` (Zig path) is used. Otherwise `BojRest.JsWorkerPool`.
+
+## Credential Forwarding (Option A)
+
+Callers encrypt credentials with the server's X25519 public key:
+```
+GET /pubkey → base64url(X25519 public key)
+
+Encrypt: ECDH(caller_priv, server_pub) → shared_secret
+Envelope: ChaCha20-Poly1305(shared_secret, nonce, JSON_creds, AAD="boj-invoke-v1")
+POST /cartridge/{name}/invoke: { "tool": "...", "args": {...}, "credential_envelope": "..." }
+```
 
 ## Cartridge Matrix
 
-70+ cartridges organized in a 2D matrix (Protocol x Domain).
-Each has: `abi/` (Idris2), `ffi/` (Zig), `adapter/` (V-lang).
+112 cartridges organized in a 2D matrix (Protocol x Domain).
+Each has: `abi/` (Idris2), `ffi/` (Zig), `mod.js` (Deno adapter).
 View status: `just matrix`
 
 Current protocol types: MCP, LSP, DAP, BSP.
@@ -161,6 +220,7 @@ Supabase, Railway, Linode, GCP, Render, Docker Hub, Hetzner, ArangoDB, Neo4j...
 - Orchestration: selur-compose, never docker-compose
 - Build: `just container-build`
 - Run: `just container-up` / `just container-down`
+- Gateway sidecar: `http-capability-gateway` on port 7800 → boj-rest:7700
 
 ## Federation (Umoja)
 
@@ -178,25 +238,29 @@ See: `src/abi/Federation.idr`, `docs/FEDERATION.md`
 
 ## Critical Invariants
 
-1. Three-Layer Stack: every cartridge = Idris2 ABI + Zig FFI + V-lang Adapter
+1. Three-Layer Stack: every cartridge = Idris2 ABI + Zig FFI + Deno/JS `mod.js`
 2. Zero believe_me in all Idris2 sources
 3. %default total on all Idris2 files
 4. IsUnbreakable: only Ready cartridges pass the proof
 5. Hash attestation for community nodes
 6. PMPL-1.0-or-later on all code
 7. Cultural terms are permanent and sacred
-8. SCM files ONLY in .machine_readable/
+8. A2ML files ONLY in .machine_readable/
 9. Chainguard base images, Containerfile, Podman
+10. V-lang is BANNED (migrated to Zig FFI + Deno/JS, 0 `.v` files as of 2026-04-12)
 
 ## Testing
 
 ```bash
-just test             # Catalogue + 17 cartridge FFI tests
+just test             # Elixir ExUnit suite (50 tests: catalog, router, crypto, JS dispatch)
 just test-verbose     # With verbose output
-just test-smoke       # Quick: typecheck + one FFI test
+just test-smoke       # Quick: typecheck + ExUnit smoke
 just readiness        # Readiness grade tests
 just integration      # E2E integration tests
 ```
+
+Current grade: CRG D (50 tests). Grade C requires 165+ tests.
+See `TEST-NEEDS.md` for gap analysis and path to Grade C.
 
 ## Pre-commit
 
@@ -214,3 +278,4 @@ just assail           # panic-attacker scan
 | panic-attacker | Security analysis |
 | hypatia | CI/CD scanner |
 | gitbot-fleet | Bot orchestration |
+| http-capability-gateway | Gateway sidecar (port 7800); auto-generates policy from cartridge.json |
