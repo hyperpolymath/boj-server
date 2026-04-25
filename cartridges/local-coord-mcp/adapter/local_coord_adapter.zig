@@ -268,9 +268,14 @@ fn dispatch(tool: []const u8, body: []const u8, resp: []u8, allocator: std.mem.A
             const peer_id = renderPeerId(&peer_id_buf, kindName(kind_val), suffix, ctx_slice) catch return .{ .status = 500, .body = errJson(resp, "peer_id render overflow") };
 
             if (written_idx > 0) w.writeAll(",") catch return .{ .status = 500, .body = errJson(resp, "buffer overflow") };
-            std.fmt.format(w, "{{\"peer_id\":\"{s}\",\"kind\":\"{s}\",\"state\":\"{s}\",\"context\":\"{s}\",\"variant\":\"{s}\",\"status\":\"{s}\"}}", .{
-                peer_id, kindName(kind_val), stateName(state), ctx_slice, variant_slice, status_slice,
+            // peer_id/kind/state/context/variant are all validated-safe; status is
+            // arbitrary user text → must go through writeJsonString to prevent
+            // JSON breakage (e.g. status = `working on "foo"` would split the string).
+            std.fmt.format(w, "{{\"peer_id\":\"{s}\",\"kind\":\"{s}\",\"state\":\"{s}\",\"context\":\"{s}\",\"variant\":\"{s}\",\"status\":", .{
+                peer_id, kindName(kind_val), stateName(state), ctx_slice, variant_slice,
             }) catch return .{ .status = 500, .body = errJson(resp, "buffer overflow") };
+            writeJsonString(w, status_slice) catch return .{ .status = 500, .body = errJson(resp, "buffer overflow") };
+            w.writeByte('}') catch return .{ .status = 500, .body = errJson(resp, "buffer overflow") };
             written_idx += 1;
         }
 
@@ -320,8 +325,12 @@ fn dispatch(tool: []const u8, body: []const u8, resp: []u8, allocator: std.mem.A
             return .{ .status = 200, .body = std.fmt.bufPrint(resp, "{{\"success\":true,\"message\":null}}", .{}) catch resp[0..0] };
         }
         const msg_slice = msg_buf[0..@intCast(mlen)];
-        const body_out = std.fmt.bufPrint(resp, "{{\"success\":true,\"message\":\"{s}\"}}", .{msg_slice}) catch return .{ .status = 500, .body = errJson(resp, "buffer overflow") };
-        return .{ .status = 200, .body = body_out };
+        var recv_stream = std.io.fixedBufferStream(resp);
+        const rw = recv_stream.writer();
+        rw.writeAll("{\"success\":true,\"message\":") catch return .{ .status = 500, .body = errJson(resp, "buffer overflow") };
+        writeJsonString(rw, msg_slice) catch return .{ .status = 500, .body = errJson(resp, "buffer overflow") };
+        rw.writeByte('}') catch return .{ .status = 500, .body = errJson(resp, "buffer overflow") };
+        return .{ .status = 200, .body = resp[0..recv_stream.pos] };
     }
 
     if (std.mem.eql(u8, tool, "coord_status")) {
@@ -502,12 +511,13 @@ fn dispatch(tool: []const u8, body: []const u8, resp: []u8, allocator: std.mem.A
             const preview = rec[9 .. 9 + preview_n];
 
             if (i > 0) w.writeAll(",") catch return .{ .status = 500, .body = errJson(resp, "buffer overflow") };
-            // sender_idx = 0xFE indicates a server-origin (engine-generated)
-            // entry from coord_scan_suggestions (Task #14).
+            // sender_idx = 0xFE indicates a server-origin entry from coord_scan_suggestions.
             const origin: []const u8 = if (sender_idx == 0xFE) "server-engine" else "peer";
-            std.fmt.format(w, "{{\"request_id\":{d},\"origin\":\"{s}\",\"sender_idx\":{d},\"target_idx\":{d},\"risk_tier\":{d},\"msg_len\":{d},\"preview\":\"{s}\"}}", .{
-                rid, origin, sender_idx, target_idx_sign, risk_tier, mlen, preview,
+            std.fmt.format(w, "{{\"request_id\":{d},\"origin\":\"{s}\",\"sender_idx\":{d},\"target_idx\":{d},\"risk_tier\":{d},\"msg_len\":{d},\"preview\":", .{
+                rid, origin, sender_idx, target_idx_sign, risk_tier, mlen,
             }) catch return .{ .status = 500, .body = errJson(resp, "buffer overflow") };
+            writeJsonString(w, preview) catch return .{ .status = 500, .body = errJson(resp, "buffer overflow") };
+            w.writeByte('}') catch return .{ .status = 500, .body = errJson(resp, "buffer overflow") };
         }
         w.writeAll("]}") catch return .{ .status = 500, .body = errJson(resp, "buffer overflow") };
         return .{ .status = 200, .body = resp[0..stream.pos] };
@@ -528,8 +538,12 @@ fn dispatch(tool: []const u8, body: []const u8, resp: []u8, allocator: std.mem.A
         if (rc < 0) return .{ .status = 500, .body = errJson(resp, "review failed") };
 
         const msg_slice = msg_buf[0..@intCast(rc)];
-        const body_out = std.fmt.bufPrint(resp, "{{\"success\":true,\"message\":\"{s}\"}}", .{msg_slice}) catch return .{ .status = 500, .body = errJson(resp, "buffer overflow") };
-        return .{ .status = 200, .body = body_out };
+        var entry_stream = std.io.fixedBufferStream(resp);
+        const ew = entry_stream.writer();
+        ew.writeAll("{\"success\":true,\"message\":") catch return .{ .status = 500, .body = errJson(resp, "buffer overflow") };
+        writeJsonString(ew, msg_slice) catch return .{ .status = 500, .body = errJson(resp, "buffer overflow") };
+        ew.writeByte('}') catch return .{ .status = 500, .body = errJson(resp, "buffer overflow") };
+        return .{ .status = 200, .body = resp[0..entry_stream.pos] };
     }
 
     if (std.mem.eql(u8, tool, "coord_approve")) {
@@ -673,15 +687,16 @@ fn dispatch(tool: []const u8, body: []const u8, resp: []u8, allocator: std.mem.A
 
             if (i > 0) w.writeAll(",") catch return .{ .status = 500, .body = errJson(resp, "buffer overflow") };
 
-            // affinity as decimal; 255 sentinel means no data.
+            // affinity as decimal; 255 sentinel means no data. Tag is user-supplied
+            // (from coord_report_outcome) so must go through writeJsonString.
             if (pct == 255) {
-                std.fmt.format(w,
-                    "{{\"client_kind\":\"{s}\",\"tag\":\"{s}\",\"attempts\":{d},\"successes\":{d},\"effective_affinity\":null}}",
-                    .{ kindName(@intCast(kind)), tag, attempts, successes }) catch return .{ .status = 500, .body = errJson(resp, "buffer overflow") };
+                std.fmt.format(w, "{{\"client_kind\":\"{s}\",\"tag\":", .{kindName(@intCast(kind))}) catch return .{ .status = 500, .body = errJson(resp, "buffer overflow") };
+                writeJsonString(w, tag) catch return .{ .status = 500, .body = errJson(resp, "buffer overflow") };
+                std.fmt.format(w, ",\"attempts\":{d},\"successes\":{d},\"effective_affinity\":null}}", .{ attempts, successes }) catch return .{ .status = 500, .body = errJson(resp, "buffer overflow") };
             } else {
-                std.fmt.format(w,
-                    "{{\"client_kind\":\"{s}\",\"tag\":\"{s}\",\"attempts\":{d},\"successes\":{d},\"effective_affinity\":{d}.{d:0>2}}}",
-                    .{ kindName(@intCast(kind)), tag, attempts, successes, pct / 100, pct % 100 }) catch return .{ .status = 500, .body = errJson(resp, "buffer overflow") };
+                std.fmt.format(w, "{{\"client_kind\":\"{s}\",\"tag\":", .{kindName(@intCast(kind))}) catch return .{ .status = 500, .body = errJson(resp, "buffer overflow") };
+                writeJsonString(w, tag) catch return .{ .status = 500, .body = errJson(resp, "buffer overflow") };
+                std.fmt.format(w, ",\"attempts\":{d},\"successes\":{d},\"effective_affinity\":{d}.{d:0>2}}}", .{ attempts, successes, pct / 100, pct % 100 }) catch return .{ .status = 500, .body = errJson(resp, "buffer overflow") };
             }
         }
         w.writeAll("]}") catch return .{ .status = 500, .body = errJson(resp, "buffer overflow") };
@@ -959,9 +974,31 @@ fn dispatch(tool: []const u8, body: []const u8, resp: []u8, allocator: std.mem.A
     return .{ .status = 404, .body = errJson(resp, "not implemented") };
 }
 
-/// Emit a CSV (comma-separated, no quoting) as a JSON array of strings
-/// into the writer. Empty CSV → empty output. Caller supplies surrounding
-/// `[` and `]`.
+/// Write a JSON string (with surrounding quotes) to writer, escaping all
+/// characters that JSON forbids in string literals: `"`, `\`, and the
+/// C0 control set (0x00–0x1F).  High bytes (≥0x80) are written as-is on
+/// the assumption that the caller already has valid UTF-8; JSON allows
+/// raw UTF-8 sequences as long as `"` and `\` are escaped.
+fn writeJsonString(w: anytype, s: []const u8) !void {
+    try w.writeByte('"');
+    for (s) |c| {
+        switch (c) {
+            '"'  => try w.writeAll("\\\""),
+            '\\' => try w.writeAll("\\\\"),
+            '\n' => try w.writeAll("\\n"),
+            '\r' => try w.writeAll("\\r"),
+            '\t' => try w.writeAll("\\t"),
+            // Remaining C0 controls: \u00XX (2 significant hex digits suffice).
+            0x00...0x08, 0x0B, 0x0C, 0x0E...0x1F => try std.fmt.format(w, "\\u00{x:0>2}", .{c}),
+            else => try w.writeByte(c),
+        }
+    }
+    try w.writeByte('"');
+}
+
+/// Emit a CSV (comma-separated) as a JSON array of strings into the writer.
+/// Empty CSV → empty output. Caller supplies surrounding `[` and `]`.
+/// Each item is written via writeJsonString so quotes/backslashes are safe.
 fn writeCsvAsJsonStrings(w: anytype, csv: []const u8) !void {
     if (csv.len == 0) return;
     var it = std.mem.splitScalar(u8, csv, ',');
@@ -970,9 +1007,7 @@ fn writeCsvAsJsonStrings(w: anytype, csv: []const u8) !void {
         if (part.len == 0) continue;
         if (!first) try w.writeAll(",");
         first = false;
-        try w.writeAll("\"");
-        try w.writeAll(part);
-        try w.writeAll("\"");
+        try writeJsonString(w, part);
     }
 }
 
