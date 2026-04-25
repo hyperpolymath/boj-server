@@ -3,12 +3,14 @@
 #
 # BoJ Server — fly.io variant Containerfile
 #
-# Identical to Containerfile except Stage 2 uses hexpm/elixir (public) instead
-# of cgr.dev/chainguard/elixir (requires Chainguard auth, unavailable on
-# fly.io's Depot remote builder).
+# Differences from Containerfile (Chainguard-native):
+#   Stage 2: elixir:1.16 (official Debian/glibc) instead of cgr.dev/chainguard/elixir
+#            (Chainguard Elixir requires authentication not available on fly.io's
+#            Depot remote builder)
+#   Stage 3: wolfi-base packages corrected for wolfi APK index (glibc-native,
+#            no gcompat, ncurses instead of ncurses-libs)
 #
-# Build (fly deploys this automatically via container/fly/fly-*.toml):
-#   fly deploy --dockerfile container/Containerfile.fly ...
+# Deploy: fly deploy --dockerfile container/Containerfile.fly ...  (from repo root)
 
 # ============================================================================
 # Stage 1: Zig FFI Builder
@@ -36,10 +38,11 @@ RUN for ffi_dir in /build/cartridges/*/ffi; do \
     done
 
 # ============================================================================
-# Stage 2: Elixir Release Builder (hexpm public image — no auth required)
+# Stage 2: Elixir Release Builder
+# Official elixir image (Debian glibc) — no auth required, matches Stage 3 ABI
 # ============================================================================
 
-FROM elixir:1.16-alpine AS mix-builder
+FROM elixir:1.16 AS mix-builder
 
 WORKDIR /build
 
@@ -52,7 +55,7 @@ RUN mix compile
 RUN mix release boj_rest
 
 # ============================================================================
-# Stage 3: Runtime Image
+# Stage 3: Runtime Image (wolfi-base — glibc, matches elixir:1.16 ABI)
 # ============================================================================
 
 FROM cgr.dev/chainguard/wolfi-base:latest
@@ -65,7 +68,8 @@ LABEL org.opencontainers.image.title="Bundle of Joy Server" \
       org.opencontainers.image.licenses="PMPL-1.0-or-later" \
       org.opencontainers.image.authors="Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>"
 
-RUN apk add --no-cache ca-certificates openssl ncurses-libs libstdc++ gcompat
+# wolfi uses glibc natively — no gcompat needed; ncurses not ncurses-libs
+RUN apk add --no-cache ca-certificates openssl ncurses libstdc++ libssl3
 
 RUN addgroup -S appuser && adduser -S appuser -G appuser
 
@@ -89,7 +93,6 @@ RUN for cart_dir in /tmp/cartridges-src/*/; do \
     done && \
     rm -rf /tmp/cartridges-src
 
-RUN mkdir -p /app-cartridges-meta
 COPY cartridges/ /tmp/carts-meta/
 RUN for cart_dir in /tmp/carts-meta/*/; do \
       cart="$(basename "$cart_dir")" && \
