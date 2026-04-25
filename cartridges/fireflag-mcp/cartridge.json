@@ -1,0 +1,55 @@
+{
+  "$schema": "https://boj.dev/schemas/cartridge/v1.json",
+  "spdx": "PMPL-1.0-or-later",
+  "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath)",
+  "name": "fireflag-mcp",
+  "version": "1.0.0",
+  "description": "Fireflag Cartridge — Extension-to-MCP mapping and discovery tools",
+  "author": "Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>",
+  "license": "PMPL-1.0-or-later",
+  "tools": [
+    {
+      "id": "map_extension",
+      "name": "Map Extension",
+      "description": "Map an extension directory to available MCP tools"
+    },
+    {
+      "id": "list_mapped_extensions",
+      "name": "List Mapped Extensions",
+      "description": "List all mapped extensions with their MCP capabilities"
+    },
+    {
+      "id": "get_extension_tools",
+      "name": "Get Extension Tools",
+      "description": "Get available MCP tools for a specific extension"
+    },
+    {
+      "id": "validate_extension",
+      "name": "Validate Extension",
+      "description": "Validate extension configuration and structure"
+    },
+    {
+      "id": "discover_extensions",
+      "name": "Discover Extensions",
+      "description": "Discover extensions in a directory and map their capabilities"
+    }
+  ],
+  "abi": {
+    "interface": "abi/Fireflag.idr",
+    "loopback_proof": "IsLoopback 5177"
+  },
+  "ffi": {
+    "language": "zig",
+    "entry": "ffi/fireflag_ffi.zig"
+  },
+  "adapter": {
+    "language": "typescript",
+    "runtime": "deno",
+    "entry": "adapter/mod.ts",
+    "permissions": ["net", "env"]
+  },
+  "loopback": {
+    "host": "127.0.0.1",
+    "port": 5177
+  }
+}
