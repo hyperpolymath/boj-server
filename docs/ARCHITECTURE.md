@@ -1,8 +1,14 @@
 # BoJ Server Architecture
 
+<!-- SPDX-License-Identifier: PMPL-1.0-or-later -->
+<!-- Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk> -->
+<!-- Last updated: 2026-04-25 — reflects v1.1.0 Elixir REST + Deno transitional stack -->
+
 ## The Problem
 
-The developer server ecosystem is fragmenting. MCP servers, LSP servers, DAP servers, build servers — each tool has its own server, each AI needs different capabilities. Developers drown in configuration. AI agents hunt across dozens of endpoints.
+The developer server ecosystem is fragmenting. MCP servers, LSP servers, DAP servers,
+build servers — each tool has its own server, each AI needs different capabilities.
+Developers drown in configuration. AI agents hunt across dozens of endpoints.
 
 **BoJ solves this.** AI goes to ONE place — the Teranga menu — and orders what it needs.
 
@@ -17,68 +23,235 @@ BoJ organises server capabilities as a 2D matrix:
 ```
               MCP    LSP    DAP    BSP    NeSy   Agent  Fleet  gRPC   REST
            +------+------+------+------+------+------+------+------+------+
-Cloud      |      |      |      |      |      |      |      |      |      |
-Container  |      |      |      |      |      |      |      |      |      |
+Cloud      |  *   |      |      |      |      |      |      |      |      |
+Container  |  *   |      |      |      |      |      |      |      |      |
 Database   |  *   |  *   |      |      |      |      |      |      |      |
-K8s        |      |      |      |      |      |      |      |      |      |
-Git/VCS    |      |      |      |      |      |      |      |      |      |
+K8s        |  *   |      |      |      |      |      |      |      |      |
+Git/VCS    |  *   |      |      |      |      |      |      |      |      |
 Secrets    |  *   |      |      |      |      |      |      |      |      |
-Queues     |      |      |      |      |      |      |      |      |      |
-IaC        |      |      |      |      |      |      |      |      |      |
+Queues     |  *   |      |      |      |      |      |      |      |      |
+IaC        |  *   |      |      |      |      |      |      |      |      |
 Observe    |  *   |      |      |      |      |      |      |      |      |
-SSG        |      |      |      |      |      |      |      |      |      |
-Proof      |      |      |      |      |      |      |      |      |      |
-Fleet      |  *   |      |      |      |      |      |  *   |  *   |      |
-NeSy       |  *   |  *   |      |      |  *   |      |      |  *   |      |
+SSG        |  *   |      |      |      |      |      |      |      |      |
+Proof      |  *   |      |      |      |      |      |      |      |      |
+Fleet      |  *   |      |      |      |  *   |  *   |  *   |      |      |
+NeSy       |  *   |  *   |      |      |  *   |      |      |      |      |
            +------+------+------+------+------+------+------+------+------+
 
-* = cartridge exists (may be Development or Ready)
+* = cartridge exists (Zig .so or mod.js transitional)
 ```
 
-The matrix is sparse — not every cell needs to be filled. The most common use case is MCP+LSP, but the architecture supports any combination.
+The matrix is sparse — not every cell needs to be filled. The most common use case
+is MCP, but the architecture supports any combination.
 
-## Three-Layer Stack (per cartridge)
+## Canonical Four-Layer Stack
 
-Every cartridge follows the same three-layer pattern:
+Every cartridge follows the same pattern from proof to execution:
 
 | Layer | Language | Purpose |
 |-------|----------|---------|
-| **ABI** | Idris2 | Formal proofs, state machines, `%default total`, zero `believe_me` |
-| **FFI** | Zig | C-compatible native execution, zero runtime dependencies |
-| **Adapter** | Zig | Triple API (REST + gRPC + GraphQL) on dedicated ports (see note) |
-
-> **Note (2026-04-10):** V-lang was banned estate-wide on 2026-04-10. The adapter
-> layer previously used V-lang; it has been replaced by Zig (`ffi/zig/` adapters,
-> swept in commit c4674f8). Historical V-lang API interfaces live in
-> `developer-ecosystem/v-ecosystem/v-api-interfaces/` for potential donation to the
-> V community — they are not HP infrastructure. The long-term target for the adapter
-> layer is the **unified-zig-api stack** (`developer-ecosystem/zig-api/`); see
-> [§ Unified-Zig-API Stack](#unified-zig-api-stack) and ADR-0002.
+| **ABI** | Idris2 | Formal proofs; `IsUnbreakable`; ADR-0006 5-symbol interface |
+| **FFI** | Zig | C-ABI `.so` shared library; 5 symbols + `cartridge_shim` |
+| **Dispatcher** | Zig (`boj-invoke`) | `dlopen` the `.so`; single CLI call; zero persistent process |
+| **REST server** | Elixir (Plug/Cowboy) | HTTP surface on port 7700; routes calls to Invoker or JsWorkerPool |
 
 ### Why these languages?
 
-**Idris2** has dependent types that prove interface correctness at compile-time. The `IsUnbreakable` proof type mathematically guarantees that only `Ready` cartridges can be activated. This isn't aspirational — it's enforced by the type checker.
+**Idris2** has dependent types that prove interface correctness at compile-time. The
+`IsUnbreakable` proof type mathematically guarantees that only `Ready` cartridges can
+be activated. This isn't aspirational — it's enforced by the type checker.
 
-**Zig** provides native C ABI compatibility without runtime overhead. It bridges the gap between Idris2's proofs and actual system calls. Cross-compilation is built-in, which matters for community nodes running on varied hardware. Zig now covers both the FFI layer and the adapter (HTTP server) layer.
+**Zig** provides native C ABI compatibility without runtime overhead. It bridges the
+gap between Idris2's proofs and actual system calls. Cross-compilation is built-in,
+which matters for community nodes running on varied hardware.
+
+**Elixir/OTP** provides the HTTP surface, supervision tree, ETS-backed catalog, and
+BEAM concurrency — replacing the former V-lang adapter layer (V-lang was banned
+estate-wide 2026-04-10; all `.v` files removed 2026-04-12, commit c4674f8).
+
+## The ADR-0006 Cartridge ABI
+
+Every compiled cartridge exposes exactly five C-ABI symbols:
+
+```
+boj_cartridge_init()    → i32     initialise module state
+boj_cartridge_deinit()  → void    release module state
+boj_cartridge_name()    → [*c]u8  null-terminated name string
+boj_cartridge_version() → [*c]u8  semver string
+boj_cartridge_invoke(
+  tool_name: [*c]const u8,
+  json_args: [*c]const u8,
+  out_buf:   [*c]u8,
+  in_out_len:[*c]usize,
+) → i32
+```
+
+Return codes (frozen by ADR-0006; new failure modes use error JSON, not new integers):
+
+| Code | Meaning |
+|------|---------|
+| `0` | success |
+| `-1` | unknown tool |
+| `-2` | bad args (null pointer) |
+| `-3` | buffer too small (retry with larger buffer) |
+| `-4` | runtime error |
+| `-5` | panic |
+| `-6` | auth denied |
+
+The `cartridge_shim.zig` in every `ffi/` directory centralises null-guards,
+tool-name comparison, and the buffer-too-small retry pattern so domain `.zig` files
+stay short (tool table + `shim.writeResult`).
+
+## Dispatch Path
+
+### Zig FFI path (canonical — boj-invoke dlopen)
+
+```
+POST /cartridge/<name>/invoke
+  → BojRest.Invoker
+  → boj-invoke probe|invoke <so_path> <tool> <json>   (OS exec)
+  → dlopen(so_path) → boj_cartridge_invoke(...)
+  → JSON response back via stdout
+  → Elixir reads stdout → 200 OK
+```
+
+The `boj-invoke` binary is a single-shot CLI. Each invocation opens the `.so`,
+calls the symbol, writes JSON to stdout, and exits. There is no persistent FFI
+process — the `.so` is loaded and unloaded per call. This is suitable for
+correctness and simplicity; hot-path caching is future work.
+
+### Deno/JS path (transitional — pending .so completion)
+
+```
+POST /cartridge/<name>/invoke
+  → BojRest.JsWorkerPool
+  → consistent-hash(mod_js_path) → JsWorker (persistent Deno process)
+  → send JSON over port → mod.js handleTool(tool, args)
+  → JSON response
+  → Elixir reads response → 200 OK
+```
+
+The `mod.js` files serve as behavioural reference implementations for what each
+cartridge's Zig FFI symbols must produce. They are **transitional** — as each
+cartridge's `.so` is compiled and verified, the Elixir Router switches to the
+Zig FFI path automatically (presence of `"ffi"` key in `cartridge.json` controls
+which path is taken). Once all 112 cartridges have verified `.so` builds,
+the Deno pool is retired.
+
+**Dispatch selector (BojRest.Router):**
+```elixir
+if Map.has_key?(cart, "ffi") do
+  BojRest.Invoker.invoke(so_path, tool, args, creds)
+else
+  BojRest.JsWorkerPool.invoke(mod_js_path, tool, args)
+end
+```
+
+## The HTTP Surface (port 7700)
+
+Five routes, all returning `application/json`:
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/health` | Server status, version, cartridges_loaded |
+| `GET` | `/menu` | Teranga menu — name/domain/tier/description per cartridge |
+| `GET` | `/cartridges` | Name list with count |
+| `GET` | `/cartridge/:name` | Full cartridge.json for a single cartridge |
+| `POST` | `/cartridge/:name/invoke` | Dispatch a tool call |
+| `GET` | `/.well-known/boj-node-pubkey` | Node's X25519 public key (base64url) |
+
+gRPC (7701), GraphQL (7702), and SSE (7703) are **not yet live** — tracked as
+future work in ROADMAP.adoc.
+
+## Credential Forwarding
+
+The invoke endpoint accepts an optional `"credentials"` envelope in the request body.
+Two paths:
+
+- **Loopback (`is_local = true`)**: plaintext string→string map accepted
+- **Remote**: must be ECDH-encrypted with ChaCha20-Poly1305 using the node's X25519 key
+
+```json
+{
+  "tool": "search",
+  "arguments": {"query": "..."},
+  "credentials": {
+    "v": 1,
+    "encrypted": true,
+    "caller_pubkey": "<base64url X25519 ephemeral pub>",
+    "nonce": "<base64url 12 bytes>",
+    "ciphertext": "<base64url ciphertext+tag>"
+  }
+}
+```
+
+`BojRest.CredentialDecryptor.extract/2` handles both paths. Private key material
+never appears in error messages (verified by `aspect_test.exs` security tests).
+
+## Cartridge Production Process
+
+New cartridges are produced via the **launch-scaffolder** (`launch-scaffolder` repo):
+
+```
+launch-scaffolder mint <name> <domain> <tier>
+  → generates cartridge.json + Idris2 ABI + Zig FFI scaffold
+
+launch-scaffolder provision <name>
+  → compiles .so, runs boj-invoke probe, updates cartridge.json ffi section
+
+launch-scaffolder config <name>
+  → configures auth method, credential requirements, loopback port
+
+launch-scaffolder realign <name>
+  → re-applies standards (ADR-0006 ABI, spdx header, schema version)
+```
+
+All 112 cartridges have the scaffold. Status:
+- **1 complete** (boj-health): Zig source compiled, `.so` verified, in production
+- **111 in progress**: Zig source present and substantial (100–1,260 lines each),
+  `.so` not yet compiled — transitional `mod.js` in use
+
+> **Note:** `tools/cartridge-minter/` exists but uses Node.js (banned language).
+> The `launch-scaffolder` is the canonical tool; cartridge-minter is a legacy artefact.
 
 ## The Teranga Menu
 
-The menu (`.machine_readable/servers/menu.a2ml`) is the public catalogue of available capabilities. It has three sections:
+The menu (`.machine_readable/servers/menu.a2ml`) is the public catalogue of available
+capabilities. Three sections:
 
 - **Teranga (Core)**: Cartridges maintained by the project
 - **Shield**: Privacy and security cartridges (SDP, DoQ/DoH, oDNS)
 - **Ayo (Community)**: Community-contributed cartridges
 
-AI agents act as the "Maitre D'" — presenting the menu to users, taking their order, and having the kitchen prepare it.
+AI agents act as the "Maitre D'" — presenting the menu to users, taking their order,
+and having the kitchen prepare it.
 
 ## The Order-Ticket Protocol
 
 1. AI reads the Teranga menu (`menu.a2ml`)
 2. AI writes an order ticket (`order-ticket.scm`)
-3. BoJ validates the order against the catalogue (checks `IsUnbreakable`)
-4. BoJ mounts requested cartridges via Zig FFI
-5. Zig adapter exposes mounted cartridges as REST+gRPC+GraphQL
-6. AI receives confirmation with endpoints
+3. BoJ validates the order against the catalogue (`IsUnbreakable` check)
+4. BoJ routes invoke calls via `BojRest.Router`:
+   - Cartridge has `"ffi"` key → `BojRest.Invoker` → `boj-invoke dlopen`
+   - Cartridge has no `"ffi"` key → `BojRest.JsWorkerPool` → Deno `mod.js`
+5. Results returned as JSON; credentials forwarded encrypted end-to-end
+6. AI receives tool output
+
+## Thread Safety
+
+**BEAM layer (Elixir):** Concurrency is handled by OTP. Each invoke request runs in
+its own Elixir process. `BojRest.Catalog` uses a named ETS table (`:boj_catalog`)
+for lock-free concurrent reads. `BojRest.NodeKey` uses `:boj_node_key` ETS for the
+same reason. `BojRest.JsWorkerPool` serialises per-worker via `GenServer.call/3`.
+
+**Zig FFI layer:** Each `.so`'s domain module uses `std.Thread.Mutex` to guard
+global state, following the two-tier convention:
+- `pub export fn boj_<domain>_*` — acquires mutex; called by `boj-invoke` / external C
+- `fn <domain>_*_impl` — mutex-free; called by other functions already holding the lock
+
+Since `boj-invoke` is a single-shot process, re-entrant deadlocks cannot occur in
+the current dispatch model. The mutex discipline remains as defence-in-depth and for
+future hot-path call modes.
 
 ## Distributed Hosting (Umoja Network)
 
@@ -88,7 +261,7 @@ BoJ servers are community-hosted, like Tor or IPFS:
 - **Hash attestation**: each node's binary hash must match the canonical build
 - **Tampered nodes**: excluded from the community network, but can still run locally
 - **Gossip protocol**: nodes discover each other via IPv6 gossip (Byzantine fault tolerant)
-- **Load-aware routing**: requests go to healthy nodes (under 80% capacity)
+- **Load-aware routing**: requests go to healthy nodes (under 80% capacity) — _not yet wired_
 - **PMPL provenance**: the license's cryptographic provenance requirements ARE the attestation
 
 ### Seed Nodes (Day 1)
@@ -112,85 +285,25 @@ BoJ servers are community-hosted, like Tor or IPFS:
 BoJ doesn't start from scratch:
 
 - **proven-servers** (108 components, zero `believe_me`): MCP types, connectors, core primitives
-- **polystack** (13 components — being superseded by BoJ): capability domain mapping
+- **polystack** (13 components — superseded by BoJ): capability domain mapping
 - **stapeln**: container supply chain
 
-## Thread Safety
-
-All 9 Zig FFI modules (`database.zig`, `secrets.zig`, `observe.zig`, `fleet.zig`, `nesy.zig`, `federation.zig`, `lsp.zig`, `dap.zig`, `bsp.zig`) use `std.Thread.Mutex` to guarantee safe concurrent access from the Zig HTTP adapter worker threads.
-
-**Mutex discipline:**
-
-- Every `pub export fn` (C-ABI boundary) acquires the module's mutex before touching any global state and releases it on return via `defer`.
-- 55 global variables are protected across 120+ exported functions.
-- No Zig FFI function can be entered concurrently on two threads with conflicting access to the same global.
-
-**Deadlock prevention:**
-
-Some exported functions need to call other exported functions within the same module (e.g. `federation.zig` where a gossip handler invokes node-lookup logic). If both the caller and callee acquire the same mutex, the thread deadlocks on itself. The solution is a two-tier naming convention:
-
-1. `pub export fn boj_federation_*` — acquires the mutex, called only from the Zig adapter / external C code.
-2. `fn federation_*_impl` — mutex-free internal implementation, called by other functions that already hold the lock.
-
-Exported functions delegate to `_impl` helpers, and re-entrant internal call paths use `_impl` directly, so the mutex is acquired exactly once per external call.
-
-**Concurrency model:**
-
-The Zig HTTP adapter spawns worker threads that call into the Zig FFI concurrently. Because every C-ABI entry point serialises on the module mutex, workers never observe torn or partially-updated state. The cost is per-module serialisation, which is acceptable at current scale; future work may introduce per-resource fine-grained locks if profiling warrants it.
-
-**panic-attack validation:**
-
-The panic-attack security scanner validated the thread-safety model across all 9 modules. Results: 1 expected weak point (QUIC crypto — inherent to the protocol's 0-RTT replay window, mitigated at the application layer), 0 critical vulnerabilities.
-
-## Transport Layer
-
-BoJ supports multiple transport protocols:
-
-- **stdio** (default): JSON-RPC 2.0 over stdin/stdout (Claude Code, Glama, etc.)
-- **REST** (port 7700): HTTP/1.1 JSON API
-- **gRPC** (port 7701): Binary protocol for high-performance clients
-- **GraphQL** (port 7702): Flexible querying for UI/integration layers
-- **SSE** (port 7703): Server-Sent Events for real-time updates
-
-Each cartridge declares its supported protocols in its manifest. The MCP bridge routes calls to the appropriate transport.
-
-### Auto-Reconnect
-
-The transport layer includes an exponential backoff with jitter mechanism for improved resilience. This ensures that the system can recover from connection issues and continue to operate smoothly.
-
-### Health Monitoring
-
-The transport layer provides detailed health information, including cartridge connection status. This makes it easy to monitor the system's health and identify any issues.
-
-## Unified-Zig-API Stack
+## Unified-Zig-API Stack Alignment
 
 The estate standard for all Zig-edge service boundaries is the **unified-zig-api
-stack** documented in `developer-ecosystem/UNIFIED-ZIG-API-STACK.adoc`. It provides
-four vertically-stacked layers:
+stack** documented in `developer-ecosystem/UNIFIED-ZIG-API-STACK.adoc`.
 
-| Layer | Location | Description |
-|-------|----------|-------------|
-| Idris2 core (proven) | `verification-ecosystem/proven/` | 104 formally verified primitives, `%default total`, zero `believe_me` |
-| Idris2 ABI | `developer-ecosystem/zig-api/src/ZigApi/ABI/` | Dependent-type proofs of the C ABI surface |
-| Zig runtime | `developer-ecosystem/zig-api/ffi/zig/src/` | `uapi_*` symbol set; gnosis HTTP server + connector pool |
-| C adaptor | `developer-ecosystem/zig-api/generated/abi/zig_api.h` | Auto-generated; never edit by hand |
-
-**BoJ alignment status (2026-04-17):** BoJ does **not yet** consume `libzig_api`
+**BoJ alignment status (2026-04-25):** BoJ does **not yet** consume `libzig_api`
 in code. The cartridge ABI + FFI layers (Idris2 + Zig) are BoJ-local today.
 Full alignment — calling `uapi_gnosis_*` from the BoJ adapter and linking
-`libzig_api.so` — is tracked in ADR-0002 as future work. First estate consumers
-wired on 2026-04-17: lol-gateway, aerie, emergency-button/emergency-room.
+`libzig_api.so` — is tracked in ADR-0002 as future work.
 
-The `uapi_gnosis_set_handler` pattern (single-port handler dispatch) is in flight
-as of this version; BoJ will adopt it once stabilised upstream.
-
-**Open question:** When BoJ adopts `uapi_gnosis_*`, the per-port V-legacy adapter
-pattern (ports 7700/7701/7702) will consolidate to a single-port gnosis server.
-Port assignments are documented in `docs/API-CONTRACT.md` and are stable until
-a major version bump. Track progress in ADR-0002.
-
-See `developer-ecosystem/UNIFIED-ZIG-API-STACK.adoc` for the canonical wiring guide.
+When BoJ adopts `uapi_gnosis_*`, the per-port adapter pattern (REST/7700) will
+consolidate to a single-port gnosis server. Port assignments are in `docs/API-CONTRACT.md`
+and are stable until a major version bump.
 
 ## License
 
-PMPL-1.0-or-later. The license's provenance requirements (crypto signatures, emotional lineage) align directly with the hash attestation model — the legal framework and the technical framework say the same thing.
+PMPL-1.0-or-later. The license's provenance requirements (crypto signatures,
+emotional lineage) align directly with the hash attestation model — the legal
+framework and the technical framework say the same thing.
