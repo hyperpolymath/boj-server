@@ -5,14 +5,14 @@
 
 [metadata]
 project = "boj-server"
-version = "1.0.1-wip"
+version = "1.1.0-wip"
 last-updated = "2026-04-25"
 status = "active"
 grade = "D-alpha"
 
 [project-context]
 name = "Bundle of Joy Server"
-purpose = "Unified server capability catalogue. AI goes to ONE place instead of hunting across dozens of MCP servers. Distributed via community-hosted Umoja nodes with gossip protocol and hash attestation. 106 cartridges covering the full developer-tool matrix."
+purpose = "Unified server capability catalogue. AI goes to ONE place instead of hunting across dozens of MCP servers. Distributed via community-hosted Umoja nodes with gossip protocol and hash attestation. 112 cartridges covering the full developer-tool matrix."
 completion-percentage = 65
 
 [stack]
@@ -20,7 +20,7 @@ completion-percentage = 65
 abi-layer    = "Idris2 — formal interface definitions with dependent-type proofs"
 ffi-layer    = "Zig    — C-ABI .so shared libraries (boj-invoke CLI for dlopen dispatch)"
 rest-server  = "Elixir (Plug/Cowboy) — HTTP surface on port 7700, 5 routes"
-js-dispatch  = "Deno   — mod.js cartridges invoked via priv/js_runner.js per-call fork"
+js-dispatch  = "Deno   — mod.js cartridges dispatched via BojRest.JsWorkerPool (persistent pool, consistent-hash routing) with JsInvoker fork-per-call fallback"
 container    = "Chainguard wolfi-base (Containerfile, 3-stage Zig+Elixir build)"
 federation   = "Zig QUIC gossip (X25519 + ChaCha20-Poly1305, UDP 9999)"
 
@@ -32,20 +32,21 @@ milestones = [
   { name = "Phase 3: V-lang adapter layer", completion = 100, note = "RETIRED — V-lang banned 2026-04-10, all .v files removed 2026-04-12" },
   { name = "Phase 4: First cartridges — boj-health Zig FFI reference impl", completion = 100 },
   { name = "Phase 5: Umoja federation & PanLL panel", completion = 100 },
-  { name = "Phase 6: 106-cartridge matrix (all have cartridge.json + mod.js)", completion = 100 },
-  { name = "Phase 7: Elixir REST server wired to Zig FFI + JS Deno dispatch", completion = 100 },
-  { name = "Phase 8: Gateway sidecar (http-capability-gateway policy + catalog integration)", completion = 15 },
+  { name = "Phase 6: 112-cartridge matrix (all have cartridge.json + mod.js)", completion = 100 },
+  { name = "Phase 7: Elixir REST server wired to Zig FFI + JsWorkerPool (persistent Deno pool)", completion = 100 },
+  { name = "Phase 8: Gateway sidecar (http-capability-gateway catalog mode + compose.dev.yaml)", completion = 100 },
   { name = "Phase 9: Auth layer (HTTP invoke caller auth, trust-level forwarding, credential proxy)", completion = 0 },
   { name = "Phase 10: Grade D→C (QUIC multi-node, SLA, seed nodes, external validation)", completion = 30 },
 ]
 
 [quality]
-cartridges-total            = 106   # all 106 have cartridge.json + mod.js as of 2026-04-25
+cartridges-total            = 112   # all 112 have cartridge.json + mod.js as of 2026-04-25
 cartridges-with-zig-ffi     = 1     # boj-health only — the Zig .so reference implementation
-cartridges-with-js-mod      = 105   # mod.js dispatch via Deno (includes model-router-mcp pure-local)
+cartridges-with-js-mod      = 111   # mod.js dispatch via Deno worker pool
 cartridges-with-both        = 0     # no cartridge uses both paths
+exunit-tests                = 50    # catalog(11) + router(12) + credential_decryptor(12) + node_key(7) + js_invoker(8)
 zig-ffi-chain-verified      = true  # boj-invoke → dlopen → libboj_health.so end-to-end tested 2026-04-25
-js-dispatch-chain-verified  = true  # deno run js_runner.js → mod.js handleTool — tested 2026-04-25
+js-dispatch-chain-verified  = true  # JsWorkerPool → JsWorker → Deno port → mod.js handleTool
 believe-me-count            = 4     # 3 axiomatic primitives + 1 logSafeBounded — reduced from 31 on 2026-04-12
 v-lang-files                = 0     # all .v files removed 2026-04-12
 
@@ -53,31 +54,26 @@ v-lang-files                = 0     # all .v files removed 2026-04-12
 # Ordered by impact on users hitting POST /cartridge/:name/invoke
 gap-1 = "No HTTP-layer auth on invoke endpoint — any caller can hit any cartridge (see docs/AUTH-DESIGN.adoc)"
 gap-2 = "Credential forwarding in federation — user API keys live on their node, not on volunteer nodes"
-gap-3 = "Deno fork-per-call overhead ~200ms cold start — worker pool is Phase 2"
-gap-4 = "Gateway catalog-mode (PolicyLoader.load_from_boj_catalog) not yet implemented in http-capability-gateway"
-gap-5 = "Load-aware inter-node routing not wired — invocations are local only"
-gap-6 = "TEST-NEEDS.md references V-lang era tests — needs rewrite against Elixir/Deno stack"
-gap-7 = "STATE.a2ml was massively stale until 2026-04-25 — all session-history entries before this date describe the old V-lang stack"
+gap-3 = "Load-aware inter-node routing not wired — invocations are local only"
+gap-4 = "Test coverage at CRG D (50 tests) — Grade C requires 165+ tests (see TEST-NEEDS.md)"
 
 [critical-next-actions]
 actions = [
+  "Expand test suite from 50 → 165+ tests to reach CRG C (see TEST-NEEDS.md: property tests, contract harnesses, aspect harnesses, benchmarks)",
   "Decide and implement HTTP invoke auth (see docs/AUTH-DESIGN.adoc — options: bearer token, mTLS header, or node-identity header)",
   "Implement credential-forwarding design for federation (user keys travel with the request encrypted, vs node-level key config)",
-  "Implement PolicyLoader.load_from_boj_catalog in http-capability-gateway (see docs/gateway-catalog-integration.adoc)",
-  "Rewrite TEST-NEEDS.md against Elixir/Deno stack",
-  "Deploy gateway sidecar in compose.dev.yaml once catalog mode is ready",
   "Deploy 4 seed nodes to actual infrastructure",
 ]
 
 [blockers-and-issues]
 invoke-auth = "OPEN — HTTP invoke endpoint has no caller auth (see docs/AUTH-DESIGN.adoc)"
 credential-forwarding = "OPEN — design not yet decided; critical for federation use case"
-gateway-catalog-mode = "OPEN — PolicyLoader.load_from_boj_catalog not yet implemented"
-test-needs-stale = "OPEN — TEST-NEEDS.md references V-lang era, needs rewrite"
+test-coverage = "OPEN — 50 ExUnit tests (CRG D); Grade C requires 165+ (see TEST-NEEDS.md)"
 
 [session-history]
 entries = [
-  { date = "2026-04-25", description = "Major session: (1) Fixed Zig ElfDynLib bug — boj-invoke now targets x86_64-linux-gnu, forcing DlDynLib/real dlopen. (2) boj-health Zig FFI cartridge fully implemented and tested. (3) Elixir REST server wired: Containerfile rewritten (3-stage Zig+Elixir build), compose.dev.yaml created. (4) All 106 cartridges now have mod.js (7 were missing). (5) model-router-mcp gets cartridge.json. (6) JS dispatch path implemented: BojRest.JsInvoker + priv/js_runner.js + Router dispatch branch. (7) cartridge_so_path/1 fixed to read ffi.so_path from manifest. (8) Gateway policy + catalog-integration design doc added. (9) ROADMAP v1.1.0 milestone added. (10) STATE.a2ml rewritten to reflect current reality." },
+  { date = "2026-04-25", description = "v1.1.0 + v1.0.1 doc sweep: (1) ExUnit test suite 50 tests across 5 modules. (2) StreamData property test dep added. (3) BojRest.JsWorkerPool + JsWorker (persistent Deno pool) implemented; Router now dispatches via pool. (4) PolicyLoader.load_from_boj_catalog/1 in http-capability-gateway — 12 tests. (5) compose.dev.yaml updated: capability-gateway sidecar (port 7800 → boj-rest:7700, BOJ_CARTRIDGES_ROOT catalog mode). (6) gateway-policy.yaml retired (static policy superseded by catalog mode). (7) 4 cartridges fixed (academic-workflow, ephapax, fireflag, sanctify — missing domain/tier/auth/ffi fields). (8) Full doc sweep: TOPOLOGY.md, ROADMAP.adoc, EXPLAINME.adoc, QUICKSTART-USER.adoc, llm-warmup-dev.md — all V-lang refs removed, counts 97/99/106 → 112. (9) TEST-NEEDS.md rewritten as honest CRG D gap analysis." },
+  { date = "2026-04-25", description = "Earlier session: (1) Fixed Zig ElfDynLib bug — boj-invoke now targets x86_64-linux-gnu, forcing DlDynLib/real dlopen. (2) boj-health Zig FFI cartridge fully implemented and tested. (3) Elixir REST server wired: Containerfile rewritten (3-stage Zig+Elixir build), compose.dev.yaml created. (4) All 112 cartridges now have mod.js. (5) model-router-mcp gets cartridge.json. (6) JS dispatch path implemented: BojRest.JsInvoker + priv/js_runner.js + Router dispatch branch. (7) cartridge_so_path/1 fixed to read ffi.so_path from manifest. (8) Gateway policy + catalog-integration design doc added. (9) ROADMAP v1.1.0 milestone added." },
   { date = "2026-04-20", description = "Started Elixir REST backend on port 7700 as V-lang adapter replacement. Fixed just doctor in Justfile." },
   { date = "2026-04-17", description = "Spec bump v0.4.0: V-lang ban documented. ADR-0002 created. EXPLAINME.adoc corrections." },
   { date = "2026-04-12", description = "V-lang sweep complete: 0 .v files remain. believe_me sweep: 31→4. CI fixes." },
@@ -86,11 +82,11 @@ entries = [
 ]
 
 [architecture]
-stack-summary = "Idris2 ABI → Zig FFI (.so) → Elixir REST (HTTP/7700) → Deno JS (mod.js per-call)"
-dispatch-rule = "cartridge.json with 'ffi' key → boj-invoke CLI; without 'ffi' key → deno js_runner.js"
+stack-summary = "Idris2 ABI → Zig FFI (.so) → Elixir REST (HTTP/7700) → Deno JS (mod.js via JsWorkerPool)"
+dispatch-rule = "cartridge.json with 'ffi' key → BojRest.Invoker (boj-invoke CLI); without 'ffi' key → BojRest.JsWorkerPool (persistent Deno pool)"
 federation    = "Zig QUIC gossip: X25519 handshake + ChaCha20-Poly1305, SDP allow-list, hash attestation"
 auth-gap      = "Federation trust is gossip-layer only; HTTP invoke has no caller auth — see docs/AUTH-DESIGN.adoc"
-gateway       = "http-capability-gateway planned as sidecar (port 7800 → boj-rest:7700); static policy in container/gateway-policy.yaml; catalog-mode design in docs/gateway-catalog-integration.adoc"
+gateway       = "http-capability-gateway sidecar LIVE in compose.dev.yaml (port 7800 → boj-rest:7700); catalog mode active via BOJ_CARTRIDGES_ROOT; gateway-policy.yaml retired 2026-04-25"
 cultural-pillars = ["Teranga (hospitality)", "Umoja (unity)", "Ayo (joy)"]
 
 [ecosystem]

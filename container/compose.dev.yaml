@@ -2,16 +2,21 @@
 #
 # BoJ Server — dev compose (Podman Compose compatible)
 #
-# Runs the Elixir server with pre-built boj-invoke and cartridge .so files
-# mounted from the local source tree. No container build needed.
+# Two services:
+#   boj-rest            Elixir/BEAM REST server on port 7700
+#   capability-gateway  http-capability-gateway sidecar on port 7800
+#                       proxies → boj-rest:7700, auto-builds policy from
+#                       BOJ_CARTRIDGES_ROOT (catalog mode — no static YAML needed)
 #
 # Prerequisites:
 #   cd ffi/zig && zig build invoke          # build boj-invoke
 #   cd cartridges/boj-health/ffi && zig build  # build boj-health .so
 #   cd elixir && mix deps.get               # fetch Elixir deps
+#   cd ../../web-ecosystem/http-capability-gateway && mix deps.get
 #
 # Usage:
 #   podman-compose -f container/compose.dev.yaml up
+#   podman-compose -f container/compose.dev.yaml up boj-rest   # server only
 #   podman-compose -f container/compose.dev.yaml down
 
 services:
@@ -36,4 +41,33 @@ services:
       timeout: 5s
       retries: 3
       start_period: 20s
+    restart: unless-stopped
+
+  capability-gateway:
+    image: docker.io/hexpm/elixir:1.19.5-erlang-27.3.4-debian-bookworm-20250520-slim
+    working_dir: /gateway
+    command: ["mix", "run", "--no-halt"]
+    depends_on:
+      boj-rest:
+        condition: service_healthy
+    ports:
+      - "7800:7800"
+    volumes:
+      # Gateway source lives in sibling repo web-ecosystem/http-capability-gateway
+      - ../../web-ecosystem/http-capability-gateway:/gateway:z
+      # Workspace mount so BOJ_CARTRIDGES_ROOT can reach cartridges/*/cartridge.json
+      - ..:/workspace:ro,z
+    environment:
+      MIX_ENV: dev
+      PORT: "7800"
+      BACKEND_URL: http://boj-rest:7700
+      # Catalog mode: policy auto-derived from cartridge.json auth.method fields.
+      # gateway-policy.yaml is NOT loaded when this var is set.
+      BOJ_CARTRIDGES_ROOT: /workspace/cartridges
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:7800/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
     restart: unless-stopped

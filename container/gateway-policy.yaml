@@ -1,70 +1,36 @@
 # SPDX-License-Identifier: PMPL-1.0-or-later
 # Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
 #
-# BoJ Server — http-capability-gateway verb governance policy (DSL v1)
+# RETIRED — gateway-policy.yaml (Phase 1 static policy)
 #
-# Sits in front of boj-server (port 7700). Gateway listens on port 7800
-# (override PORT env var). Backend: BACKEND_URL=http://127.0.0.1:7700
+# This file is no longer loaded. Catalog mode is now active:
 #
-# Route surface (all 5 boj-server routes are covered):
-#   GET  /health                        — public, liveness probe
-#   GET  /menu                          — public, cartridge menu
-#   GET  /cartridges                    — public, cartridge name list
-#   GET  /cartridge/:name               — public, cartridge metadata
-#   POST /cartridge/:name/invoke        — auth-required for keyed cartridges
-#                                         (public fallback until catalog-mode lands)
+#   PolicyLoader.load_from_boj_catalog/1 reads BOJ_CARTRIDGES_ROOT/*/cartridge.json
+#   at gateway boot and auto-generates per-cartridge invoke exposure rules from
+#   the auth.method field:
+#     "none"    → exposure: public
+#     anything  → exposure: authenticated
 #
-# Phase 1 (this file): static policy, all invoke calls public.
-# Phase 2 (catalog-mode): gateway reads BOJ_CARTRIDGES_ROOT/*/cartridge.json
-#   at boot and auto-derives per-cartridge exposure from auth.method:
-#     "none"    → "public"
-#     "api-key" → "authenticated"
-#   Replaces this file entirely; zero ongoing maintenance.
-# See ROADMAP.adoc §v1.1.0 and docs/gateway-catalog-integration.adoc.
-
-dsl_version: "1"
-
-governance:
-  # Global default: only GET is allowed on any path not listed below.
-  # Prevents stray PUT / PATCH / DELETE / OPTIONS from reaching boj-server.
-  global_verbs:
-    - GET
-
-  routes:
-    # Liveness + readiness probe
-    - path: "^/health$"
-      verbs: [GET]
-      exposure: public
-      narrative: "Liveness probe — no auth required"
-
-    # Cartridge menu (human-readable catalogue with tiers)
-    - path: "^/menu$"
-      verbs: [GET]
-      exposure: public
-      narrative: "Cartridge menu — public read"
-
-    # Cartridge name list
-    - path: "^/cartridges$"
-      verbs: [GET]
-      exposure: public
-      narrative: "Cartridge inventory — public read"
-
-    # Per-cartridge metadata (cartridge.json contents)
-    - path: "^/cartridge/[^/]+$"
-      verbs: [GET]
-      exposure: public
-      narrative: "Cartridge metadata — public read"
-
-    # Tool invocation — POST only, no other verbs.
-    # Phase 1: public exposure (no auth wired yet in boj-server).
-    # Phase 2: replaced by per-cartridge rules generated from auth.method.
-    - path: "^/cartridge/[^/]+/invoke$"
-      verbs: [POST]
-      exposure: public
-      narrative: "Tool invocation — Phase 1 public; Phase 2 auto-derived from cartridge auth.method"
-
-stealth:
-  # Return 404 (not 403) for denied requests so the route surface does
-  # not advertise which paths exist to unauthenticated callers.
-  enabled: true
-  status_code: 404
+# The compose.dev.yaml capability-gateway service sets BOJ_CARTRIDGES_ROOT, which
+# takes priority over POLICY_PATH in the gateway's resolution order. This file
+# will never be loaded by that service.
+#
+# Kept for reference only. See:
+#   docs/gateway-catalog-integration.adoc — catalog mode design
+#   web-ecosystem/http-capability-gateway/lib/http_capability_gateway/policy_loader.ex
+#   container/compose.dev.yaml — capability-gateway service definition
+#
+# Phase 1 policy (historical record):
+#
+#   dsl_version: "1"
+#   governance:
+#     global_verbs: [GET]
+#     routes:
+#       - path: "^/health$"          verbs: [GET]   exposure: public
+#       - path: "^/menu$"            verbs: [GET]   exposure: public
+#       - path: "^/cartridges$"      verbs: [GET]   exposure: public
+#       - path: "^/cartridge/[^/]+$" verbs: [GET]   exposure: public
+#       - path: "^/cartridge/[^/]+/invoke$"  verbs: [POST]  exposure: public
+#   stealth:
+#     enabled: true
+#     status_code: 404

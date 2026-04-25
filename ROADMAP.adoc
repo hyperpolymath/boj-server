@@ -92,8 +92,8 @@ Gateway sidecar (`http-capability-gateway` in front of boj-server):
 
 * [x] Add `gateway-policy.yaml` (done — `container/gateway-policy.yaml`) to dev compose as optional sidecar
 * [x] Implement `PolicyLoader.load_from_boj_catalog/1` in `http-capability-gateway` — reads `BOJ_CARTRIDGES_ROOT/*/cartridge.json` at boot, infers per-cartridge invoke exposure from `auth.method` (`none` → `public`, others → `authenticated`). Zero manual policy maintenance thereafter. See `docs/gateway-catalog-integration.adoc`.
-* [ ] Update `compose.dev.yaml` with gateway sidecar entry (port 7800 → boj-rest:7700)
-* [ ] Retire static `gateway-policy.yaml` once catalog mode is live
+* [x] Update `compose.dev.yaml` with gateway sidecar entry (port 7800 → boj-rest:7700)
+* [x] Retire static `gateway-policy.yaml` — catalog mode live 2026-04-25; file kept as reference only
 
 == Future Directions
 

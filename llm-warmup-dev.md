@@ -76,7 +76,7 @@ container/                  Stapeln container ecosystem
   Containerfile             Multi-stage OCI (Chainguard base)
   compose.toml              selur-compose orchestration
   compose.dev.yaml          Dev compose with gateway sidecar (port 7800)
-  gateway-policy.yaml       Static gateway policy (to be retired once catalog mode is live)
+  gateway-policy.yaml       RETIRED — historical reference only; catalog mode supersedes it
   vordr.toml                Runtime monitoring
 
 web-ecosystem/
