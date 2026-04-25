@@ -1,1 +1,93 @@
 = Proofs Unit
+:toc:
+
+== Overview
+
+Formally verified properties of the BoJ server ABI layer.
+All proofs are written in Idris2 and live in `src/abi/Boj/`.
+
+== Proof Inventory
+
+[cols="2,3,1,1"]
+|===
+|File |Covers |Requirement |Status
+
+|`SafetyLemmas.idr`
+|Foundational lemmas: `allRec`, char equality, string/Nat helpers.
+Five axiomatic `believe_me` primitives (prim__ backend operations).
+|—
+|✅ Complete
+
+|`SafePromptInjection.idr`
+|Six properties preventing LLM prompt-injection escape.
+|—
+|✅ Complete
+
+|`SafeCORS.idr`
+|Mutually exclusive wildcard/credentials; origin character validation.
+|—
+|✅ Complete
+
+|`SafeAPIKey.idr`
+|Entropy bounds, format safety, log-masking (`logSafeBounded` structural proof), timing-safe comparison.
+|BJ2 partial
+|✅ Complete
+
+|`SafeWebSocket.idr`
+|Frame length bounds; opcode validation.
+|—
+|✅ Complete
+
+|`SafeHTTP.idr`
+|Path traversal prevention; header sanitisation.
+|BJ2 partial
+|✅ Complete
+
+|`Federation.idr`
+|Handshake authenticity and non-replayability.
+|—
+|✅ Complete
+
+|`Catalogue.idr`
+|`IsUnbreakable`: only Ready cartridges are mountable.
+|—
+|✅ Complete
+
+|`CartridgeDispatch.idr`
+|BJ1 dispatch type safety: `ProtocolMatch`, `ReadinessGuard`, `Disjointness`, refused-completeness.
+|BJ1
+|✅ Complete
+
+|`CredentialIsolation.idr`
+|BJ2 vault partitioning: `ownReadSeesInserted`, `otherReadUnchanged`, `vaultIsolation`.
+Per-cartridge cross-partition non-interference.
+|BJ2
+|✅ Complete
+
+|`APIContractCoverage.idr`
+|BJ3 contract compliance: `repCatalogueProtocolCompliance` (17 cartridges),
+15-domain coverage witnesses, 7-protocol coverage witnesses, `BJ3Compliance` summary record.
+|BJ3
+|✅ Complete
+
+|===
+
+== Axiomatic Surface
+
+Five `believe_me` axioms remain, all declared and justified in `SafetyLemmas.idr`:
+
+* `charEqSound` — soundness of `prim__eqChar`
+* `charEqSym` — symmetry of `prim__eqChar`
+* `unpackLength` — `prim__strToCharList` preserves length
+* `appendLengthSum` — `prim__strAppend` length semantics
+* `substrLengthBound` — `prim__strSubstr` length bound
+
+All are backend-primitive guarantees that are not reducible at the Idris2 type level.
+
+== Open Obligations
+
+None at P1/P2 priority.  Future work (P3+):
+
+* Proofs for `Dap`, `Bsp`, `CodeIntel` domains once those cartridges reach `Ready`
+* Surjectivity of `dispatch` onto all BJ3-covered (domain, protocol) pairs
+* Eventual elimination of string-primitive axioms via a trusted extraction shim

@@ -206,3 +206,16 @@ allNeqImpliesNotElem {target} {xs = x :: xs'} prf with (x == target) proof xEq
 export
 unpackLength : (s : String) -> length (unpack s) = length s
 unpackLength _ = believe_me ()
+
+||| String concatenation length equals the sum of both argument lengths.
+||| Axiomatic: prim__strAppend is a backend primitive not reducible at the
+||| Idris2 type level. Established by semantics of all supported backends.
+export
+appendLengthSum : (s t : String) -> length (s ++ t) = length s + length t
+appendLengthSum _ _ = believe_me ()
+
+||| Substring of a string has length at most the requested count.
+||| Axiomatic: prim__strSubstr semantics — result is never longer than `len`.
+export
+substrLengthBound : (s : String) -> (start len : Nat) -> LTE (length (substr start len s)) len
+substrLengthBound _ _ _ = believe_me ()

@@ -141,15 +141,53 @@ sufficientEntropyNonEmpty (MkSufficientEntropy s {prf}) with (unpack s) proof up
     in absurd (minKeyLengthNotZero impossibleLen)
   sufficientEntropyNonEmpty (MkSufficientEntropy _ {prf}) | (_ :: _) = IsNonEmpty
 
+-- Reduce toLogSafe s to "***" when the short-path condition holds.
+-- Works because toLogSafe is transparent and `if True then x else y = x`.
+private
+toLogSafeShortEq : (s : String) -> (length s <= 8 = True) -> toLogSafe s = "***"
+toLogSafeShortEq s _ with (length s <= 8)
+  toLogSafeShortEq _ _ | True  = Refl
+  toLogSafeShortEq _ prf | False = absurd prf
+
+-- Reduce toLogSafe s to the concat form when the long-path condition holds.
+private
+toLogSafeLongEq : (s : String) -> (length s <= 8 = False) ->
+  toLogSafe s = substr 0 4 s ++ "..." ++ substr (length s `minus` 4) 4 s
+toLogSafeLongEq s _ with (length s <= 8)
+  toLogSafeLongEq _ prf | True  = absurd prf
+  toLogSafeLongEq _ _ | False = Refl
+
+-- Monotonicity of + over LTE (derived from Data.Nat primitives).
+private
+plusLteMonotone : {m, n, p, q : Nat} -> LTE m n -> LTE p q -> LTE (m + p) (n + q)
+plusLteMonotone lmn lpq =
+  lteTransitive (plusLteMonotoneRight _ lmn) (plusLteMonotoneLeft _ lpq)
+
 ||| The redacted key from `toLogSafe` is always at most 11 characters long.
-||| Axiomatic: length arithmetic over `substr` and `++` is not reducible at the
-||| Idris2 type level (prim__strAppend and prim__strSubstr are backend
-||| primitives). Proven by inspection of the two branches of `toLogSafe`:
-|||   - short path (length s ≤ 8): output is "***" (length 3 ≤ 11)
-|||   - long path: 4 + 3 + 4 = 11 characters exactly
+|||
+||| Proof structure (using `appendLengthSum` + `substrLengthBound` axioms):
+|||   short path (length s ≤ 8):  output is "***", length 3 ≤ 11.
+|||   long path:                   4 + 3 + 4 = 11 ≤ 11.
+|||
+||| The two string-primitive axioms are declared in SafetyLemmas.
 export
 logSafeBounded : (s : String) -> LTE (length (toLogSafe s)) 11
-logSafeBounded _ = believe_me (LTEZero {right = 11})
+logSafeBounded s with (length s <= 8) proof cond
+  logSafeBounded s | True  =
+    let eq = toLogSafeShortEq s cond
+    in replace {p = \t => LTE (length t) 11} (sym eq)
+         (LTESucc (LTESucc (LTESucc (LTEZero {right = 8}))))
+  logSafeBounded s | False =
+    let p1       = substr 0 4 s
+        p3       = substr (length s `minus` 4) 4 s
+        eq       = toLogSafeLongEq s cond
+        l1       = substrLengthBound s 0 4
+        l3       = substrLengthBound s (length s `minus` 4) 4
+        eq12     = appendLengthSum p1 "..."
+        eq123    = appendLengthSum (p1 ++ "...") p3
+        l12      = replace {p = \n => LTE n 7}  (sym eq12)  (plusLteMonotoneRight 3 l1)
+        l123     = replace {p = \n => LTE n 11} (sym eq123) (plusLteMonotone l12 l3)
+    in replace {p = \t => LTE (length t) 11} (sym eq) l123
 
 --------------------------------------------------------------------------------
 -- FFI Bridge Declarations
