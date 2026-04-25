@@ -1,0 +1,135 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+// Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+= coord-tui
+:toc:
+:toc-placement: preamble
+
+Terminal UI for BoJ `local-coord-mcp` — gives each AI tool window a visible
+peer ID in the title bar and lets you monitor active peers and task claims
+in real time.
+
+== Quick start (new machine)
+
+[source,bash]
+----
+bash /path/to/boj-server/coord-tui/install.sh
+----
+
+This single command:
+
+1. Builds the Zig coord adapter (`cartridges/local-coord-mcp/adapter/`)
+2. Builds this Rust binary
+3. Symlinks both to `~/.local/bin/`
+4. Installs and starts `~/.config/systemd/user/local-coord-mcp.service`
+5. Copies `shell/coord-hooks.sh` to `~/.config/coord-tui/`
+6. Patches `~/.bashrc` and `~/.zshrc` to source the hooks
+
+Open a new shell after install and the hooks are active.
+
+== Everyday use
+
+=== Auto-register on tool launch
+
+After install, just open your tools normally:
+
+[source,bash]
+----
+claude    # registers this shell, sets window title to "claude [peer-abc123]"
+gemini    # same for Gemini
+cursor    # same for Cursor / Vibe
+codex     # same for OpenAI Codex
+----
+
+The terminal window title changes to `<tool> [<peer_id>]` immediately — visible
+in your taskbar and tab bar. Open four shells, run `claude` in each, and you
+can see all four peer IDs at a glance.
+
+=== Interactive TUI
+
+[source,bash]
+----
+coord-tui
+----
+
+Shows a live two-panel view. Top panel: all registered peers with their kind,
+state, context, and status. Bottom panel: all active task claims.
+
+[cols="1,3"]
+|===
+|Key |Action
+
+|`j` / `↓` |Move selection down
+|`k` / `↑` |Move selection up
+|`Tab` |Switch focus between Peers and Claims panels
+|`c` |Claim a task (prompts for task name)
+|`s` |Set your status (prompts for status text)
+|`p` |Send a heartbeat on the selected claim (keep-alive)
+|`R` |Force refresh now
+|`q` / `Ctrl+C` |Quit
+|===
+
+Auto-refreshes every 5 seconds when registered.
+
+=== Silent registration (used by shell hooks)
+
+[source,bash]
+----
+coord-tui --id --kind claude
+----
+
+Registers, writes `~/.cache/coord-tui/peer.env` containing:
+
+----
+BOJ_COORD_PEER_ID=<peer_id>
+BOJ_COORD_TOKEN=<token>
+----
+
+Prints the `peer_id` to stdout and exits immediately. The shell hooks call
+this before launching the real tool.
+
+== Multi-instance coordination workflow
+
+1. Open several terminal windows.
+2. Run `claude` (or `gemini`, `cursor`, `codex`) in each — each gets a peer
+   ID visible in its title bar.
+3. In any Claude session, say:
++
+____
+I need to coordinate work across multiple Claude instances. Use the coord
+tools — register yourself, list the active peers, and let's divide up the
+tasks.
+____
+4. Claude calls `coord_register` (gets a token), `coord_list_peers` (sees
+   all registered instances), then claims tasks with `coord_claim_task`.
+5. Other instances calling `coord_list_peers` will see the claimed tasks and
+   avoid duplicating work.
+
+== Environment variables
+
+[cols="1,1,3"]
+|===
+|Variable |Default |Purpose
+
+|`BOJ_COORD_CONTEXT` |git repo name |Context label sent to the registry
+|`BOJ_COORD_KIND` |`claude` |Client kind (claude / gemini / custom / openai)
+|`COORD_BACKEND_URL` |`http://127.0.0.1:7745` |Adapter base URL
+|===
+
+== Requirements
+
+* Rust (stable) — to build coord-tui
+* Zig — to build the coord adapter
+* systemd (optional) — for automatic adapter lifecycle management
+* `~/.local/bin` on `$PATH`
+
+== Architecture note
+
+Pure state-transition functions (`next_index`, `prev_index`,
+`clamp_selection`) are deliberately isolated from I/O to support future
+SPARK/Ada formal verification via Idris2-ABI + Zig-FFI — matching the
+boj-server pattern established in `src/abi/` and `ffi/zig/src/`.
+
+The adapter itself (`cartridges/local-coord-mcp/adapter/`) provides the
+loopback-only HTTP surface. The Idris2 `IsLoopback` proof in
+`cartridges/local-coord-mcp/abi/SafeLocalCoord.idr` guarantees at
+compile time that the adapter cannot bind to any non-loopback address.

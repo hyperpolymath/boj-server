@@ -38,6 +38,20 @@ The `FederationPolicy` type has a single constructor (`LocalOnly`) and the
 `IsFederated` type is uninhabited for `LocalOnly` — federation is impossible,
 not just disabled.
 
+== Human interface: coord-tui
+
+`coord-tui` (at `boj-server/coord-tui/`) is the recommended human-facing
+interface. It provides:
+
+* A real-time TUI showing all active peers and task claims.
+* `--id` silent mode used by shell hooks — runs automatically when you open
+  `claude`, `gemini`, `cursor`, or `codex`, and sets the terminal window
+  title to `<tool> [<peer_id>]` so you can find any instance at a glance.
+* A single-command installer (`coord-tui/install.sh`) for setting up a
+  new machine.
+
+See `coord-tui/README.adoc` for full usage.
+
 == Tools
 
 [cols="1,3"]
