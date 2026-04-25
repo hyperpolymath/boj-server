@@ -22,6 +22,132 @@ completion-percentage = 90
 phase = "production"
 maturity = "stable"
 
+# ═══════════════════════════════════════════════════════════════════════════════
+# CRG (Critical Reception Grade) advancement — D→C→B
+# Per memory rule: B-grade requires [external-targets]≥6, [issues-fed-back],
+# [field-signal] populated.
+# ═══════════════════════════════════════════════════════════════════════════════
+
+[external-targets]
+# Consumers found via grep across hyperpolymath estate (2026-04-24 audit).
+[[external-targets.target]]
+name = "aspasia"
+relationship = "consumer"
+contract = "References cartridge as canonical ECHIDNA invocation surface"
+discovered = "estate-wide cartridge consumer audit 2026-04-24"
+
+[[external-targets.target]]
+name = "panll"
+relationship = "consumer"
+contract = "Same — uses cartridge for proof operations"
+discovered = "estate-wide cartridge consumer audit 2026-04-24"
+
+[[external-targets.target]]
+name = "007-lang"
+relationship = "consumer"
+contract = "Cartridge invocation for proof verification"
+discovered = "estate-wide cartridge consumer audit 2026-04-24"
+
+[[external-targets.target]]
+name = "proven-servers"
+relationship = "consumer"
+contract = "Cartridge invocation alongside its own direct REST path to echidna-nesy"
+discovered = "estate-wide cartridge consumer audit 2026-04-24"
+
+[[external-targets.target]]
+name = "typell"
+relationship = "consumer"
+contract = "Type-system-driven proof queries through cartridge"
+discovered = "estate-wide cartridge consumer audit 2026-04-24"
+
+[[external-targets.target]]
+name = "nesy-solver"
+relationship = "consumer"
+contract = "Neurosymbolic solving via cartridge tool surface"
+discovered = "estate-wide cartridge consumer audit 2026-04-24"
+
+[[external-targets.target]]
+name = "absolute-zero"
+relationship = "consumer"
+contract = "Cartridge invocation for proof operations"
+discovered = "estate-wide cartridge consumer audit 2026-04-24"
+
+[[external-targets.target]]
+name = "boj-server (parent — TOPOLOGY.md)"
+relationship = "hosted-in-and-referenced-by"
+contract = "Cartridge listed in boj-server TOPOLOGY.md as a documented loader target"
+discovered = "boj-server/TOPOLOGY.md cross-reference"
+
+[[external-targets.target]]
+name = "echidna (upstream)"
+relationship = "delegated-to"
+contract = "All proof operations route through to echidna's REST endpoints; cartridge does no local proof work"
+discovered = "ECOSYSTEM.a2ml + docs/CALL-PROTOCOL.adoc"
+
+[issues-fed-back]
+[[issues-fed-back.issue]]
+source = "V-lang ban 2026-04-10"
+date = "2026-04-10"
+issue = "V-lang adapter at adapter/v/ deleted estate-wide; cartridge needed Zig replacement to retain native path"
+status = "resolved — Zig adapter at adapter/ ships; commits 1fef110 + c5188a8 swept V-lang refs from docs"
+
+[[issues-fed-back.issue]]
+source = "audit 2026-04-25 — Zig 0.15.2 build"
+date = "2026-04-25"
+issue = "adapter/build.zig used Zig 0.14 ExecutableOptions API (.root_source_file); cartridge couldn't build on stable Zig 0.15.2"
+status = "resolved — commit afbab20 (4 sub-issues: API drift, libc, 16 pub fns, missing init arg)"
+
+[[issues-fed-back.issue]]
+source = "RSR conformance audit 2026-04-25"
+date = "2026-04-25"
+issue = "Cartridge missing LICENSE/SECURITY.md/CONTRIBUTING.md/EXPLAINME.adoc + .machine_readable/6a2/ scaffold"
+status = "resolved — commit c4846e6 (11 new files including this CRG block)"
+
+[[issues-fed-back.issue]]
+source = "panic-attack P10 sweep 2026-04 (parent boj-server)"
+date = "2026-04"
+issue = "FFI ptrCast classification + adapter header V-lang reference"
+status = "resolved — commits 55de256 (ptrCast classify), 1fef110 + c5188a8 (V-lang seam sweep)"
+
+[field-signal]
+[[field-signal.signal]]
+source = "zig build (adapter)"
+metric = "build status"
+value = "exit 0 — produces zig-out/bin/echidna_llm_adapter"
+collected = "2026-04-25 (post afbab20)"
+
+[[field-signal.signal]]
+source = "zig build test (FFI)"
+metric = "FFI test pass rate"
+value = "all green"
+collected = "2026-04-25 (post afbab20)"
+
+[[field-signal.signal]]
+source = "Estate consumer audit"
+metric = "downstream consumer count"
+value = "8 repos (aspasia, panll, 007-lang, proven-servers, typell, nesy-solver, absolute-zero, plus boj-server parent's TOPOLOGY.md)"
+collected = "2026-04-24 estate-wide grep audit"
+
+[[field-signal.signal]]
+source = "Tool surface (CALL-PROTOCOL.adoc)"
+metric = "exposed tool count"
+value = "15 tools, 113-prover slug-addressable"
+collected = "2026-04-25"
+
+[[field-signal.signal]]
+source = "Dependabot scanner"
+metric = "open vulnerability count"
+value = "0 open (cartridge inherits parent boj-server's clean state)"
+collected = "2026-04-25"
+
+[[field-signal.signal]]
+source = "Cartridge transport availability"
+metric = "transport options live"
+value = "2/2 (Deno mod.js canonical + Zig adapter optional native path) — Zig was unbuildable until 2026-04-25 fix afbab20"
+collected = "2026-04-25"
+
+# ═══════════════════════════════════════════════════════════════════════════════
+
 [components]
 deno-transport = { status = "shipping", path = "mod.js" }
 zig-adapter = { status = "shipping", path = "adapter/", note = "Zig 0.15.2 build fix landed afbab20 (2026-04-25)" }
