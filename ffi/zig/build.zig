@@ -62,9 +62,20 @@ pub fn build(b: *std.Build) void {
     bench_step.dependOn(&bench_run.step);
 
     // --- boj-invoke CLI (skinny Phase 2 per ADR-0005) ---
+    //
+    // Must target x86_64-linux-gnu (glibc) so std.DynLib resolves to
+    // DlDynLib (real dlopen(3)). Without this, Zig selects ElfDynLib —
+    // its own ELF loader — which has a bug (Zig ≤0.15.2): writable
+    // segments are copied from file offset 0 instead of ph.p_offset,
+    // so any .so with a non-zero data segment offset loads garbage.
+    const invoke_target = b.resolveTargetQuery(.{
+        .cpu_arch = .x86_64,
+        .os_tag = .linux,
+        .abi = .gnu,
+    });
     const invoke_mod = b.addModule("boj_invoke", .{
         .root_source_file = b.path("src/boj_invoke_cli.zig"),
-        .target = target,
+        .target = invoke_target,
         .optimize = optimize,
     });
     invoke_mod.link_libc = true; // route std.DynLib through real dlopen(3)
