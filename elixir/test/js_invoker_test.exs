@@ -97,6 +97,47 @@ defmodule BojRest.JsInvokerTest do
     end
   end
 
+  # ── idempotency and type stability ────────────────────────────────────────
+
+  test "deno_path/0 is idempotent" do
+    r1 = BojRest.JsInvoker.deno_path()
+    r2 = BojRest.JsInvoker.deno_path()
+    assert r1 == r2
+  end
+
+  test "invoke/3 with empty args map does not crash" do
+    result = BojRest.JsInvoker.invoke("/nonexistent/mod.js", "tool", %{})
+    assert match?({:ok, _}, result) or match?({:error, _}, result)
+  end
+
+  test "invoke/3 error result always has :classification key" do
+    case BojRest.JsInvoker.deno_path() do
+      nil ->
+        # Without Deno, we still get a structured error
+        result = BojRest.JsInvoker.invoke("/nonexistent/mod.js", "tool", %{})
+        assert {:error, err} = result
+        assert Map.has_key?(err, :classification)
+
+      _deno ->
+        result = BojRest.JsInvoker.invoke("/nonexistent/mod.js", "tool", %{})
+        assert {:error, err} = result
+        assert Map.has_key?(err, :classification)
+    end
+  end
+
+  test "invoke/4 with extra_env map does not crash" do
+    result = BojRest.JsInvoker.invoke("/nonexistent/mod.js", "tool", %{}, %{"X" => "1"})
+    assert match?({:ok, _}, result) or match?({:error, _}, result)
+  end
+
+  test "invoke/3 classification is always an atom" do
+    result = BojRest.JsInvoker.invoke("/nonexistent/mod.js", "any_tool", %{})
+    case result do
+      {:error, err} -> assert is_atom(err.classification)
+      {:ok, _} -> :ok
+    end
+  end
+
   @tag :e2e
   test "extra_env is forwarded to the Deno subprocess" do
     case BojRest.JsInvoker.deno_path() do

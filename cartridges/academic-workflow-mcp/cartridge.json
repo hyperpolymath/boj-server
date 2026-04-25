@@ -1,4 +1,7 @@
 {
+  "$schema": "https://boj.dev/schemas/cartridge/v1.json",
+  "spdx": "PMPL-1.0-or-later",
+  "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>",
   "name": "academic-workflow-mcp",
   "version": "1.0.0",
   "description": "Academic workflow — Zotero integration, citations, paper review",

@@ -158,4 +158,162 @@ defmodule BojRest.RouterTest do
     body = Jason.decode!(conn.resp_body)
     assert body["error"] == "route-not-found"
   end
+
+  # ── additional coverage ────────────────────────────────────────────────────
+
+  test "GET /health has status/version/cartridges_loaded keys" do
+    conn = conn(:get, "/health") |> BojRest.Router.call(@opts)
+    body = Jason.decode!(conn.resp_body)
+    assert Map.has_key?(body, "status")
+    assert Map.has_key?(body, "version")
+    assert Map.has_key?(body, "cartridges_loaded")
+  end
+
+  test "GET /cartridges returns more than 100 cartridges" do
+    conn = conn(:get, "/cartridges") |> BojRest.Router.call(@opts)
+    body = Jason.decode!(conn.resp_body)
+    assert body["count"] > 100
+  end
+
+  test "GET /cartridge/boj-health has a tools list" do
+    conn = conn(:get, "/cartridge/boj-health") |> BojRest.Router.call(@opts)
+    body = Jason.decode!(conn.resp_body)
+    assert is_list(body["tools"])
+    assert length(body["tools"]) > 0
+  end
+
+  test "GET /cartridge/model-router-mcp has a tools list" do
+    conn = conn(:get, "/cartridge/model-router-mcp") |> BojRest.Router.call(@opts)
+    body = Jason.decode!(conn.resp_body)
+    assert is_list(body["tools"])
+    assert length(body["tools"]) > 0
+  end
+
+  test "POST /cartridge/boj-health/invoke without tool field is 400" do
+    conn =
+      conn(:post, "/cartridge/boj-health/invoke", Jason.encode!(%{}))
+      |> put_req_header("content-type", "application/json")
+      |> BojRest.Router.call(@opts)
+
+    assert conn.status == 400
+    body = Jason.decode!(conn.resp_body)
+    assert body["error"] == "missing-tool-field"
+  end
+
+  test "GET /cartridge/:name returns parseable JSON for all cartridges" do
+    names = BojRest.Catalog.list() |> Enum.take(5) |> Enum.map(& &1["name"])
+    Enum.each(names, fn name ->
+      conn = conn(:get, "/cartridge/#{name}") |> BojRest.Router.call(@opts)
+      assert conn.status == 200
+      assert {:ok, _} = Jason.decode(conn.resp_body)
+    end)
+  end
+
+  test "GET /.well-known/boj-node-pubkey has version 1" do
+    conn = conn(:get, "/.well-known/boj-node-pubkey") |> BojRest.Router.call(@opts)
+    body = Jason.decode!(conn.resp_body)
+    assert body["version"] == 1
+  end
+
+  test "response body is always valid JSON for all tested routes" do
+    routes = [
+      conn(:get, "/health"),
+      conn(:get, "/menu"),
+      conn(:get, "/cartridges"),
+      conn(:get, "/cartridge/boj-health"),
+      conn(:get, "/cartridge/__unknown_xyz__"),
+      conn(:get, "/no/such/route")
+    ]
+    Enum.each(routes, fn c ->
+      result_conn = BojRest.Router.call(c, @opts)
+      assert {:ok, _} = Jason.decode(result_conn.resp_body),
+             "Route #{c.request_path} returned non-JSON: #{result_conn.resp_body}"
+    end)
+  end
+
+  # ── HTTP method rejection ─────────────────────────────────────────────────
+
+  test "PUT /health returns 404" do
+    conn = conn(:put, "/health") |> BojRest.Router.call(@opts)
+    assert conn.status == 404
+  end
+
+  test "DELETE /health returns 404" do
+    conn = conn(:delete, "/health") |> BojRest.Router.call(@opts)
+    assert conn.status == 404
+  end
+
+  test "POST /menu returns 404" do
+    conn = conn(:post, "/menu", "") |> BojRest.Router.call(@opts)
+    assert conn.status == 404
+  end
+
+  test "POST /.well-known/boj-node-pubkey returns 404" do
+    conn = conn(:post, "/.well-known/boj-node-pubkey", "") |> BojRest.Router.call(@opts)
+    assert conn.status == 404
+  end
+
+  # ── cartridge field coverage ──────────────────────────────────────────────
+
+  test "GET /cartridge/boj-health has description field" do
+    conn = conn(:get, "/cartridge/boj-health") |> BojRest.Router.call(@opts)
+    body = Jason.decode!(conn.resp_body)
+    assert is_binary(body["description"]) and byte_size(body["description"]) > 0
+  end
+
+  test "GET /cartridge/boj-health has tier field" do
+    conn = conn(:get, "/cartridge/boj-health") |> BojRest.Router.call(@opts)
+    body = Jason.decode!(conn.resp_body)
+    assert is_binary(body["tier"])
+  end
+
+  test "GET /cartridge/boj-health has auth.method field" do
+    conn = conn(:get, "/cartridge/boj-health") |> BojRest.Router.call(@opts)
+    body = Jason.decode!(conn.resp_body)
+    assert is_binary(get_in(body, ["auth", "method"]))
+  end
+
+  test "GET /cartridge/model-router-mcp has description field" do
+    conn = conn(:get, "/cartridge/model-router-mcp") |> BojRest.Router.call(@opts)
+    body = Jason.decode!(conn.resp_body)
+    assert is_binary(body["description"]) and byte_size(body["description"]) > 0
+  end
+
+  test "GET /cartridge/model-router-mcp has auth.method field" do
+    conn = conn(:get, "/cartridge/model-router-mcp") |> BojRest.Router.call(@opts)
+    body = Jason.decode!(conn.resp_body)
+    assert is_binary(get_in(body, ["auth", "method"]))
+  end
+
+  # ── cross-endpoint consistency ────────────────────────────────────────────
+
+  test "GET /cartridges count equals GET /menu count" do
+    conn1 = conn(:get, "/cartridges") |> BojRest.Router.call(@opts)
+    conn2 = conn(:get, "/menu") |> BojRest.Router.call(@opts)
+    body1 = Jason.decode!(conn1.resp_body)
+    body2 = Jason.decode!(conn2.resp_body)
+    assert body1["count"] == body2["count"]
+  end
+
+  test "GET /health version field is non-empty string" do
+    conn = conn(:get, "/health") |> BojRest.Router.call(@opts)
+    body = Jason.decode!(conn.resp_body)
+    assert is_binary(body["version"]) and byte_size(body["version"]) > 0
+  end
+
+  @tag :e2e
+  test "POST /cartridge/model-router-mcp/invoke estimate_cost returns result" do
+    case BojRest.JsInvoker.deno_path() do
+      nil -> :ok
+      _deno ->
+        conn =
+          conn(:post, "/cartridge/model-router-mcp/invoke",
+               Jason.encode!(%{tool: "estimate_cost", arguments: %{estimated_tokens: 500}}))
+          |> put_req_header("content-type", "application/json")
+          |> BojRest.Router.call(@opts)
+
+        assert conn.status == 200
+        assert {:ok, _} = Jason.decode(conn.resp_body)
+    end
+  end
 end

@@ -32,7 +32,8 @@ defmodule BojRest.MixProject do
     [
       {:plug_cowboy, "~> 2.7"},
       {:jason, "~> 1.4"},
-      {:stream_data, "~> 1.1", only: [:test]}
+      {:stream_data, "~> 1.1", only: [:test]},
+      {:benchee, "~> 1.3", only: [:dev]}
     ]
   end
 

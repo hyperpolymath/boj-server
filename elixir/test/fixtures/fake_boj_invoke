@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: PMPL-1.0-or-later
+# Fake boj-invoke for Invoker exit-code classification tests.
+# Behaviour is encoded in the .so path argument:
+#   *exit2*   → exit 2 (args error)
+#   *exit3*   → exit 3 (open failed)
+#   *exit4*   → exit 4 (symbol missing)
+#   *exit5*   → exit 5 (init failed)
+#   *exit99*  → exit 99 (unknown crash)
+#   *slow*    → sleep 2s then exit 0 (timeout test)
+#   anything else → emit JSON success, exit 0
+
+SO="$1"
+VERB="$2"
+
+case "$SO" in
+  *exit2*)  exit 2 ;;
+  *exit3*)  exit 3 ;;
+  *exit4*)  exit 4 ;;
+  *exit5*)  exit 5 ;;
+  *exit99*) exit 99 ;;
+  *slow*)   sleep 2; echo '{"name":"slow","version":"0.0.1"}'; exit 0 ;;
+  *)
+    case "$VERB" in
+      probe)   echo '{"name":"fake-cart","version":"1.0.0","status":"ok"}' ;;
+      name)    echo '{"name":"fake-cart"}' ;;
+      version) echo '{"version":"1.0.0"}' ;;
+      invoke)  echo '{"status":200,"data":{"result":"ok"}}' ;;
+      *)       echo '{"error":"unknown verb"}'; exit 2 ;;
+    esac
+    exit 0
+    ;;
+esac

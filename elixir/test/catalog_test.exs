@@ -101,4 +101,108 @@ defmodule BojRest.CatalogTest do
       assert tier in known, "#{cart["name"]} has unknown tier: #{tier}"
     end)
   end
+
+  # ── edge cases ─────────────────────────────────────────────────────────────
+
+  test "list/0 count is stable (idempotent)" do
+    count1 = length(BojRest.Catalog.list())
+    count2 = length(BojRest.Catalog.list())
+    assert count1 == count2
+  end
+
+  test "list/0 returns more than 100 cartridges" do
+    assert length(BojRest.Catalog.list()) > 100
+  end
+
+  test "all cartridge names are lowercase-alphanumeric with hyphens" do
+    BojRest.Catalog.list()
+    |> Enum.each(fn cart ->
+      name = cart["name"]
+      assert String.match?(name, ~r/^[a-z0-9][a-z0-9\-]*[a-z0-9]$/) or
+             String.match?(name, ~r/^[a-z0-9]$/),
+             "#{name} does not match expected naming pattern"
+    end)
+  end
+
+  test "boj-health has loopback configuration" do
+    {:ok, cart} = BojRest.Catalog.get("boj-health")
+    assert Map.has_key?(cart, "loopback") or Map.has_key?(cart, "ffi"),
+           "boj-health missing both loopback and ffi config"
+  end
+
+  test "catalog not found for empty string" do
+    assert :not_found = BojRest.Catalog.get("")
+  end
+
+  test "catalog not found for nil-like string" do
+    assert :not_found = BojRest.Catalog.get("nil")
+  end
+
+  test "every version string is non-empty" do
+    BojRest.Catalog.list()
+    |> Enum.each(fn cart ->
+      version = cart["version"]
+      assert is_binary(version) and byte_size(version) > 0,
+             "#{cart["name"]} has empty version"
+    end)
+  end
+
+  # ── schema completeness ────────────────────────────────────────────────────
+
+  test "every cartridge has a non-empty description" do
+    BojRest.Catalog.list()
+    |> Enum.each(fn cart ->
+      desc = Map.get(cart, "description")
+      assert is_binary(desc) and byte_size(desc) > 0,
+             "#{cart["name"]} missing description"
+    end)
+  end
+
+  test "every cartridge has an auth map" do
+    BojRest.Catalog.list()
+    |> Enum.each(fn cart ->
+      assert is_map(Map.get(cart, "auth")),
+             "#{cart["name"]} missing auth map"
+    end)
+  end
+
+  test "every cartridge has an spdx string" do
+    BojRest.Catalog.list()
+    |> Enum.each(fn cart ->
+      assert is_binary(Map.get(cart, "spdx")),
+             "#{cart["name"]} missing spdx field"
+    end)
+  end
+
+  test "adapter cartridges have runtime and entry fields" do
+    BojRest.Catalog.list()
+    |> Enum.filter(&Map.has_key?(&1, "adapter"))
+    |> Enum.each(fn cart ->
+      assert is_binary(get_in(cart, ["adapter", "runtime"])),
+             "#{cart["name"]} adapter.runtime is not a string"
+      assert is_binary(get_in(cart, ["adapter", "entry"])),
+             "#{cart["name"]} adapter.entry is not a string"
+    end)
+  end
+
+  test "get/1 for model-router-mcp returns cart with matching name" do
+    {:ok, cart} = BojRest.Catalog.get("model-router-mcp")
+    assert cart["name"] == "model-router-mcp"
+  end
+
+  test "list/0 first element is a map with required keys" do
+    first = List.first(BojRest.Catalog.list())
+    assert is_map(first)
+    assert is_binary(first["name"])
+    assert is_binary(first["version"])
+  end
+
+  test "every cartridge name is non-empty and not whitespace-only" do
+    BojRest.Catalog.list()
+    |> Enum.each(fn cart ->
+      name = cart["name"]
+      assert is_binary(name) and String.trim(name) != "",
+             "cartridge has blank name: #{inspect(name)}"
+    end)
+  end
 end

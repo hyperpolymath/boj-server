@@ -174,4 +174,48 @@ defmodule BojRest.CredentialDecryptorTest do
     assert {:error, reason} = BojRest.CredentialDecryptor.extract(body, true)
     assert is_binary(reason)
   end
+
+  # ── additional edge cases ──────────────────────────────────────────────────
+
+  test "empty credentials map from loopback returns empty env" do
+    assert {:ok, %{}} = BojRest.CredentialDecryptor.extract(%{"credentials" => %{}}, true)
+  end
+
+  test "credentials as integer is always rejected" do
+    assert {:error, _} = BojRest.CredentialDecryptor.extract(%{"credentials" => 42}, true)
+    assert {:error, _} = BojRest.CredentialDecryptor.extract(%{"credentials" => 42}, false)
+  end
+
+  test "plaintext boolean value is rejected from loopback" do
+    body = %{"credentials" => %{"FLAG" => true}}
+    assert {:error, _} = BojRest.CredentialDecryptor.extract(body, true)
+  end
+
+  test "plaintext list value is rejected from loopback" do
+    body = %{"credentials" => %{"TAGS" => ["a", "b"]}}
+    assert {:error, _} = BojRest.CredentialDecryptor.extract(body, true)
+  end
+
+  test "round-trip decrypts all key-value pairs correctly" do
+    {caller_pub, caller_priv} = :crypto.generate_key(:ecdh, :x25519)
+    node_pub = BojRest.NodeKey.public_key()
+    shared = :crypto.compute_key(:ecdh, node_pub, caller_priv, :x25519)
+    nonce = :crypto.strong_rand_bytes(12)
+    payload = %{"KEY_A" => "val1", "KEY_B" => "val2", "KEY_C" => "val3"}
+    plaintext = Jason.encode!(payload)
+    {ct, tag} =
+      :crypto.crypto_one_time_aead(:chacha20_poly1305, shared, nonce, plaintext, "boj-invoke-v1", true)
+
+    body = %{
+      "credentials" => %{
+        "v" => 1,
+        "encrypted" => true,
+        "caller_pubkey" => Base.url_encode64(caller_pub, padding: false),
+        "nonce" => Base.url_encode64(nonce, padding: false),
+        "ciphertext" => Base.url_encode64(ct <> tag, padding: false)
+      }
+    }
+
+    assert {:ok, ^payload} = BojRest.CredentialDecryptor.extract(body, false)
+  end
 end

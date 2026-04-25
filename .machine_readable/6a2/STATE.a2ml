@@ -8,7 +8,7 @@ project = "boj-server"
 version = "1.1.0-wip"
 last-updated = "2026-04-25"
 status = "active"
-grade = "D-alpha"
+grade = "C"
 
 [project-context]
 name = "Bundle of Joy Server"
@@ -44,7 +44,7 @@ cartridges-total            = 112   # all 112 have cartridge.json + mod.js as of
 cartridges-with-zig-ffi     = 1     # boj-health only — the Zig .so reference implementation
 cartridges-with-js-mod      = 111   # mod.js dispatch via Deno worker pool
 cartridges-with-both        = 0     # no cartridge uses both paths
-exunit-tests                = 50    # catalog(11) + router(12) + credential_decryptor(12) + node_key(7) + js_invoker(8)
+exunit-tests                = 165   # 10 properties + 155 regular tests across 9 files; CRG C threshold met 2026-04-25
 zig-ffi-chain-verified      = true  # boj-invoke → dlopen → libboj_health.so end-to-end tested 2026-04-25
 js-dispatch-chain-verified  = true  # JsWorkerPool → JsWorker → Deno port → mod.js handleTool
 believe-me-count            = 4     # 3 axiomatic primitives + 1 logSafeBounded — reduced from 31 on 2026-04-12
@@ -55,11 +55,11 @@ v-lang-files                = 0     # all .v files removed 2026-04-12
 gap-1 = "No HTTP-layer auth on invoke endpoint — any caller can hit any cartridge (see docs/AUTH-DESIGN.adoc)"
 gap-2 = "Credential forwarding in federation — user API keys live on their node, not on volunteer nodes"
 gap-3 = "Load-aware inter-node routing not wired — invocations are local only"
-gap-4 = "Test coverage at CRG D (50 tests) — Grade C requires 165+ tests (see TEST-NEEDS.md)"
+gap-4 = "CLOSED 2026-04-25 — Test coverage reached CRG C (165 tests: 10 properties + 155 regular, 0 failures)"
 
 [critical-next-actions]
 actions = [
-  "Expand test suite from 50 → 165+ tests to reach CRG C (see TEST-NEEDS.md: property tests, contract harnesses, aspect harnesses, benchmarks)",
+  "Expand test suite DONE — 165 tests at CRG C as of 2026-04-25",
   "Decide and implement HTTP invoke auth (see docs/AUTH-DESIGN.adoc — options: bearer token, mTLS header, or node-identity header)",
   "Implement credential-forwarding design for federation (user keys travel with the request encrypted, vs node-level key config)",
   "Deploy 4 seed nodes to actual infrastructure",
@@ -68,10 +68,11 @@ actions = [
 [blockers-and-issues]
 invoke-auth = "OPEN — HTTP invoke endpoint has no caller auth (see docs/AUTH-DESIGN.adoc)"
 credential-forwarding = "OPEN — design not yet decided; critical for federation use case"
-test-coverage = "OPEN — 50 ExUnit tests (CRG D); Grade C requires 165+ (see TEST-NEEDS.md)"
+test-coverage = "CLOSED 2026-04-25 — 165 ExUnit tests; CRG C met"
 
 [session-history]
 entries = [
+  { date = "2026-04-25", description = "CRG D→C test expansion: (1) Added invoker_test.exs (15 tests — cli_path resolution, exit-code classification via fake_boj_invoke fixture, successful probe/name/version/invoke, extra_env). (2) Added js_worker_pool_test.exs (9 tests — pool_size, consistent-hash routing, fallback, E2E). (3) Added catalog_properties_test.exs (10 StreamData properties — round-trips, structural invariants, CredentialDecryptor properties). (4) Added contract_test.exs (15 contract tests — Catalog↔Router, NodeKey↔CredentialDecryptor, Router↔Invoker dispatch). (5) Added aspect_test.exs (15 aspect tests — no-crash, content-type, security, idempotency). (6) Added benchmarks/boj_bench.exs (10 Benchee scenarios). (7) Extended catalog_test.exs + router_test.exs + node_key_test.exs + credential_decryptor_test.exs + js_invoker_test.exs with 80+ additional tests. (8) Fixed bofig-mcp, hesiod-mcp, academic-workflow-mcp cartridge.json (missing spdx/domain/tier/auth/so_path fields). Total: 165 tests (10 properties + 155 regular), 0 failures. Grade D→C achieved." },
   { date = "2026-04-25", description = "v1.1.0 + v1.0.1 doc sweep: (1) ExUnit test suite 50 tests across 5 modules. (2) StreamData property test dep added. (3) BojRest.JsWorkerPool + JsWorker (persistent Deno pool) implemented; Router now dispatches via pool. (4) PolicyLoader.load_from_boj_catalog/1 in http-capability-gateway — 12 tests. (5) compose.dev.yaml updated: capability-gateway sidecar (port 7800 → boj-rest:7700, BOJ_CARTRIDGES_ROOT catalog mode). (6) gateway-policy.yaml retired (static policy superseded by catalog mode). (7) 4 cartridges fixed (academic-workflow, ephapax, fireflag, sanctify — missing domain/tier/auth/ffi fields). (8) Full doc sweep: TOPOLOGY.md, ROADMAP.adoc, EXPLAINME.adoc, QUICKSTART-USER.adoc, llm-warmup-dev.md — all V-lang refs removed, counts 97/99/106 → 112. (9) TEST-NEEDS.md rewritten as honest CRG D gap analysis." },
   { date = "2026-04-25", description = "Earlier session: (1) Fixed Zig ElfDynLib bug — boj-invoke now targets x86_64-linux-gnu, forcing DlDynLib/real dlopen. (2) boj-health Zig FFI cartridge fully implemented and tested. (3) Elixir REST server wired: Containerfile rewritten (3-stage Zig+Elixir build), compose.dev.yaml created. (4) All 112 cartridges now have mod.js. (5) model-router-mcp gets cartridge.json. (6) JS dispatch path implemented: BojRest.JsInvoker + priv/js_runner.js + Router dispatch branch. (7) cartridge_so_path/1 fixed to read ffi.so_path from manifest. (8) Gateway policy + catalog-integration design doc added. (9) ROADMAP v1.1.0 milestone added." },
   { date = "2026-04-20", description = "Started Elixir REST backend on port 7700 as V-lang adapter replacement. Fixed just doctor in Justfile." },

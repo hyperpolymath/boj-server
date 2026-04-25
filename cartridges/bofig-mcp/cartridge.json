@@ -5,6 +5,9 @@
   "name": "bofig-mcp",
   "version": "1.0.0",
   "description": "Bofig Cartridge — Evidence graph query tools for investigative workflows",
+  "domain": "Research",
+  "tier": "Ayo",
+  "auth": { "method": "none" },
   "author": "Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>",
   "license": "PMPL-1.0-or-later",
   "tools": [
@@ -45,7 +48,8 @@
   },
   "ffi": {
     "language": "zig",
-    "entry": "ffi/bofig_ffi.zig"
+    "entry": "ffi/bofig_ffi.zig",
+    "so_path": "libbofig_mcp.so"
   },
   "adapter": {
     "language": "typescript",

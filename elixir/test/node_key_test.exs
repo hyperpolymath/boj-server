@@ -67,4 +67,45 @@ defmodule BojRest.NodeKeyTest do
     # Keys are not the same bytes (would be pathological if they were)
     refute pub == priv
   end
+
+  # ── encoding and format ────────────────────────────────────────────────────
+
+  test "public_key/0 encodes to 43-char base64url (no padding, wire format)" do
+    pub = BojRest.NodeKey.public_key()
+    encoded = Base.url_encode64(pub, padding: false)
+    assert byte_size(encoded) == 43
+    refute String.contains?(encoded, "=")
+    refute String.contains?(encoded, "+")
+    refute String.contains?(encoded, "/")
+  end
+
+  test "private_key/0 is not the zero scalar" do
+    priv = BojRest.NodeKey.private_key()
+    refute priv == <<0::256>>
+  end
+
+  test "ECDH shared secret is 32 bytes and distinct from both keys" do
+    {caller_pub, _} = :crypto.generate_key(:ecdh, :x25519)
+    priv = BojRest.NodeKey.private_key()
+    pub = BojRest.NodeKey.public_key()
+    shared = :crypto.compute_key(:ecdh, caller_pub, priv, :x25519)
+    assert byte_size(shared) == 32
+    refute shared == priv
+    refute shared == pub
+  end
+
+  test "key file persistence: written key loads as valid 32-byte scalar" do
+    tmp = System.tmp_dir!() |> Path.join("boj_key_file_test_#{:rand.uniform(999_999)}")
+    {_pub, priv} = :crypto.generate_key(:ecdh, :x25519)
+    b64 = Base.url_encode64(priv, padding: false)
+    File.write!(tmp, b64)
+    try do
+      content = File.read!(tmp) |> String.trim()
+      assert {:ok, decoded} = Base.url_decode64(content, padding: false)
+      assert byte_size(decoded) == 32
+      assert decoded == priv
+    after
+      File.rm(tmp)
+    end
+  end
 end
