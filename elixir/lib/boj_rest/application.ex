@@ -22,7 +22,8 @@ defmodule BojRest.Application do
     children =
       [
         {BojRest.NodeKey, data_dir: data_dir},
-        {BojRest.Catalog, cartridges_root: cartridges_root}
+        {BojRest.Catalog, cartridges_root: cartridges_root},
+        {BojRest.JsWorkerPool, []}
       ] ++
         if start_server do
           [{Plug.Cowboy, scheme: :http, plug: BojRest.Router, options: [port: port]}]

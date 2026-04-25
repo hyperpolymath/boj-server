@@ -121,7 +121,8 @@ defmodule BojRest.Router do
     if Map.has_key?(cart, "ffi") do
       BojRest.Invoker.invoke(cartridge_so_path(cart), tool, args, creds)
     else
-      BojRest.JsInvoker.invoke(cartridge_mod_path(cart), tool, args, creds)
+      # JsWorkerPool.invoke falls back to JsInvoker.invoke when pool is absent.
+      BojRest.JsWorkerPool.invoke(cartridge_mod_path(cart), tool, args, creds)
     end
   end
 
