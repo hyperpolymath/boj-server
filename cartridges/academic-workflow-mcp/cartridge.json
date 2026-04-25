@@ -1,0 +1,57 @@
+{
+  "name": "academic-workflow-mcp",
+  "version": "1.0.0",
+  "description": "Academic workflow — Zotero integration, citations, paper review",
+  "author": "Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>",
+  "license": "PMPL-1.0-or-later",
+  "tools": [
+    {
+      "id": "search_zotero",
+      "name": "Search Zotero",
+      "description": "Search papers and collections in Zotero library"
+    },
+    {
+      "id": "get_paper_metadata",
+      "name": "Get Paper Metadata",
+      "description": "Fetch title, authors, DOI, year, abstract from Zotero"
+    },
+    {
+      "id": "generate_citation",
+      "name": "Generate Citation",
+      "description": "Export citation in BibTeX/CSL/RIS/EndNote format"
+    },
+    {
+      "id": "extract_bibkeys",
+      "name": "Extract BibTeX Keys",
+      "description": "Find citation keys in text"
+    },
+    {
+      "id": "export_collection",
+      "name": "Export Collection",
+      "description": "Export entire collection as BibTeX"
+    },
+    {
+      "id": "add_review_note",
+      "name": "Add Review Note",
+      "description": "Annotate papers with review comments"
+    }
+  ],
+  "abi": {
+    "interface": "abi/AcademicWorkflow.idr",
+    "loopback_proof": "IsLoopback 5174"
+  },
+  "ffi": {
+    "language": "zig",
+    "entry": "ffi/academic_ffi.zig"
+  },
+  "adapter": {
+    "language": "typescript",
+    "runtime": "deno",
+    "entry": "adapter/mod.ts",
+    "permissions": ["net", "env"]
+  },
+  "loopback": {
+    "host": "127.0.0.1",
+    "port": 5174
+  }
+}

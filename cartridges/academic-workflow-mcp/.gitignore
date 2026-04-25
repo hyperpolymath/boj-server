@@ -1,0 +1,13 @@
+zig-cache/
+*.o
+*.a
+*.so
+*.dylib
+*.wasm
+deno.lock
+.deno/
+.vscode/
+.idea/
+*.swp
+.DS_Store
+node_modules/
