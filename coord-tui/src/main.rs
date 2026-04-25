@@ -19,7 +19,7 @@ use clap::Parser;
 use crossterm::{
     event::{self, Event, KeyCode, KeyModifiers},
     execute,
-    terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
+    terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen, SetTitle},
 };
 use ratatui::{
     backend::CrosstermBackend,
@@ -170,7 +170,9 @@ impl App {
             Ok(v) if v["success"].as_bool().unwrap_or(false) => {
                 self.peer_id = v["peer_id"].as_str().map(String::from);
                 self.token   = v["token"].as_str().map(String::from);
-                self.msg = format!("registered as {}", self.peer_id.as_deref().unwrap_or("?"));
+                let id = self.peer_id.as_deref().unwrap_or("?");
+                self.msg = format!("registered as {}", id);
+                let _ = execute!(std::io::stdout(), SetTitle(format!("coord-tui [{}]", id)));
                 self.refresh();
             }
             Ok(v) => self.msg = format!("register failed: {}", str_field(&v, "error")),
@@ -488,6 +490,9 @@ fn silent_register(url: &str, kind: &str, context: &str) {
     let _        = std::fs::write(&env_path, format!(
         "BOJ_COORD_PEER_ID={peer_id}\nBOJ_COORD_TOKEN={token}\n"
     ));
+    // Set the terminal window title to the peer ID so multi-window sessions
+    // are identifiable at a glance in the taskbar / tab bar.
+    let _ = execute!(std::io::stdout(), SetTitle(peer_id));
     println!("{peer_id}");
 }
 
