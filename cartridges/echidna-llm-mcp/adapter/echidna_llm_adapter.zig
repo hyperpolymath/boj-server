@@ -118,7 +118,18 @@ fn listenLoop(port: u16) !void {
 }
 
 pub fn main() !void {
-    ffi.echidna_llm_init();
+    // FFI signature is `echidna_llm_init(endpoint: [*:0]const u8)`. Read the
+    // endpoint from BOJ_ENDPOINT env var, falling back to BoJ's default port.
+    var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+    defer arena.deinit();
+    const allocator = arena.allocator();
+    const endpoint_z = std.process.getEnvVarOwned(allocator, "BOJ_ENDPOINT") catch
+        try allocator.dupeZ(u8, "http://127.0.0.1:7700");
+    const endpoint_cstr: [*:0]const u8 = if (@TypeOf(endpoint_z) == [:0]u8)
+        endpoint_z.ptr
+    else
+        try allocator.dupeZ(u8, endpoint_z);
+    _ = ffi.echidna_llm_init(endpoint_cstr);
     const t1 = try std.Thread.spawn(.{}, listenLoop, .{REST_PORT});
     const t2 = try std.Thread.spawn(.{}, listenLoop, .{GRPC_PORT});
     const t3 = try std.Thread.spawn(.{}, listenLoop, .{GQL_PORT});

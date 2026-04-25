@@ -89,7 +89,7 @@ var boj_endpoint_len: usize = 0;
 // ═══════════════════════════════════════════════════════════════════════
 
 /// Initialise the cartridge with BoJ endpoint URL
-export fn echidna_llm_init(endpoint: [*:0]const u8) c_int {
+pub export fn echidna_llm_init(endpoint: [*:0]const u8) c_int {
     state_mutex.lock();
     defer state_mutex.unlock();
 
@@ -107,7 +107,7 @@ export fn echidna_llm_init(endpoint: [*:0]const u8) c_int {
 
 /// Create an ephemeral session token
 /// Returns 0 on success, -1 on invalid transition
-export fn echidna_llm_authenticate(
+pub export fn echidna_llm_authenticate(
     token_ptr: [*]const u8,
     token_len: c_int,
     max_calls: c_int,
@@ -137,7 +137,7 @@ export fn echidna_llm_authenticate(
 }
 
 /// Transition to operating state
-export fn echidna_llm_start_operating() c_int {
+pub export fn echidna_llm_start_operating() c_int {
     state_mutex.lock();
     defer state_mutex.unlock();
 
@@ -147,7 +147,7 @@ export fn echidna_llm_start_operating() c_int {
 }
 
 /// Close the session (from authenticated or operating)
-export fn echidna_llm_close() c_int {
+pub export fn echidna_llm_close() c_int {
     state_mutex.lock();
     defer state_mutex.unlock();
 
@@ -160,14 +160,14 @@ export fn echidna_llm_close() c_int {
 }
 
 /// Get current session state
-export fn echidna_llm_get_state() c_int {
+pub export fn echidna_llm_get_state() c_int {
     state_mutex.lock();
     defer state_mutex.unlock();
     return @intFromEnum(current_session.state);
 }
 
 /// Check if the session is still valid (not expired, not over call limit)
-export fn echidna_llm_session_valid() c_int {
+pub export fn echidna_llm_session_valid() c_int {
     state_mutex.lock();
     defer state_mutex.unlock();
 
@@ -199,7 +199,7 @@ export fn echidna_llm_session_valid() c_int {
 ///   model:                   Model tier (0=haiku, 1=sonnet, 2=opus)
 ///
 /// Returns: null-terminated JSON string, or NULL on error
-export fn echidna_llm_suggest_tactics(
+pub export fn echidna_llm_suggest_tactics(
     goal_ptr: [*]const u8,
     goal_len: c_int,
     hypotheses_ptr: [*]const u8,
@@ -259,7 +259,7 @@ export fn echidna_llm_suggest_tactics(
 }
 
 /// Rank provers for a goal. Returns heap-allocated JSON. Caller MUST free.
-export fn echidna_llm_rank_provers(
+pub export fn echidna_llm_rank_provers(
     goal_ptr: [*]const u8,
     goal_len: c_int,
     model: c_int,
@@ -286,7 +286,7 @@ export fn echidna_llm_rank_provers(
 // ═══════════════════════════════════════════════════════════════════════
 
 /// Free a string returned by any echidna_llm_* function
-export fn echidna_llm_free(ptr: ?[*:0]u8) void {
+pub export fn echidna_llm_free(ptr: ?[*:0]u8) void {
     const p = ptr orelse return;
     const allocator = std.heap.c_allocator;
     const slice = std.mem.span(p);
@@ -299,7 +299,7 @@ export fn echidna_llm_free(ptr: ?[*:0]u8) void {
 
 /// Check if a state transition is valid (C ABI)
 /// Mirrors llm_can_transition from Protocol.idr
-export fn echidna_llm_can_transition(from: c_int, to: c_int) c_int {
+pub export fn echidna_llm_can_transition(from: c_int, to: c_int) c_int {
     return switch (from) {
         0 => if (to == 1) @as(c_int, 1) else 0, // Unauth → Auth
         1 => if (to == 2 or to == 3) @as(c_int, 1) else 0, // Auth → Op or Closed
@@ -309,7 +309,7 @@ export fn echidna_llm_can_transition(from: c_int, to: c_int) c_int {
 }
 
 /// Check if an operation is advisory (always 1, proven in Idris2)
-export fn echidna_llm_is_advisory(op: c_int) c_int {
+pub export fn echidna_llm_is_advisory(op: c_int) c_int {
     _ = op;
     return 1; // All operations advisory, by construction
 }
@@ -323,22 +323,22 @@ const shim = @import("cartridge_shim.zig");
 const CARTRIDGE_NAME_PTR: [*:0]const u8 = "echidna-llm-mcp";
 const CARTRIDGE_VERSION_PTR: [*:0]const u8 = "0.1.0";
 
-export fn boj_cartridge_init() callconv(.c) c_int {
+pub export fn boj_cartridge_init() callconv(.c) c_int {
     return 0;
 }
 
-export fn boj_cartridge_deinit() callconv(.c) void {}
+pub export fn boj_cartridge_deinit() callconv(.c) void {}
 
-export fn boj_cartridge_name() callconv(.c) [*:0]const u8 {
+pub export fn boj_cartridge_name() callconv(.c) [*:0]const u8 {
     return CARTRIDGE_NAME_PTR;
 }
 
-export fn boj_cartridge_version() callconv(.c) [*:0]const u8 {
+pub export fn boj_cartridge_version() callconv(.c) [*:0]const u8 {
     return CARTRIDGE_VERSION_PTR;
 }
 
 /// Dispatch the 4 cartridge.json MCP tools. Grade D Alpha stubs.
-export fn boj_cartridge_invoke(
+pub export fn boj_cartridge_invoke(
     tool_name: [*c]const u8,
     json_args: [*c]const u8,
     out_buf: [*c]u8,
