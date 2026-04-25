@@ -1,0 +1,111 @@
+{
+  "name": "hesiod-mcp",
+  "version": "1.0.0",
+  "description": "DNS lookup cartridge — query DNS records via MCP tools",
+  "domain": "Infrastructure",
+  "tier": "Ayo",
+  "auth": { "method": "none" },
+  "author": "Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>",
+  "license": "PMPL-1.0-or-later",
+  "tools": [
+    {
+      "id": "dns_lookup",
+      "name": "DNS Lookup",
+      "description": "Query DNS records for a hostname",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "hostname": {
+            "type": "string",
+            "description": "Domain name to query"
+          },
+          "record_type": {
+            "type": "string",
+            "enum": ["A", "AAAA", "CNAME", "MX", "NS", "SOA", "TXT", "SRV"],
+            "description": "DNS record type"
+          },
+          "timeout_seconds": {
+            "type": "number",
+            "description": "Query timeout (default: 5)",
+            "default": 5
+          }
+        },
+        "required": ["hostname", "record_type"]
+      }
+    },
+    {
+      "id": "dns_reverse_lookup",
+      "name": "Reverse DNS Lookup",
+      "description": "Resolve IP address to hostname",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "address": {
+            "type": "string",
+            "description": "IPv4 or IPv6 address"
+          },
+          "timeout_seconds": {
+            "type": "number",
+            "description": "Query timeout (default: 5)",
+            "default": 5
+          }
+        },
+        "required": ["address"]
+      }
+    },
+    {
+      "id": "dns_bulk_lookup",
+      "name": "Bulk DNS Lookup",
+      "description": "Query multiple hostnames at once",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "hostnames": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "List of domains"
+          },
+          "record_type": {
+            "type": "string",
+            "enum": ["A", "AAAA", "CNAME", "MX", "NS", "SOA", "TXT", "SRV"],
+            "description": "Record type for all lookups"
+          },
+          "timeout_seconds": {
+            "type": "number",
+            "description": "Per-query timeout (default: 5)",
+            "default": 5
+          }
+        },
+        "required": ["hostnames", "record_type"]
+      }
+    }
+  ],
+  "abi": {
+    "interface": "abi/Hesiod.idr",
+    "loopback_proof": "IsLoopback 5173"
+  },
+  "ffi": {
+    "language": "zig",
+    "entry": "ffi/hesiod_ffi.zig",
+    "so_path": "libhesiod_mcp.so",
+    "functions": [
+      "hesiod_lookup",
+      "hesiod_reverse_lookup",
+      "hesiod_bulk_lookup",
+      "hesiod_validate_hostname",
+      "hesiod_error_message"
+    ]
+  },
+  "adapter": {
+    "language": "typescript",
+    "runtime": "deno",
+    "entry": "adapter/mod.ts",
+    "permissions": ["net"]
+  },
+  "loopback": {
+    "host": "127.0.0.1",
+    "port": 5173
+  }
+}
