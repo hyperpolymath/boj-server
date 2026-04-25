@@ -36,7 +36,7 @@ just doctor           # Check toolchain
 ## Prerequisites
 
 Idris2 >= 0.7.0, Zig >= 0.13, V (vlang) >= 0.4.4, just >= 1.25.
-Optional: Cargo (for cartridge-minter tool), cloudflared (for tunnels).
+Optional: Cargo (for launch-scaffolder — mint/provision/config cartridges), cloudflared (for tunnels).
 
 ## Cartridges (70+)
 

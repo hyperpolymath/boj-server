@@ -1105,7 +1105,7 @@ doctor:
     echo ""
     echo "Optional tools:"
     check_optional "V (vlang)"    v            "deprecated/banned 2026-04-10"
-    check_optional "Cargo"        cargo        "needed for tools/cartridge-minter"
+    check_optional "Cargo"        cargo        "needed by launch-scaffolder (mint/provision/config)"
     check_optional "cloudflared"  cloudflared  "needed for tunnel"
     check_optional "panic-attack" panic-attack "pre-commit scanner"
     check_optional "podman"       podman       "container builds"

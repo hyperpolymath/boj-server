@@ -34,7 +34,7 @@ Three-class architecture: Class 1 (simple CLI), Class 2 (orchestrator with webho
 
 | Rust / Cargo (optional)
 | >= 1.80
-| For `tools/cartridge-minter` only
+| For `launch-scaffolder` (mint/provision/config cartridges)
 |===
 
 Verify all tools:
@@ -177,9 +177,35 @@ elixir/                Elixir/BEAM REST server (Catalog, Router, JsWorkerPool)
 cartridges/            One dir per cartridge (112 total)
   database-mcp/        Example: Idris2 ABI + Zig FFI + mod.js adapter
 container/             Stapeln container ecosystem
-tools/cartridge-minter Rust CLI for minting new cartridges
+tools/                 Cartridge tooling (provisioner, configurator, harness)
 .machine_readable/     State, policies, contractiles
 ----
+
+== Running a Production Node (Umoja Federation)
+
+To run a community node that joins the Umoja seed network:
+
+[source,bash]
+----
+# Pull the latest image
+podman-compose -f container/compose.prod.yaml pull
+
+# Start (daemonised)
+podman-compose -f container/compose.prod.yaml up -d
+
+# Check it is live
+curl http://localhost:7700/health
+----
+
+The four continental seed nodes (`eu`, `de`, `us`, `ap` at `boj.hyperpolymath.dev:9999`)
+are pre-configured as bootstrap peers.  Set `BOJ_NODE_ID` to give your node a stable
+identity in the gossip network.
+
+For Podman Quadlet (systemd service), copy
+`container/boj-community-node.container` to
+`~/.config/containers/systemd/` and run `systemctl --user start boj-community-node`.
+
+The four canonical seed nodes are declared in `container/seed-nodes.toml`.
 
 == Further Reading
 

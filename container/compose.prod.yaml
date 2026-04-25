@@ -1,0 +1,97 @@
+# SPDX-License-Identifier: PMPL-1.0-or-later
+# Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+#
+# BoJ Server — production node compose (Podman Compose compatible)
+#
+# Runs a fully operational BoJ node from the pre-built ghcr.io image.
+# Suitable for Umoja seed nodes and community volunteer nodes.
+#
+# Usage:
+#   # Pull latest image
+#   podman-compose -f container/compose.prod.yaml pull
+#
+#   # Start (daemonised)
+#   podman-compose -f container/compose.prod.yaml up -d
+#
+#   # View logs
+#   podman-compose -f container/compose.prod.yaml logs -f boj-rest
+#
+#   # Stop
+#   podman-compose -f container/compose.prod.yaml down
+#
+# Seed node environment variables:
+#   BOJ_NODE_ID       Stable node name (defaults to hostname; set for seeds)
+#   BOJ_SEED_NODES    Comma-separated host:port pairs to bootstrap federation
+#                     Defaults to the four continental Umoja seed nodes.
+#
+# For credential-forwarded cartridges set the relevant env vars:
+#   GITHUB_TOKEN, NOTIFYHUB_API_KEY, etc.
+# Callers can also supply credentials encrypted in the request body (Option A);
+# see docs/AUTH-DESIGN.adoc for the full credential forwarding design.
+
+services:
+  boj-rest:
+    image: ghcr.io/hyperpolymath/boj-server:latest
+    container_name: boj-node
+    restart: unless-stopped
+    ports:
+      - "7700:7700"
+      - "9999:9999/udp"
+    volumes:
+      - boj-node-data:/data:Z
+    environment:
+      # Server binding
+      APP_HOST: "[::]"
+      APP_PORT: "7700"
+      APP_DATA_DIR: "/data"
+      APP_LOG_FORMAT: "json"
+      # Federation
+      BOJ_QUIC: "1"
+      BOJ_FEDERATION_PORT: "9999"
+      # Override with a memorable name for seed nodes, e.g. "seed-eu-west"
+      # BOJ_NODE_ID: ""
+      # Bootstrap peers — defaults to all four Umoja seed nodes.
+      # Override for private/staging networks.
+      BOJ_SEED_NODES: "eu.boj.hyperpolymath.dev:9999,de.boj.hyperpolymath.dev:9999,us.boj.hyperpolymath.dev:9999,ap.boj.hyperpolymath.dev:9999"
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m,noexec,nosuid,nodev
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:7700/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  capability-gateway:
+    image: ghcr.io/hyperpolymath/boj-server:latest
+    container_name: boj-gateway
+    restart: unless-stopped
+    entrypoint: ["/app/gateway/bin/http_capability_gateway", "start"]
+    depends_on:
+      boj-rest:
+        condition: service_healthy
+    ports:
+      - "7800:7800"
+    environment:
+      GATEWAY_PORT: "7800"
+      GATEWAY_UPSTREAM: "http://boj-rest:7700"
+      BOJ_CARTRIDGES_ROOT: "/app/cartridges"
+      GATEWAY_LOG_FORMAT: "json"
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp:size=32m,noexec,nosuid,nodev
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:7800/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+volumes:
+  boj-node-data:
+    driver: local

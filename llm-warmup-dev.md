@@ -84,8 +84,11 @@ web-ecosystem/
     lib/http_capability_gateway/
       policy_loader.ex      load_from_boj_catalog/1 — auto-generates policy from cartridge.json
 
-tools/cartridge-minter/     Rust CLI for minting new cartridges
-  Cargo.toml
+tools/                      Cartridge tooling (provisioner, configurator, harness)
+  cartridge-provisioner/
+  cartridge-configurator/
+  panel-harness/
+# Note: cartridge-minter (Node.js, banned) removed 2026-04-25. Use launch-scaffolder.
 
 panll/src/                  PanLL panel (ReScript/TEA)
 
