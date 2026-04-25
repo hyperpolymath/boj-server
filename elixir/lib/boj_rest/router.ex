@@ -2,17 +2,24 @@
 # Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
 defmodule BojRest.Router do
   @moduledoc """
-  Plug router for the five endpoints `mcp-bridge/lib/api-clients.js` hits:
+  Plug router for the five HTTP endpoints:
 
-      GET  /health
-      GET  /menu
-      GET  /cartridges
-      GET  /cartridge/:name
-      POST /cartridge/:name/invoke
+      GET  /health                    — liveness + cartridge count
+      GET  /menu                      — full cartridge catalogue (name/domain/tier/description)
+      GET  /cartridges                — cartridge name list
+      GET  /cartridge/:name           — single cartridge metadata (cartridge.json contents)
+      POST /cartridge/:name/invoke    — dispatch a tool call to a cartridge
 
-  Invocation is a placeholder: this skeleton does not dispatch to the Zig
-  FFI yet. It returns `{"error": "invocation-not-yet-wired"}` so the bridge
-  gets a structured response instead of a connection refusal.
+  Dispatch on POST /invoke branches on the cartridge manifest:
+    - cart["ffi"] present  → BojRest.Invoker   (Zig .so via boj-invoke CLI)
+    - cart["ffi"] absent   → BojRest.JsInvoker (mod.js via Deno runner)
+
+  Auth note: the invoke endpoint currently has no caller authentication.
+  Umoja federation trust is established at the gossip/SDP layer (X25519
+  handshake, UDP port 9999) — the HTTP layer has no way to verify a caller
+  is an authenticated peer. The http-capability-gateway sidecar (port 7800)
+  will enforce verb governance and, via mTLS Phase B, trust-level headers.
+  See docs/AUTH-DESIGN.adoc for the full topology and migration plan.
   """
   use Plug.Router
 
@@ -26,8 +33,6 @@ defmodule BojRest.Router do
     body =
       %{
         status: "ok",
-        mode: "skeleton",
-        note: "BoJ REST skeleton (elixir/) — endpoints respond, invocation is a placeholder",
         version: @version,
         cartridges_loaded: length(BojRest.Catalog.list())
       }

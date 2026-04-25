@@ -5,204 +5,95 @@
 
 [metadata]
 project = "boj-server"
-version = "0.4.0"
-last-updated = "2026-04-18"
+version = "1.0.1-wip"
+last-updated = "2026-04-25"
 status = "active"
 grade = "D-alpha"
 
 [project-context]
 name = "Bundle of Joy Server"
-purpose = "Unified server capability catalogue solving the combinatoric explosion of developer server protocols. Provides a 2D matrix of formally verified cartridges (protocol types x capability domains), distributed via community-hosted nodes with hash attestation and gossip protocol."
-completion-percentage = 57
+purpose = "Unified server capability catalogue. AI goes to ONE place instead of hunting across dozens of MCP servers. Distributed via community-hosted Umoja nodes with gossip protocol and hash attestation. 106 cartridges covering the full developer-tool matrix."
+completion-percentage = 65
 
-[position]
-phase = "alpha"
-maturity = "alpha"
+[stack]
+# Current authoritative stack — V-lang adapter layer is GONE (banned 2026-04-10, removed 2026-04-12)
+abi-layer    = "Idris2 — formal interface definitions with dependent-type proofs"
+ffi-layer    = "Zig    — C-ABI .so shared libraries (boj-invoke CLI for dlopen dispatch)"
+rest-server  = "Elixir (Plug/Cowboy) — HTTP surface on port 7700, 5 routes"
+js-dispatch  = "Deno   — mod.js cartridges invoked via priv/js_runner.js per-call fork"
+container    = "Chainguard wolfi-base (Containerfile, 3-stage Zig+Elixir build)"
+federation   = "Zig QUIC gossip (X25519 + ChaCha20-Poly1305, UDP 9999)"
 
 [route-to-mvp]
 milestones = [
   { name = "Phase 0: Fresh repo from rsr-template-repo", completion = 100 },
   { name = "Phase 1: Core catalogue & menu system (Idris2 ABI)", completion = 100 },
   { name = "Phase 2: Core Zig FFI layer (catalogue + loader)", completion = 100 },
-  { name = "Phase 3: V-lang quad adapter (REST+gRPC+GraphQL+SSE)", completion = 100 },
-  { name = "Phase 4: First cartridges — ABI+FFI+Adapter (database, fleet, nesy, agent)", completion = 100 },
+  { name = "Phase 3: V-lang adapter layer", completion = 100, note = "RETIRED — V-lang banned 2026-04-10, all .v files removed 2026-04-12" },
+  { name = "Phase 4: First cartridges — boj-health Zig FFI reference impl", completion = 100 },
   { name = "Phase 5: Umoja federation & PanLL panel", completion = 100 },
-  { name = "Phase 6: Remaining cartridges (fill the matrix)", completion = 100 },
-  { name = "Phase 7: Polystack deprecation (endgame)", completion = 100 },
-  { name = "Phase 8: Grade D→C (QUIC, multi-node, coprocessor, docs)", completion = 40 },
-  { name = "Phase 9: Grade C→B (SLA, community, SDP, seed nodes)", completion = 20 },
+  { name = "Phase 6: 106-cartridge matrix (all have cartridge.json + mod.js)", completion = 100 },
+  { name = "Phase 7: Elixir REST server wired to Zig FFI + JS Deno dispatch", completion = 100 },
+  { name = "Phase 8: Gateway sidecar (http-capability-gateway policy + catalog integration)", completion = 15 },
+  { name = "Phase 9: Auth layer (HTTP invoke caller auth, trust-level forwarding, credential proxy)", completion = 0 },
+  { name = "Phase 10: Grade D→C (QUIC multi-node, SLA, seed nodes, external validation)", completion = 30 },
 ]
-
-# Honest assessment notes:
-# - Phase 8 partial: QUIC transport, multi-node testing, coprocessor dispatch code exists
-#   but lacks external validation, release workflow is stub, placeholders remain
-# - Grade D (Alpha): 18 cartridges built as state machines, tests passing internally
-# - Federation tests: 40 (was 30, +10 QUIC tests)
-# - Coprocessor tests: 14, SLA tests: 11, Community tests: 11, SDP tests: 10
-# - Multi-node tests: 11 (shell tests)
 
 [quality]
-# Added 2026-04-04: Comprehensive MCP test suite (Deno)
-total-tests = 365  # 307 existing + 58 new MCP tests
-core-ffi-tests = 178
-cartridge-ffi-tests = 113
-federation-tests = 40
-coprocessor-tests = 14
-sla-tests = 11
-community-tests = 11
-sdp-tests = 10
-e2e-tests = 13  # 3 existing + 10 new MCP E2E
-readiness-tests = 28
-guardian-tests = 12
-verisimdb-tests = 7
-multinode-tests = 11
-# NEW: MCP Bridge Tests (Deno)
-mcp-smoke-tests = 8   # CLI, schema validation, health, cartridge listing
-mcp-e2e-tests = 10    # Lifecycle, tool invocation, error handling, sandboxing
-mcp-p2p-tests = 14    # Property-based: uniqueness, vocabulary, matrix completeness
-mcp-aspect-tests = 17 # Security: injection, sandboxing, credential handling, SSRF
-mcp-benchmark-tests = 10 # Performance baselines: serialization, latency, throughput
-cartridges-total = 99                   # standard cartridges with cartridge.json; corrected 2026-04-18 (was stale at 92)
-cartridges-non-standard = 1             # model-router-mcp — tool list inline in src/router.js, no cartridge.json
-cartridges-with-readme = 100            # README.adoc coverage complete 2026-04-18 (46 generated this session)
-cartridge-shared-libs-build-target = 99 # shared libs produced by Containerfile at runtime; not checked into the tree
-cartridge-shared-libs-on-disk = 0       # nothing pre-built is committed — the Containerfile is authoritative
-safety-modules = 7  # Safety, Guardian, SafeHTTP, SafePromptInjection, SafeCORS, SafeAPIKey, SafeWebSocket
-sse-transport = true  # Port 7703 — fixed 2026-03-29
-glama-grade = "AAA"  # Security A, License A, Quality A
-dependabot-alerts = 0  # 3 low-sev alerts (rustls-webpki x2, rand) resolved 2026-04-18 via tray/Cargo.lock patch bumps; cargo check clean
-benchmark = true  # 63 V-lang ecosystem benchmarks + 10 MCP baselines
-ci-pipeline = "zig-test.yml"
-topology = true
-believe-me-count = 4  # 3 axiomatic primitives (charEqSound, charEqSym, unpackLength) + 1 logSafeBounded — reduced from 31 on 2026-04-12
-fake-fuzz-placeholder = false  # tests/fuzz/placeholder.txt removed 2026-04-04
+cartridges-total            = 106   # all 106 have cartridge.json + mod.js as of 2026-04-25
+cartridges-with-zig-ffi     = 1     # boj-health only — the Zig .so reference implementation
+cartridges-with-js-mod      = 105   # mod.js dispatch via Deno (includes model-router-mcp pure-local)
+cartridges-with-both        = 0     # no cartridge uses both paths
+zig-ffi-chain-verified      = true  # boj-invoke → dlopen → libboj_health.so end-to-end tested 2026-04-25
+js-dispatch-chain-verified  = true  # deno run js_runner.js → mod.js handleTool — tested 2026-04-25
+believe-me-count            = 4     # 3 axiomatic primitives + 1 logSafeBounded — reduced from 31 on 2026-04-12
+v-lang-files                = 0     # all .v files removed 2026-04-12
 
-[maintenance]
-must = [
-  "Order-ticket end-to-end flow test (done)",
-  "Cartridge .so/.dylib shared library builds (99/99 done — counter corrected 2026-04-18; prior '18/18' was stale from early cohort)",
-  "CI/CD pipeline (zig-test.yml — done)",
-  "Hash verification wired to mount (done)",
-  "Distinct error codes for all failure modes (done)",
-]
-should = [
-  "gRPC-compat adapter (done — JSON-over-HTTP with service/method paths)",
-  "GraphQL subscriptions for mount/unmount events (done — polling)",
-  "Readiness Grade D (Alpha) tests (done — 7 production tests)",
-  "PanLL module mapping (DONE — 887-line view, 5 tabs, clade definition)",
-  "Cartridge hot-reload (done — unmount/verify/remount)",
-  "QUIC-first transport (DONE — X25519+ChaCha20-Poly1305, 10 QUIC tests)",
-  "Multi-node federation testing (DONE — 11 tests, REST API peering)",
-  "Coprocessor dispatch (DONE — Axiom.jl-style, 14 tests)",
-  "Podman secure instance (configured-not-deployed — quadlet, seccomp, read-only rootfs defined, image not published)",
-  "Stable API contract (DONE — docs/API-CONTRACT.md)",
-]
-could = [
-  "WASM cartridge support",
-  "Teranga menu runtime generation",
-  "Register domain for named Cloudflare tunnel",
-]
-
-[blockers-and-issues]
-# No critical blockers. Grade D (Alpha) — 18 cartridges built, tests passing.
-# Remaining: external validation, release workflow, deploy seed nodes, register domain.
+[open-gaps]
+# Ordered by impact on users hitting POST /cartridge/:name/invoke
+gap-1 = "No HTTP-layer auth on invoke endpoint — any caller can hit any cartridge (see docs/AUTH-DESIGN.adoc)"
+gap-2 = "Credential forwarding in federation — user API keys live on their node, not on volunteer nodes"
+gap-3 = "Deno fork-per-call overhead ~200ms cold start — worker pool is Phase 2"
+gap-4 = "Gateway catalog-mode (PolicyLoader.load_from_boj_catalog) not yet implemented in http-capability-gateway"
+gap-5 = "Load-aware inter-node routing not wired — invocations are local only"
+gap-6 = "TEST-NEEDS.md references V-lang era tests — needs rewrite against Elixir/Deno stack"
+gap-7 = "STATE.a2ml was massively stale until 2026-04-25 — all session-history entries before this date describe the old V-lang stack"
 
 [critical-next-actions]
 actions = [
-  "Register domain (hiddenhashtag.dev or alternative) for named tunnel",
+  "Decide and implement HTTP invoke auth (see docs/AUTH-DESIGN.adoc — options: bearer token, mTLS header, or node-identity header)",
+  "Implement credential-forwarding design for federation (user keys travel with the request encrypted, vs node-level key config)",
+  "Implement PolicyLoader.load_from_boj_catalog in http-capability-gateway (see docs/gateway-catalog-integration.adoc)",
+  "Rewrite TEST-NEEDS.md against Elixir/Deno stack",
+  "Deploy gateway sidecar in compose.dev.yaml once catalog mode is ready",
   "Deploy 4 seed nodes to actual infrastructure",
-  "Enable DoQ/DoH on seed nodes (runtime config)",
-  "Post Show HN + blog post (drafts ready in docs/outreach/)",
-  "Submit arXiv paper (draft ready in docs/papers/)",
-  "Gather external validation from real users",
 ]
+
+[blockers-and-issues]
+invoke-auth = "OPEN — HTTP invoke endpoint has no caller auth (see docs/AUTH-DESIGN.adoc)"
+credential-forwarding = "OPEN — design not yet decided; critical for federation use case"
+gateway-catalog-mode = "OPEN — PolicyLoader.load_from_boj_catalog not yet implemented"
+test-needs-stale = "OPEN — TEST-NEEDS.md references V-lang era, needs rewrite"
 
 [session-history]
 entries = [
-  { date = "2026-03-16", description = "npm scripts verified and validated for Glama MCP directory submission compatibility." },
-  { date = "2026-04-03", description = "URL encoding fix: replace→replaceAll in npm-registry-mcp to handle all encoded characters. Code scanning alert resolved." },
-  { date = "2026-04-04", description = "Containerfile updated: all 96 cartridge FFI builds (was 18). Dynamic discovery loop replaces hardcoded list. entrypoint.sh builds LD_LIBRARY_PATH dynamically at startup. 96/96 cartridges now loadable in container." },
-  { date = "2026-04-12", description = "V-lang sweep complete (commits c4674f8/cb00882/325b42e/9186016): 0 .v adapter files remain, all 90 cartridges have cartridge.json + mod.js + Zig three-protocol adapter. CI fixes: lcb-website (SHA updates, RSR path migration 6scm→6a2, peter-evans→gh workflow run) + nafa-app (Deno SHA pin, TS exclusion for Deno test files). believe_me sweep: 31→4 across 6 ABI safety modules (commit d262256) — added fromLteTrue (constructive), charEqSound/unpackLength (axiomatic primitives), eliminated all Safety/SafeWebSocket/SafePromptInjection/SafeCORS/SafeAPIKey non-axiomatic instances." },
-  { date = "2026-04-17", description = "Spec bump v0.4.0: V-lang ban documented in all spec docs. Cartridge manifest format confirmed as Nickel (closed DD), JSON→Nickel migration tracked as future work. BoJ-only MCP rule added to FEDERATION.md. Unified-zig-api stack alignment documented in ARCHITECTURE.md and ABI-FFI-README.md as planned future work (BoJ does not yet consume libzig_api). ADR-0002 created. EXPLAINME.adoc manifest.json→cartridge.json corrected. META.a2ml languages updated (v removed, zig-adapter noted)." },
-  { date = "2026-04-20", description = "Fix disconnected state: (1) Updated .gemini/settings.json to use 'deno run -A' for MCP bridge (prevents interactive permission prompts). (2) Started Elixir REST backend on port 7700 as Class 3 Multiplier replacement for banned V-lang adapter. (3) Fixed 'just doctor' in Justfile to handle 'zig version' syntax and robust tool detection." },
+  { date = "2026-04-25", description = "Major session: (1) Fixed Zig ElfDynLib bug — boj-invoke now targets x86_64-linux-gnu, forcing DlDynLib/real dlopen. (2) boj-health Zig FFI cartridge fully implemented and tested. (3) Elixir REST server wired: Containerfile rewritten (3-stage Zig+Elixir build), compose.dev.yaml created. (4) All 106 cartridges now have mod.js (7 were missing). (5) model-router-mcp gets cartridge.json. (6) JS dispatch path implemented: BojRest.JsInvoker + priv/js_runner.js + Router dispatch branch. (7) cartridge_so_path/1 fixed to read ffi.so_path from manifest. (8) Gateway policy + catalog-integration design doc added. (9) ROADMAP v1.1.0 milestone added. (10) STATE.a2ml rewritten to reflect current reality." },
+  { date = "2026-04-20", description = "Started Elixir REST backend on port 7700 as V-lang adapter replacement. Fixed just doctor in Justfile." },
+  { date = "2026-04-17", description = "Spec bump v0.4.0: V-lang ban documented. ADR-0002 created. EXPLAINME.adoc corrections." },
+  { date = "2026-04-12", description = "V-lang sweep complete: 0 .v files remain. believe_me sweep: 31→4. CI fixes." },
+  { date = "2026-04-04", description = "MCP test suite added (Deno). Containerfile updated for 96-cartridge matrix." },
+  { date = "2026-03-16", description = "Repository created from rsr-template-repo. Initial Idris2 ABI + Zig FFI foundation." },
 ]
-
-[launch-status]
-awesome-list-prs = [
-  "punkpeye/awesome-mcp-servers #2999",
-  "modelcontextprotocol/servers #3506",
-  "C-BJ/awesome-zig #87",
-  "vlang/awesome-v #265",
-  "joaomilho/awesome-idris #14",
-]
-wiki = "docs/wiki/ (5 pages: Home, User-Guide, Operator-Guide, Developer-Guide, FAQ)"
-container-bootstrap = "entrypoint.sh auto-seeds federation via BOJ_SEED_NODES env"
-papers = "arXiv draft + IETF Internet-Draft in docs/papers/"
-outreach = "Show HN + blog post drafts in docs/outreach/"
-
-[dogfooding-status]
-verisimdb = "done — database-mcp e2e on port 8180 (octad CRUD, VQL, drift)"
-ssg = "done — ssg-mcp builds Zola sites end-to-end"
-container = "done — container-mcp with FFI state machine + Stapeln API proxy"
-feedback = "done — feedback-mcp (18th cartridge), full ABI+FFI+Adapter+.so"
-panll-panel = "done — Boj.res panel, 5 tabs, cartridge matrix"
-panll-routing = "done — bojRouting toggle on 10 panels (VeriSimDB, Editor Bridge, Build Dashboard, VM Inspector, Echidna, Aerie, Coprocessors, Automation Router, MyLang, TypeLL)"
-
-[grade-b-status]
-quic-transport = "done — X25519 ECDH + ChaCha20-Poly1305 AEAD, backward compatible"
-multinode-testing = "done — 2-node federation test script, REST API peering, 11 tests"
-coprocessor-dispatch = "done — detect→select→dispatch→fallback, env-driven, 14 tests"
-podman-secure = "configured-not-deployed — quadlet + seccomp profile + read-only rootfs defined, container image not published, untested in production"
-api-contract = "done — docs/API-CONTRACT.md, all endpoints documented"
-configurable-ports = "done — BOJ_REST_PORT, BOJ_GRPC_PORT, BOJ_GRAPHQL_PORT env vars"
-
-[seam-checks]
-module = "ffi/zig/src/seams.zig"
-tests = 15
-pattern = "panic-attack diagnostics (integration contract validation)"
-categories = "enum-encoding, mount-safety, hash-attestation, backend-axis, lifecycle, json-contract, protocol-range, order-validation, thread-safety"
-result = "silent signature (all pass)"
-
-[thread-safety]
-pattern = "std.Thread.Mutex per FFI module, lock at C-ABI export boundary"
-modules-hardened = 9
-exports-protected = 120
-global-vars-guarded = 55
-deadlock-prevention = "internal _impl functions for re-entrant call paths"
-panic-attack-result = "1 weak point (QUIC crypto, expected), 0 critical vulns in Zig FFI"
-
-[mcp-bridge]
-mode = "--mcp flag on boj-server binary"
-protocol = "JSON-RPC 2.0 over stdin/stdout (MCP 2024-11-05)"
-tools = 18
-usage = "boj-server --mcp (add to claude_desktop_config.json)"
-
-[extensibility]
-backend-axis = "stubbed — third dimension (domain x protocol x backend) for community extensions"
-extension-descriptor = "docs/examples/extension.a2ml"
-documentation = "docs/EXTENSIBILITY.md"
-
-[grade-a-aspirations]
-# These are NOT Grade A — they are initial implementations needing external validation
-sla-monitoring = "initial — 3-tier (community/standard/premium), percentile tracking, 11 tests, no real-world usage"
-community-submissions = "initial — Ayo tier, review state machine, hash validation, 11 tests, no external submitters"
-auto-sdp = "initial — zero-trust perimeter, allow-list, auto-ban, open mode for bootstrapping, 10 tests, untested in production"
-seed-nodes = "config only — 4-continent config (EU-West, EU-Central, US-East, AP-South), not deployed"
-
-[maintenance-status]
-last-run-utc = "2026-03-09"
-last-report = "reports/maintenance/latest.json"
-last-result = "pass"
-open-warnings = 0
-open-failures = 0
-
-[ecosystem]
-part-of = ["hyperpolymath infrastructure", "PanLL", "stapeln ecosystem"]
-depends-on = ["proven-servers", "stapeln", "selur-compose", "vordr", "svalinn"]
-replaces = ["polystack"]
 
 [architecture]
-stack = "Idris2 (ABI) -> Zig (FFI) -> Zig (Adapter, formerly V-lang — banned 2026-04-10)"
-model = "2D matrix: protocol types (columns) x capability domains (rows)"
-distribution = "Community-hosted nodes with QUIC gossip protocol and hash attestation"
+stack-summary = "Idris2 ABI → Zig FFI (.so) → Elixir REST (HTTP/7700) → Deno JS (mod.js per-call)"
+dispatch-rule = "cartridge.json with 'ffi' key → boj-invoke CLI; without 'ffi' key → deno js_runner.js"
+federation    = "Zig QUIC gossip: X25519 handshake + ChaCha20-Poly1305, SDP allow-list, hash attestation"
+auth-gap      = "Federation trust is gossip-layer only; HTTP invoke has no caller auth — see docs/AUTH-DESIGN.adoc"
+gateway       = "http-capability-gateway planned as sidecar (port 7800 → boj-rest:7700); static policy in container/gateway-policy.yaml; catalog-mode design in docs/gateway-catalog-integration.adoc"
 cultural-pillars = ["Teranga (hospitality)", "Umoja (unity)", "Ayo (joy)"]
+
+[ecosystem]
+part-of   = ["hyperpolymath infrastructure", "PanLL", "stapeln ecosystem"]
+depends-on = ["proven-servers", "stapeln", "selur-compose", "vordr", "svalinn", "http-capability-gateway"]
+replaces  = ["polystack"]

@@ -1,0 +1,147 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+// Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+= BoJ Server — Auth Architecture & Migration Plan
+:toc:
+:toc-placement: preamble
+
+**Status: OPEN GAP** — the invoke endpoint currently has no HTTP-layer caller
+authentication.  This document records the intended design so bots and human
+contributors know what is planned and why the current state is intentional
+rather than forgotten.
+
+== The Topology
+
+boj-server is a distributed, community-hosted network of nodes.  Callers
+reach `POST /cartridge/:name/invoke` from two distinct contexts:
+
+[cols="2,3,2"]
+|===
+| Caller | Path | Trust established where?
+
+| **mcp-bridge** (Claude Code CLI)
+| localhost → port 7700
+| Nowhere — local process, no network hop
+
+| **Umoja peer node**
+| Remote node → port 7700
+| Gossip layer (X25519 handshake, UDP 9999)
+
+| **Direct HTTP client**
+| Any machine → port 7700 (if exposed)
+| **Nowhere — this is the gap**
+|===
+
+== The Gap
+
+The Umoja federation establishes node-to-node trust at the gossip transport
+layer:
+
+- **X25519 key exchange** during HANDSHAKE_INIT / HANDSHAKE_REPLY
+- **ChaCha20-Poly1305 AEAD** encrypts all subsequent gossip traffic
+- **SDP allow-list** (sdp.zig) rejects unverified UDP senders
+
+This is all UDP on port 9999.  When a remote peer then sends an HTTP request
+to port 7700, the HTTP layer has no visibility into whether that caller
+completed the gossip handshake.  boj-server cannot tell a verified Umoja peer
+from a random attacker using only the HTTP connection.
+
+The same gap exists for the local case: mcp-bridge on localhost is implicitly
+trusted by virtue of being on loopback, but there is no explicit gate.
+
+== The Second Problem: Credential Forwarding
+
+Many cartridges require upstream API keys (`GITHUB_TOKEN`, `NOTIFYHUB_API_KEY`,
+`ORIGENE_API_KEY`, etc.).  Currently the invoker reads these from the
+**node's own environment** — sensible for single-node personal use, broken
+for federation:
+
+- A user's Claude session runs on **Node A** (their laptop).
+- The cartridge they want runs on **Node B** (a volunteer node in another country).
+- The user's `GITHUB_TOKEN` is on **Node A**.  Node B doesn't have it and
+  shouldn't have it.
+
+This means authenticated cartridges effectively **cannot be delegated** to
+remote nodes under the current design.  Only `auth.method: "none"` cartridges
+are safely delegatable today.
+
+== Planned Solution
+
+=== Phase 1 (gateway verb governance — in progress)
+
+`container/gateway-policy.yaml` enforces verb-level policy and stealth 404s.
+All invoke calls are public for now (`exposure: public`).
+
+See `docs/gateway-catalog-integration.adoc` for the catalog-driven auto-policy
+that will automatically restrict keyed cartridges to `:authenticated` callers
+once `PolicyLoader.load_from_boj_catalog/1` is implemented.
+
+=== Phase 2 (gateway mTLS trust-level header)
+
+The gateway derives a trust level from the mTLS client certificate (or a
+bearer token for development):
+
+- Verified Umoja peer cert → `X-Trust-Level: internal`
+- Authenticated user token → `X-Trust-Level: authenticated`
+- Anonymous (no cert/token) → `X-Trust-Level: untrusted` (or no header)
+
+boj-server's Router reads `X-Trust-Level` and compares to the cartridge's
+required exposure level from `cartridge.json`.
+
+=== Phase 3 (credential forwarding)
+
+Options under consideration:
+
+**Option A — Caller-supplied credentials in request body**
+The invocation request carries the credential encrypted:
+```json
+{
+  "tool": "claude_agents_install_agents",
+  "arguments": {"agent_ids": ["elixir-expert"]},
+  "credentials": {"GITHUB_TOKEN": "<encrypted-token>"}
+}
+```
+Node B decrypts using the shared X25519 session key from the gossip handshake.
+Credentials never stored, only held in memory for the duration of the call.
+
+**Option B — Node-level credential store (personal nodes only)**
+Each node operator configures their own API keys.  Works for personal nodes
+(where the operator IS the user).  Breaks for community volunteer nodes where
+the operator is not the user.
+
+**Option C — RGTV broker**
+The reasonably-good-token-vault (RGTV) acts as an LLM credential broker.
+Caller presents a RGTV-issued short-lived token; the node holding the
+cartridge exchanges it with RGTV for the actual credential.  Zero-knowledge
+for the volunteer node.
+
+**Recommendation**: Option C is the right long-term answer for the federation
+use case; Option B is acceptable for single-node personal deployments and
+should remain supported.  Option A is a pragmatic intermediate step.
+
+== What Bots Should Know
+
+- `POST /cartridge/:name/invoke` has **no auth checks today**.  Do not add
+  auth logic inline in Router — the design decision is pending and should
+  land as a unified change once decided.
+- The `cartridge.json` `auth.method` field is the source of truth for what
+  an individual cartridge requires of ITS upstream service, not of the
+  caller of boj-server.
+- The `X-Trust-Level` header is the **planned** mechanism for boj-server to
+  receive caller trust from the gateway.  It does not exist yet.
+- The static `container/gateway-policy.yaml` is safe to deploy today — it
+  adds verb governance and stealth 404s without breaking anything.
+- The credential-forwarding design is UNDECIDED.  Do not implement a solution
+  without confirming with the maintainer first.
+
+== What to Do Right Now
+
+If you are an AI agent working on auth:
+
+1. **Read this file and `docs/gateway-catalog-integration.adoc` first.**
+2. **Do not add per-cartridge credential checks in Router.ex** — the gateway
+   layer will own that.
+3. **The one safe addition today** is a node-identity header on inter-node
+   HTTP calls so boj-server can at least LOG the claimed caller for the
+   audit trail.  This is additive and non-breaking.
+4. **For the credential-forwarding decision**, surface Option A / B / C to
+   the maintainer and wait for a decision before implementing.
