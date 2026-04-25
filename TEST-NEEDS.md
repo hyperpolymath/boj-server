@@ -7,14 +7,15 @@
 
 ---
 
-## Current Coverage (165 ExUnit tests, 0 failures)
+## Current Coverage (173 ExUnit tests, 0 failures)
 
-10 StreamData property tests + 155 regular ExUnit tests = 165 total. CRG C threshold met.
+10 StreamData property tests + 163 regular ExUnit tests = 173 total. CRG C threshold met.
 
 | File | Tests | Category |
 |------|-------|----------|
 | `elixir/test/catalog_test.exs` | 25 | Unit + schema invariants |
-| `elixir/test/router_test.exs` | 30 | Integration (in-process Plug.Test) |
+| `elixir/test/router_test.exs` | 37 | Integration (in-process Plug.Test) + auth enforcement |
+| `elixir/test/trust_policy_test.exs` | 11 | Unit — TrustPolicy required_exposure + satisfies? |
 | `elixir/test/credential_decryptor_test.exs` | 19 | Unit + crypto round-trip |
 | `elixir/test/node_key_test.exs` | 11 | Unit + X25519 ECDH |
 | `elixir/test/js_invoker_test.exs` | 10 | Unit + E2E (Deno-gated) |
@@ -99,7 +100,7 @@
 | Contract tests | 13+ | 15 (contract_test.exs) | ✅ |
 | Aspect tests | 14+ | 15 (aspect_test.exs) | ✅ |
 | Benchmarks | 10+ | 10 Benchee scenarios | ✅ |
-| **Total** | **165+** | **165** | **CRG C ✅** |
+| **Total** | **165+** | **173** | **CRG C ✅** |
 
 **Current grade: C** (all categories at or above threshold)
 

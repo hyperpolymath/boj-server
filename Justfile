@@ -305,66 +305,36 @@ clean-all: clean
 # TEST & QUALITY
 # ═══════════════════════════════════════════════════════════════════════════════
 
-# Run all Zig FFI tests (catalogue + 17 cartridges, matches CI)
+# Run all Zig FFI tests (catalogue + all 111 cartridges with build.zig)
 test *args:
-    @echo "Running catalogue FFI tests..."
-    cd ffi/zig && zig build test
-    @echo "Running database-mcp FFI tests..."
-    cd cartridges/database-mcp/ffi && zig build test
-    @echo "Running fleet-mcp FFI tests..."
-    cd cartridges/fleet-mcp/ffi && zig build test
-    @echo "Running nesy-mcp FFI tests..."
-    cd cartridges/nesy-mcp/ffi && zig build test
-    @echo "Running agent-mcp FFI tests..."
-    cd cartridges/agent-mcp/ffi && zig build test
-    @echo "Running cloud-mcp FFI tests..."
-    cd cartridges/cloud-mcp/ffi && zig build test
-    @echo "Running container-mcp FFI tests..."
-    cd cartridges/container-mcp/ffi && zig build test
-    @echo "Running k8s-mcp FFI tests..."
-    cd cartridges/k8s-mcp/ffi && zig build test
-    @echo "Running git-mcp FFI tests..."
-    cd cartridges/git-mcp/ffi && zig build test
-    @echo "Running secrets-mcp FFI tests..."
-    cd cartridges/secrets-mcp/ffi && zig build test
-    @echo "Running queues-mcp FFI tests..."
-    cd cartridges/queues-mcp/ffi && zig build test
-    @echo "Running iac-mcp FFI tests..."
-    cd cartridges/iac-mcp/ffi && zig build test
-    @echo "Running observe-mcp FFI tests..."
-    cd cartridges/observe-mcp/ffi && zig build test
-    @echo "Running ssg-mcp FFI tests..."
-    cd cartridges/ssg-mcp/ffi && zig build test
-    @echo "Running proof-mcp FFI tests..."
-    cd cartridges/proof-mcp/ffi && zig build test
-    @echo "Running lsp-mcp FFI tests..."
-    cd cartridges/lsp-mcp/ffi && zig build test
-    @echo "Running dap-mcp FFI tests..."
-    cd cartridges/dap-mcp/ffi && zig build test
-    @echo "Running bsp-mcp FFI tests..."
-    cd cartridges/bsp-mcp/ffi && zig build test
-    @echo "All tests passed!"
+    #!/usr/bin/env bash
+    set -euo pipefail
+    echo "Running catalogue FFI tests..."
+    (cd ffi/zig && zig build test)
+    echo "Running cartridge FFI tests..."
+    FAILED=()
+    for d in cartridges/*/ffi; do
+        [ -f "$d/build.zig" ] || continue
+        if ! (cd "$d" && zig build test 2>&1); then
+            FAILED+=("$d")
+        fi
+    done
+    if [ ${#FAILED[@]} -gt 0 ]; then
+        echo "FAILED: ${#FAILED[@]} cartridge FFI test(s):"
+        for f in "${FAILED[@]}"; do echo "  $f"; done
+        exit 1
+    fi
+    echo "All FFI tests passed!"
 
-# Run tests with verbose output (catalogue + 17 cartridges, matches CI)
-test-verbose:
-    cd ffi/zig && zig build test -- --verbose
-    cd cartridges/database-mcp/ffi && zig build test -- --verbose
-    cd cartridges/fleet-mcp/ffi && zig build test -- --verbose
-    cd cartridges/nesy-mcp/ffi && zig build test -- --verbose
-    cd cartridges/agent-mcp/ffi && zig build test -- --verbose
-    cd cartridges/cloud-mcp/ffi && zig build test -- --verbose
-    cd cartridges/container-mcp/ffi && zig build test -- --verbose
-    cd cartridges/k8s-mcp/ffi && zig build test -- --verbose
-    cd cartridges/git-mcp/ffi && zig build test -- --verbose
-    cd cartridges/secrets-mcp/ffi && zig build test -- --verbose
-    cd cartridges/queues-mcp/ffi && zig build test -- --verbose
-    cd cartridges/iac-mcp/ffi && zig build test -- --verbose
-    cd cartridges/observe-mcp/ffi && zig build test -- --verbose
-    cd cartridges/ssg-mcp/ffi && zig build test -- --verbose
-    cd cartridges/proof-mcp/ffi && zig build test -- --verbose
-    cd cartridges/lsp-mcp/ffi && zig build test -- --verbose
-    cd cartridges/dap-mcp/ffi && zig build test -- --verbose
-    cd cartridges/bsp-mcp/ffi && zig build test -- --verbose
+# Run tests with verbose output
+test-verbose *args:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    (cd ffi/zig && zig build test -- --verbose)
+    for d in cartridges/*/ffi; do
+        [ -f "$d/build.zig" ] || continue
+        (cd "$d" && zig build test -- --verbose)
+    done
 
 # Smoke test — type-check core ABI + run one FFI test
 test-smoke:

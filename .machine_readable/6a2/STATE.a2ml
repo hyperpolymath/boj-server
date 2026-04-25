@@ -44,7 +44,7 @@ cartridges-total            = 112   # all 112 have cartridge.json + mod.js as of
 cartridges-with-zig-ffi     = 111   # all cartridges with ffi key + compiled .so (model-router-mcp intentionally excluded)
 cartridges-with-js-mod      = 111   # mod.js dispatch via Deno worker pool (model-router-mcp is canonical JS-only)
 cartridges-with-both        = 0     # no cartridge uses both paths
-exunit-tests                = 165   # 10 properties + 155 regular tests across 9 files; CRG C threshold met 2026-04-25
+exunit-tests                = 173   # 10 properties + 163 regular tests across 11 files; Phase 9 auth tests added 2026-04-25
 zig-ffi-chain-verified      = true  # boj-invoke → dlopen → libboj_health.so end-to-end tested 2026-04-25
 js-dispatch-chain-verified  = true  # JsWorkerPool → JsWorker → Deno port → mod.js handleTool
 believe-me-count            = 4     # 3 axiomatic primitives + 1 logSafeBounded — reduced from 31 on 2026-04-12
@@ -52,7 +52,7 @@ v-lang-files                = 0     # all .v files removed 2026-04-12
 
 [open-gaps]
 # Ordered by impact on users hitting POST /cartridge/:name/invoke
-gap-1 = "No HTTP-layer auth on invoke endpoint — any caller can hit any cartridge (see docs/AUTH-DESIGN.adoc)"
+gap-1 = "PARTIALLY CLOSED 2026-04-25 — X-Trust-Level enforcement implemented (BojRest.TrustPolicy); keyed cartridges require authenticated/internal trust from non-loopback callers. Credential forwarding (Options A/B/C) still undecided."
 gap-2 = "Credential forwarding in federation — user API keys live on their node, not on volunteer nodes"
 gap-3 = "Load-aware inter-node routing not wired — invocations are local only"
 gap-4 = "CLOSED 2026-04-25 — Test coverage reached CRG C (165 tests: 10 properties + 155 regular, 0 failures)"
@@ -72,6 +72,7 @@ test-coverage = "CLOSED 2026-04-25 — 165 ExUnit tests; CRG C met"
 
 [session-history]
 entries = [
+  { date = "2026-04-25", description = "Phase 9 auth (partial): (1) BojRest.TrustPolicy — maps auth.method→exposure (:public/:authenticated), checks X-Trust-Level header; loopback bypass. (2) Router wired: X-Trust-Level enforcement in invoke handler; X-Node-Identity audit logging. (3) trust_policy_test.exs (11 tests); 7 new router auth tests. (4) Justfile test/test-verbose rewritten as loops (111 cartridges, was hardcoded 17). Total: 173 ExUnit tests, 0 failures." },
   { date = "2026-04-25", description = "FFI wiring complete — all 111 cartridges now have compiled .so + ffi key in cartridge.json. Scaffolded 12 remaining cartridges (6 with existing stub Zig source replaced with clean ADR-0006 impl: academic-workflow-mcp, bofig-mcp, ephapax-mcp, fireflag-mcp, hesiod-mcp, sanctify-mcp; 6 written from scratch: claude-agents-power-mcp, coderag-mcp, local-memory-mcp, notifyhub-mcp, opendatamcp, origenemcp). Each: *_ffi.zig (5-symbol ADR-0006 ABI + tool stubs) + build.zig + cartridge_shim.zig + canonical ffi block in cartridge.json with so_path=ffi/zig-out/lib/lib<module>.so. All 12 build clean, all 12 pass boj-invoke probe. 165 Elixir tests still 0 failures." },
   { date = "2026-04-25", description = "CRG D→C test expansion: (1) Added invoker_test.exs (15 tests — cli_path resolution, exit-code classification via fake_boj_invoke fixture, successful probe/name/version/invoke, extra_env). (2) Added js_worker_pool_test.exs (9 tests — pool_size, consistent-hash routing, fallback, E2E). (3) Added catalog_properties_test.exs (10 StreamData properties — round-trips, structural invariants, CredentialDecryptor properties). (4) Added contract_test.exs (15 contract tests — Catalog↔Router, NodeKey↔CredentialDecryptor, Router↔Invoker dispatch). (5) Added aspect_test.exs (15 aspect tests — no-crash, content-type, security, idempotency). (6) Added benchmarks/boj_bench.exs (10 Benchee scenarios). (7) Extended catalog_test.exs + router_test.exs + node_key_test.exs + credential_decryptor_test.exs + js_invoker_test.exs with 80+ additional tests. (8) Fixed bofig-mcp, hesiod-mcp, academic-workflow-mcp cartridge.json (missing spdx/domain/tier/auth/so_path fields). Total: 165 tests (10 properties + 155 regular), 0 failures. Grade D→C achieved." },
   { date = "2026-04-25", description = "v1.1.0 + v1.0.1 doc sweep: (1) ExUnit test suite 50 tests across 5 modules. (2) StreamData property test dep added. (3) BojRest.JsWorkerPool + JsWorker (persistent Deno pool) implemented; Router now dispatches via pool. (4) PolicyLoader.load_from_boj_catalog/1 in http-capability-gateway — 12 tests. (5) compose.dev.yaml updated: capability-gateway sidecar (port 7800 → boj-rest:7700, BOJ_CARTRIDGES_ROOT catalog mode). (6) gateway-policy.yaml retired (static policy superseded by catalog mode). (7) 4 cartridges fixed (academic-workflow, ephapax, fireflag, sanctify — missing domain/tier/auth/ffi fields). (8) Full doc sweep: TOPOLOGY.md, ROADMAP.adoc, EXPLAINME.adoc, QUICKSTART-USER.adoc, llm-warmup-dev.md — all V-lang refs removed, counts 97/99/106 → 112. (9) TEST-NEEDS.md rewritten as honest CRG D gap analysis." },

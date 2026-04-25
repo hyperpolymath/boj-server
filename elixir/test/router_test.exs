@@ -316,4 +316,96 @@ defmodule BojRest.RouterTest do
         assert {:ok, _} = Jason.decode(conn.resp_body)
     end
   end
+
+  # ── Trust-level enforcement (Phase 9 auth) ──────────────────────────────────
+
+  # airtable-mcp has auth.method=bearer_token → requires authenticated trust
+  @keyed_cart "airtable-mcp"
+  @public_cart "boj-health"
+
+  test "POST /invoke on keyed cartridge from loopback without header → allowed (loopback bypass)" do
+    conn =
+      conn(:post, "/cartridge/#{@keyed_cart}/invoke", Jason.encode!(%{tool: "airtable_list_bases"}))
+      |> put_req_header("content-type", "application/json")
+      |> BojRest.Router.call(@opts)
+
+    assert conn.status in [200, 500]
+    body = Jason.decode!(conn.resp_body)
+    refute body["error"] == "forbidden"
+  end
+
+  test "POST /invoke on public cartridge from non-loopback without header → allowed" do
+    conn =
+      conn(:post, "/cartridge/#{@public_cart}/invoke", Jason.encode!(%{tool: "boj_health_status"}))
+      |> put_req_header("content-type", "application/json")
+      |> Map.put(:remote_ip, {1, 2, 3, 4})
+      |> BojRest.Router.call(@opts)
+
+    assert conn.status in [200, 500]
+    body = Jason.decode!(conn.resp_body)
+    refute body["error"] == "forbidden"
+  end
+
+  test "POST /invoke on keyed cartridge from non-loopback without header → 403 forbidden" do
+    conn =
+      conn(:post, "/cartridge/#{@keyed_cart}/invoke", Jason.encode!(%{tool: "airtable_list_bases"}))
+      |> put_req_header("content-type", "application/json")
+      |> Map.put(:remote_ip, {1, 2, 3, 4})
+      |> BojRest.Router.call(@opts)
+
+    assert conn.status == 403
+    body = Jason.decode!(conn.resp_body)
+    assert body["error"] == "forbidden"
+    assert body["detail"] == "insufficient-trust"
+    assert body["required"] == "authenticated"
+  end
+
+  test "POST /invoke on keyed cartridge with X-Trust-Level: authenticated → allowed" do
+    conn =
+      conn(:post, "/cartridge/#{@keyed_cart}/invoke", Jason.encode!(%{tool: "airtable_list_bases"}))
+      |> put_req_header("content-type", "application/json")
+      |> put_req_header("x-trust-level", "authenticated")
+      |> Map.put(:remote_ip, {1, 2, 3, 4})
+      |> BojRest.Router.call(@opts)
+
+    assert conn.status in [200, 500]
+    body = Jason.decode!(conn.resp_body)
+    refute body["error"] == "forbidden"
+  end
+
+  test "POST /invoke on keyed cartridge with X-Trust-Level: internal → allowed" do
+    conn =
+      conn(:post, "/cartridge/#{@keyed_cart}/invoke", Jason.encode!(%{tool: "airtable_list_bases"}))
+      |> put_req_header("content-type", "application/json")
+      |> put_req_header("x-trust-level", "internal")
+      |> Map.put(:remote_ip, {1, 2, 3, 4})
+      |> BojRest.Router.call(@opts)
+
+    assert conn.status in [200, 500]
+    body = Jason.decode!(conn.resp_body)
+    refute body["error"] == "forbidden"
+  end
+
+  test "POST /invoke on keyed cartridge with X-Trust-Level: public → 403 forbidden" do
+    conn =
+      conn(:post, "/cartridge/#{@keyed_cart}/invoke", Jason.encode!(%{tool: "airtable_list_bases"}))
+      |> put_req_header("content-type", "application/json")
+      |> put_req_header("x-trust-level", "public")
+      |> Map.put(:remote_ip, {1, 2, 3, 4})
+      |> BojRest.Router.call(@opts)
+
+    assert conn.status == 403
+    body = Jason.decode!(conn.resp_body)
+    assert body["error"] == "forbidden"
+  end
+
+  test "POST /invoke with X-Node-Identity header does not crash" do
+    conn =
+      conn(:post, "/cartridge/#{@public_cart}/invoke", Jason.encode!(%{tool: "boj_health_status"}))
+      |> put_req_header("content-type", "application/json")
+      |> put_req_header("x-node-identity", "peer-node-abc123")
+      |> BojRest.Router.call(@opts)
+
+    assert conn.status in [200, 500]
+  end
 end

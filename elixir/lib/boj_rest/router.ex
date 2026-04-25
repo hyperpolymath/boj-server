@@ -14,14 +14,15 @@ defmodule BojRest.Router do
     - cart["ffi"] present  → BojRest.Invoker   (Zig .so via boj-invoke CLI)
     - cart["ffi"] absent   → BojRest.JsInvoker (mod.js via Deno runner)
 
-  Auth note: the invoke endpoint currently has no caller authentication.
-  Umoja federation trust is established at the gossip/SDP layer (X25519
-  handshake, UDP port 9999) — the HTTP layer has no way to verify a caller
-  is an authenticated peer. The http-capability-gateway sidecar (port 7800)
-  will enforce verb governance and, via mTLS Phase B, trust-level headers.
-  See docs/AUTH-DESIGN.adoc for the full topology and migration plan.
+  Caller auth uses the `X-Trust-Level` header set by the gateway sidecar:
+    - `"internal"` / `"authenticated"` satisfies cartridges that need credentials
+    - `"public"` / absent satisfies only `auth.method: "none"` cartridges
+  Loopback callers bypass enforcement (local dev / mcp-bridge).
+  `X-Node-Identity` is logged for audit purposes when present.
+  See `BojRest.TrustPolicy` and docs/AUTH-DESIGN.adoc for full topology.
   """
   use Plug.Router
+  require Logger
 
   plug :match
   plug Plug.Parsers, parsers: [:json], pass: ["application/json"], json_decoder: Jason
@@ -79,8 +80,13 @@ defmodule BojRest.Router do
         tool = Map.get(body, "tool")
         args = Map.get(body, "arguments") || %{}
         is_local = loopback?(conn.remote_ip)
+        trust_level = conn |> get_req_header("x-trust-level") |> List.first()
+        node_id = conn |> get_req_header("x-node-identity") |> List.first()
+
+        if node_id, do: Logger.info("BoJ invoke caller=#{node_id} cart=#{name} tool=#{inspect(tool)}")
 
         with false <- is_nil(tool),
+             :ok <- check_trust(cart, trust_level, is_local),
              {:ok, creds} <- BojRest.CredentialDecryptor.extract(body, is_local) do
           case dispatch(cart, tool, args, creds) do
             {:ok, data} ->
@@ -97,6 +103,13 @@ defmodule BojRest.Router do
         else
           true ->
             json(conn, 400, %{error: "missing-tool-field", cartridge: name})
+
+          {:error, :forbidden, required} ->
+            json(conn, 403, %{
+              error: "forbidden",
+              detail: "insufficient-trust",
+              required: to_string(required)
+            })
 
           {:error, reason} ->
             json(conn, 403, %{error: "credential-error", detail: reason})
@@ -123,6 +136,15 @@ defmodule BojRest.Router do
     else
       # JsWorkerPool.invoke falls back to JsInvoker.invoke when pool is absent.
       BojRest.JsWorkerPool.invoke(cartridge_mod_path(cart), tool, args, creds)
+    end
+  end
+
+  defp check_trust(cart, trust_header, is_local) do
+    required = BojRest.TrustPolicy.required_exposure(cart)
+    if BojRest.TrustPolicy.satisfies?(required, trust_header, is_local) do
+      :ok
+    else
+      {:error, :forbidden, required}
     end
   end
 
