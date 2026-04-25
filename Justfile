@@ -521,6 +521,71 @@ serve: build
     wait $BOJ_PID $TUNNEL_PID
 
 # ═══════════════════════════════════════════════════════════════════════════════
+# COORD — Multi-agent coordination via BoJ local-coord-mcp
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# Launch the coord TUI (interactive multi-agent dashboard)
+coord:
+    @coord-tui
+
+# Build the coord-tui Rust binary
+coord-build:
+    @echo "Building coord-tui..."
+    cd coord-tui && cargo build --release
+    @echo "Built: coord-tui/target/release/coord-tui"
+
+# Install coord-tui binary + shell hooks + systemd service
+coord-install: coord-build
+    @bash coord-tui/install.sh
+
+# Install/update shell hooks only (re-source to activate)
+coord-hooks:
+    @mkdir -p ~/.config/coord-tui
+    cp coord-tui/shell/coord-hooks.sh ~/.config/coord-tui/coord-hooks.sh
+    @echo "Hooks installed to ~/.config/coord-tui/coord-hooks.sh"
+    @echo "Add to your shell profile if not already done:"
+    @echo "  [ -f \"\$$HOME/.config/coord-tui/coord-hooks.sh\" ] && source \"\$$HOME/.config/coord-tui/coord-hooks.sh\""
+
+# Register this terminal session as a named peer
+# Usage: just coord-register claude | just coord-register gemini | just coord-register cursor
+coord-register kind="claude":
+    @coord-tui --id --kind {{kind}}
+
+# List all active peers (delegates to coord-hooks.sh helpers)
+coord-peers:
+    @bash -c 'source ~/.config/coord-tui/coord-hooks.sh 2>/dev/null && coord-peers || echo "Hooks not installed — run: just coord-hooks"'
+
+# List all active task claims
+coord-claims:
+    @bash -c 'source ~/.config/coord-tui/coord-hooks.sh 2>/dev/null && coord-claims || echo "Hooks not installed — run: just coord-hooks"'
+
+# Claim a coordination task (mutex — only one peer can hold a task at a time)
+# Usage: just coord-claim hypatia/rebalancer-strategies
+coord-claim task:
+    @bash -c 'source ~/.config/coord-tui/coord-hooks.sh 2>/dev/null && coord-claim "{{task}}" || echo "Hooks not installed — run: just coord-hooks"'
+
+# Set your peer status message (visible to all in the TUI)
+# Usage: just coord-status "working on rebalancer strategy B"
+coord-status status:
+    @bash -c 'source ~/.config/coord-tui/coord-hooks.sh 2>/dev/null && coord-status "{{status}}" || echo "Hooks not installed — run: just coord-hooks"'
+
+# Print the registered peer ID and token for this session
+coord-whoami:
+    @bash -c 'source ~/.config/coord-tui/coord-hooks.sh 2>/dev/null && coord-whoami || echo "Hooks not installed — run: just coord-hooks"'
+
+# Check local-coord-mcp adapter status
+coord-health:
+    #!/usr/bin/env bash
+    RESP=$(curl -sf http://127.0.0.1:7745/tools/coord_health 2>/dev/null || echo "")
+    if [ -z "$RESP" ]; then
+        echo "  Adapter: NOT running on 127.0.0.1:7745"
+        echo "  Start:   systemctl --user start local-coord-mcp"
+    else
+        echo "  Adapter: running"
+        echo "$RESP"
+    fi
+
+# ═══════════════════════════════════════════════════════════════════════════════
 # DEPENDENCIES
 # ═══════════════════════════════════════════════════════════════════════════════
 
