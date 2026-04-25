@@ -1,7 +1,8 @@
-# Build context exclusions for Containerfile / Containerfile.fly
+# SPDX-License-Identifier: PMPL-1.0-or-later
 #
-# Stages need: ffi/zig/ (Stage 1), elixir/ (Stage 2), cartridges/ (Stage 3)
-# .git/ alone can be 500MB+ — excluding it cuts upload from ~1.5 GB to ~50 MB.
+# Fly.io-specific build context exclusions for Containerfile.fly
+# Seed builds only need: ffi/zig/ (Stage 1), elixir/ (Stage 2), cartridges/*/cartridge.json (Stage 3)
+# Cartridge Zig/Idris2 source is not compiled in seed builds — excluding saves ~2.5 GB
 
 # ─── Version control ──────────────────────────────────────────────────────────
 .git/
@@ -9,15 +10,22 @@
 .gitattributes
 .gitignore
 
-# ─── Zig build artefacts (regenerated during build) ───────────────────────────
+# ─── Cartridge source (not needed — seed nodes serve JS path only) ────────────
+cartridges/*/ffi/
+cartridges/*/abi/
+cartridges/*/adapter/
+cartridges/*/panels/
+
+# ─── Cartridge Zig build artefacts ────────────────────────────────────────────
+cartridges/*/ffi/zig-cache/
+cartridges/*/ffi/zig-out/
+
+# ─── Top-level Zig build artefacts (regenerated during Stage 1) ───────────────
 zig-cache/
 zig-out/
 .zig-cache/
 ffi/zig/.zig-cache/
 ffi/zig/zig-out/
-cartridges/*/ffi/zig-cache/
-cartridges/*/ffi/zig-out/
-cartridges/*/ffi/.zig-cache/
 
 # ─── Elixir build artefacts ───────────────────────────────────────────────────
 elixir/_build/
@@ -47,7 +55,7 @@ NeSy_SERVERS*
 TOPOLOGY*
 NOTICE
 
-# ─── CI / meta / tooling (not needed in image) ────────────────────────────────
+# ─── CI / meta / tooling ──────────────────────────────────────────────────────
 .github/
 .claude/
 .desktop-tools/
@@ -60,7 +68,7 @@ justfile
 # ─── Container configs (not needed inside the image) ──────────────────────────
 container/
 
-# ─── Source directories not used by any Containerfile COPY ────────────────────
+# ─── Source directories not used by any COPY in Containerfile.fly ─────────────
 src/
 tools/
 tests/
