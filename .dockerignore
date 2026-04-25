@@ -1,0 +1,64 @@
+# Build context exclusions for Containerfile / Containerfile.fly
+#
+# Stages need: ffi/zig/ (Stage 1), cartridges/ (Stage 1+3), elixir/ (Stage 2)
+# Everything else adds upload weight without value.
+
+# Version control
+.git/
+.gitmodules
+.gitattributes
+.gitignore
+
+# Documentation
+*.adoc
+*.md
+*.txt
+LICENSE
+LICENSE-*
+CHANGELOG*
+CONTRIBUTING*
+SECURITY*
+ROADMAP*
+EXPLAINME*
+QUICKSTART*
+llm-warmup*
+README*
+CRG-*
+
+# CI / tooling / meta
+.github/
+.claude/
+.desktop-tools/
+.machine_readable/
+.well-known/
+.editorconfig
+Justfile
+justfile
+
+# Container configs (not needed inside the image build)
+container/
+
+# Top-level non-build config files
+*.toml
+*.yaml
+*.yml
+*.ncl
+*.json
+
+# Zig build artefacts (regenerated during build)
+zig-cache/
+zig-out/
+
+# Elixir build artefacts
+elixir/_build/
+elixir/deps/
+elixir/.elixir_ls/
+elixir/test/
+elixir/benchmarks/
+
+# Tools
+tools/
+
+# Submodule directories (not part of this repo's image)
+boj-cartridges/
+src/

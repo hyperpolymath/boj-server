@@ -6,9 +6,16 @@
 # Bootstrap nodes for the Umoja gossip network. New community nodes
 # discover the federation by connecting to one of these seeds.
 # Each seed auto-peers with the other 3 on startup.
+#
+# Deployment: fly.io (4 regions: lhr, fra, iad, syd)
+# See container/fly/ for fly.toml configs and deploy-seeds.sh
+#
+# NOTE: host fields use .fly.dev hostnames (operative). The canonical
+# hyperpolymath.dev subdomain aliases (eu/de/us/ap.boj.hyperpolymath.dev)
+# will be configured once DNS delegation for hyperpolymath.dev is resolved.
 
 [metadata]
-version = "0.1.0"
+version = "0.2.0"
 network = "umoja-mainnet"
 min-seeds-for-quorum = 2
 
@@ -21,9 +28,13 @@ id = "seed-eu-west"
 region = "eu-west-1"
 continent = "Europe"
 location = "London, UK"
-host = "eu.boj.hyperpolymath.dev"
+fly-region = "lhr"
+fly-app = "boj-seed-eu"
+host = "boj-seed-eu.fly.dev"
+canonical-host = "eu.boj.hyperpolymath.dev"
 federation-port = 9999
 rest-port = 7700
+rest-url = "https://boj-seed-eu.fly.dev"
 description = "Primary European seed (UK)"
 
 [[seed]]
@@ -31,9 +42,13 @@ id = "seed-eu-central"
 region = "eu-central-1"
 continent = "Europe"
 location = "Frankfurt, DE"
-host = "de.boj.hyperpolymath.dev"
+fly-region = "fra"
+fly-app = "boj-seed-de"
+host = "boj-seed-de.fly.dev"
+canonical-host = "de.boj.hyperpolymath.dev"
 federation-port = 9999
 rest-port = 7700
+rest-url = "https://boj-seed-de.fly.dev"
 description = "Central European seed (Germany)"
 
 [[seed]]
@@ -41,9 +56,13 @@ id = "seed-us-east"
 region = "us-east-1"
 continent = "Americas"
 location = "Virginia, US"
-host = "us.boj.hyperpolymath.dev"
+fly-region = "iad"
+fly-app = "boj-seed-us"
+host = "boj-seed-us.fly.dev"
+canonical-host = "us.boj.hyperpolymath.dev"
 federation-port = 9999
 rest-port = 7700
+rest-url = "https://boj-seed-us.fly.dev"
 description = "Americas seed (US East)"
 
 [[seed]]
@@ -51,9 +70,13 @@ id = "seed-ap-south"
 region = "ap-southeast-1"
 continent = "Asia-Pacific"
 location = "Sydney, AU"
-host = "ap.boj.hyperpolymath.dev"
+fly-region = "syd"
+fly-app = "boj-seed-ap"
+host = "boj-seed-ap.fly.dev"
+canonical-host = "ap.boj.hyperpolymath.dev"
 federation-port = 9999
 rest-port = 7700
+rest-url = "https://boj-seed-ap.fly.dev"
 description = "Asia-Pacific seed (Australia)"
 
 # ═══════════════════════════════════════════════════════════════════════

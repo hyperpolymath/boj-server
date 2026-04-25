@@ -197,9 +197,14 @@ podman-compose -f container/compose.prod.yaml up -d
 curl http://localhost:7700/health
 ----
 
-The four continental seed nodes (`eu`, `de`, `us`, `ap` at `boj.hyperpolymath.dev:9999`)
-are pre-configured as bootstrap peers.  Set `BOJ_NODE_ID` to give your node a stable
-identity in the gossip network.
+The four continental seed nodes are pre-configured as bootstrap peers:
+
+* `boj-seed-eu.fly.dev:9999` — London (EU West)
+* `boj-seed-de.fly.dev:9999` — Frankfurt (EU Central)
+* `boj-seed-us.fly.dev:9999` — Virginia (US East)
+* `boj-seed-ap.fly.dev:9999` — Sydney (Asia-Pacific)
+
+Set `BOJ_NODE_ID` to give your node a stable identity in the gossip network.
 
 For Podman Quadlet (systemd service), copy
 `container/boj-community-node.container` to

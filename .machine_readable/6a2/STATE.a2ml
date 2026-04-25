@@ -55,7 +55,7 @@ v-lang-files                = 0     # all .v files removed 2026-04-12
 gap-1 = "PARTIALLY CLOSED 2026-04-25 — X-Trust-Level enforcement implemented (BojRest.TrustPolicy); keyed cartridges require authenticated/internal trust from non-loopback callers. Credential forwarding (Options A/B/C) still undecided."
 gap-2 = "CLOSED for Options A+B 2026-04-25 — Option A (caller-supplied encrypted creds in request body) wired: CredentialDecryptor.extract/2 → dispatch → Invoker extra_env → subprocess env vars. Option B (node-level env vars) inherits from server process. Option C (RGTV broker) remains future work."
 gap-3 = "Load-aware inter-node routing not wired — invocations are local only"
-gap-5 = "Seed nodes not yet deployed — DNS records and actual infrastructure not provisioned; compose.prod.yaml and boj-community-node.container ready 2026-04-25"
+gap-5 = "PARTIALLY CLOSED 2026-04-25 — 4 fly.io apps provisioned (boj-seed-eu/de/us/ap), 1 GB volumes created per region (lhr/fra/iad/syd), Containerfile.fly + fly.toml configs merged, deployment in progress. DNS: hyperpolymath.dev undelegated — using .fly.dev hostnames (boj-seed-eu.fly.dev etc.) as operative addresses. compose.prod.yaml + seed-nodes.toml updated with fly.dev hostnames."
 gap-4 = "CLOSED 2026-04-25 — Test coverage reached CRG C (165 tests: 10 properties + 155 regular, 0 failures)"
 
 [critical-next-actions]
@@ -63,7 +63,7 @@ actions = [
   "Expand test suite DONE — 165 tests at CRG C as of 2026-04-25",
   "Decide and implement HTTP invoke auth (see docs/AUTH-DESIGN.adoc — options: bearer token, mTLS header, or node-identity header)",
   "Implement credential-forwarding design for federation (user keys travel with the request encrypted, vs node-level key config)",
-  "Deploy 4 seed nodes to actual infrastructure",
+  "PARTIALLY DONE — 4 fly.io seed nodes provisioned 2026-04-25 (lhr/fra/iad/syd), deployment in progress; DNS for hyperpolymath.dev pending registrar action",
 ]
 
 [blockers-and-issues]
@@ -73,6 +73,7 @@ test-coverage = "CLOSED 2026-04-25 — 165 ExUnit tests; CRG C met"
 
 [session-history]
 entries = [
+  { date = "2026-04-25", description = "Seed node deployment session: (1) 4 fly.io apps created (boj-seed-eu/de/us/ap) in regions lhr/fra/iad/syd. (2) 1 GB persistent volumes per app. (3) Containerfile.fly created — swaps cgr.dev/chainguard/elixir (auth-gated) for elixir:1.16 (public Debian/glibc) in Stage 2; wolfi-base package names corrected in Stage 3. (4) .dockerignore added to reduce build context upload (~500 MB → <<100 MB future). (5) container/fly/ directory: fly-eu/de/us/ap.toml + deploy-seeds.sh. (6) seed-nodes.toml v0.2.0: operative .fly.dev hostnames; canonical hyperpolymath.dev aliases noted as pending DNS delegation. (7) compose.prod.yaml BOJ_SEED_NODES updated to fly.dev. (8) QUICKSTART-USER.adoc seed node list updated. Deployment of EU node in progress." },
   { date = "2026-04-25", description = "Items 1+2+3 session: (1) Credential forwarding gaps A+B closed — chain fully wired (CredentialDecryptor → dispatch → Invoker extra_env → subprocess env vars). Option C (RGTV) future work. (2) tools/cartridge-minter/ DELETED — Node.js banned artefact. Justfile, QUICKSTART-USER.adoc, llm-warmup-dev.md, llm-warmup-user.md updated to reference launch-scaffolder. (3) Seed node infra: compose.prod.yaml created (production Podman Compose using ghcr.io image, all 4 seed peers pre-wired); QUICKSTART-USER.adoc seed node section added; container-publish.yml label updated 99→112 cartridges. container/boj-community-node.container + seed-nodes.toml already existed." },
   { date = "2026-04-25", description = "Phase 9 auth (partial): (1) BojRest.TrustPolicy — maps auth.method→exposure (:public/:authenticated), checks X-Trust-Level header; loopback bypass. (2) Router wired: X-Trust-Level enforcement in invoke handler; X-Node-Identity audit logging. (3) trust_policy_test.exs (11 tests); 7 new router auth tests. (4) Justfile test/test-verbose rewritten as loops (111 cartridges, was hardcoded 17). Total: 173 ExUnit tests, 0 failures." },
   { date = "2026-04-25", description = "FFI wiring complete — all 111 cartridges now have compiled .so + ffi key in cartridge.json. Scaffolded 12 remaining cartridges (6 with existing stub Zig source replaced with clean ADR-0006 impl: academic-workflow-mcp, bofig-mcp, ephapax-mcp, fireflag-mcp, hesiod-mcp, sanctify-mcp; 6 written from scratch: claude-agents-power-mcp, coderag-mcp, local-memory-mcp, notifyhub-mcp, opendatamcp, origenemcp). Each: *_ffi.zig (5-symbol ADR-0006 ABI + tool stubs) + build.zig + cartridge_shim.zig + canonical ffi block in cartridge.json with so_path=ffi/zig-out/lib/lib<module>.so. All 12 build clean, all 12 pass boj-invoke probe. 165 Elixir tests still 0 failures." },

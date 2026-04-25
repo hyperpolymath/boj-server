@@ -52,7 +52,7 @@ services:
       # BOJ_NODE_ID: ""
       # Bootstrap peers — defaults to all four Umoja seed nodes.
       # Override for private/staging networks.
-      BOJ_SEED_NODES: "eu.boj.hyperpolymath.dev:9999,de.boj.hyperpolymath.dev:9999,us.boj.hyperpolymath.dev:9999,ap.boj.hyperpolymath.dev:9999"
+      BOJ_SEED_NODES: "boj-seed-eu.fly.dev:9999,boj-seed-de.fly.dev:9999,boj-seed-us.fly.dev:9999,boj-seed-ap.fly.dev:9999"
     security_opt:
       - no-new-privileges:true
     read_only: true
