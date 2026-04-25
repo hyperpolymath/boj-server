@@ -133,8 +133,9 @@ defmodule BojRest.JsInvoker do
     end
   end
 
+  @doc "Return the path to the deno binary, or nil if not found."
   @spec deno_path() :: String.t() | nil
-  defp deno_path do
+  def deno_path do
     env = System.get_env("DENO_PATH")
 
     cond do

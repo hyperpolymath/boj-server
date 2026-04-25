@@ -1,146 +1,156 @@
-# Test & Benchmark Requirements
+# TEST-NEEDS.md — BoJ Server
 
-## CRG Grade: C — ACHIEVED 2026-04-04
+**Last updated:** 2026-04-25
+**Stack:** Elixir/OTP REST layer + Deno JS dispatch + Zig FFI invoker
+**CRG target:** Grade C (dogfood threshold)
+**CRG C standards from:** `developer-ecosystem/standards/TEST-NEEDS.md`
 
-## Current State (Updated 2026-04-04)
-- Unit tests: 1 Rust test file + 1 aspect_tests.sh script (existing)
-- Smoke tests: ADDED — 8 tests covering CLI, MCP protocol, schemas
-- E2E tests: ADDED — 10 tests covering MCP lifecycle, tool invocation, error handling
-- P2P property tests: ADDED — 14 tests validating cartridge invariants
-- Aspect security tests: ADDED — 17 tests for injection, sandboxing, credential handling
-- Benchmarks: ADDED — 10 benchmarks establishing baselines; 63 V-lang ecosystem benchmarks exist
-- panic-attack scan: 1 report found (panic-attack-report.json)
-- **Test Summary**: 58 tests pass (smoke + E2E + P2P + aspect + bench)
+---
 
-## Coverage Completed (as of 2026-04-04)
+## Current Coverage (50 ExUnit tests, 0 failures)
 
-### Smoke Tests ✓ (8 tests)
-- [x] CLI binary/script validation
-- [x] MCP protocol JSON-RPC format validation
-- [x] Health check endpoint schema
-- [x] Cartridge discovery schema
-- [x] Error response schema
-- [x] Cartridge name validation
-- [x] Tool invocation schema
-- [x] Cartridge info response validation
+| File | Tests | Category |
+|------|-------|----------|
+| `elixir/test/catalog_test.exs` | 11 | Unit + property-style |
+| `elixir/test/router_test.exs` | 12 | Integration (in-process Plug.Test) |
+| `elixir/test/credential_decryptor_test.exs` | 12 | Unit + crypto round-trip |
+| `elixir/test/node_key_test.exs` | 7 | Unit |
+| `elixir/test/js_invoker_test.exs` | 8 | Unit + E2E (Deno-gated) |
 
-### E2E Tests ✓ (10 tests)
-- [x] MCP server lifecycle (initialization, startup)
-- [x] tools/list returns all cartridges
-- [x] tools/call with valid cartridge succeeds
-- [x] Unknown cartridge rejection with proper error
-- [x] boj_cartridges matrix listing
-- [x] Malformed JSON-RPC rejection
-- [x] Missing required arguments detection
-- [x] Oversized request handling (graceful rejection)
-- [x] Long-running cartridge timeout handling
-- [x] Cartridge failure isolation (one cartridge crash doesn't affect server health)
+### What each file covers
 
-### P2P Property Tests ✓ (14 tests)
-- [x] Cartridge name uniqueness
-- [x] Domain vocabulary compliance (approved set)
-- [x] Tier vocabulary compliance (teranga, shield, umoja)
-- [x] Protocol vocabulary compliance (json-rpc, rest, grpc, graphql, websocket)
-- [x] Tool schema compliance (required fields present)
-- [x] Tool name uniqueness within cartridge
-- [x] Input schema property types validation
-- [x] Cartridge-to-domain mapping
-- [x] Tier distribution (each tier has cartridges)
-- [x] Cartridge name format validation
-- [x] Cartridge count reasonable (2-200)
-- [x] Tool count per cartridge reasonable (1-50)
-- [x] Matrix completeness (domain x protocol distribution)
-- [x] Critical cartridges presence (boj_health, boj_cartridges)
+**catalog_test.exs** — `BojRest.Catalog` GenServer
+- `list/0` returns non-empty list of maps
+- Every cartridge has required string fields: name, version, domain
+- Every cartridge has a non-empty tools list
+- Every tool has name and description
+- Cartridge names are unique
+- `get/1` returns `:not_found` for unknown names
+- `get/1` returns `{:ok, cart}` for `boj-health` (FFI cartridge)
+- `get/1` returns `{:ok, cart}` for `model-router-mcp` (JS cartridge, no FFI)
+- FFI cartridges all have `ffi.so_path` as string
+- `auth.method` is always one of the known values
+- `tier` is always one of the known tier values
 
-### Aspect Security Tests ✓ (17 tests)
-- [x] Prompt injection detection (role override attempts)
-- [x] XML-based injection detection
-- [x] Chat template injection detection
-- [x] Benign query allowance
-- [x] Oversized request rejection (>10MB)
-- [x] Request size limit enforcement
-- [x] Cartridge sandboxing (failure isolation)
-- [x] Cartridge timeout isolation
-- [x] API key credential handling (not echoed)
-- [x] Password credential handling (not logged)
-- [x] Invalid JSON rejection
-- [x] Deeply nested JSON handling
-- [x] Circular reference detection
-- [x] SSRF prevention (internal IP blocking)
-- [x] Safe URL allowance
-- [x] Rapid request handling
-- [x] Error response structure validation
+**router_test.exs** — `BojRest.Router` HTTP surface (Plug.Test)
+- `GET /health` — 200, has status/version/cartridges_loaded, no `mode` field
+- `GET /menu` — 200, all entries have name/domain/tier
+- `GET /cartridges` — 200, count matches list length
+- `GET /cartridge/boj-health` — 200, has `ffi` key
+- `GET /cartridge/model-router-mcp` — 200, no `ffi` key
+- `GET /cartridge/unknown-xyz-999` — 404 with `error: "unknown-cartridge"`
+- `GET /.well-known/boj-node-pubkey` — 200, 43-char base64url pubkey, algorithm x25519
+- `POST /cartridge/unknown-xyz/invoke` — 404
+- `POST /cartridge/model-router-mcp/invoke` without `tool` — 400 `missing-tool-field`
+- `POST /cartridge/model-router-mcp/invoke classify_task` — 200 E2E (Deno-gated, `@tag :e2e`)
+- Unknown route — 404 `route-not-found`
 
-### Benchmarks ✓ (10 benchmarks)
-- [x] JSON-RPC serialization (target: <1ms per request, achieved: 0.001ms)
-- [x] JSON-RPC deserialization (target: <1ms, achieved: 0.002ms)
-- [x] Round-trip latency (target: <5ms, achieved: 0.004ms avg)
-- [x] Cartridge listing throughput (target: >100 req/s, achieved: 69k req/s)
-- [x] Tool schema generation (1000 cartridges serialized: 303KB in 1.36ms)
-- [x] Error response generation (target: <0.5ms, achieved: 0.002ms)
-- [x] Large payload handling (100MB serialized in 418ms)
-- [x] Injection pattern detection (10k scans: 1.28µs per scan)
-- [x] Cartridge matrix traversal (1000 cartridges: 16.82µs per query)
-- [x] Performance baseline summary documented
+**credential_decryptor_test.exs** — `BojRest.CredentialDecryptor`
+- Nil/absent credentials → `{:ok, %{}}`
+- Plaintext accepted from loopback
+- Plaintext rejected from non-loopback
+- Plaintext with non-string values rejected
+- Multiple plaintext credentials accepted
+- ECDH + ChaCha20-Poly1305 round-trip decryption succeeds
+- Wrong node key → `"decryption failed"` error
+- Unsupported version (v99) → version error
+- Missing `caller_pubkey` field → error
+- Malformed base64 `caller_pubkey` → error
+- Wrong pubkey size (16 bytes, not 32) → error
+- Wrong nonce size (8 bytes, not 12) → error
+- Credentials as non-map string → error
 
-## What Remains (Out of Scope for CRG C)
+**node_key_test.exs** — `BojRest.NodeKey` GenServer
+- `public_key/0` returns 32-byte binary
+- `private_key/0` returns 32-byte binary
+- Public key stable across calls
+- Private key stable across calls
+- Public key consistent with private key (scalar-mult derivation)
+- Node key participates correctly in X25519 ECDH shared-secret derivation
+- Public and private keys are distinct
 
-### Unit Tests (Zig/Idris2/V/ReScript)
-- All 228 Zig source files — requires Zig compilation + FFI unit test framework
-- All 108 Idris2 ABI definitions — requires formal verification testing setup
-- All 128 V source files — requires V test framework integration
-- All 5 ReScript source files — requires ReScript test runner
-- **Note**: These are language-specific unit tests; MCP bridge tests (above) provide integration coverage
+**js_invoker_test.exs** — `BojRest.JsInvoker`
+- `deno_path/0` returns nil or string
+- Non-existent mod.js → `{:error, %{classification: :mod_missing}}`
+- Missing deno binary → `{:error, %{classification: :deno_missing}}`
+- E2E: `classify_task` via model-router-mcp (Deno-gated, `@tag :e2e`)
+- E2E: `estimate_cost` via model-router-mcp (Deno-gated)
+- E2E: unknown tool → graceful error
+- E2E: `extra_env` forwarding does not crash
 
-### Live E2E (Requires Running Services)
-- Browser cartridge: actual page navigation, DOM manipulation
-- GitHub/GitLab cartridges: real repo CRUD (requires auth)
-- Cloud cartridges (Cloudflare, Vercel, Verpex): real infrastructure interaction
-- Gmail/Calendar: real email/calendar operations
-- Research cartridge: live search queries
-- **Note**: Offline mocks implemented; live tests require CI credentials
+---
 
-### Performance Tests (Requires Real Server)
-- Concurrent cartridge invocation performance
-- Connection pooling efficiency
-- Memory usage under sustained load
-- Cartridge hot-loading performance
+## Gap Analysis vs CRG C Standard
 
-### Accessibility Tests
-- N/A (server component, no UI)
+| Category | Required | Current | Status |
+|----------|----------|---------|--------|
+| Unit tests | 100+ | 50 | ❌ Gap: 50 more needed |
+| Smoke tests | 9+ | ~9 (router happy-path set) | ✅ |
+| End-to-end tests | 4+ | 3 E2E (Deno-gated) | ⚠️ Conditional |
+| Property tests | 15+ | ~11 (catalog invariants + decryptor properties) | ❌ Gap: 4+ more |
+| Contract tests | 13+ | 0 (no Pact/contract harness yet) | ❌ |
+| Aspect tests | 14+ | 0 (no aspect harness yet) | ❌ |
+| Benchmarks | 10+ | 0 | ❌ |
+| **Total** | **165+** | **50** | **CRG D** |
 
-### Build & Execution
-- [ ] zig build — not verified
-- [ ] npm/deno run — not verified
-- [ ] MCP server starts and responds to health check — not verified
-- [ ] CLI --help works — not verified
-- [ ] Self-diagnostic — aspect_tests.sh exists but unclear if comprehensive
+**Current grade: D** (foundation suite in place, gaps to C listed below)
 
-### Benchmarks Needed
-- MCP request/response latency per cartridge
-- Concurrent request throughput
-- Browser cartridge page load and interaction speed
-- Memory usage under sustained load
-- Cartridge hot-loading performance
-- Connection pool efficiency
+---
 
-### Self-Tests
-- [x] panic-attack assail — report exists (verify findings)
-- [ ] Built-in health check (boj_health exists — verify coverage)
+## Path to CRG Grade C
 
-## Priority
-- **HIGH** — This is THE central MCP server for the entire ecosystem. 228 Zig + 108 Idris2 + 128 V + 29 JS + 8 Rust + 5 ReScript source files with effectively ZERO functional tests. The 63 benchmark files appear to be from V-lang ecosystem rather than boj-server itself. A single test script (aspect_tests.sh) is not adequate for a server handling browser automation, GitHub/GitLab operations, cloud infrastructure management, and email. Security testing is especially critical given the privileged operations this server performs.
+### P1 — Expand unit tests to 100+ (Gap: 50 tests)
 
-## FAKE-FUZZ Alert Resolution ✓
+Priority areas:
+- `BojRest.Catalog`: edge cases — malformed JSON in cartridge.json, empty tools list,
+  cartridges_root not found, duplicate detection
+- `BojRest.Invoker`: all exit code classifications (args/open/symbol/init/crashed),
+  `cli_path/0` resolution order, `probe/1`, `name/1`, `version/1`
+- `BojRest.JsInvoker`: runner_path resolution, bad JSON output, timeout path
+  (requires a slow mod.js fixture), application-level error (4xx/5xx status codes)
+- `BojRest.CredentialDecryptor`: ciphertext too short, JSON-in-plaintext-has-int-values
+- `BojRest.NodeKey`: key file persistence (tempdir), env var loading paths
+- Router: `POST /invoke` with encrypted credentials end-to-end
 
-- `tests/fuzz/placeholder.txt` — **REMOVED** (2026-04-04)
-- Replaced with comprehensive property-based and aspect tests
-- Note: True fuzz testing (coverage-guided fuzzing via libFuzzer/AFL) is not practical for MCP server (requires running service); property-based testing via Deno covers the contract surface
+### P2 — Property tests to 15+ (StreamData installed, Gap: 4+ tests)
 
-## Build & Execution Status
+`stream_data ~> 1.1` is in `mix.exs` (only: test).  Write StreamData property tests in:
+- `catalog_test.exs`: for all cartridges, `get(cart["name"])` always returns the cart back
+- `credential_decryptor_test.exs`: any string→string map plaintext from loopback always
+  passes; any non-string value always fails validation
+- `router_test.exs`: GET /cartridge/<any name from list> always returns 200
 
-- [x] `zig build` — Existing Justfile recipes tested (not run in this session)
-- [x] Deno tests — 58 tests pass (smoke + E2E + P2P + aspect + bench)
-- [x] MCP server startup — Verified via schema validation (offline)
-- [x] Cartridge discovery — Validated via boj_cartridges mock
-- [x] Health check — Verified via endpoint schema
+### P3 — Contract tests (Gap: 13)
+
+Use `ExUnit` contract-style modules (or add `pact_elixir` when available):
+- One module per boundary: Catalog↔Router, JsInvoker↔Runner, Router↔Invoker,
+  NodeKey↔CredentialDecryptor, CredentialDecryptor↔Router
+
+### P4 — Aspect tests (Gap: 14)
+
+Panic-free aspects from `panic-free-tests-and-benches` Clade A standard:
+- No process crash on any valid input (Clade A goal)
+- `BojRest.Catalog.get/1` never throws
+- Router always returns valid JSON content-type
+- CredentialDecryptor never leaks key material in error strings
+- NodeKey survives concurrent reads under `Task.async_stream`
+
+### P5 — Benchmarks (Gap: 10)
+
+Add `benchee ~> 1.3` (only: dev):
+- Catalog `list/0` with 107 cartridges (ETS read)
+- Catalog `get/1` hit vs miss
+- CredentialDecryptor: plaintext vs encrypted path
+- NodeKey ECDH round-trip
+- JsInvoker cold-start time (requires Deno)
+
+---
+
+## Notes
+
+- **E2E tests are Deno-gated** — tagged `@tag :e2e` and skip cleanly if `deno` is absent.
+  CI must install Deno for E2E coverage.
+- **FFI/Zig tests** are not in this suite — they run via `zig test` in `ffi/zig/`.
+- **107 cartridges loaded** from `cartridges/` as of 2026-04-25.
+- **Panic-attack pre-commit hook** runs `panic-attack assail` — check `PANIC-ATTACK.a2ml`
+  for current Clade classification and any open findings.

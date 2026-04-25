@@ -6,4 +6,7 @@ config :boj_rest,
   port: String.to_integer(System.get_env("BOJ_PORT") || "7700"),
   cartridges_root:
     System.get_env("BOJ_CARTRIDGES_ROOT") ||
-      Path.expand("../../cartridges", __DIR__)
+      Path.expand("../../cartridges", __DIR__),
+  start_server: true
+
+if config_env() == :test, do: import_config("test.exs")

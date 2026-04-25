@@ -17,11 +17,18 @@ defmodule BojRest.Application do
 
     data_dir = Application.get_env(:boj_rest, :data_dir, "/data")
 
-    children = [
-      {BojRest.NodeKey, data_dir: data_dir},
-      {BojRest.Catalog, cartridges_root: cartridges_root},
-      {Plug.Cowboy, scheme: :http, plug: BojRest.Router, options: [port: port]}
-    ]
+    start_server = Application.get_env(:boj_rest, :start_server, true)
+
+    children =
+      [
+        {BojRest.NodeKey, data_dir: data_dir},
+        {BojRest.Catalog, cartridges_root: cartridges_root}
+      ] ++
+        if start_server do
+          [{Plug.Cowboy, scheme: :http, plug: BojRest.Router, options: [port: port]}]
+        else
+          []
+        end
 
     opts = [strategy: :one_for_one, name: BojRest.Supervisor]
     Supervisor.start_link(children, opts)
