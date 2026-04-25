@@ -1,0 +1,39 @@
+# SPDX-License-Identifier: PMPL-1.0-or-later
+#
+# BoJ Server — dev compose (Podman Compose compatible)
+#
+# Runs the Elixir server with pre-built boj-invoke and cartridge .so files
+# mounted from the local source tree. No container build needed.
+#
+# Prerequisites:
+#   cd ffi/zig && zig build invoke          # build boj-invoke
+#   cd cartridges/boj-health/ffi && zig build  # build boj-health .so
+#   cd elixir && mix deps.get               # fetch Elixir deps
+#
+# Usage:
+#   podman-compose -f container/compose.dev.yaml up
+#   podman-compose -f container/compose.dev.yaml down
+
+services:
+  boj-rest:
+    image: docker.io/hexpm/elixir:1.19.5-erlang-27.3.4-debian-bookworm-20250520-slim
+    working_dir: /app
+    command: ["mix", "run", "--no-halt"]
+    ports:
+      - "7700:7700"
+    volumes:
+      # Mount full source tree read-only so boj-invoke can find cartridge .so files
+      - ../elixir:/app:z
+      - ..:/workspace:ro,z
+    environment:
+      MIX_ENV: dev
+      BOJ_CARTRIDGES_ROOT: /workspace/cartridges
+      BOJ_INVOKE_CLI: /workspace/ffi/zig/zig-out/bin/boj-invoke
+      BOJ_LOG_LEVEL: info
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:7700/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    restart: unless-stopped

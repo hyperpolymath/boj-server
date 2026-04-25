@@ -1,147 +1,139 @@
 # SPDX-License-Identifier: PMPL-1.0-or-later
 # Bundle of Joy Server Container Image
 #
-# Multi-stage build: Zig FFI compilation + Zig adapter binary (both built
-# inside Stage 1 — no local pre-build required).
+# Multi-stage build:
+#   Stage 1 (zig-builder)  — builds boj-invoke CLI + all cartridge .so files
+#   Stage 2 (mix-builder)  — compiles Elixir release (bundles ERTS)
+#   Stage 3 (runtime)      — minimal image: Elixir release + boj-invoke + .so files
 #
 # Build with Podman:
 #   podman build -t boj-server:latest -f container/Containerfile .
 #
 # Run:
-#   podman run -p 7700:7700 -p 7701:7701 -p 7702:7702 -p 7703:7703 boj-server:latest
-#
-# Run with persistent volume:
-#   podman run -p 7700:7700 -p 7701:7701 -p 7702:7702 -p 7703:7703 \
-#     -v boj-server-data:/data boj-server:latest
+#   podman run -p 7700:7700 boj-server:latest
 
 # ============================================================================
-# Stage 1: FFI Builder
+# Stage 1: Zig FFI Builder
 # ============================================================================
-#
-# Compiles all Zig FFI layers (core + all cartridges) in ReleaseFast mode,
-# then compiles the Zig adapter binary against those FFI libs — fully
-# self-contained, no local pre-build required.
 
-FROM cgr.dev/chainguard/wolfi-base:latest AS builder
+FROM cgr.dev/chainguard/wolfi-base:latest AS zig-builder
 
-# Install Zig toolchain, C toolchain, and sqlite dev headers (linked by some cartridge FFIs).
-RUN apk add --no-cache build-base zig sqlite-dev
+RUN apk add --no-cache zig build-base
 
 WORKDIR /build
 
-# Copy source tree
-COPY . .
+# Copy Zig source and cartridge FFI sources
+COPY ffi/zig/ ffi/zig/
+COPY cartridges/ cartridges/
 
-# Build core FFI (catalogue, loader, guardian, federation, readiness, verisimdb, e2e)
-RUN cd ffi/zig && zig build -Doptimize=ReleaseFast
+# Build boj-invoke CLI (x86_64-linux-gnu target so it uses DlDynLib/real dlopen)
+RUN cd ffi/zig && zig build invoke -Doptimize=ReleaseFast
 
-# Build ALL cartridge FFI shared libraries (discovers dynamically)
+# Build all cartridge .so files that have a build.zig
 RUN for ffi_dir in /build/cartridges/*/ffi; do \
       cart="$(basename "$(dirname "$ffi_dir")")" && \
       if [ -f "$ffi_dir/build.zig" ]; then \
-        echo "Building ${cart} FFI..." && \
+        echo "Building ${cart}..." && \
         cd "$ffi_dir" && \
-        zig build -Doptimize=ReleaseFast || echo "WARN: ${cart} build failed (non-fatal)"; \
+        zig build -Doptimize=ReleaseFast 2>/dev/null || \
+          echo "WARN: ${cart} FFI skipped (non-fatal)"; \
       fi; \
     done
 
-# Compile Zig adapter binary, linking against all Zig FFI shared libs.
-RUN LFLAGS="-L/build/ffi/zig/zig-out/lib" && \
-    for d in /build/cartridges/*/ffi/zig-out/lib; do \
-      [ -d "$d" ] && LFLAGS="${LFLAGS} -L${d}"; \
-    done && \
-    zig build-exe -O ReleaseFast -lc \
-      -fno-omit-frame-pointer \
-      -fPIE -pie \
-      --name boj-server \
-      --pkg-begin boj_adapter /build/adapter/zig/src \
-      -I/build/ffi/zig/zig-out/include \
-      ${LFLAGS} \
-      -o /build/adapter/zig/boj-server
+# ============================================================================
+# Stage 2: Elixir Release Builder
+# ============================================================================
+
+FROM cgr.dev/chainguard/elixir:latest AS mix-builder
+
+WORKDIR /build
+
+# Copy Elixir project
+COPY elixir/ ./
+
+# Fetch deps and compile release
+RUN mix local.hex --force && mix local.rebar --force
+ENV MIX_ENV=prod
+RUN mix deps.get --only prod
+RUN mix compile
+RUN mix release boj_rest
 
 # ============================================================================
-# Stage 2: Runtime
+# Stage 3: Runtime Image
 # ============================================================================
-#
-# Minimal production image. Only the compiled binary, shared libraries,
-# and runtime dependencies are included.
 
 FROM cgr.dev/chainguard/wolfi-base:latest
 
-# OCI image labels (compatible with cerro-torre .ctp bundle metadata)
+# OCI labels
 LABEL org.opencontainers.image.title="Bundle of Joy Server" \
-      org.opencontainers.image.description="Unified server capability catalogue with formally verified cartridges, distributed community hosting, and the Teranga menu system" \
+      org.opencontainers.image.description="BoJ REST server — Elixir + Zig FFI cartridge host" \
       org.opencontainers.image.url="https://github.com/hyperpolymath/boj-server" \
       org.opencontainers.image.source="https://github.com/hyperpolymath/boj-server" \
       org.opencontainers.image.vendor="hyperpolymath" \
       org.opencontainers.image.licenses="PMPL-1.0-or-later" \
       org.opencontainers.image.authors="Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>" \
-      dev.cerrotorre.manifest="container/manifest.toml" \
-      dev.cerrotorre.gatekeeper="container/.gatekeeper.yaml" \
       dev.stapeln.compose="container/compose.toml"
 
-# Minimal runtime dependencies
-RUN apk add --no-cache ca-certificates curl
+# Minimal runtime deps: OpenSSL (Elixir TLS), ncurses (Erlang), glibc (boj-invoke + .so)
+RUN apk add --no-cache ca-certificates openssl ncurses-libs libstdc++ gcompat
 
-# Create non-root user
+# Non-root user
 RUN addgroup -S appuser && adduser -S appuser -G appuser
 
 WORKDIR /app
 
-# Copy Zig adapter binary compiled in Stage 1
-COPY --from=builder /build/adapter/zig/boj-server /app/boj-server
-RUN chmod +x /app/boj-server
+# Copy Elixir release (bundles ERTS — no separate Erlang install needed)
+COPY --from=mix-builder /build/_build/prod/rel/boj_rest ./
 
-# Copy core FFI libraries from builder stage
-COPY --from=builder /build/ffi/zig/zig-out/ /app/lib/core/
+# Copy boj-invoke binary
+COPY --from=zig-builder /build/ffi/zig/zig-out/bin/boj-invoke /app/bin/boj-invoke
+RUN chmod +x /app/bin/boj-invoke
 
-# Copy ALL cartridge FFI build outputs from builder stage (single layer)
-COPY --from=builder /build/cartridges/ /app/lib/cartridges-src/
-# Extract only the zig-out directories (built .so files) — discard source
-RUN mkdir -p /app/lib/cartridges && \
-    for cart_dir in /app/lib/cartridges-src/*/ffi/zig-out; do \
-      cart="$(basename "$(dirname "$(dirname "$cart_dir")")")" && \
-      cp -r "$cart_dir" "/app/lib/cartridges/${cart}/" 2>/dev/null || true; \
+# Copy cartridge .so files preserving expected layout:
+# /app/cartridges/<name>/ffi/zig-out/lib/<lib>.so
+RUN mkdir -p /app/cartridges
+COPY --from=zig-builder /build/cartridges/ /tmp/cartridges-src/
+RUN for cart_dir in /tmp/cartridges-src/*/; do \
+      cart="$(basename "$cart_dir")" && \
+      so_dir="${cart_dir}ffi/zig-out/lib" && \
+      if [ -d "$so_dir" ]; then \
+        target="/app/cartridges/${cart}/ffi/zig-out/lib" && \
+        mkdir -p "$target" && \
+        cp -r "${so_dir}/"*.so "$target/" 2>/dev/null || true; \
+      fi; \
     done && \
-    rm -rf /app/lib/cartridges-src
+    rm -rf /tmp/cartridges-src
 
-# Copy entrypoint script
-COPY container/entrypoint.sh /app/entrypoint.sh
-RUN chmod +x /app/entrypoint.sh
+# Copy cartridge metadata (cartridge.json files — loaded by Catalog GenServer)
+RUN mkdir -p /app-cartridges-meta
+COPY cartridges/ /tmp/carts-meta/
+RUN for cart_dir in /tmp/carts-meta/*/; do \
+      cart="$(basename "$cart_dir")" && \
+      if [ -f "${cart_dir}cartridge.json" ]; then \
+        mkdir -p "/app/cartridges/${cart}" && \
+        cp "${cart_dir}cartridge.json" "/app/cartridges/${cart}/"; \
+      fi; \
+    done && \
+    rm -rf /tmp/carts-meta
 
-# Copy stapeln integration files
-COPY container/.gatekeeper.yaml /etc/svalinn/gatekeeper.yaml
-COPY container/manifest.toml /app/manifest.toml
-
-# Copy machine-readable config (menu, order-ticket)
-COPY .machine_readable/servers/ /app/config/servers/ 2>/dev/null || true
-
-# Create data directory for persistent storage
+# Data directory
 RUN mkdir -p /data && chown appuser:appuser /data
-
-# Set ownership
 RUN chown -R appuser:appuser /app
 
-# Environment variables
-ENV APP_HOST=[::]
-ENV APP_PORT=7700
-ENV APP_LOG_FORMAT=json
-ENV APP_DATA_DIR=/data
-# LD_LIBRARY_PATH is set dynamically in entrypoint.sh to cover all cartridges
-ENV LD_LIBRARY_PATH=/app/lib/core/lib
+ENV BOJ_CARTRIDGES_ROOT=/app/cartridges
+ENV BOJ_INVOKE_CLI=/app/bin/boj-invoke
+ENV PHX_HOST=0.0.0.0
+ENV PORT=7700
+ENV MIX_ENV=prod
 
-# Persistent storage volume
 VOLUME ["/data"]
-
-# Run as non-root
 USER appuser
 
-# Expose all four adapter ports (REST, gRPC, GraphQL, MCP/SSE)
-EXPOSE 7700 7701 7702 7703
+EXPOSE 7700
 
-# Health check via REST endpoint
-HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-    CMD curl -sf http://localhost:${APP_PORT}/health || exit 1
+HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
+    CMD /app/bin/boj-invoke /app/cartridges/boj-health/ffi/zig-out/lib/libboj_health.so probe \
+      | grep -q '"ok":true' || exit 1
 
-ENTRYPOINT ["/app/entrypoint.sh"]
-CMD ["/app/boj-server"]
+ENTRYPOINT ["/app/bin/boj_rest"]
+CMD ["start"]

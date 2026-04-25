@@ -9,6 +9,12 @@ defmodule BojRest.MixProject do
       version: "0.1.0",
       elixir: "~> 1.15",
       start_permanent: Mix.env() == :prod,
+      releases: [
+        boj_rest: [
+          include_executables_for: [:unix],
+          applications: [runtime_tools: :permanent]
+        ]
+      ],
       deps: deps(),
       description: "BoJ Server REST — HTTP surface for mcp-bridge",
       package: package()
