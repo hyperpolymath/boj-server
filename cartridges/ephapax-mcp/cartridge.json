@@ -1,0 +1,55 @@
+{
+  "$schema": "https://boj.dev/schemas/cartridge/v1.json",
+  "spdx": "PMPL-1.0-or-later",
+  "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath)",
+  "name": "ephapax-mcp",
+  "version": "1.0.0",
+  "description": "Ephapax Cartridge — Proof-compiler query tools for formal verification workflows",
+  "author": "Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>",
+  "license": "PMPL-1.0-or-later",
+  "tools": [
+    {
+      "id": "query_proof",
+      "name": "Query Proof",
+      "description": "Query proof metadata by theorem name (status, complexity, dependencies)"
+    },
+    {
+      "id": "list_proven_theorems",
+      "name": "List Proven Theorems",
+      "description": "List all proven theorems in a module"
+    },
+    {
+      "id": "type_check_expression",
+      "name": "Type Check Expression",
+      "description": "Type-check an expression against the proof-compiler type system"
+    },
+    {
+      "id": "analyze_proof",
+      "name": "Analyze Proof",
+      "description": "Analyze proof complexity, size, and dependency tree"
+    },
+    {
+      "id": "validate_theorem",
+      "name": "Validate Theorem",
+      "description": "Validate that a theorem's proof is closed (Qed, not Admitted)"
+    }
+  ],
+  "abi": {
+    "interface": "abi/Ephapax.idr",
+    "loopback_proof": "IsLoopback 5175"
+  },
+  "ffi": {
+    "language": "zig",
+    "entry": "ffi/ephapax_ffi.zig"
+  },
+  "adapter": {
+    "language": "typescript",
+    "runtime": "deno",
+    "entry": "adapter/mod.ts",
+    "permissions": ["net", "env"]
+  },
+  "loopback": {
+    "host": "127.0.0.1",
+    "port": 5175
+  }
+}
