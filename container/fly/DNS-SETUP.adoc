@@ -1,0 +1,101 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+// Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath)
+= DNS Setup for Seed Nodes (hyperpolymath.dev)
+:toc:
+
+== Current State
+
+The 4 fly.io apps are deployed and live:
+
+[cols="1,1,1,1"]
+|===
+| Node | Fly App | fly.dev URL | Target CNAME
+
+| EU West
+| boj-seed-eu
+| https://boj-seed-eu.fly.dev
+| eu.boj.hyperpolymath.dev
+
+| EU Central
+| boj-seed-de
+| https://boj-seed-de.fly.dev
+| de.boj.hyperpolymath.dev
+
+| US East
+| boj-seed-us
+| https://boj-seed-us.fly.dev
+| us.boj.hyperpolymath.dev
+
+| Asia-Pacific
+| boj-seed-ap
+| https://boj-seed-ap.fly.dev
+| ap.boj.hyperpolymath.dev
+|===
+
+== Blocker
+
+`hyperpolymath.dev` has no NS records — the domain is not delegated to any
+DNS provider. `dig NS hyperpolymath.dev` returns NXDOMAIN.
+
+This requires registrar-level action: log in to the domain registrar where
+`hyperpolymath.dev` was registered and either:
+
+1. Add NS records pointing to a DNS provider (Cloudflare, Google Cloud DNS, etc.)
+2. Or manage the zone directly at the registrar
+
+== Steps to Wire Custom Domains
+
+Once `hyperpolymath.dev` is delegated:
+
+=== 1. Add CNAME records
+
+[source,bash]
+----
+# At your DNS provider, add these CNAME records:
+eu.boj.hyperpolymath.dev.  CNAME  boj-seed-eu.fly.dev.
+de.boj.hyperpolymath.dev.  CNAME  boj-seed-de.fly.dev.
+us.boj.hyperpolymath.dev.  CNAME  boj-seed-us.fly.dev.
+ap.boj.hyperpolymath.dev.  CNAME  boj-seed-ap.fly.dev.
+----
+
+=== 2. Add TLS certificates on fly.io
+
+[source,bash]
+----
+fly certs add eu.boj.hyperpolymath.dev --app boj-seed-eu
+fly certs add de.boj.hyperpolymath.dev --app boj-seed-de
+fly certs add us.boj.hyperpolymath.dev --app boj-seed-us
+fly certs add ap.boj.hyperpolymath.dev --app boj-seed-ap
+----
+
+Fly will request Let's Encrypt certificates automatically once CNAME propagates.
+
+=== 3. Update seed-nodes.toml
+
+Change the `host` fields from `*.fly.dev` to the canonical hostnames:
+
+[source,toml]
+----
+host = "eu.boj.hyperpolymath.dev"
+----
+
+=== 4. Update compose.prod.yaml
+
+Update `BOJ_SEED_NODES` to use the canonical hostnames.
+
+=== 5. Verify
+
+[source,bash]
+----
+for h in eu de us ap; do
+  echo "=== $h ==="
+  curl -sf "https://${h}.boj.hyperpolymath.dev/health" | jq .
+done
+----
+
+== Notes
+
+* Until DNS is wired, `*.fly.dev` hostnames are the operative addresses
+* fly.io provides TLS termination; UDP 9999 (QUIC gossip) is also exposed
+* `container/seed-nodes.toml` has both `host` (operative) and `canonical-host`
+  fields for forward-compatibility
