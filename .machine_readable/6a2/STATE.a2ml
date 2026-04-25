@@ -55,7 +55,7 @@ v-lang-files                = 0     # all .v files removed 2026-04-12
 gap-1 = "PARTIALLY CLOSED 2026-04-25 — X-Trust-Level enforcement implemented (BojRest.TrustPolicy); keyed cartridges require authenticated/internal trust from non-loopback callers. Credential forwarding (Options A/B/C) still undecided."
 gap-2 = "CLOSED for Options A+B 2026-04-25 — Option A (caller-supplied encrypted creds in request body) wired: CredentialDecryptor.extract/2 → dispatch → Invoker extra_env → subprocess env vars. Option B (node-level env vars) inherits from server process. Option C (RGTV broker) remains future work."
 gap-3 = "Load-aware inter-node routing not wired — invocations are local only"
-gap-5 = "PARTIALLY CLOSED 2026-04-25 — 4 fly.io apps provisioned (boj-seed-eu/de/us/ap), 1 GB volumes created per region (lhr/fra/iad/syd), Containerfile.fly + fly.toml configs merged, deployment in progress. DNS: hyperpolymath.dev undelegated — using .fly.dev hostnames (boj-seed-eu.fly.dev etc.) as operative addresses. compose.prod.yaml + seed-nodes.toml updated with fly.dev hostnames."
+gap-5 = "CLOSED 2026-04-25 — All 4 fly.io seed nodes deployed and healthy (2/2 health checks passing): boj-seed-eu (lhr), boj-seed-de (fra), boj-seed-us (iad), boj-seed-ap (syd). Image 61 MB. .dockerignore fixed (ffi/zig/.zig-cache excluded — 347 MB); Containerfile.fly.dockerignore added for per-Dockerfile override (2.2 MB context for future deploys). DNS: hyperpolymath.dev still undelegated — .fly.dev hostnames operative."
 gap-4 = "CLOSED 2026-04-25 — Test coverage reached CRG C (165 tests: 10 properties + 155 regular, 0 failures)"
 
 [critical-next-actions]
@@ -63,7 +63,7 @@ actions = [
   "Expand test suite DONE — 165 tests at CRG C as of 2026-04-25",
   "Decide and implement HTTP invoke auth (see docs/AUTH-DESIGN.adoc — options: bearer token, mTLS header, or node-identity header)",
   "Implement credential-forwarding design for federation (user keys travel with the request encrypted, vs node-level key config)",
-  "PARTIALLY DONE — 4 fly.io seed nodes provisioned 2026-04-25 (lhr/fra/iad/syd), deployment in progress; DNS for hyperpolymath.dev pending registrar action",
+  "DONE — All 4 fly.io seed nodes deployed and healthy 2026-04-25 (lhr/fra/iad/syd). Registrar action still needed to delegate hyperpolymath.dev zone (see container/fly/DNS-SETUP.adoc).",
 ]
 
 [blockers-and-issues]
