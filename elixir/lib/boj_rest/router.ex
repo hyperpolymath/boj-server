@@ -63,21 +63,26 @@ defmodule BojRest.Router do
   post "/cartridge/:name/invoke" do
     case BojRest.Catalog.get(name) do
       {:ok, cart} ->
-        so_path = cartridge_so_path(cart)
         tool = Map.get(conn.body_params || %{}, "tool")
         args = Map.get(conn.body_params || %{}, "arguments") || %{}
 
-        case BojRest.Invoker.invoke(so_path, tool, args) do
-          {:ok, result} ->
-            json(conn, 200, result)
+        if is_nil(tool) do
+          json(conn, 400, %{error: "missing-tool-field", cartridge: name})
+        else
+          result = dispatch(cart, tool, args)
 
-          {:error, info} ->
-            json(conn, 500, %{
-              error: "invocation-failed",
-              cartridge: name,
-              tool: tool,
-              info: info
-            })
+          case result do
+            {:ok, data} ->
+              json(conn, 200, data)
+
+            {:error, info} ->
+              json(conn, 500, %{
+                error: "invocation-failed",
+                cartridge: name,
+                tool: tool,
+                info: info
+              })
+          end
         end
 
       :not_found ->
@@ -95,14 +100,31 @@ defmodule BojRest.Router do
     |> Plug.Conn.send_resp(status, Jason.encode!(body))
   end
 
-  # Derive the expected shared-library path from a cartridge entry.
-  # Each cartridge builds its .so under `cartridges/<name>/ffi/zig-out/lib/lib<name>_mcp.so`.
-  defp cartridge_so_path(cart) do
-    name = Map.get(cart, "name") || "unknown"
-    root = Application.get_env(:boj_rest, :cartridges_root)
-    Path.join([root, name, "ffi", "zig-out", "lib", "lib#{name_to_lib(name)}.so"])
+  # Dispatch to the correct invoker based on whether the cartridge has an FFI
+  # (Zig .so) or a JS (mod.js) implementation.
+  #
+  # cartridge.json with "ffi" key → Zig .so via boj-invoke CLI
+  # cartridge.json without "ffi"  → JS mod.js via Deno (JsInvoker)
+  defp dispatch(cart, tool, args) do
+    if Map.has_key?(cart, "ffi") do
+      BojRest.Invoker.invoke(cartridge_so_path(cart), tool, args)
+    else
+      BojRest.JsInvoker.invoke(cartridge_mod_path(cart), tool, args)
+    end
   end
 
-  # cartridge name "aerie-mcp" -> lib name fragment "aerie_mcp"
-  defp name_to_lib(name), do: String.replace(name, "-", "_")
+  # Read .so path directly from the manifest's ffi.so_path field.
+  defp cartridge_so_path(cart) do
+    root = Application.get_env(:boj_rest, :cartridges_root)
+    name = Map.get(cart, "name")
+    so_rel = get_in(cart, ["ffi", "so_path"])
+    Path.join([root, name, so_rel])
+  end
+
+  # mod.js lives at <cartridges_root>/<name>/mod.js by convention.
+  defp cartridge_mod_path(cart) do
+    root = Application.get_env(:boj_rest, :cartridges_root)
+    name = Map.get(cart, "name")
+    Path.join([root, name, "mod.js"])
+  end
 end
