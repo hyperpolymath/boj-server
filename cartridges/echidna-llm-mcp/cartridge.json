@@ -1,0 +1,108 @@
+{
+  "$schema": "https://boj.dev/schemas/cartridge/v1.json",
+  "spdx": "PMPL-1.0-or-later",
+  "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>",
+  "name": "echidna-llm-mcp",
+  "version": "0.1.0",
+  "description": "LLM advisor cartridge for the ECHIDNA formal verification engine. Provides free-form consultation (consult) and structured proof-tactic generation (suggest_tactics) by routing to Anthropic Claude via ANTHROPIC_API_KEY.",
+  "domain": "Formal Verification",
+  "tier": "Ayo",
+  "protocols": [
+    "REST"
+  ],
+  "auth": {
+    "method": "api_key_header",
+    "header": "x-api-key",
+    "env_var": "ANTHROPIC_API_KEY",
+    "credential_source": "vault-mcp"
+  },
+  "api": {
+    "base_url": "https://api.anthropic.com/v1",
+    "content_type": "application/json",
+    "extra_headers": {
+      "anthropic-version": "2023-06-01"
+    }
+  },
+  "tools": [
+    {
+      "name": "consult",
+      "description": "Free-form Q&A with the LLM advisor. Accepts a natural-language question and optional proof-state context; returns a Markdown-formatted answer. Intended for /api/v1/consult calls from ECHIDNA.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "question": {
+            "type": "string",
+            "description": "The question to answer (natural language)."
+          },
+          "context": {
+            "type": "string",
+            "description": "Optional additional context (e.g. current proof state summary, recent job log)."
+          },
+          "model": {
+            "type": "string",
+            "description": "Model hint: 'opus', 'sonnet', 'haiku', or a full Claude model ID. Defaults to claude-sonnet-4-6.",
+            "default": "sonnet"
+          },
+          "max_tokens": {
+            "type": "integer",
+            "description": "Maximum tokens in the LLM response.",
+            "default": 2048
+          },
+          "temperature": {
+            "type": "number",
+            "description": "Sampling temperature 0.0–1.0.",
+            "default": 0.3
+          },
+          "response_format": {
+            "type": "string",
+            "description": "Output style hint: 'markdown' (default) or 'text'.",
+            "default": "markdown"
+          }
+        },
+        "required": [
+          "question"
+        ]
+      }
+    },
+    {
+      "name": "suggest_tactics",
+      "description": "Structured tactic generation for ECHIDNA proof search. The caller supplies a fully-formed system prompt (role + JSON schema) and user prompt (goal + hypotheses + history). Returns a TacticSuggestionResponse JSON with tactics, recommended_provers, decomposition, auxiliary_lemmas, and reasoning.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "system": {
+            "type": "string",
+            "description": "System prompt from echidna's build_system_prompt() — defines the advisor role and required JSON response schema."
+          },
+          "prompt": {
+            "type": "string",
+            "description": "User prompt from echidna's build_user_prompt() — encodes the proof goal, hypotheses, history, and top-k count."
+          },
+          "model": {
+            "type": "string",
+            "description": "Model hint: 'opus', 'sonnet', 'haiku', or a full Claude model ID. Defaults to claude-sonnet-4-6.",
+            "default": "sonnet"
+          },
+          "max_tokens": {
+            "type": "integer",
+            "description": "Maximum tokens in the LLM response.",
+            "default": 2048
+          },
+          "temperature": {
+            "type": "number",
+            "description": "Sampling temperature 0.0–1.0. Lower = more deterministic tactic suggestions.",
+            "default": 0.2
+          },
+          "response_format": {
+            "type": "string",
+            "description": "Expected output format: 'json' (required for correct TacticSuggestionResponse parsing).",
+            "default": "json"
+          }
+        },
+        "required": [
+          "prompt"
+        ]
+      }
+    }
+  ]
+}

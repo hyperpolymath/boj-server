@@ -123,6 +123,47 @@ defmodule BojRest.RouterTest do
     assert body["error"] == "missing-tool-field"
   end
 
+  # ── operation/params alias (echidna-style wire format) ─────────────────────
+
+  @tag :e2e
+  test "POST /cartridge/model-router-mcp/invoke accepts 'operation' alias for 'tool'" do
+    case BojRest.JsInvoker.deno_path() do
+      nil -> :ok
+      _deno ->
+        conn =
+          conn(
+            :post,
+            "/cartridge/model-router-mcp/invoke",
+            Jason.encode!(%{
+              operation: "classify_task",
+              params: %{task: "Count tokens in a file"}
+            })
+          )
+          |> put_req_header("content-type", "application/json")
+          |> BojRest.Router.call(@opts)
+
+        # Should route correctly — not 400 (missing tool) or 404 (unknown cartridge)
+        assert conn.status == 200
+        body = Jason.decode!(conn.resp_body)
+        assert is_map(body)
+        assert Map.has_key?(body, "complexity")
+    end
+  end
+
+  # ── echidna-llm-mcp cartridge presence ────────────────────────────────────
+
+  test "GET /cartridge/echidna-llm-mcp returns metadata" do
+    conn = conn(:get, "/cartridge/echidna-llm-mcp") |> BojRest.Router.call(@opts)
+    assert conn.status == 200
+    body = Jason.decode!(conn.resp_body)
+    assert body["name"] == "echidna-llm-mcp"
+    assert body["domain"] == "Formal Verification"
+    assert is_list(body["tools"])
+    tool_names = Enum.map(body["tools"], & &1["name"])
+    assert "consult" in tool_names
+    assert "suggest_tactics" in tool_names
+  end
+
   # ── invoke — JS cartridge E2E ──────────────────────────────────────────────
 
   @tag :e2e

@@ -77,8 +77,10 @@ defmodule BojRest.Router do
     case BojRest.Catalog.get(name) do
       {:ok, cart} ->
         body = conn.body_params || %{}
-        tool = Map.get(body, "tool")
-        args = Map.get(body, "arguments") || %{}
+        # Accept both canonical ("tool"/"arguments") and echidna-style
+        # ("operation"/"params") field names so callers need not adapt.
+        tool = Map.get(body, "tool") || Map.get(body, "operation")
+        args = Map.get(body, "arguments") || Map.get(body, "params") || %{}
         is_local = loopback?(conn.remote_ip)
         trust_level = conn |> get_req_header("x-trust-level") |> List.first()
         node_id = conn |> get_req_header("x-node-identity") |> List.first()
