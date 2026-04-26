@@ -174,7 +174,8 @@ impl App {
                 self.token   = v["token"].as_str().map(String::from);
                 let id = self.peer_id.as_deref().unwrap_or("?");
                 self.msg = format!("registered as {}", id);
-                let _ = execute!(std::io::stdout(), SetTitle(format!("coord-tui [{}]", id)));
+                // Title = peer_id exactly so it 1:1-matches the table column.
+                let _ = execute!(std::io::stdout(), SetTitle(id.to_string()));
                 self.refresh();
             }
             Ok(v) => self.msg = format!("register failed: {}", str_field(&v, "error")),
