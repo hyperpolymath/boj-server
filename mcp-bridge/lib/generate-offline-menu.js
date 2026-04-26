@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+#!/usr/bin/env -S deno run --allow-read
 // SPDX-License-Identifier: MPL-2.0
 // Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
 //
@@ -30,5 +30,5 @@ try {
   console.log("\nUpdate mcp-bridge/lib/offline-menu.js with any new cartridges.");
 } catch (err) {
   console.error(`Error scanning cartridges directory: ${err.message}`);
-  process.exit(1);
+  Deno.exit(1);
 }

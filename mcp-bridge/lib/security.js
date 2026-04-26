@@ -133,7 +133,7 @@ function scanObjectForInjection(obj, maxDepth = 10) {
 // Rate limiter (token bucket)
 // ===================================================================
 
-const RATE_LIMIT = parseInt(process.env.BOJ_RATE_LIMIT, 10) || 60;
+const RATE_LIMIT = parseInt(Deno.env.get("BOJ_RATE_LIMIT") ?? "60", 10) || 60;
 const RATE_WINDOW_MS = 60_000;
 
 const rateBucket = {

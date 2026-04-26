@@ -59,10 +59,15 @@ export function contractsPath() {
 /** Probe whether `nickel` is on PATH. Cached. */
 function probeNickel() {
   if (nickelAvailable !== null) return nickelAvailable;
-  const r = spawnSync("nickel", ["--version"], { stdio: "ignore" });
-  nickelAvailable = r.status === 0;
+  try {
+    const r = spawnSync("nickel", ["--version"], { stdio: "ignore" });
+    nickelAvailable = r.status === 0;
+  } catch {
+    // PermissionDenied (no --allow-run) or binary not found — treat as absent.
+    nickelAvailable = false;
+  }
   if (!nickelAvailable) {
-    const strict = process.env.COORD_REQUIRE_NICKEL === "1";
+    const strict = Deno.env.get("COORD_REQUIRE_NICKEL") === "1";
     if (strict) {
       throw new Error("COORD_REQUIRE_NICKEL=1 but `nickel` not on PATH");
     }
@@ -124,17 +129,17 @@ export function validateEnvelope(envelope, senderRole) {
   }
 
   // Write the call-site script to a temp file in the same dir as the
-  // contracts so its relative `import` resolves.
-  const tmp = resolve(dirname(path), `._validate_${process.pid}_${Date.now()}.ncl`);
+  // contracts so its relative `import` resolves. /tmp is writable and
+  // isolated enough; we use an absolute import path so location doesn't matter.
+  const tmp = resolve("/tmp", `._boj_validate_${Deno.pid}_${Date.now()}.ncl`);
   const script =
-    `let c = import "${path.split("/").pop()}" in\n` +
+    `let c = import "${path}" in\n` +
     `let e = ${toNickel(withMeta)} in\n` +
     `c.validate e\n`;
 
   try {
     writeFileSync(tmp, script);
     const r = spawnSync("nickel", ["eval", tmp], {
-      cwd: dirname(path),
       encoding: "utf8",
     });
     if (r.status === 0) return { ok: true };

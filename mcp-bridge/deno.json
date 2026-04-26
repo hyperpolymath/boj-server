@@ -1,0 +1,11 @@
+// SPDX-License-Identifier: MPL-2.0
+// Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+//
+// Deno configuration for the BoJ MCP stdio bridge.
+{
+  "tasks": {
+    "start": "deno run --allow-net --allow-env --allow-read main.js",
+    "gen-menu": "deno run --allow-read lib/generate-offline-menu.js"
+  },
+  "nodeModulesDir": "none"
+}

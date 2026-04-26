@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+#!/usr/bin/env -S deno run --allow-net --allow-env --allow-read
 // SPDX-License-Identifier: MPL-2.0
 // Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
 //
@@ -8,8 +8,7 @@
 // stdio protocol so that Claude Code, Glama, and other MCP clients
 // can discover and invoke BoJ cartridge tools.
 //
-// Usage: deno run --allow-net main.js
-//    or: node main.js
+// Usage: deno run --allow-net --allow-env --allow-read main.js
 
 import {
   RATE_LIMIT,
@@ -37,7 +36,7 @@ import {
 } from "./lib/nickel-validator.js";
 import { info, warn, error as logError, setLevel as setLogLevel } from "./lib/logger.js";
 
-const BOJ_BASE = process.env.BOJ_URL || "http://localhost:7700";
+const BOJ_BASE = Deno.env.get("BOJ_URL") ?? "http://localhost:7700";
 const SERVER_NAME = "boj-server";
 const SERVER_VERSION = "0.4.0";
 
@@ -45,37 +44,16 @@ const SERVER_VERSION = "0.4.0";
 // JSON-RPC stdio transport
 // ===================================================================
 
+const encoder = new TextEncoder();
+const decoder = new TextDecoder();
+
 let buffer = "";
 const MAX_BUFFER_BYTES = 2 * 1_048_576; // 2 MB
 
-process.stdin.setEncoding("utf8");
 const pendingMessages = [];
 
-process.stdin.on("data", (chunk) => {
-  buffer += chunk;
-  if (buffer.length > MAX_BUFFER_BYTES) {
-    sendError(null, -32600, "Message too large");
-    buffer = "";
-    return;
-  }
-  let boundary;
-  while ((boundary = buffer.indexOf("\n")) !== -1) {
-    const line = buffer.slice(0, boundary).trim();
-    buffer = buffer.slice(boundary + 1);
-    if (line.length > 0) {
-      const p = handleMessage(line).catch(() => {});
-      pendingMessages.push(p);
-    }
-  }
-});
-
-process.stdin.on("end", async () => {
-  await Promise.allSettled(pendingMessages);
-  process.exit(0);
-});
-
 function send(obj) {
-  process.stdout.write(JSON.stringify(obj) + "\n");
+  Deno.stdout.writeSync(encoder.encode(JSON.stringify(obj) + "\n"));
 }
 
 function sendResult(id, result) {
@@ -268,7 +246,7 @@ async function dispatchTool(toolName, args) {
 // local-coord-mcp direct dispatch (loopback only, port 7745)
 // ===================================================================
 
-const LOCAL_COORD_URL = process.env.COORD_BACKEND_URL || "http://127.0.0.1:7745";
+const LOCAL_COORD_URL = Deno.env.get("COORD_BACKEND_URL") ?? "http://127.0.0.1:7745";
 
 // Nickel contracts run on coord_send / coord_send_gated only — those
 // are the two tools whose `message` argument carries an A2ML envelope.
@@ -477,3 +455,28 @@ async function handleMessage(line) {
       }
   }
 }
+
+// ===================================================================
+// Main I/O loop — async-iterable stdin (Deno)
+// ===================================================================
+
+for await (const chunk of Deno.stdin.readable) {
+  buffer += decoder.decode(chunk);
+  if (buffer.length > MAX_BUFFER_BYTES) {
+    sendError(null, -32600, "Message too large");
+    buffer = "";
+    continue;
+  }
+  let boundary;
+  while ((boundary = buffer.indexOf("\n")) !== -1) {
+    const line = buffer.slice(0, boundary).trim();
+    buffer = buffer.slice(boundary + 1);
+    if (line.length > 0) {
+      const p = handleMessage(line).catch(() => {});
+      pendingMessages.push(p);
+    }
+  }
+}
+
+await Promise.allSettled(pendingMessages);
+Deno.exit(0);

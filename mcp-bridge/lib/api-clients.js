@@ -10,9 +10,9 @@ import { isValidCartridgeName } from "./security.js";
 import { warn } from "./logger.js";
 import { SERVER_VERSION } from "./version.js";
 
-const BOJ_BASE = process.env.BOJ_URL || "http://localhost:7700";
-const GITHUB_TOKEN = process.env.GITHUB_TOKEN || "";
-const GITLAB_TOKEN = process.env.GITLAB_TOKEN || "";
+const BOJ_BASE = Deno.env.get("BOJ_URL") ?? "http://localhost:7700";
+const GITHUB_TOKEN = Deno.env.get("GITHUB_TOKEN") ?? "";
+const GITLAB_TOKEN = Deno.env.get("GITLAB_TOKEN") ?? "";
 
 // ===================================================================
 // BoJ REST API wrappers
@@ -253,7 +253,7 @@ async function gitlabApiCall(method, path, body) {
   if (!GITLAB_TOKEN) {
     return { error: "GITLAB_TOKEN not set." };
   }
-  const baseUrl = process.env.GITLAB_URL || "https://gitlab.com";
+  const baseUrl = Deno.env.get("GITLAB_URL") ?? "https://gitlab.com";
   try {
     const url = `${baseUrl}/api/v4${path}`;
     const opts = {

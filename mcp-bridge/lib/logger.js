@@ -7,7 +7,8 @@
 // MCP JSON-RPC messages). Log level controlled via BOJ_LOG_LEVEL env.
 
 const LOG_LEVELS = { debug: 0, info: 1, warn: 2, error: 3, silent: 4 };
-let currentLevel = LOG_LEVELS[process.env.BOJ_LOG_LEVEL || "info"] ?? LOG_LEVELS.info;
+const _enc = new TextEncoder();
+let currentLevel = LOG_LEVELS[Deno.env.get("BOJ_LOG_LEVEL") ?? "info"] ?? LOG_LEVELS.info;
 
 /**
  * Update the minimum log level at runtime. Used by the MCP
@@ -38,7 +39,7 @@ function log(level, message, fields = {}) {
     msg: message,
     ...fields,
   };
-  process.stderr.write(JSON.stringify(entry) + "\n");
+  Deno.stderr.writeSync(_enc.encode(JSON.stringify(entry) + "\n"));
 }
 
 /** @param {string} msg @param {Record<string, unknown>} [fields] */
