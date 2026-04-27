@@ -248,11 +248,12 @@ lsp_mcp : Cartridge
 lsp_mcp = MkCartridge "lsp-mcp" "0.1.0" Ready Ayo Lsp [MCP, LSP, REST] ua "universal"
 
 ||| orchestrator-lsp-mcp: cross-domain LSP orchestrator.
-||| Routes LSP queries across all 12 poly-*-lsp servers.
-||| Inspired by poly-orchestrator-lsp (polystack, archived).
-||| Status: Development — pending implementation as BoJ cartridge.
+||| Routes LSP queries across all 12 poly-*-lsp servers (cloud, container,
+||| IAC, k8s, db, queue, secrets, git, SSG, proof, observability, browser).
+||| Elixir GenLSP adapter, Zig FFI (ADR-0006), ReScript VSCode extension.
+||| Inspired by poly-orchestrator-lsp (polystack, archived 2026-04-27).
 orchestrator_lsp_mcp : Cartridge
-orchestrator_lsp_mcp = MkCartridge "orchestrator-lsp-mcp" "0.1.0" Development Teranga Lsp [MCP, LSP] ua "poly-orchestrator"
+orchestrator_lsp_mcp = MkCartridge "orchestrator-lsp-mcp" "0.1.0" Ready Teranga Lsp [MCP, LSP] ua "poly-orchestrator"
 
 -- ═══════════════════════════════════════════════════════════════════════════
 -- DAP Domain

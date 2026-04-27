@@ -4,7 +4,7 @@
   "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>",
   "name": "orchestrator-lsp-mcp",
   "version": "0.1.0",
-  "status": "development",
+  "status": "ready",
   "description": "Cross-domain LSP orchestrator. Routes LSP requests across all 12 poly-*-lsp servers (cloud, container, iac, k8s, db, queue, secret, git, ssg, proof, observability, browser) via a single GenLSP supervisor. Inspired by poly-orchestrator-lsp (polystack, archived). Wraps the 12 domain servers into one unified textDocument interface with domain-routing based on workspace root and file type.",
   "domain": "LSP",
   "tier": "Teranga",
