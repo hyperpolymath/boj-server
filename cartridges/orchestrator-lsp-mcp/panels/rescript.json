@@ -1,0 +1,19 @@
+{
+  "name": "orchestrator-lsp-mcp-extension",
+  "sources": [
+    {
+      "dir": "src",
+      "subdirs": true
+    }
+  ],
+  "package-specs": [
+    {
+      "module": "commonjs",
+      "in-source": false
+    }
+  ],
+  "suffix": ".js",
+  "bs-dependencies": [],
+  "bsc-flags": [],
+  "namespace": false
+}
