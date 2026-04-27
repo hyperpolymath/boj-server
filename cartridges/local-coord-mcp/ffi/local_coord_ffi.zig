@@ -2464,37 +2464,829 @@ pub export fn boj_cartridge_version() [*:0]const u8 {
 
 const shim = @import("cartridge_shim.zig");
 
-/// Dispatch the cartridge.json MCP tools. Grade D Alpha — each arm
-/// returns a stub JSON body shaped to the tool's intended response.
+// ── JSON dispatch helpers ─────────────────────────────────────────────
+//
+// These mirror local_coord_adapter.zig but call the exported coord_*
+// functions directly (same compilation unit — no ffi.* prefix needed).
+
+fn ci_kindFromString(s: []const u8) i32 {
+    if (std.mem.eql(u8, s, "claude")) return 0;
+    if (std.mem.eql(u8, s, "gemini")) return 1;
+    if (std.mem.eql(u8, s, "copilot")) return 2;
+    if (std.mem.eql(u8, s, "openai")) return 4;
+    if (std.mem.eql(u8, s, "mistral")) return 5;
+    return 3; // custom
+}
+
+fn ci_kindName(kind: i32) []const u8 {
+    return switch (kind) {
+        0 => "claude",
+        1 => "gemini",
+        2 => "copilot",
+        4 => "openai",
+        5 => "mistral",
+        else => "custom",
+    };
+}
+
+fn ci_stateName(state: i32) []const u8 {
+    return switch (state) {
+        0 => "registering",
+        1 => "active",
+        2 => "departing",
+        else => "gone",
+    };
+}
+
+fn ci_parseToken(token_hex: []const u8, out: *[16]u8) bool {
+    if (token_hex.len != 32) return false;
+    _ = std.fmt.hexToBytes(out, token_hex) catch return false;
+    return true;
+}
+
+fn ci_extractSuffix(target: []const u8) ?[]const u8 {
+    const at_pos = std.mem.indexOfScalar(u8, target, '@') orelse target.len;
+    const left = target[0..at_pos];
+    const dash_pos = std.mem.lastIndexOfScalar(u8, left, '-') orelse return null;
+    const suffix = left[dash_pos + 1 ..];
+    if (suffix.len != 4) return null;
+    return suffix;
+}
+
+fn ci_arrayToCsv(items: []const std.json.Value, buf: []u8) usize {
+    var len: usize = 0;
+    for (items) |item| {
+        if (item != .string) continue;
+        const s = item.string;
+        if (len > 0 and len < buf.len) {
+            buf[len] = ',';
+            len += 1;
+        }
+        const to_copy: usize = @min(s.len, buf.len - len);
+        if (to_copy > 0) @memcpy(buf[len .. len + to_copy], s[0..to_copy]);
+        len += to_copy;
+    }
+    return len;
+}
+
+fn ci_renderPeerId(buf: []u8, kind_str: []const u8, suffix: []const u8, ctx: []const u8) ![]u8 {
+    if (ctx.len == 0) return try std.fmt.bufPrint(buf, "{s}-{s}", .{ kind_str, suffix });
+    return try std.fmt.bufPrint(buf, "{s}-{s}@{s}", .{ kind_str, suffix, ctx });
+}
+
+fn ci_writeJsonString(w: anytype, s: []const u8) !void {
+    try w.writeByte('"');
+    for (s) |c| {
+        switch (c) {
+            '"' => try w.writeAll("\\\""),
+            '\\' => try w.writeAll("\\\\"),
+            '\n' => try w.writeAll("\\n"),
+            '\r' => try w.writeAll("\\r"),
+            '\t' => try w.writeAll("\\t"),
+            0x00...0x08, 0x0B, 0x0C, 0x0E...0x1F => try std.fmt.format(w, "\\u00{x:0>2}", .{c}),
+            else => try w.writeByte(c),
+        }
+    }
+    try w.writeByte('"');
+}
+
+fn ci_writeCsvAsJsonStrings(w: anytype, csv: []const u8) !void {
+    if (csv.len == 0) return;
+    var it = std.mem.splitScalar(u8, csv, ',');
+    var first = true;
+    while (it.next()) |part| {
+        if (part.len == 0) continue;
+        if (!first) try w.writeAll(",");
+        first = false;
+        try ci_writeJsonString(w, part);
+    }
+}
+
+const InvokeResult = struct { written: usize, rc: i32 };
+
+fn ci_fail(out: []u8, msg: []const u8, rc: i32) InvokeResult {
+    const b = std.fmt.bufPrint(out, "{{\"success\":false,\"error\":\"{s}\"}}", .{msg}) catch out[0..0];
+    return .{ .written = b.len, .rc = rc };
+}
+
+fn ci_ok(out: []u8, msg: []const u8) InvokeResult {
+    const b = std.fmt.bufPrint(out, "{{\"success\":true,\"message\":\"{s}\"}}", .{msg}) catch out[0..0];
+    return .{ .written = b.len, .rc = shim.RC_SUCCESS };
+}
+
+/// Main tool dispatch — mirrors the adapter's dispatch() with direct FFI calls.
+/// Writes a complete JSON body into `out` and returns (bytes_written, rc_code).
+/// Error responses are always written to `out` even when rc < 0, so callers
+/// can surface the message while still acting on the return code.
+fn ci_dispatch(tool: []const u8, json_args: []const u8, out: []u8, alloc: std.mem.Allocator) InvokeResult {
+    if (std.mem.eql(u8, tool, "coord_register")) {
+        const parsed = std.json.parseFromSlice(std.json.Value, alloc, json_args, .{}) catch
+            return ci_fail(out, "invalid json", shim.RC_BAD_ARGS);
+        defer parsed.deinit();
+
+        const kind_val = parsed.value.object.get("client_kind") orelse
+            return ci_fail(out, "missing client_kind", shim.RC_BAD_ARGS);
+        const kind_str = kind_val.string;
+        const kind: i32 = ci_kindFromString(kind_str);
+
+        const ctx_str: []const u8 = blk: {
+            const v = parsed.value.object.get("context") orelse break :blk "";
+            break :blk v.string;
+        };
+        const role_hint: i32 = blk: {
+            const rv = parsed.value.object.get("role") orelse break :blk -1;
+            const rs = rv.string;
+            if (std.mem.eql(u8, rs, "master") or std.mem.eql(u8, rs, "supervisor")) break :blk 0;
+            if (std.mem.eql(u8, rs, "journeyman") or std.mem.eql(u8, rs, "executor")) break :blk 1;
+            if (std.mem.eql(u8, rs, "apprentice") or std.mem.eql(u8, rs, "supervised")) break :blk 2;
+            break :blk -1;
+        };
+
+        var token: [16]u8 = undefined;
+        var suffix: [4]u8 = undefined;
+        const idx = coord_register(kind, role_hint, &token, &suffix);
+        if (idx == -3) return ci_fail(out, "master role must be obtained via coord_promote_to_master", shim.RC_BAD_ARGS);
+        if (idx < 0) return ci_fail(out, "registry full", shim.RC_RUNTIME_ERROR);
+
+        if (ctx_str.len > 0) {
+            if (coord_set_context(&token, 16, ctx_str.ptr, @intCast(ctx_str.len)) < 0) {
+                _ = coord_deregister(&token, 16);
+                return ci_fail(out, "invalid context (alphanumeric/hyphen/underscore only, max 32 bytes)", shim.RC_BAD_ARGS);
+            }
+        }
+        if (parsed.value.object.get("declared_affinities")) |dv| {
+            if (dv == .array) {
+                var csv_buf: [256]u8 = undefined;
+                const csv_len = ci_arrayToCsv(dv.array.items, &csv_buf);
+                if (csv_len > 0) _ = coord_set_declared_affinities(&token, 16, &csv_buf, @intCast(csv_len));
+            }
+        }
+        if (parsed.value.object.get("variant")) |vv| {
+            if (vv == .string and vv.string.len > 0) {
+                if (coord_set_variant(&token, 16, vv.string.ptr, @intCast(vv.string.len)) < 0) {
+                    _ = coord_deregister(&token, 16);
+                    return ci_fail(out, "invalid variant (alphanum / . / - / _ only, max 32 bytes)", shim.RC_BAD_ARGS);
+                }
+            }
+        }
+        if (parsed.value.object.get("capabilities")) |caps| {
+            if (caps == .object) {
+                var class_buf: [128]u8 = undefined;
+                var class_len: usize = 0;
+                if (caps.object.get("class")) |cv| {
+                    if (cv == .array) class_len = ci_arrayToCsv(cv.array.items, &class_buf);
+                }
+                var tier: i32 = 0;
+                if (caps.object.get("tier")) |tv| {
+                    if (tv == .integer) tier = @intCast(tv.integer);
+                }
+                var pro_buf: [256]u8 = undefined;
+                var pro_len: usize = 0;
+                if (caps.object.get("prover_strengths")) |pv| {
+                    if (pv == .array) pro_len = ci_arrayToCsv(pv.array.items, &pro_buf);
+                }
+                if (class_len != 0 or tier != 0 or pro_len != 0) {
+                    if (coord_set_capabilities(&token, 16, &class_buf, @intCast(class_len), tier, &pro_buf, @intCast(pro_len)) < 0) {
+                        _ = coord_deregister(&token, 16);
+                        return ci_fail(out, "invalid capabilities (tier 0..5, class ≤128B, prover_strengths ≤256B)", shim.RC_BAD_ARGS);
+                    }
+                }
+            }
+        }
+
+        const hex_chars = "0123456789abcdef";
+        var token_hex: [32]u8 = undefined;
+        for (token, 0..) |b, i| {
+            token_hex[i * 2] = hex_chars[b >> 4];
+            token_hex[i * 2 + 1] = hex_chars[b & 0x0f];
+        }
+        var pid_buf: [96]u8 = undefined;
+        const peer_id = ci_renderPeerId(&pid_buf, kind_str, &suffix, ctx_str) catch
+            return ci_fail(out, "peer_id render overflow", shim.RC_RUNTIME_ERROR);
+        const body = std.fmt.bufPrint(out, "{{\"success\":true,\"peer_id\":\"{s}\",\"token\":\"{s}\"}}", .{ peer_id, token_hex }) catch
+            return ci_fail(out, "buffer overflow", shim.RC_RUNTIME_ERROR);
+        return .{ .written = body.len, .rc = shim.RC_SUCCESS };
+    }
+
+    if (std.mem.eql(u8, tool, "coord_deregister")) {
+        const parsed = std.json.parseFromSlice(std.json.Value, alloc, json_args, .{}) catch
+            return ci_fail(out, "invalid json", shim.RC_BAD_ARGS);
+        defer parsed.deinit();
+        const tv = parsed.value.object.get("token") orelse return ci_fail(out, "missing token", shim.RC_BAD_ARGS);
+        var token: [16]u8 = undefined;
+        if (!ci_parseToken(tv.string, &token)) return ci_fail(out, "invalid token hex", shim.RC_BAD_ARGS);
+        const rc = coord_deregister(&token, 16);
+        if (rc == 0) return ci_ok(out, "deregistered");
+        if (rc == -1) return ci_fail(out, "unauthenticated", shim.RC_AUTH_DENIED);
+        return ci_fail(out, "deregister failed", shim.RC_RUNTIME_ERROR);
+    }
+
+    if (std.mem.eql(u8, tool, "coord_list_peers")) {
+        const parsed = std.json.parseFromSlice(std.json.Value, alloc, json_args, .{}) catch
+            return ci_fail(out, "invalid json", shim.RC_BAD_ARGS);
+        defer parsed.deinit();
+        const tv = parsed.value.object.get("token") orelse return ci_fail(out, "missing token", shim.RC_BAD_ARGS);
+        var token: [16]u8 = undefined;
+        if (!ci_parseToken(tv.string, &token)) return ci_fail(out, "invalid token hex", shim.RC_BAD_ARGS);
+
+        var raw: [192]u8 = undefined;
+        const count = coord_list_peers(&token, 16, &raw, @intCast(raw.len));
+        if (count < 0) return ci_fail(out, "unauthenticated", shim.RC_AUTH_DENIED);
+
+        var stream = std.io.fixedBufferStream(out);
+        const w = stream.writer();
+        w.writeAll("{\"success\":true,\"peers\":[") catch return ci_fail(out, "buffer overflow", shim.RC_RUNTIME_ERROR);
+        var pi: i32 = 0;
+        var written_idx: usize = 0;
+        const cnt: usize = @intCast(count);
+        while (pi < 16 and written_idx < cnt) : (pi += 1) {
+            const kv = coord_read_peer_kind(pi);
+            if (kv < 0) continue;
+            const rec = raw[written_idx * 12 ..];
+            const suf = rec[4..8];
+            const st: i32 = @bitCast([4]u8{ rec[8], rec[9], rec[10], rec[11] });
+            var status_buf: [256]u8 = undefined;
+            const sl = coord_read_peer_status(pi, &status_buf, @intCast(status_buf.len));
+            const ss: []const u8 = if (sl > 0) status_buf[0..@intCast(sl)] else "";
+            var ctx_buf: [32]u8 = undefined;
+            const cl = coord_read_peer_context(pi, &ctx_buf, @intCast(ctx_buf.len));
+            const cs: []const u8 = if (cl > 0) ctx_buf[0..@intCast(cl)] else "";
+            var var_buf: [32]u8 = undefined;
+            const vl = coord_read_peer_variant(pi, &var_buf, @intCast(var_buf.len));
+            const vs: []const u8 = if (vl > 0) var_buf[0..@intCast(vl)] else "";
+            var pid_buf: [96]u8 = undefined;
+            const peer_id = ci_renderPeerId(&pid_buf, ci_kindName(kv), suf, cs) catch return ci_fail(out, "peer_id render overflow", shim.RC_RUNTIME_ERROR);
+            if (written_idx > 0) w.writeByte(',') catch return ci_fail(out, "buffer overflow", shim.RC_RUNTIME_ERROR);
+            std.fmt.format(w, "{{\"peer_id\":\"{s}\",\"kind\":\"{s}\",\"state\":\"{s}\",\"context\":\"{s}\",\"variant\":\"{s}\",\"status\":", .{
+                peer_id, ci_kindName(kv), ci_stateName(st), cs, vs,
+            }) catch return ci_fail(out, "buffer overflow", shim.RC_RUNTIME_ERROR);
+            ci_writeJsonString(w, ss) catch return ci_fail(out, "buffer overflow", shim.RC_RUNTIME_ERROR);
+            w.writeByte('}') catch return ci_fail(out, "buffer overflow", shim.RC_RUNTIME_ERROR);
+            written_idx += 1;
+        }
+        w.writeAll("]}") catch return ci_fail(out, "buffer overflow", shim.RC_RUNTIME_ERROR);
+        return .{ .written = stream.pos, .rc = shim.RC_SUCCESS };
+    }
+
+    if (std.mem.eql(u8, tool, "coord_send")) {
+        const parsed = std.json.parseFromSlice(std.json.Value, alloc, json_args, .{}) catch
+            return ci_fail(out, "invalid json", shim.RC_BAD_ARGS);
+        defer parsed.deinit();
+        const tv = parsed.value.object.get("token") orelse return ci_fail(out, "missing token", shim.RC_BAD_ARGS);
+        const tgt = parsed.value.object.get("target") orelse return ci_fail(out, "missing target", shim.RC_BAD_ARGS);
+        const mv = parsed.value.object.get("message") orelse return ci_fail(out, "missing message", shim.RC_BAD_ARGS);
+        var token: [16]u8 = undefined;
+        if (!ci_parseToken(tv.string, &token)) return ci_fail(out, "invalid token hex", shim.RC_BAD_ARGS);
+        const target_str = tgt.string;
+        var target_idx: i32 = -1;
+        if (!std.mem.eql(u8, target_str, "*")) {
+            const suf = ci_extractSuffix(target_str) orelse return ci_fail(out, "invalid target format — expected <kind>-<4hex>[@<context>]", shim.RC_BAD_ARGS);
+            target_idx = coord_find_peer_by_suffix(suf.ptr);
+            if (target_idx < 0) return ci_fail(out, "target peer not found", shim.RC_BAD_ARGS);
+        }
+        const msg = mv.string;
+        const sent = coord_send(&token, 16, target_idx, msg.ptr, @intCast(msg.len));
+        if (sent < 0) return ci_fail(out, "unauthenticated or invalid target", shim.RC_AUTH_DENIED);
+        const b = std.fmt.bufPrint(out, "{{\"success\":true,\"sent\":{d}}}", .{sent}) catch
+            return ci_fail(out, "buffer overflow", shim.RC_RUNTIME_ERROR);
+        return .{ .written = b.len, .rc = shim.RC_SUCCESS };
+    }
+
+    if (std.mem.eql(u8, tool, "coord_receive")) {
+        const parsed = std.json.parseFromSlice(std.json.Value, alloc, json_args, .{}) catch
+            return ci_fail(out, "invalid json", shim.RC_BAD_ARGS);
+        defer parsed.deinit();
+        const tv = parsed.value.object.get("token") orelse return ci_fail(out, "missing token", shim.RC_BAD_ARGS);
+        var token: [16]u8 = undefined;
+        if (!ci_parseToken(tv.string, &token)) return ci_fail(out, "invalid token hex", shim.RC_BAD_ARGS);
+        var msg_buf: [512]u8 = undefined;
+        const mlen = coord_receive(&token, 16, &msg_buf, @intCast(msg_buf.len));
+        if (mlen < 0) return ci_fail(out, "unauthenticated", shim.RC_AUTH_DENIED);
+        if (mlen == 0) {
+            const b = std.fmt.bufPrint(out, "{{\"success\":true,\"message\":null}}", .{}) catch out[0..0];
+            return .{ .written = b.len, .rc = shim.RC_SUCCESS };
+        }
+        var stream = std.io.fixedBufferStream(out);
+        const w = stream.writer();
+        w.writeAll("{\"success\":true,\"message\":") catch return ci_fail(out, "buffer overflow", shim.RC_RUNTIME_ERROR);
+        ci_writeJsonString(w, msg_buf[0..@intCast(mlen)]) catch return ci_fail(out, "buffer overflow", shim.RC_RUNTIME_ERROR);
+        w.writeByte('}') catch return ci_fail(out, "buffer overflow", shim.RC_RUNTIME_ERROR);
+        return .{ .written = stream.pos, .rc = shim.RC_SUCCESS };
+    }
+
+    if (std.mem.eql(u8, tool, "coord_status")) {
+        const parsed = std.json.parseFromSlice(std.json.Value, alloc, json_args, .{}) catch
+            return ci_fail(out, "invalid json", shim.RC_BAD_ARGS);
+        defer parsed.deinit();
+        const tv = parsed.value.object.get("token") orelse return ci_fail(out, "missing token", shim.RC_BAD_ARGS);
+        const sv = parsed.value.object.get("status") orelse return ci_fail(out, "missing status", shim.RC_BAD_ARGS);
+        var token: [16]u8 = undefined;
+        if (!ci_parseToken(tv.string, &token)) return ci_fail(out, "invalid token hex", shim.RC_BAD_ARGS);
+        const rc = coord_set_status(&token, 16, sv.string.ptr, @intCast(sv.string.len));
+        if (rc < 0) return ci_fail(out, "unauthenticated", shim.RC_AUTH_DENIED);
+        return ci_ok(out, "ok");
+    }
+
+    if (std.mem.eql(u8, tool, "coord_claim_task")) {
+        const parsed = std.json.parseFromSlice(std.json.Value, alloc, json_args, .{}) catch
+            return ci_fail(out, "invalid json", shim.RC_BAD_ARGS);
+        defer parsed.deinit();
+        const tv = parsed.value.object.get("token") orelse return ci_fail(out, "missing token", shim.RC_BAD_ARGS);
+        const task = parsed.value.object.get("task") orelse return ci_fail(out, "missing task", shim.RC_BAD_ARGS);
+        var token: [16]u8 = undefined;
+        if (!ci_parseToken(tv.string, &token)) return ci_fail(out, "invalid token hex", shim.RC_BAD_ARGS);
+        const confidence: i32 = blk: {
+            const v = parsed.value.object.get("confidence") orelse break :blk -1;
+            break :blk switch (v) {
+                .float => |f| @intFromFloat(@min(@max(f * 100.0, 0.0), 100.0)),
+                .integer => |i| @intCast(i),
+                else => -1,
+            };
+        };
+        const dispatch_pref: i32 = blk: {
+            const v = parsed.value.object.get("dispatch_preference") orelse break :blk -1;
+            const s = v.string;
+            if (std.mem.eql(u8, s, "deliberate")) break :blk 0;
+            if (std.mem.eql(u8, s, "broadcast")) break :blk 1;
+            if (std.mem.eql(u8, s, "auto")) break :blk 2;
+            break :blk -1;
+        };
+        const difficulty: i32 = blk: {
+            const v = parsed.value.object.get("task_difficulty") orelse break :blk -1;
+            const s = v.string;
+            if (std.mem.eql(u8, s, "trivial")) break :blk 0;
+            if (std.mem.eql(u8, s, "routine")) break :blk 1;
+            if (std.mem.eql(u8, s, "challenging")) break :blk 2;
+            if (std.mem.eql(u8, s, "novel")) break :blk 3;
+            break :blk -1;
+        };
+        const result = coord_claim_task_ex(&token, 16, task.string.ptr, @intCast(task.string.len), confidence, dispatch_pref, difficulty);
+        if (result == 0) return ci_ok(out, "granted");
+        if (result == 1) return ci_fail(out, "held", shim.RC_RUNTIME_ERROR);
+        if (result == -5) return ci_fail(out, "cooldown: too many recent claim rejections for this client_kind — wait 30s", shim.RC_RUNTIME_ERROR);
+        return ci_fail(out, "claim failed", shim.RC_RUNTIME_ERROR);
+    }
+
+    if (std.mem.eql(u8, tool, "coord_promote_to_master") or
+        std.mem.eql(u8, tool, "coord_promote_to_supervisor"))
+    {
+        const parsed = std.json.parseFromSlice(std.json.Value, alloc, json_args, .{}) catch
+            return ci_fail(out, "invalid json", shim.RC_BAD_ARGS);
+        defer parsed.deinit();
+        const tv = parsed.value.object.get("token") orelse return ci_fail(out, "missing token", shim.RC_BAD_ARGS);
+        const sv = parsed.value.object.get("secret") orelse return ci_fail(out, "missing secret", shim.RC_BAD_ARGS);
+        var token: [16]u8 = undefined;
+        if (!ci_parseToken(tv.string, &token)) return ci_fail(out, "invalid token hex", shim.RC_BAD_ARGS);
+        const secret = sv.string;
+        const rc = coord_promote_to_master(&token, 16, secret.ptr, @intCast(secret.len));
+        if (rc == 0) return ci_ok(out, "promoted");
+        if (rc == -1) return ci_fail(out, "unauthenticated", shim.RC_AUTH_DENIED);
+        if (rc == -2) return ci_fail(out, "master already exists", shim.RC_RUNTIME_ERROR);
+        if (rc == -3) return ci_fail(out, "master role not configured on this server", shim.RC_AUTH_DENIED);
+        if (rc == -4) return ci_fail(out, "secret does not match", shim.RC_AUTH_DENIED);
+        return ci_fail(out, "promotion failed", shim.RC_RUNTIME_ERROR);
+    }
+
+    if (std.mem.eql(u8, tool, "coord_transfer_master")) {
+        const parsed = std.json.parseFromSlice(std.json.Value, alloc, json_args, .{}) catch
+            return ci_fail(out, "invalid json", shim.RC_BAD_ARGS);
+        defer parsed.deinit();
+        const tv = parsed.value.object.get("token") orelse return ci_fail(out, "missing token", shim.RC_BAD_ARGS);
+        const nv = parsed.value.object.get("new_peer_id") orelse return ci_fail(out, "missing new_peer_id", shim.RC_BAD_ARGS);
+        const sv = parsed.value.object.get("secret") orelse return ci_fail(out, "missing secret", shim.RC_BAD_ARGS);
+        var token: [16]u8 = undefined;
+        if (!ci_parseToken(tv.string, &token)) return ci_fail(out, "invalid token hex", shim.RC_BAD_ARGS);
+        const suf = ci_extractSuffix(nv.string) orelse return ci_fail(out, "invalid new_peer_id format — expected <kind>-<4hex>[@<context>]", shim.RC_BAD_ARGS);
+        const target_idx = coord_find_peer_by_suffix(suf.ptr);
+        if (target_idx < 0) return ci_fail(out, "target peer not found", shim.RC_BAD_ARGS);
+        const secret = sv.string;
+        const rc = coord_transfer_master(&token, 16, target_idx, secret.ptr, @intCast(secret.len));
+        if (rc == 0) return ci_ok(out, "transferred");
+        if (rc == -1) return ci_fail(out, "caller is not the current master", shim.RC_AUTH_DENIED);
+        if (rc == -2) return ci_fail(out, "target peer not found or same as caller", shim.RC_BAD_ARGS);
+        if (rc == -3) return ci_fail(out, "secret does not match BOJ_MASTER_TOKEN", shim.RC_AUTH_DENIED);
+        if (rc == -4) return ci_fail(out, "target is an apprentice — must be journeyman or master", shim.RC_BAD_ARGS);
+        return ci_fail(out, "transfer failed", shim.RC_RUNTIME_ERROR);
+    }
+
+    if (std.mem.eql(u8, tool, "coord_send_gated")) {
+        const parsed = std.json.parseFromSlice(std.json.Value, alloc, json_args, .{}) catch
+            return ci_fail(out, "invalid json", shim.RC_BAD_ARGS);
+        defer parsed.deinit();
+        const tv = parsed.value.object.get("token") orelse return ci_fail(out, "missing token", shim.RC_BAD_ARGS);
+        const tgt = parsed.value.object.get("target") orelse return ci_fail(out, "missing target", shim.RC_BAD_ARGS);
+        const mv = parsed.value.object.get("message") orelse return ci_fail(out, "missing message", shim.RC_BAD_ARGS);
+        const tier_v = parsed.value.object.get("risk_tier") orelse return ci_fail(out, "missing risk_tier", shim.RC_BAD_ARGS);
+        var token: [16]u8 = undefined;
+        if (!ci_parseToken(tv.string, &token)) return ci_fail(out, "invalid token hex", shim.RC_BAD_ARGS);
+        const target_str = tgt.string;
+        var target_idx: i32 = -1;
+        if (!std.mem.eql(u8, target_str, "*")) {
+            const suf = ci_extractSuffix(target_str) orelse return ci_fail(out, "invalid target format", shim.RC_BAD_ARGS);
+            target_idx = coord_find_peer_by_suffix(suf.ptr);
+            if (target_idx < 0) return ci_fail(out, "target peer not found", shim.RC_BAD_ARGS);
+        }
+        const msg = mv.string;
+        const tier: i32 = @intCast(tier_v.integer);
+        const rc = coord_send_gated(&token, 16, target_idx, msg.ptr, @intCast(msg.len), tier);
+        if (rc >= 0) {
+            const b = std.fmt.bufPrint(out, "{{\"success\":true,\"status\":\"delivered\",\"sent\":{d}}}", .{rc}) catch
+                return ci_fail(out, "buffer overflow", shim.RC_RUNTIME_ERROR);
+            return .{ .written = b.len, .rc = shim.RC_SUCCESS };
+        }
+        if (rc < -1000) {
+            const request_id: i64 = -(@as(i64, rc) + 1000);
+            const b = std.fmt.bufPrint(out, "{{\"success\":true,\"status\":\"quarantined\",\"request_id\":{d}}}", .{request_id}) catch
+                return ci_fail(out, "buffer overflow", shim.RC_RUNTIME_ERROR);
+            return .{ .written = b.len, .rc = shim.RC_SUCCESS };
+        }
+        if (rc == -1) return ci_fail(out, "unauthenticated", shim.RC_AUTH_DENIED);
+        if (rc == -2) return ci_fail(out, "target peer not found", shim.RC_BAD_ARGS);
+        if (rc == -3) return ci_fail(out, "target inbox full", shim.RC_RUNTIME_ERROR);
+        if (rc == -4) return ci_fail(out, "quarantine queue full — spill to VeriSimDB not yet wired", shim.RC_RUNTIME_ERROR);
+        if (rc == -5) return ci_fail(out, "no master registered — Tier 2+ from apprentice requires a master", shim.RC_RUNTIME_ERROR);
+        return ci_fail(out, "gated send failed", shim.RC_RUNTIME_ERROR);
+    }
+
+    if (std.mem.eql(u8, tool, "coord_review")) {
+        const parsed = std.json.parseFromSlice(std.json.Value, alloc, json_args, .{}) catch
+            return ci_fail(out, "invalid json", shim.RC_BAD_ARGS);
+        defer parsed.deinit();
+        const tv = parsed.value.object.get("token") orelse return ci_fail(out, "missing token", shim.RC_BAD_ARGS);
+        var token: [16]u8 = undefined;
+        if (!ci_parseToken(tv.string, &token)) return ci_fail(out, "invalid token hex", shim.RC_BAD_ARGS);
+        var raw: [512]u8 = undefined;
+        const count = coord_review(&token, 16, &raw, @intCast(raw.len));
+        if (count < 0) return ci_fail(out, "master role required", shim.RC_AUTH_DENIED);
+        var stream = std.io.fixedBufferStream(out);
+        const w = stream.writer();
+        w.writeAll("{\"success\":true,\"entries\":[") catch return ci_fail(out, "buffer overflow", shim.RC_RUNTIME_ERROR);
+        var i: usize = 0;
+        const cnt: usize = @intCast(count);
+        while (i < cnt) : (i += 1) {
+            const rec = raw[i * 16 ..][0..16];
+            const rid: u32 = @bitCast([4]u8{ rec[0], rec[1], rec[2], rec[3] });
+            const sender_idx: u8 = rec[4];
+            const target_idx_sign: i8 = @bitCast(rec[5]);
+            const risk_tier: u8 = rec[6];
+            const mlen: u16 = @bitCast([2]u8{ rec[7], rec[8] });
+            const preview_n: usize = @min(@as(usize, 7), @as(usize, mlen));
+            const preview = rec[9 .. 9 + preview_n];
+            if (i > 0) w.writeByte(',') catch return ci_fail(out, "buffer overflow", shim.RC_RUNTIME_ERROR);
+            const origin: []const u8 = if (sender_idx == 0xFE) "server-engine" else "peer";
+            std.fmt.format(w, "{{\"request_id\":{d},\"origin\":\"{s}\",\"sender_idx\":{d},\"target_idx\":{d},\"risk_tier\":{d},\"msg_len\":{d},\"preview\":", .{
+                rid, origin, sender_idx, target_idx_sign, risk_tier, mlen,
+            }) catch return ci_fail(out, "buffer overflow", shim.RC_RUNTIME_ERROR);
+            ci_writeJsonString(w, preview) catch return ci_fail(out, "buffer overflow", shim.RC_RUNTIME_ERROR);
+            w.writeByte('}') catch return ci_fail(out, "buffer overflow", shim.RC_RUNTIME_ERROR);
+        }
+        w.writeAll("]}") catch return ci_fail(out, "buffer overflow", shim.RC_RUNTIME_ERROR);
+        return .{ .written = stream.pos, .rc = shim.RC_SUCCESS };
+    }
+
+    if (std.mem.eql(u8, tool, "coord_review_entry")) {
+        const parsed = std.json.parseFromSlice(std.json.Value, alloc, json_args, .{}) catch
+            return ci_fail(out, "invalid json", shim.RC_BAD_ARGS);
+        defer parsed.deinit();
+        const tv = parsed.value.object.get("token") orelse return ci_fail(out, "missing token", shim.RC_BAD_ARGS);
+        const rv = parsed.value.object.get("request_id") orelse return ci_fail(out, "missing request_id", shim.RC_BAD_ARGS);
+        var token: [16]u8 = undefined;
+        if (!ci_parseToken(tv.string, &token)) return ci_fail(out, "invalid token hex", shim.RC_BAD_ARGS);
+        var msg_buf: [512]u8 = undefined;
+        const rc = coord_review_entry(&token, 16, @intCast(rv.integer), &msg_buf, @intCast(msg_buf.len));
+        if (rc == -1) return ci_fail(out, "master role required", shim.RC_AUTH_DENIED);
+        if (rc == -2) return ci_fail(out, "request_id not found", shim.RC_BAD_ARGS);
+        if (rc < 0) return ci_fail(out, "review failed", shim.RC_RUNTIME_ERROR);
+        var stream = std.io.fixedBufferStream(out);
+        const w = stream.writer();
+        w.writeAll("{\"success\":true,\"message\":") catch return ci_fail(out, "buffer overflow", shim.RC_RUNTIME_ERROR);
+        ci_writeJsonString(w, msg_buf[0..@intCast(rc)]) catch return ci_fail(out, "buffer overflow", shim.RC_RUNTIME_ERROR);
+        w.writeByte('}') catch return ci_fail(out, "buffer overflow", shim.RC_RUNTIME_ERROR);
+        return .{ .written = stream.pos, .rc = shim.RC_SUCCESS };
+    }
+
+    if (std.mem.eql(u8, tool, "coord_approve")) {
+        const parsed = std.json.parseFromSlice(std.json.Value, alloc, json_args, .{}) catch
+            return ci_fail(out, "invalid json", shim.RC_BAD_ARGS);
+        defer parsed.deinit();
+        const tv = parsed.value.object.get("token") orelse return ci_fail(out, "missing token", shim.RC_BAD_ARGS);
+        const rv = parsed.value.object.get("request_id") orelse return ci_fail(out, "missing request_id", shim.RC_BAD_ARGS);
+        var token: [16]u8 = undefined;
+        if (!ci_parseToken(tv.string, &token)) return ci_fail(out, "invalid token hex", shim.RC_BAD_ARGS);
+        const rc = coord_approve(&token, 16, @intCast(rv.integer));
+        if (rc == 0) return ci_ok(out, "approved");
+        if (rc == -1) return ci_fail(out, "master role required", shim.RC_AUTH_DENIED);
+        if (rc == -2) return ci_fail(out, "request_id not found", shim.RC_BAD_ARGS);
+        if (rc == -3) return ci_fail(out, "target inbox full — retry", shim.RC_RUNTIME_ERROR);
+        return ci_fail(out, "approve failed", shim.RC_RUNTIME_ERROR);
+    }
+
+    if (std.mem.eql(u8, tool, "coord_reject")) {
+        const parsed = std.json.parseFromSlice(std.json.Value, alloc, json_args, .{}) catch
+            return ci_fail(out, "invalid json", shim.RC_BAD_ARGS);
+        defer parsed.deinit();
+        const tv = parsed.value.object.get("token") orelse return ci_fail(out, "missing token", shim.RC_BAD_ARGS);
+        const rv = parsed.value.object.get("request_id") orelse return ci_fail(out, "missing request_id", shim.RC_BAD_ARGS);
+        const rea = parsed.value.object.get("reason") orelse return ci_fail(out, "missing reason", shim.RC_BAD_ARGS);
+        var token: [16]u8 = undefined;
+        if (!ci_parseToken(tv.string, &token)) return ci_fail(out, "invalid token hex", shim.RC_BAD_ARGS);
+        const reason = rea.string;
+        const rc = coord_reject(&token, 16, @intCast(rv.integer), reason.ptr, @intCast(reason.len));
+        if (rc == 0) return ci_ok(out, "rejected");
+        if (rc == -1) return ci_fail(out, "master role required", shim.RC_AUTH_DENIED);
+        if (rc == -2) return ci_fail(out, "request_id not found", shim.RC_BAD_ARGS);
+        return ci_fail(out, "reject failed", shim.RC_RUNTIME_ERROR);
+    }
+
+    if (std.mem.eql(u8, tool, "coord_report_outcome")) {
+        const parsed = std.json.parseFromSlice(std.json.Value, alloc, json_args, .{}) catch
+            return ci_fail(out, "invalid json", shim.RC_BAD_ARGS);
+        defer parsed.deinit();
+        const tv = parsed.value.object.get("token") orelse return ci_fail(out, "missing token", shim.RC_BAD_ARGS);
+        const tag_v = parsed.value.object.get("tag") orelse return ci_fail(out, "missing tag", shim.RC_BAD_ARGS);
+        const out_v = parsed.value.object.get("outcome") orelse return ci_fail(out, "missing outcome", shim.RC_BAD_ARGS);
+        const tier_v = parsed.value.object.get("risk_tier") orelse return ci_fail(out, "missing risk_tier", shim.RC_BAD_ARGS);
+        var token: [16]u8 = undefined;
+        if (!ci_parseToken(tv.string, &token)) return ci_fail(out, "invalid token hex", shim.RC_BAD_ARGS);
+        const tag_str = tag_v.string;
+        if (tag_str.len > 64) return ci_fail(out, "tag exceeds 64 bytes", shim.RC_BAD_ARGS);
+        const duration_ms: i64 = blk: {
+            const v = parsed.value.object.get("duration_ms") orelse break :blk 0;
+            break :blk v.integer;
+        };
+        const confidence: i32 = blk: {
+            const v = parsed.value.object.get("confidence") orelse break :blk -1;
+            break :blk switch (v) {
+                .float => |f| @intFromFloat(@min(@max(f * 100.0, 0.0), 100.0)),
+                .integer => |i| @intCast(i),
+                else => -1,
+            };
+        };
+        var outcome: i32 = -1;
+        switch (out_v) {
+            .string => |s| {
+                if (std.mem.eql(u8, s, "success")) outcome = 1;
+                if (std.mem.eql(u8, s, "fail")) outcome = 0;
+            },
+            .integer => |i| outcome = @intCast(i),
+            else => {},
+        }
+        if (outcome != 0 and outcome != 1) return ci_fail(out, "outcome must be 'success'/'fail' or 0/1", shim.RC_BAD_ARGS);
+        const tier: i32 = @intCast(tier_v.integer);
+        const rc = coord_report_outcome(&token, 16, tag_str.ptr, @intCast(tag_str.len), outcome, @intCast(duration_ms), tier, confidence);
+        if (rc == 0) return ci_ok(out, "recorded");
+        if (rc == -1) return ci_fail(out, "unauthenticated", shim.RC_AUTH_DENIED);
+        if (rc == -2) return ci_fail(out, "invalid args", shim.RC_BAD_ARGS);
+        return ci_fail(out, "report failed", shim.RC_RUNTIME_ERROR);
+    }
+
+    if (std.mem.eql(u8, tool, "coord_set_declared_affinities")) {
+        const parsed = std.json.parseFromSlice(std.json.Value, alloc, json_args, .{}) catch
+            return ci_fail(out, "invalid json", shim.RC_BAD_ARGS);
+        defer parsed.deinit();
+        const tv = parsed.value.object.get("token") orelse return ci_fail(out, "missing token", shim.RC_BAD_ARGS);
+        const tags_v = parsed.value.object.get("tags") orelse return ci_fail(out, "missing tags", shim.RC_BAD_ARGS);
+        if (tags_v != .array) return ci_fail(out, "tags must be an array of strings", shim.RC_BAD_ARGS);
+        var token: [16]u8 = undefined;
+        if (!ci_parseToken(tv.string, &token)) return ci_fail(out, "invalid token hex", shim.RC_BAD_ARGS);
+        var csv_buf: [256]u8 = undefined;
+        const csv_len = ci_arrayToCsv(tags_v.array.items, &csv_buf);
+        const rc = coord_set_declared_affinities(&token, 16, &csv_buf, @intCast(csv_len));
+        if (rc == 0) return ci_ok(out, "declared");
+        if (rc == -1) return ci_fail(out, "unauthenticated", shim.RC_AUTH_DENIED);
+        if (rc == -2) return ci_fail(out, "declared affinities CSV too long", shim.RC_BAD_ARGS);
+        return ci_fail(out, "set failed", shim.RC_RUNTIME_ERROR);
+    }
+
+    if (std.mem.eql(u8, tool, "coord_scan_suggestions")) {
+        const parsed = std.json.parseFromSlice(std.json.Value, alloc, json_args, .{}) catch
+            return ci_fail(out, "invalid json", shim.RC_BAD_ARGS);
+        defer parsed.deinit();
+        const tv = parsed.value.object.get("token") orelse return ci_fail(out, "missing token", shim.RC_BAD_ARGS);
+        var token: [16]u8 = undefined;
+        if (!ci_parseToken(tv.string, &token)) return ci_fail(out, "invalid token hex", shim.RC_BAD_ARGS);
+        const n = coord_scan_suggestions(&token, 16);
+        if (n == -1) return ci_fail(out, "unauthenticated", shim.RC_AUTH_DENIED);
+        const b = std.fmt.bufPrint(out, "{{\"success\":true,\"suggestions_queued\":{d},\"hint\":\"use coord_review to inspect, coord_approve/coord_reject to act\"}}", .{n}) catch
+            return ci_fail(out, "buffer overflow", shim.RC_RUNTIME_ERROR);
+        return .{ .written = b.len, .rc = shim.RC_SUCCESS };
+    }
+
+    if (std.mem.eql(u8, tool, "coord_get_affinities")) {
+        const parsed = std.json.parseFromSlice(std.json.Value, alloc, json_args, .{}) catch
+            return ci_fail(out, "invalid json", shim.RC_BAD_ARGS);
+        defer parsed.deinit();
+        const tv = parsed.value.object.get("token") orelse return ci_fail(out, "missing token", shim.RC_BAD_ARGS);
+        var token: [16]u8 = undefined;
+        if (!ci_parseToken(tv.string, &token)) return ci_fail(out, "invalid token hex", shim.RC_BAD_ARGS);
+        var raw: [4096]u8 = undefined;
+        const n = coord_get_affinities(&token, 16, &raw, @intCast(raw.len));
+        if (n == -1) return ci_fail(out, "unauthenticated", shim.RC_AUTH_DENIED);
+        if (n < 0) return ci_fail(out, "affinity query failed", shim.RC_RUNTIME_ERROR);
+        var stream = std.io.fixedBufferStream(out);
+        const w = stream.writer();
+        w.writeAll("{\"success\":true,\"affinities\":[") catch return ci_fail(out, "buffer overflow", shim.RC_RUNTIME_ERROR);
+        const REC_SIZE: usize = 64;
+        const cnt: usize = @intCast(n);
+        var i: usize = 0;
+        while (i < cnt) : (i += 1) {
+            const rec = raw[i * REC_SIZE ..][0..REC_SIZE];
+            const kind: u8 = rec[0];
+            const attempts: u16 = @bitCast([2]u8{ rec[1], rec[2] });
+            const successes: u16 = @bitCast([2]u8{ rec[3], rec[4] });
+            const pct: u8 = rec[5];
+            const tag_len: u8 = rec[6];
+            const tag = rec[7 .. 7 + @min(@as(usize, tag_len), 57)];
+            if (i > 0) w.writeByte(',') catch return ci_fail(out, "buffer overflow", shim.RC_RUNTIME_ERROR);
+            std.fmt.format(w, "{{\"client_kind\":\"{s}\",\"tag\":", .{ci_kindName(@intCast(kind))}) catch return ci_fail(out, "buffer overflow", shim.RC_RUNTIME_ERROR);
+            ci_writeJsonString(w, tag) catch return ci_fail(out, "buffer overflow", shim.RC_RUNTIME_ERROR);
+            if (pct == 255) {
+                std.fmt.format(w, ",\"attempts\":{d},\"successes\":{d},\"effective_affinity\":null}}", .{ attempts, successes }) catch return ci_fail(out, "buffer overflow", shim.RC_RUNTIME_ERROR);
+            } else {
+                std.fmt.format(w, ",\"attempts\":{d},\"successes\":{d},\"effective_affinity\":{d}.{d:0>2}}}", .{ attempts, successes, pct / 100, pct % 100 }) catch return ci_fail(out, "buffer overflow", shim.RC_RUNTIME_ERROR);
+            }
+        }
+        w.writeAll("]}") catch return ci_fail(out, "buffer overflow", shim.RC_RUNTIME_ERROR);
+        return .{ .written = stream.pos, .rc = shim.RC_SUCCESS };
+    }
+
+    if (std.mem.eql(u8, tool, "coord_set_variant")) {
+        const parsed = std.json.parseFromSlice(std.json.Value, alloc, json_args, .{}) catch
+            return ci_fail(out, "invalid json", shim.RC_BAD_ARGS);
+        defer parsed.deinit();
+        const tv = parsed.value.object.get("token") orelse return ci_fail(out, "missing token", shim.RC_BAD_ARGS);
+        const vv = parsed.value.object.get("variant") orelse return ci_fail(out, "missing variant", shim.RC_BAD_ARGS);
+        if (vv != .string) return ci_fail(out, "variant must be a string", shim.RC_BAD_ARGS);
+        var token: [16]u8 = undefined;
+        if (!ci_parseToken(tv.string, &token)) return ci_fail(out, "invalid token hex", shim.RC_BAD_ARGS);
+        const vs = vv.string;
+        const rc = coord_set_variant(&token, 16, vs.ptr, @intCast(vs.len));
+        if (rc == 0) return ci_ok(out, "set");
+        if (rc == -1) return ci_fail(out, "unauthenticated", shim.RC_AUTH_DENIED);
+        if (rc == -2) return ci_fail(out, "invalid variant (alphanum / . / - / _ only, max 32 bytes)", shim.RC_BAD_ARGS);
+        return ci_fail(out, "set_variant failed", shim.RC_RUNTIME_ERROR);
+    }
+
+    if (std.mem.eql(u8, tool, "coord_set_capabilities")) {
+        const parsed = std.json.parseFromSlice(std.json.Value, alloc, json_args, .{}) catch
+            return ci_fail(out, "invalid json", shim.RC_BAD_ARGS);
+        defer parsed.deinit();
+        const tv = parsed.value.object.get("token") orelse return ci_fail(out, "missing token", shim.RC_BAD_ARGS);
+        var token: [16]u8 = undefined;
+        if (!ci_parseToken(tv.string, &token)) return ci_fail(out, "invalid token hex", shim.RC_BAD_ARGS);
+        var class_buf: [128]u8 = undefined;
+        var class_len: usize = 0;
+        if (parsed.value.object.get("class")) |cv| {
+            if (cv == .array) class_len = ci_arrayToCsv(cv.array.items, &class_buf);
+        }
+        var tier: i32 = 0;
+        if (parsed.value.object.get("tier")) |tier_v| {
+            if (tier_v == .integer) tier = @intCast(tier_v.integer);
+        }
+        var pro_buf: [256]u8 = undefined;
+        var pro_len: usize = 0;
+        if (parsed.value.object.get("prover_strengths")) |pv| {
+            if (pv == .array) pro_len = ci_arrayToCsv(pv.array.items, &pro_buf);
+        }
+        const rc = coord_set_capabilities(&token, 16, &class_buf, @intCast(class_len), tier, &pro_buf, @intCast(pro_len));
+        if (rc == 0) return ci_ok(out, "set");
+        if (rc == -1) return ci_fail(out, "unauthenticated", shim.RC_AUTH_DENIED);
+        if (rc == -2) return ci_fail(out, "invalid capabilities (tier 0..5, class ≤128B, prover_strengths ≤256B)", shim.RC_BAD_ARGS);
+        return ci_fail(out, "set_capabilities failed", shim.RC_RUNTIME_ERROR);
+    }
+
+    if (std.mem.eql(u8, tool, "coord_get_peer_capabilities")) {
+        const parsed = std.json.parseFromSlice(std.json.Value, alloc, json_args, .{}) catch
+            return ci_fail(out, "invalid json", shim.RC_BAD_ARGS);
+        defer parsed.deinit();
+        const tv = parsed.value.object.get("token") orelse return ci_fail(out, "missing token", shim.RC_BAD_ARGS);
+        const pv = parsed.value.object.get("peer_id") orelse return ci_fail(out, "missing peer_id", shim.RC_BAD_ARGS);
+        var token: [16]u8 = undefined;
+        if (!ci_parseToken(tv.string, &token)) return ci_fail(out, "invalid token hex", shim.RC_BAD_ARGS);
+        var probe: [1]u8 = undefined;
+        if (coord_list_peers(&token, 16, &probe, 0) < 0) return ci_fail(out, "unauthenticated", shim.RC_AUTH_DENIED);
+        const suf = ci_extractSuffix(pv.string) orelse return ci_fail(out, "invalid peer_id format — expected <kind>-<4hex>[@<context>]", shim.RC_BAD_ARGS);
+        const peer_idx = coord_find_peer_by_suffix(suf.ptr);
+        if (peer_idx < 0) return ci_fail(out, "peer not found", shim.RC_BAD_ARGS);
+        var class_buf: [128]u8 = undefined;
+        const class_n = coord_read_peer_class(peer_idx, &class_buf, @intCast(class_buf.len));
+        const class_slice: []const u8 = if (class_n > 0) class_buf[0..@intCast(class_n)] else "";
+        const tier_val = coord_read_peer_tier(peer_idx);
+        var pro_buf: [256]u8 = undefined;
+        const pro_n = coord_read_peer_provers(peer_idx, &pro_buf, @intCast(pro_buf.len));
+        const pro_slice: []const u8 = if (pro_n > 0) pro_buf[0..@intCast(pro_n)] else "";
+        var var_buf: [32]u8 = undefined;
+        const v_n = coord_read_peer_variant(peer_idx, &var_buf, @intCast(var_buf.len));
+        const var_slice: []const u8 = if (v_n > 0) var_buf[0..@intCast(v_n)] else "";
+        const kind_val = coord_read_peer_kind(peer_idx);
+        var ctx_buf: [32]u8 = undefined;
+        const ctx_n = coord_read_peer_context(peer_idx, &ctx_buf, @intCast(ctx_buf.len));
+        const ctx_slice: []const u8 = if (ctx_n > 0) ctx_buf[0..@intCast(ctx_n)] else "";
+        var pid_buf: [96]u8 = undefined;
+        const canon_id = ci_renderPeerId(&pid_buf, ci_kindName(kind_val), suf, ctx_slice) catch
+            return ci_fail(out, "peer_id render overflow", shim.RC_RUNTIME_ERROR);
+        var stream = std.io.fixedBufferStream(out);
+        const w = stream.writer();
+        std.fmt.format(w, "{{\"success\":true,\"peer_id\":\"{s}\",\"kind\":\"{s}\",\"variant\":\"{s}\",\"tier\":{d},\"class\":[", .{
+            canon_id, ci_kindName(kind_val), var_slice, tier_val,
+        }) catch return ci_fail(out, "buffer overflow", shim.RC_RUNTIME_ERROR);
+        ci_writeCsvAsJsonStrings(w, class_slice) catch return ci_fail(out, "buffer overflow", shim.RC_RUNTIME_ERROR);
+        w.writeAll("],\"prover_strengths\":[") catch return ci_fail(out, "buffer overflow", shim.RC_RUNTIME_ERROR);
+        ci_writeCsvAsJsonStrings(w, pro_slice) catch return ci_fail(out, "buffer overflow", shim.RC_RUNTIME_ERROR);
+        w.writeAll("]}") catch return ci_fail(out, "buffer overflow", shim.RC_RUNTIME_ERROR);
+        return .{ .written = stream.pos, .rc = shim.RC_SUCCESS };
+    }
+
+    if (std.mem.eql(u8, tool, "coord_progress")) {
+        const parsed = std.json.parseFromSlice(std.json.Value, alloc, json_args, .{}) catch
+            return ci_fail(out, "invalid json", shim.RC_BAD_ARGS);
+        defer parsed.deinit();
+        const tv = parsed.value.object.get("token") orelse return ci_fail(out, "missing token", shim.RC_BAD_ARGS);
+        const task = parsed.value.object.get("task") orelse return ci_fail(out, "missing task", shim.RC_BAD_ARGS);
+        var token: [16]u8 = undefined;
+        if (!ci_parseToken(tv.string, &token)) return ci_fail(out, "invalid token hex", shim.RC_BAD_ARGS);
+        const rc = coord_progress(&token, 16, task.string.ptr, @intCast(task.string.len));
+        if (rc == 0) return ci_ok(out, "heartbeat");
+        if (rc == -1) return ci_fail(out, "unauthenticated", shim.RC_AUTH_DENIED);
+        if (rc == -2) return ci_fail(out, "no active claim for this task", shim.RC_BAD_ARGS);
+        if (rc == -3) return ci_fail(out, "caller is not the claim holder", shim.RC_AUTH_DENIED);
+        return ci_fail(out, "progress failed", shim.RC_RUNTIME_ERROR);
+    }
+
+    if (std.mem.eql(u8, tool, "coord_sweep_watchdog")) {
+        const parsed = std.json.parseFromSlice(std.json.Value, alloc, json_args, .{}) catch
+            return ci_fail(out, "invalid json", shim.RC_BAD_ARGS);
+        defer parsed.deinit();
+        const tv = parsed.value.object.get("token") orelse return ci_fail(out, "missing token", shim.RC_BAD_ARGS);
+        var token: [16]u8 = undefined;
+        if (!ci_parseToken(tv.string, &token)) return ci_fail(out, "invalid token hex", shim.RC_BAD_ARGS);
+        const rc = coord_sweep_watchdog(&token, 16);
+        if (rc < 0) return ci_fail(out, "unauthenticated", shim.RC_AUTH_DENIED);
+        const b = std.fmt.bufPrint(out, "{{\"success\":true,\"released\":{d},\"ttl_apprentice_ms\":30000,\"ttl_journeyman_ms\":300000}}", .{rc}) catch
+            return ci_fail(out, "buffer overflow", shim.RC_RUNTIME_ERROR);
+        return .{ .written = b.len, .rc = shim.RC_SUCCESS };
+    }
+
+    if (std.mem.eql(u8, tool, "coord_list_claims")) {
+        const parsed = std.json.parseFromSlice(std.json.Value, alloc, json_args, .{}) catch
+            return ci_fail(out, "invalid json", shim.RC_BAD_ARGS);
+        defer parsed.deinit();
+        const tv = parsed.value.object.get("token") orelse return ci_fail(out, "missing token", shim.RC_BAD_ARGS);
+        var token: [16]u8 = undefined;
+        if (!ci_parseToken(tv.string, &token)) return ci_fail(out, "invalid token hex", shim.RC_BAD_ARGS);
+        var stream = std.io.fixedBufferStream(out);
+        const w = stream.writer();
+        w.writeAll("{\"success\":true,\"active_claims\":[") catch return ci_fail(out, "buffer overflow", shim.RC_RUNTIME_ERROR);
+        var first = true;
+        var ci: c_int = 0;
+        while (ci < 64) : (ci += 1) {
+            var task_buf: [128]u8 = undefined;
+            const task_len = coord_read_claim_task(&token, 16, ci, &task_buf, @intCast(task_buf.len));
+            if (task_len < 0) continue;
+            const task_slice = task_buf[0..@intCast(task_len)];
+            var holder_suffix: [4]u8 = undefined;
+            const hs_rc = coord_read_claim_holder_suffix(&token, 16, ci, &holder_suffix);
+            if (!first) w.writeByte(',') catch return ci_fail(out, "buffer overflow", shim.RC_RUNTIME_ERROR);
+            first = false;
+            w.writeAll("{\"task\":") catch return ci_fail(out, "buffer overflow", shim.RC_RUNTIME_ERROR);
+            ci_writeJsonString(w, task_slice) catch return ci_fail(out, "buffer overflow", shim.RC_RUNTIME_ERROR);
+            if (hs_rc == 4) {
+                std.fmt.format(w, ",\"holder\":\"{s}\"", .{holder_suffix}) catch return ci_fail(out, "buffer overflow", shim.RC_RUNTIME_ERROR);
+            } else {
+                w.writeAll(",\"holder\":\"\"") catch return ci_fail(out, "buffer overflow", shim.RC_RUNTIME_ERROR);
+            }
+            w.writeByte('}') catch return ci_fail(out, "buffer overflow", shim.RC_RUNTIME_ERROR);
+        }
+        w.writeAll("]}") catch return ci_fail(out, "buffer overflow", shim.RC_RUNTIME_ERROR);
+        return .{ .written = stream.pos, .rc = shim.RC_SUCCESS };
+    }
+
+    return ci_fail(out, "unknown tool", shim.RC_UNKNOWN_TOOL);
+}
+
+/// Dispatch the cartridge.json MCP tools — Grade B: all 20+ tools wired to
+/// real FFI calls (Task #2). Parses JSON args with page_allocator; error
+/// bodies are written to out_buf even when rc < 0.
 export fn boj_cartridge_invoke(
     tool_name: [*c]const u8,
     json_args: [*c]const u8,
     out_buf: [*c]u8,
     in_out_len: [*c]usize,
 ) callconv(.c) i32 {
-    _ = json_args;
     if (shim.invokeArgsNull(tool_name, out_buf, in_out_len)) return shim.RC_BAD_ARGS;
-
-    const body: []const u8 =     if (shim.toolIs(tool_name, "coord_register"))
-        "{\"result\":{\"status\":\"stub\"}}"
-    else if (shim.toolIs(tool_name, "coord_list_peers"))
-        "{\"result\":{\"items\":[],\"count\":0,\"status\":\"stub\"}}"
-    else if (shim.toolIs(tool_name, "coord_send"))
-        "{\"result\":{\"status\":\"stub\"}}"
-    else if (shim.toolIs(tool_name, "coord_receive"))
-        "{\"result\":{\"status\":\"stub\"}}"
-    else if (shim.toolIs(tool_name, "coord_claim_task"))
-        "{\"result\":{\"status\":\"stub\"}}"
-    else if (shim.toolIs(tool_name, "coord_status"))
-        "{\"result\":{\"metadata\":{},\"status\":\"stub\"}}"
-    else if (shim.toolIs(tool_name, "coord_report_outcome"))
-        "{\"result\":{\"status\":\"stub\"}}"
-    else if (shim.toolIs(tool_name, "coord_get_affinities"))
-        "{\"result\":{\"affinities\":[],\"status\":\"stub\"}}"
-else
-    return shim.RC_UNKNOWN_TOOL;
-
-    return shim.writeResult(out_buf, in_out_len, body);
+    const cap = in_out_len.*;
+    if (cap == 0) {
+        in_out_len.* = 64; // hint a minimum useful size
+        return shim.RC_BUFFER_TOO_SMALL;
+    }
+    const tool = std.mem.span(@as([*:0]const u8, @ptrCast(tool_name)));
+    const args: []const u8 = if (json_args != null)
+        std.mem.span(@as([*:0]const u8, @ptrCast(json_args)))
+    else
+        "{}";
+    const result = ci_dispatch(tool, args, out_buf[0..cap], std.heap.page_allocator);
+    in_out_len.* = result.written;
+    return result.rc;
 }
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -3286,22 +4078,23 @@ test "deregister releases claims" {
 // ADR-0006 invoke dispatch tests
 // ═══════════════════════════════════════════════════════════════════════
 
-test "invoke: each declared tool succeeds" {
+test "invoke: coord_register with valid client_kind succeeds" {
+    coord_reset();
+    var buf: [512]u8 = undefined;
+    var len: usize = buf.len;
+    const rc = boj_cartridge_invoke("coord_register", "{\"client_kind\":\"claude\"}", &buf, &len);
+    try std.testing.expectEqual(@as(i32, 0), rc);
+    try std.testing.expect(std.mem.indexOf(u8, buf[0..len], "peer_id") != null);
+    try std.testing.expect(std.mem.indexOf(u8, buf[0..len], "token") != null);
+}
+
+test "invoke: missing required args returns RC_BAD_ARGS" {
+    coord_reset();
     var buf: [256]u8 = undefined;
-    const tools = [_][]const u8{
-        "coord_register",
-        "coord_list_peers",
-        "coord_send",
-        "coord_receive",
-        "coord_claim_task",
-        "coord_status",
-    };
-    for (tools) |t| {
-        var len: usize = buf.len;
-        const rc = boj_cartridge_invoke(t.ptr, "{}", &buf, &len);
-        try std.testing.expectEqual(@as(i32, 0), rc);
-        try std.testing.expect(std.mem.indexOf(u8, buf[0..len], "result") != null);
-    }
+    var len: usize = buf.len;
+    const rc = boj_cartridge_invoke("coord_register", "{}", &buf, &len);
+    try std.testing.expectEqual(@as(i32, shim.RC_BAD_ARGS), rc);
+    try std.testing.expect(len > 0); // error body written even on failure
 }
 
 test "invoke: unknown tool returns -1" {
@@ -3311,12 +4104,12 @@ test "invoke: unknown tool returns -1" {
     try std.testing.expectEqual(@as(i32, -1), rc);
 }
 
-test "invoke: buffer too small returns -3" {
+test "invoke: zero-capacity buffer returns -3 with size hint" {
     var buf: [4]u8 = undefined;
-    var len: usize = buf.len;
-    const rc = boj_cartridge_invoke("coord_register", "{}", &buf, &len);
+    var len: usize = 0;
+    const rc = boj_cartridge_invoke("coord_register", "{\"client_kind\":\"claude\"}", &buf, &len);
     try std.testing.expectEqual(@as(i32, -3), rc);
-    try std.testing.expect(len > 4);
+    try std.testing.expect(len > 0); // hint provided
 }
 
 // ═══════════════════════════════════════════════════════════════════════

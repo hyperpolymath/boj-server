@@ -64,6 +64,51 @@ pub const EventType = enum(u16) {
 const ENV_VAR = "BOJ_COORD_STATE_DIR";
 const LOG_FILE_NAME = "coord.log";
 
+// ── VeriSimDB backend (Task #7b) ──────────────────────────────────────
+//
+// When BOJ_VERISIMDB_ENDPOINT is set, events are also forwarded to VeriSimDB
+// alongside the local file backend. The local file backend remains the
+// primary durability store; VeriSimDB adds cross-restart queryability and
+// multi-modality provenance.
+//
+// Current status: infrastructure wired, VeriSimDB API call stubs pending.
+// Completion requires verisimdb-mcp FFI to expose an append-log API beyond
+// the current octad-level interface (verisimdb_store_octad / verisimdb_get_octad
+// are too coarse for per-event streaming). This wiring establishes the seam.
+
+const VDB_ENV_VAR = "BOJ_VERISIMDB_ENDPOINT";
+const VDB_ENDPOINT_MAX = 128;
+
+var vdb_endpoint: [VDB_ENDPOINT_MAX]u8 = undefined;
+var vdb_endpoint_len: usize = 0;
+
+/// True when the VeriSimDB endpoint is configured.
+pub fn vdbEnabled() bool {
+    return vdb_endpoint_len > 0;
+}
+
+/// Forward one event to VeriSimDB. Stub: real impl will call verisimdb-mcp
+/// FFI once that exposes a streaming append-log endpoint. Errors are swallowed
+/// — VeriSimDB is supplementary; the local file log is authoritative.
+fn vdb_append_event(event: EventType, payload: []const u8) void {
+    if (!vdbEnabled()) return;
+    // TODO(Task #7b): call verisimdb_store_octad or a future
+    // verisimdb_append_event once the FFI exposes a log-entry API.
+    // Key: std.fmt.bufPrint("coord-event-{d}-{d}", .{@intFromEnum(event), timestamp})
+    // Data: binary payload or A2ML-encoded event record.
+    _ = event;
+    _ = payload;
+}
+
+/// Query VeriSimDB for all coord events and replay them via cb.
+/// Stub: real impl will use verisimdb query-by-tag once the FFI is richer.
+fn vdb_replay_events(cb: ReplayCb) void {
+    if (!vdbEnabled()) return;
+    // TODO(Task #7b): query verisimdb for events with prefix "coord-event-"
+    // ordered by timestamp and call cb for each valid record.
+    _ = cb;
+}
+
 var log_file: ?std.fs.File = null;
 var mutex: std.Thread.Mutex = .{};
 
@@ -101,7 +146,16 @@ pub fn openWithDir(dir: []const u8) bool {
 }
 
 /// Open the log using BOJ_COORD_STATE_DIR. No-op if unset / empty.
+/// Also arms the VeriSimDB supplementary backend if BOJ_VERISIMDB_ENDPOINT
+/// is set (Task #7b). VeriSimDB does not gate file-backend success.
 pub fn open() bool {
+    // Arm VeriSimDB supplementary backend.
+    if (std.posix.getenv(VDB_ENV_VAR)) |ep| {
+        if (ep.len > 0 and ep.len <= VDB_ENDPOINT_MAX) {
+            @memcpy(vdb_endpoint[0..ep.len], ep);
+            vdb_endpoint_len = ep.len;
+        }
+    }
     const env = std.posix.getenv(ENV_VAR) orelse return false;
     if (env.len == 0) return false;
     return openWithDir(env);
@@ -132,9 +186,13 @@ pub fn truncate() void {
 
 /// Append a typed event. Silently no-ops when the log is closed; errors
 /// during write are swallowed — durability is best-effort and must not
-/// block the coord hot path.
+/// block the coord hot path. Also forwards to VeriSimDB if configured.
 pub fn append(event: EventType, payload: []const u8) void {
     if (payload.len > MAX_PAYLOAD) return;
+
+    // Forward to VeriSimDB supplementary backend (Task #7b).
+    // Runs before the mutex so VeriSimDB can have its own concurrency model.
+    vdb_append_event(event, payload);
 
     mutex.lock();
     defer mutex.unlock();
