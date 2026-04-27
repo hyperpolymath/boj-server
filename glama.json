@@ -2,5 +2,48 @@
   "$schema": "https://glama.ai/mcp/schemas/server.json",
   "maintainers": [
     "hyperpolymath"
-  ]
+  ],
+  "env": {
+    "type": "object",
+    "properties": {
+      "BOJ_URL": {
+        "type": "string",
+        "description": "Base URL for the BoJ REST API backend.",
+        "default": "http://localhost:7700"
+      },
+      "GITHUB_TOKEN": {
+        "type": "string",
+        "description": "Personal Access Token for GitHub API operations (required for boj_github_* tools)."
+      },
+      "GITLAB_TOKEN": {
+        "type": "string",
+        "description": "Private Token for GitLab API operations (required for boj_gitlab_* tools)."
+      },
+      "GITLAB_URL": {
+        "type": "string",
+        "description": "Base URL for the GitLab instance.",
+        "default": "https://gitlab.com"
+      },
+      "BOJ_RATE_LIMIT": {
+        "type": "string",
+        "description": "Maximum number of tool calls permitted per minute.",
+        "default": "60"
+      },
+      "BOJ_LOG_LEVEL": {
+        "type": "string",
+        "description": "Logging verbosity (debug, info, warn, error, silent).",
+        "default": "info"
+      },
+      "BOJ_PROTOCOL": {
+        "type": "string",
+        "description": "Primary protocol for cartridge communication (rest, grpc, graphql).",
+        "default": "rest"
+      },
+      "COORD_BACKEND_URL": {
+        "type": "string",
+        "description": "URL for the local coordination bus backend.",
+        "default": "http://127.0.0.1:7745"
+      }
+    }
+  }
 }

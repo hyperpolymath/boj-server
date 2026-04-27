@@ -6,13 +6,15 @@
 // Direct passthrough clients for GitHub and GitLab APIs, plus
 // BoJ REST API wrappers for cartridge operations.
 
+import { env } from "./runtime.js";
 import { isValidCartridgeName } from "./security.js";
 import { warn } from "./logger.js";
 import { SERVER_VERSION } from "./version.js";
 
-const BOJ_BASE = Deno.env.get("BOJ_URL") ?? "http://localhost:7700";
-const GITHUB_TOKEN = Deno.env.get("GITHUB_TOKEN") ?? "";
-const GITLAB_TOKEN = Deno.env.get("GITLAB_TOKEN") ?? "";
+const BOJ_BASE = env.get("BOJ_URL") ?? "http://localhost:7700";
+const GITHUB_TOKEN = env.get("GITHUB_TOKEN") ?? "";
+const GITLAB_TOKEN = env.get("GITLAB_TOKEN") ?? "";
+const GITLAB_BASE = env.get("GITLAB_URL") ?? "https://gitlab.com";
 
 // ===================================================================
 // BoJ REST API wrappers
@@ -253,9 +255,8 @@ async function gitlabApiCall(method, path, body) {
   if (!GITLAB_TOKEN) {
     return { error: "GITLAB_TOKEN not set." };
   }
-  const baseUrl = Deno.env.get("GITLAB_URL") ?? "https://gitlab.com";
   try {
-    const url = `${baseUrl}/api/v4${path}`;
+    const url = `${GITLAB_BASE}/api/v4${path}`;
     const opts = {
       method,
       headers: {

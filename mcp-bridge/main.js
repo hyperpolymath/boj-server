@@ -10,6 +10,7 @@
 //
 // Usage: deno run --allow-net --allow-env --allow-read main.js
 
+import { env, stdout } from "./lib/runtime.js";
 import {
   RATE_LIMIT,
   isInputSizeOk,
@@ -36,7 +37,7 @@ import {
 } from "./lib/nickel-validator.js";
 import { info, warn, error as logError, setLevel as setLogLevel } from "./lib/logger.js";
 
-const BOJ_BASE = Deno.env.get("BOJ_URL") ?? "http://localhost:7700";
+const BOJ_BASE = env.get("BOJ_URL") ?? "http://localhost:7700";
 const SERVER_NAME = "boj-server";
 const SERVER_VERSION = "0.4.0";
 
@@ -44,7 +45,6 @@ const SERVER_VERSION = "0.4.0";
 // JSON-RPC stdio transport
 // ===================================================================
 
-const encoder = new TextEncoder();
 const decoder = new TextDecoder();
 
 let buffer = "";
@@ -53,7 +53,7 @@ const MAX_BUFFER_BYTES = 2 * 1_048_576; // 2 MB
 const pendingMessages = [];
 
 function send(obj) {
-  Deno.stdout.writeSync(encoder.encode(JSON.stringify(obj) + "\n"));
+  stdout.writeSync(JSON.stringify(obj) + "\n");
 }
 
 function sendResult(id, result) {
@@ -318,7 +318,11 @@ async function handleMessage(line) {
         protocolVersion: "2024-11-05",
         capabilities: {
           tools: { listChanged: false },
-          logging: {},
+          resources: { subscribe: false },
+          prompts: { listChanged: false },
+          logging: {
+            levels: ["debug", "info", "warn", "error"]
+          },
         },
         serverInfo: { name: SERVER_NAME, version: SERVER_VERSION },
       });
@@ -343,6 +347,16 @@ async function handleMessage(line) {
     case "tools/list": {
       const tools = buildToolList();
       sendResult(id, { tools });
+      break;
+    }
+
+    case "resources/list": {
+      sendResult(id, { resources: [] });
+      break;
+    }
+
+    case "prompts/list": {
+      sendResult(id, { prompts: [] });
       break;
     }
 
@@ -457,15 +471,15 @@ async function handleMessage(line) {
 }
 
 // ===================================================================
-// Main I/O loop — async-iterable stdin (Deno)
+// Main I/O loop — runtime-agnostic
 // ===================================================================
 
-for await (const chunk of Deno.stdin.readable) {
+function processChunk(chunk) {
   buffer += decoder.decode(chunk);
   if (buffer.length > MAX_BUFFER_BYTES) {
     sendError(null, -32600, "Message too large");
     buffer = "";
-    continue;
+    return;
   }
   let boundary;
   while ((boundary = buffer.indexOf("\n")) !== -1) {
@@ -478,5 +492,17 @@ for await (const chunk of Deno.stdin.readable) {
   }
 }
 
+if (typeof Deno !== "undefined") {
+  for await (const chunk of Deno.stdin.readable) {
+    processChunk(chunk);
+  }
+} else {
+  // @ts-ignore: process is global in Node
+  for await (const chunk of process.stdin) {
+    processChunk(chunk);
+  }
+}
+
 await Promise.allSettled(pendingMessages);
-Deno.exit(0);
+if (typeof Deno !== "undefined") Deno.exit(0);
+else process.exit(0);

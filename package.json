@@ -1,57 +1,20 @@
 {
   "name": "@hyperpolymath/boj-server",
-  "version": "0.4.2",
+  "version": "0.4.3",
   "description": "Bundle of Joy (BoJ) MCP Server — cartridge-based DevOps + multi-agent coordination toolkit with 100 domain cartridges (database, container, git, k8s, observability, secrets, IaC, multi-instance AI coord, and more). Formally verified (Idris2) core; MPL-2.0.",
   "license": "MPL-2.0",
   "author": "Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/hyperpolymath/boj-server.git"
+    "url": "https://github.com/hyperpolymath/boj-server.git"
   },
-  "homepage": "https://github.com/hyperpolymath/boj-server#readme",
-  "bugs": {
-    "url": "https://github.com/hyperpolymath/boj-server/issues"
-  },
-  "keywords": [
-    "mcp",
-    "mcp-server",
-    "model-context-protocol",
-    "devops",
-    "containers",
-    "kubernetes",
-    "database",
-    "git",
-    "github",
-    "gitlab",
-    "observability",
-    "iac",
-    "secrets",
-    "formal-verification",
-    "idris2",
-    "zig",
-    "multi-agent",
-    "coordination",
-    "claude",
-    "cartridge"
-  ],
   "type": "module",
   "bin": {
     "boj-server": "mcp-bridge/main.js"
   },
-  "main": "./mcp-bridge/main.js",
-  "files": [
-    "mcp-bridge/",
-    "LICENSE",
-    "README.md"
-  ],
-  "publishConfig": {
-    "access": "public",
-    "registry": "https://registry.npmjs.org/"
-  },
   "scripts": {
     "start": "node mcp-bridge/main.js",
-    "test": "node --test mcp-bridge/tests/dispatch_test.js",
-    "prepublishOnly": "node --test mcp-bridge/tests/dispatch_test.js"
+    "test": "node --test mcp-bridge/tests/dispatch_test.js"
   },
   "engines": {
     "node": ">=18.0.0"

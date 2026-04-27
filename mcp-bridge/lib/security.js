@@ -6,6 +6,8 @@
 // Prompt injection detection, rate limiting, input validation, and
 // error sanitization. Ported from proven/src/Proven/SafeMCP.idr.
 
+import { env } from "./runtime.js";
+
 // ===================================================================
 // Prompt injection detection
 // ===================================================================
@@ -133,7 +135,7 @@ function scanObjectForInjection(obj, maxDepth = 10) {
 // Rate limiter (token bucket)
 // ===================================================================
 
-const RATE_LIMIT = parseInt(Deno.env.get("BOJ_RATE_LIMIT") ?? "60", 10) || 60;
+const RATE_LIMIT = parseInt(env.get("BOJ_RATE_LIMIT") ?? "60", 10) || 60;
 const RATE_WINDOW_MS = 60_000;
 
 const rateBucket = {
