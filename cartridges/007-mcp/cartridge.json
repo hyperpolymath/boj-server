@@ -1,0 +1,796 @@
+{
+  "$schema": "https://boj.dev/schemas/cartridge/v1.json",
+  "api": {
+    "base_url": "local://007-mcp",
+    "content_type": "application/json"
+  },
+  "auth": {
+    "credential_source": null,
+    "description": "No auth for local-loopback; the Idris2 ABI proves bind is loopback-only so the port is unreachable from off-box.",
+    "env_var": null,
+    "method": "none"
+  },
+  "bind": {
+    "address": "127.0.0.1",
+    "loopback_only": true,
+    "port": 1066
+  },
+  "coord": {
+    "affinity_tags": [
+      "007",
+      "oo7",
+      "language-implementation",
+      "proof-analysis",
+      "canonical-proof-suite",
+      "coquelicot",
+      "idris2",
+      "rust"
+    ],
+    "client_kind": "claude",
+    "context": "007-lang",
+    "coord_url": "http://127.0.0.1:7745",
+    "default_role": "journeyman",
+    "graceful_degrade": true
+  },
+  "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>",
+  "description": "007 agent meta-language cartridge — exposes the full oo7 CLI surface (parse/run/trace/build/test/lint/verify/contractile verbs/canonical-proof-suite/groove/self-assess) plus on-enter and on-exit lifecycle hooks that register the session as a coord peer, load the 6a2 methodology pack (STATE, META, ECOSYSTEM, AGENTIC, NEUROSYM, PLAYBOOK), and perform drift checks on exit.",
+  "domain": "dev-lang",
+  "federation": "none",
+  "memory_autolift": {
+    "base_tags": [
+      "007",
+      "oo7",
+      "canonical-proof-suite",
+      "coquelicot",
+      "m3",
+      "dogfooding"
+    ],
+    "enabled": true,
+    "max_hits": 8,
+    "tag_map_path": "schemas/memory-tag-map.a2ml"
+  },
+  "name": "007-mcp",
+  "protocols": [
+    "MCP",
+    "Agentic"
+  ],
+  "spdx": "PMPL-1.0-or-later",
+  "tier": "Ayo",
+  "tools": [
+    {
+      "description": "Lifecycle hook — invoke when entering the 007-lang context. Registers this session as a coord peer (graceful degrade if local-coord-mcp is down), loads the 6a2 methodology pack (STATE, META, ECOSYSTEM, AGENTIC, NEUROSYM, PLAYBOOK), runs the memory auto-lift using repo-derived tags, and returns a structured A2ML payload with peer_id, session_token, methodology digests, and memory hits. Idempotent: calling twice returns the same peer_id/token.",
+      "inputSchema": {
+        "properties": {
+          "session_hint": {
+            "description": "Optional free-form label for the session (e.g. 'afternoon m3-dispatch work')",
+            "type": "string"
+          }
+        },
+        "required": [],
+        "type": "object"
+      },
+      "name": "oo7_on_enter"
+    },
+    {
+      "description": "Lifecycle hook — invoke before leaving the 007-lang context. Updates STATE.a2ml's last-session fields, runs a drift check (open claims? uncommitted contractile edits? stale 6a2 files?), releases any coord task claims held by this peer, and deregisters from local-coord-mcp. Returns A2ML summary with drift findings. Safe to call even if on_enter was never invoked.",
+      "inputSchema": {
+        "properties": {
+          "reason": {
+            "description": "Optional reason (e.g. 'context switch', 'session close', 'SAFE TO CLOSE')",
+            "type": "string"
+          }
+        },
+        "required": [],
+        "type": "object"
+      },
+      "name": "oo7_on_exit"
+    },
+    {
+      "description": "Parse a .007 source file and return the AST as JSON. Wraps `just parse <file>`.",
+      "inputSchema": {
+        "properties": {
+          "file": {
+            "description": "Path to the .007 source file (relative to repo root)",
+            "type": "string"
+          }
+        },
+        "required": [
+          "file"
+        ],
+        "type": "object"
+      },
+      "name": "oo7_parse"
+    },
+    {
+      "description": "Run a .007 program and return stdout/stderr + exit code. Wraps `just run <file> <args>`.",
+      "inputSchema": {
+        "properties": {
+          "args": {
+            "description": "Optional extra arguments forwarded to the recipe",
+            "type": "string"
+          },
+          "file": {
+            "description": "Path to the .007 source file",
+            "type": "string"
+          }
+        },
+        "required": [
+          "file"
+        ],
+        "type": "object"
+      },
+      "name": "oo7_run"
+    },
+    {
+      "description": "Run a .007 program and return its decision trace (branch strategy, agent moves, exchanges). Wraps `just trace <file>`.",
+      "inputSchema": {
+        "properties": {
+          "file": {
+            "description": "Path to the .007 source file",
+            "type": "string"
+          }
+        },
+        "required": [
+          "file"
+        ],
+        "type": "object"
+      },
+      "name": "oo7_trace"
+    },
+    {
+      "description": "Run the built-in 007 demo (produces a decision trace). Wraps `just demo`.",
+      "inputSchema": {
+        "properties": {},
+        "required": [],
+        "type": "object"
+      },
+      "name": "oo7_demo"
+    },
+    {
+      "description": "Run every program in the examples/ directory. Wraps `just run-examples`.",
+      "inputSchema": {
+        "properties": {},
+        "required": [],
+        "type": "object"
+      },
+      "name": "oo7_run_examples"
+    },
+    {
+      "description": "Build the entire workspace in debug mode. Wraps `just build <args>`.",
+      "inputSchema": {
+        "properties": {
+          "args": {
+            "description": "Optional extra arguments forwarded to the recipe",
+            "type": "string"
+          }
+        },
+        "required": [],
+        "type": "object"
+      },
+      "name": "oo7_build"
+    },
+    {
+      "description": "Build only the CLI binary (debug). Wraps `just build-cli`.",
+      "inputSchema": {
+        "properties": {},
+        "required": [],
+        "type": "object"
+      },
+      "name": "oo7_build_cli"
+    },
+    {
+      "description": "Build only the CLI binary (release). Wraps `just build-cli-release`.",
+      "inputSchema": {
+        "properties": {},
+        "required": [],
+        "type": "object"
+      },
+      "name": "oo7_build_cli_release"
+    },
+    {
+      "description": "Build and watch for changes (requires cargo-watch). Wraps `just build-watch`. Long-running; the adapter spawns + captures initial output then returns a handle.",
+      "inputSchema": {
+        "properties": {},
+        "required": [],
+        "type": "object"
+      },
+      "name": "oo7_build_watch"
+    },
+    {
+      "description": "Build in release mode with optimizations. Wraps `just release <args>`.",
+      "inputSchema": {
+        "properties": {
+          "args": {
+            "description": "Optional extra arguments forwarded to the recipe",
+            "type": "string"
+          }
+        },
+        "required": [],
+        "type": "object"
+      },
+      "name": "oo7_release"
+    },
+    {
+      "description": "Remove all build artifacts. Reversible via a subsequent build. Wraps `just clean`.",
+      "inputSchema": {
+        "properties": {},
+        "required": [],
+        "type": "object"
+      },
+      "name": "oo7_clean"
+    },
+    {
+      "description": "Deep clean, including any generated files. Reversible via a subsequent build. Wraps `just clean-all`.",
+      "inputSchema": {
+        "properties": {},
+        "required": [],
+        "type": "object"
+      },
+      "name": "oo7_clean_all"
+    },
+    {
+      "description": "Run all tests across the workspace. Wraps `just test <args>`.",
+      "inputSchema": {
+        "properties": {
+          "args": {
+            "description": "Optional extra arguments forwarded to the recipe",
+            "type": "string"
+          }
+        },
+        "required": [],
+        "type": "object"
+      },
+      "name": "oo7_test"
+    },
+    {
+      "description": "Run only parser tests (grammar and AST). Wraps `just test-parser`.",
+      "inputSchema": {
+        "properties": {},
+        "required": [],
+        "type": "object"
+      },
+      "name": "oo7_test_parser"
+    },
+    {
+      "description": "Run only evaluator tests. Wraps `just test-eval`.",
+      "inputSchema": {
+        "properties": {},
+        "required": [],
+        "type": "object"
+      },
+      "name": "oo7_test_eval"
+    },
+    {
+      "description": "Run only trace tests (decision trace output). Wraps `just test-trace`.",
+      "inputSchema": {
+        "properties": {},
+        "required": [],
+        "type": "object"
+      },
+      "name": "oo7_test_trace"
+    },
+    {
+      "description": "Run aspect-focused integration tests. Wraps `just test-aspect`.",
+      "inputSchema": {
+        "properties": {},
+        "required": [],
+        "type": "object"
+      },
+      "name": "oo7_test_aspect"
+    },
+    {
+      "description": "Run tests matching a name pattern. Wraps `just test-filter <pattern>`.",
+      "inputSchema": {
+        "properties": {
+          "pattern": {
+            "description": "Test name substring pattern",
+            "type": "string"
+          }
+        },
+        "required": [
+          "pattern"
+        ],
+        "type": "object"
+      },
+      "name": "oo7_test_filter"
+    },
+    {
+      "description": "Run tests with full output (no capture). Wraps `just test-verbose`.",
+      "inputSchema": {
+        "properties": {},
+        "required": [],
+        "type": "object"
+      },
+      "name": "oo7_test_verbose"
+    },
+    {
+      "description": "Pre-commit quality gate: format check + lint + test. Wraps `just check`.",
+      "inputSchema": {
+        "properties": {},
+        "required": [],
+        "type": "object"
+      },
+      "name": "oo7_check"
+    },
+    {
+      "description": "Full CI simulation: build + test + lint + verify + audit. Wraps `just ci`.",
+      "inputSchema": {
+        "properties": {},
+        "required": [],
+        "type": "object"
+      },
+      "name": "oo7_ci"
+    },
+    {
+      "description": "Full pre-release check: all quality gates + verification + spec sync. Wraps `just preflight`.",
+      "inputSchema": {
+        "properties": {},
+        "required": [],
+        "type": "object"
+      },
+      "name": "oo7_preflight"
+    },
+    {
+      "description": "Format all Rust source files. Wraps `just fmt`.",
+      "inputSchema": {
+        "properties": {},
+        "required": [],
+        "type": "object"
+      },
+      "name": "oo7_fmt"
+    },
+    {
+      "description": "Check formatting without modifying files. Wraps `just fmt-check`.",
+      "inputSchema": {
+        "properties": {},
+        "required": [],
+        "type": "object"
+      },
+      "name": "oo7_fmt_check"
+    },
+    {
+      "description": "Run clippy lints with warnings as errors. Wraps `just lint`.",
+      "inputSchema": {
+        "properties": {},
+        "required": [],
+        "type": "object"
+      },
+      "name": "oo7_lint"
+    },
+    {
+      "description": "Audit dependencies for known vulnerabilities. Wraps `just audit`.",
+      "inputSchema": {
+        "properties": {},
+        "required": [],
+        "type": "object"
+      },
+      "name": "oo7_audit"
+    },
+    {
+      "description": "Check dependency licenses and bans. Wraps `just deny`.",
+      "inputSchema": {
+        "properties": {},
+        "required": [],
+        "type": "object"
+      },
+      "name": "oo7_deny"
+    },
+    {
+      "description": "List outdated dependencies. Wraps `just outdated`.",
+      "inputSchema": {
+        "properties": {},
+        "required": [],
+        "type": "object"
+      },
+      "name": "oo7_outdated"
+    },
+    {
+      "description": "Run panic-attacker pre-commit scan (RSR mandatory). Wraps `just assail`.",
+      "inputSchema": {
+        "properties": {},
+        "required": [],
+        "type": "object"
+      },
+      "name": "oo7_assail"
+    },
+    {
+      "description": "Check all required toolchain dependencies and report health. Wraps `just doctor`.",
+      "inputSchema": {
+        "properties": {},
+        "required": [],
+        "type": "object"
+      },
+      "name": "oo7_doctor"
+    },
+    {
+      "description": "Attempt to automatically install missing tools. Wraps `just heal`.",
+      "inputSchema": {
+        "properties": {},
+        "required": [],
+        "type": "object"
+      },
+      "name": "oo7_heal"
+    },
+    {
+      "description": "Run all contractile checks (must + trust + intend + adjust + bust + dust). Wraps `just contractile-check`.",
+      "inputSchema": {
+        "properties": {},
+        "required": [],
+        "type": "object"
+      },
+      "name": "oo7_contractile_check"
+    },
+    {
+      "description": "Run all must checks (hard requirements that block release). Wraps `just must-check`.",
+      "inputSchema": {
+        "properties": {},
+        "required": [],
+        "type": "object"
+      },
+      "name": "oo7_must_check"
+    },
+    {
+      "description": "Run local must-contract checks only. Wraps `just must-check-local`.",
+      "inputSchema": {
+        "properties": {},
+        "required": [],
+        "type": "object"
+      },
+      "name": "oo7_must_check_local"
+    },
+    {
+      "description": "Assert LICENSE file exists. Wraps `just must-license-present`.",
+      "inputSchema": {
+        "properties": {},
+        "required": [],
+        "type": "object"
+      },
+      "name": "oo7_must_license_present"
+    },
+    {
+      "description": "Assert no Dockerfiles or Makefiles. Wraps `just must-no-banned-files`.",
+      "inputSchema": {
+        "properties": {},
+        "required": [],
+        "type": "object"
+      },
+      "name": "oo7_must_no_banned_files"
+    },
+    {
+      "description": "Assert README exists. Wraps `just must-readme-present`.",
+      "inputSchema": {
+        "properties": {},
+        "required": [],
+        "type": "object"
+      },
+      "name": "oo7_must_readme_present"
+    },
+    {
+      "description": "Assert source files have SPDX license headers. Wraps `just must-spdx-headers`.",
+      "inputSchema": {
+        "properties": {},
+        "required": [],
+        "type": "object"
+      },
+      "name": "oo7_must_spdx_headers"
+    },
+    {
+      "description": "Run all trust verifications. Wraps `just trust-verify`.",
+      "inputSchema": {
+        "properties": {},
+        "required": [],
+        "type": "object"
+      },
+      "name": "oo7_trust_verify"
+    },
+    {
+      "description": "Verify trust-contracts (delegated quality expectations). Wraps `just trust-verify-local`.",
+      "inputSchema": {
+        "properties": {},
+        "required": [],
+        "type": "object"
+      },
+      "name": "oo7_trust_verify_local"
+    },
+    {
+      "description": "Assert no .env or credential files in repo. Wraps `just trust-no-secrets-committed`.",
+      "inputSchema": {
+        "properties": {},
+        "required": [],
+        "type": "object"
+      },
+      "name": "oo7_trust_no_secrets_committed"
+    },
+    {
+      "description": "Assert Containerfile base images use pinned digests. Wraps `just trust-container-images-pinned`.",
+      "inputSchema": {
+        "properties": {},
+        "required": [],
+        "type": "object"
+      },
+      "name": "oo7_trust_container_images_pinned"
+    },
+    {
+      "description": "Assert LICENSE contains the expected SPDX identifier. Wraps `just trust-license-content`.",
+      "inputSchema": {
+        "properties": {},
+        "required": [],
+        "type": "object"
+      },
+      "name": "oo7_trust_license_content"
+    },
+    {
+      "description": "Display declared future intents. Wraps `just intend-list`.",
+      "inputSchema": {
+        "properties": {},
+        "required": [],
+        "type": "object"
+      },
+      "name": "oo7_intend_list"
+    },
+    {
+      "description": "List all intend-contracts (planned but not yet implemented). Wraps `just intend-list-local`.",
+      "inputSchema": {
+        "properties": {},
+        "required": [],
+        "type": "object"
+      },
+      "name": "oo7_intend_list_local"
+    },
+    {
+      "description": "List available dust recovery actions. Wraps `just dust-status`.",
+      "inputSchema": {
+        "properties": {},
+        "required": [],
+        "type": "object"
+      },
+      "name": "oo7_dust_status"
+    },
+    {
+      "description": "Show dust-contract status (deprecated or decaying items). Wraps `just dust-status-local`.",
+      "inputSchema": {
+        "properties": {},
+        "required": [],
+        "type": "object"
+      },
+      "name": "oo7_dust_status_local"
+    },
+    {
+      "description": "Revert all source changes to last commit. DESTRUCTIVE — the adapter rejects this tool unless the caller holds a Tier-3 master approval. Wraps `just dust-source-rollback`.",
+      "inputSchema": {
+        "properties": {},
+        "required": [],
+        "type": "object"
+      },
+      "name": "oo7_dust_source_rollback"
+    },
+    {
+      "description": "Verify OpenSSF Best Practices prerequisites — fails if required files are missing. Wraps `just verify`.",
+      "inputSchema": {
+        "properties": {},
+        "required": [],
+        "type": "object"
+      },
+      "name": "oo7_verify"
+    },
+    {
+      "description": "Verify the Harvard architecture invariant — data expressions must not contain control flow. Wraps `just verify-harvard`.",
+      "inputSchema": {
+        "properties": {},
+        "required": [],
+        "type": "object"
+      },
+      "name": "oo7_verify_harvard"
+    },
+    {
+      "description": "Check for unreplaced template placeholders. Wraps `just verify-template`.",
+      "inputSchema": {
+        "properties": {},
+        "required": [],
+        "type": "object"
+      },
+      "name": "oo7_verify_template"
+    },
+    {
+      "description": "Validate Pest grammar consistency (unreachable/undefined rules). Wraps `just grammar-check`.",
+      "inputSchema": {
+        "properties": {},
+        "required": [],
+        "type": "object"
+      },
+      "name": "oo7_grammar_check"
+    },
+    {
+      "description": "Compare EBNF and Pest rule counts to identify specification drift. Wraps `just spec-check`.",
+      "inputSchema": {
+        "properties": {},
+        "required": [],
+        "type": "object"
+      },
+      "name": "oo7_spec_check"
+    },
+    {
+      "description": "Aggregate canonical-proof-suite report to audits/canonical-proof-suite/REPORT.a2ml. Wraps `just canonical-proof-suite`.",
+      "inputSchema": {
+        "properties": {},
+        "required": [],
+        "type": "object"
+      },
+      "name": "oo7_canonical_proof_suite"
+    },
+    {
+      "description": "Run the M3-v0 differential (v0 Rust oracle vs production). Floor: 17/17. Wraps `just v0-differential`.",
+      "inputSchema": {
+        "properties": {},
+        "required": [],
+        "type": "object"
+      },
+      "name": "oo7_v0_differential"
+    },
+    {
+      "description": "Run the v1 differential corpus check (v0-vs-production agreement). Wraps `just v1-differential`.",
+      "inputSchema": {
+        "properties": {},
+        "required": [],
+        "type": "object"
+      },
+      "name": "oo7_v1_differential"
+    },
+    {
+      "description": "Run the full v1 differential (nightly-grade). Wraps `just v1-differential-full`.",
+      "inputSchema": {
+        "properties": {},
+        "required": [],
+        "type": "object"
+      },
+      "name": "oo7_v1_differential_full"
+    },
+    {
+      "description": "Start the 007 Groove Daemon (control plane). Long-running; the adapter spawns + returns a handle. Wraps `just groove-daemon`.",
+      "inputSchema": {
+        "properties": {},
+        "required": [],
+        "type": "object"
+      },
+      "name": "oo7_groove_daemon"
+    },
+    {
+      "description": "Configure the Groove protocol manifest and build the control plane. Wraps `just groove-setup`.",
+      "inputSchema": {
+        "properties": {},
+        "required": [],
+        "type": "object"
+      },
+      "name": "oo7_groove_setup"
+    },
+    {
+      "description": "Build the container image with Podman and Chainguard base. Wraps `just container-build <args>`.",
+      "inputSchema": {
+        "properties": {
+          "args": {
+            "description": "Optional extra arguments forwarded to the recipe",
+            "type": "string"
+          }
+        },
+        "required": [],
+        "type": "object"
+      },
+      "name": "oo7_container_build"
+    },
+    {
+      "description": "Run the container image interactively. Wraps `just container-run <args>`.",
+      "inputSchema": {
+        "properties": {
+          "args": {
+            "description": "Optional extra arguments forwarded to the recipe",
+            "type": "string"
+          }
+        },
+        "required": [],
+        "type": "object"
+      },
+      "name": "oo7_container_run"
+    },
+    {
+      "description": "Verify the container image builds and runs a basic health check. Wraps `just container-verify`.",
+      "inputSchema": {
+        "properties": {},
+        "required": [],
+        "type": "object"
+      },
+      "name": "oo7_container_verify"
+    },
+    {
+      "description": "Generate Rust API documentation. Wraps `just docs <args>`.",
+      "inputSchema": {
+        "properties": {
+          "args": {
+            "description": "Optional extra arguments forwarded to the recipe",
+            "type": "string"
+          }
+        },
+        "required": [],
+        "type": "object"
+      },
+      "name": "oo7_docs"
+    },
+    {
+      "description": "Generate the Justfile cookbook documentation in AsciiDoc. Wraps `just cookbook`.",
+      "inputSchema": {
+        "properties": {},
+        "required": [],
+        "type": "object"
+      },
+      "name": "oo7_cookbook"
+    },
+    {
+      "description": "Show this project's metadata and build status. Wraps `just info`.",
+      "inputSchema": {
+        "properties": {},
+        "required": [],
+        "type": "object"
+      },
+      "name": "oo7_info"
+    },
+    {
+      "description": "Guided tour of the project structure and key concepts. Wraps `just tour`.",
+      "inputSchema": {
+        "properties": {},
+        "required": [],
+        "type": "object"
+      },
+      "name": "oo7_tour"
+    },
+    {
+      "description": "Show help for common workflows. Wraps `just help-me`.",
+      "inputSchema": {
+        "properties": {},
+        "required": [],
+        "type": "object"
+      },
+      "name": "oo7_help_me"
+    },
+    {
+      "description": "Show detailed help for a specific recipe, or list all if no recipe given. Wraps `just help <recipe>`.",
+      "inputSchema": {
+        "properties": {
+          "recipe": {
+            "description": "Recipe name (empty string for the full list)",
+            "type": "string"
+          }
+        },
+        "required": [],
+        "type": "object"
+      },
+      "name": "oo7_help"
+    },
+    {
+      "description": "Analyse this project and advise what is present, missing, or needs attention. Wraps `just self-assess`.",
+      "inputSchema": {
+        "properties": {},
+        "required": [],
+        "type": "object"
+      },
+      "name": "oo7_self_assess"
+    },
+    {
+      "description": "Print the CRG badge (looks for '**Current Grade:** X' in READINESS.md). Wraps `just crg-badge`.",
+      "inputSchema": {
+        "properties": {},
+        "required": [],
+        "type": "object"
+      },
+      "name": "oo7_crg_badge"
+    },
+    {
+      "description": "Print the current CRG grade. Wraps `just crg-grade`.",
+      "inputSchema": {
+        "properties": {},
+        "required": [],
+        "type": "object"
+      },
+      "name": "oo7_crg_grade"
+    }
+  ],
+  "version": "0.1.0"
+}

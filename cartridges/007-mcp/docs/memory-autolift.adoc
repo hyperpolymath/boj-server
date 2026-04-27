@@ -1,0 +1,78 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+= Memory Auto-Lift — 007-mcp
+:toc: left
+:source-highlighter: rouge
+
+== Purpose
+
+When an AI session enters `007-lang`, the `oo7_on_enter` tool returns
+a curated set of memory-file names that are relevant to the task.
+The agent gets the right context without having to `grep` its own
+memory store.
+
+This is retrieval-*timing* — not a context-window expander. The
+memory files still live at
+`~/.claude/projects/-var-mnt-eclipse-repos/memory/`; auto-lift just
+surfaces the relevant ones up front so the agent doesn't miss them
+mid-session.
+
+== Today's implementation (v0.1.0, 2026-04-20)
+
+Per design-log DD-26 option (b): **static-mapping fallback**.
+
+* Tag map lives at `schemas/memory-tag-map.a2ml`.
+* Base tags (`007`, `oo7`, `canonical-proof-suite`, `coquelicot`, `m3`,
+  `dogfooding`) are declared in `cartridge.ncl :: memory_autolift.
+  base_tags` and mirrored in `ffi/oo7_mcp_ffi.zig :: BASE_TAGS`.
+* On entry, `memoryAutolift` reads the tag map, finds every memory
+  file whose tag matches a base tag, dedupes, caps at `MAX_HITS = 8`,
+  and returns the filenames.
+* Graceful degrade: if the tag map is missing, `memoryAutolift`
+  returns an empty slice — the cartridge still functions, auto-lift
+  just yields zero hits.
+
+Five Zig unit tests cover the parser (single-line + multi-line sexp,
+dedupe, cap, non-matching tags).
+
+== Swap-in path for VeriSimDB (DD-31 Task #7b)
+
+When `cartridges/verisimdb-mcp/ffi/verisimdb_ffi.zig` gets a real
+implementation (today it's `return 0 // Stub`), the swap is:
+
+. Replace `readTagMap` in `ffi/oo7_mcp_ffi.zig` with a query against a
+  VeriSimDB table indexed by tag.
+. Leave `matchMemories` in place — it is the mechanical
+  tag-to-filenames logic and works against any byte buffer.
+. Leave the return shape (`[][]const u8`) unchanged — the adapter and
+  its JSON envelope keep working unmodified.
+
+The `schemas/memory-tag-map.a2ml` file is retained as the **seed** for
+the initial VeriSimDB index + the fallback when VeriSimDB is
+unreachable.
+
+== Maintenance
+
+When the user records a new memory relevant to 007-lang work, add the
+filename under the appropriate `(tag "…")` block in
+`schemas/memory-tag-map.a2ml`. When a memory becomes irrelevant (e.g.
+a closed incident whose pattern is no longer active), remove the
+reference.
+
+Tag taxonomy currently in the map:
+
+|===
+| Tag | Purpose
+| `007` / `oo7` | Baseline repo rules (dogfood, access control, active ports)
+| `canonical-proof-suite` | v1.0/v1.1 closure rules + full-headline ports
+| `coquelicot` | In-repo switch contents + port gotchas
+| `mathcomp` | mathcomp subset available in this repo
+| `m3` | M3 dispatch / oracle work
+| `idris2` | Postulate rewrite pattern + banned-pattern scan
+| `banned-patterns` | believe_me / assert_total / Admitted / sorry
+| `dogfooding` | 007 as pilot for dogfooding methodology
+| `rust` | Rust conventions for oo7-core / oo7-cli
+| `contractiles` | Layout rules + known drift + accountability pledge
+| `6a2` | Six-file schema + contractile-split
+| `language-implementation` | Thesis-is-authoritative + SA caution
+| `proof-analysis` | Proof-analysis task affinity pool
+|===

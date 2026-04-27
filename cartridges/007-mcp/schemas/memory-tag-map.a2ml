@@ -1,0 +1,130 @@
+;; SPDX-License-Identifier: PMPL-1.0-or-later
+;; Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+;;
+;; 007-mcp / schemas / memory-tag-map.a2ml
+;;
+;; Static tag → memory-file map for the 007-mcp OnEnter auto-lift hook.
+;; Per design-log DD-26 option (b): this is the v1 fallback while the
+;; verisimdb-mcp FFI is still stubs. When VeriSimDB lands (DD-31 Task
+;; #7b) this map becomes the seed for a dynamic index; the adapter's
+;; lookup function is the only code that needs to change.
+;;
+;; Schema
+;; ------
+;; (memory-tag-map
+;;   (version "…")
+;;   (tag <tag-name>
+;;     (memories "<file-basename>" …)
+;;     (reason "<one-line description of why this tag pulls these>"))
+;;   …)
+;;
+;; File basenames are relative to:
+;;   /home/hyper/.claude/projects/-var-mnt-eclipse-repos/memory/
+;;
+;; The adapter resolves those against $HOME at OnEnter time.
+
+(memory-tag-map
+  (version "0.1.0")
+  (generated-for "007-lang")
+  (last-reviewed "2026-04-20")
+
+  ;; ─── Core 007 work ────────────────────────────────────────────────
+  (tag "007"
+    (memories
+      "feedback_007_dogfood.md"
+      "feedback_007_access_control.md"
+      "project_007_full_headline_ports_2026-04-18.md")
+    (reason "Baseline 007-repo rules: dogfooding, access control, active ports."))
+
+  (tag "oo7"
+    (memories
+      "feedback_007_dogfood.md"
+      "project_007_full_headline_ports_2026-04-18.md")
+    (reason "Alias for 007 CLI work."))
+
+  ;; ─── Canonical Proof Suite (v1.0 / v1.1) ──────────────────────────
+  (tag "canonical-proof-suite"
+    (memories
+      "feedback_canonical_proof_suite_v1_v1_1_closure_standards.md"
+      "project_007_full_headline_ports_2026-04-18.md"
+      "feedback_panic_attack_proofdrift_parameter_pattern.md")
+    (reason "v1.0 vs v1.1 closure rules; full-headline port state; ProofDrift gotchas."))
+
+  ;; ─── Coquelicot / Rocq stdlib tactics ─────────────────────────────
+  (tag "coquelicot"
+    (memories
+      "reference_coquelicot_and_mathcomp_in_007_switch.md"
+      "feedback_coquelicot_proof_gotchas.md")
+    (reason "What ships with the in-repo switch; gotchas burned during M2/M3/M4 ports."))
+
+  (tag "mathcomp"
+    (memories
+      "reference_coquelicot_and_mathcomp_in_007_switch.md")
+    (reason "mathcomp subset available in this repo."))
+
+  ;; ─── M3 dispatch / oracle ─────────────────────────────────────────
+  (tag "m3"
+    (memories
+      "project_007_full_headline_ports_2026-04-18.md")
+    (reason "Full-headline ports (E1/S3/S4/E5) touch the M3 surface."))
+
+  ;; ─── Idris2 proof hygiene ─────────────────────────────────────────
+  (tag "idris2"
+    (memories
+      "project_cerro_torre_postulate_conversion.md"
+      "feedback_idris_over_ephapax.md"
+      "feedback_code_only_grep_for_banned_patterns.md")
+    (reason "Postulate rewrite pattern, Idris > Ephapax when in conflict, banned-pattern scan method."))
+
+  (tag "banned-patterns"
+    (memories
+      "feedback_code_only_grep_for_banned_patterns.md")
+    (reason "believe_me/assert_total/Admitted/sorry: how to scan without false positives."))
+
+  ;; ─── Dogfooding ───────────────────────────────────────────────────
+  (tag "dogfooding"
+    (memories
+      "user_dogfooding_philosophy.md"
+      "feedback_007_dogfood.md"
+      "feedback_dogfood_feedback_loops.md")
+    (reason "007 is a pilot for the dogfooding methodology itself."))
+
+  ;; ─── Rust / workspace hygiene ─────────────────────────────────────
+  (tag "rust"
+    (memories
+      "feedback_rust_means_rust_spark.md"
+      "feedback_unwrap_to_expect_antipattern.md"
+      "feedback_panic_attack_unsafe_blocks_meaning.md")
+    (reason "Rust conventions the user applies to 007-core/oo7-cli."))
+
+  ;; ─── Contractile trident ──────────────────────────────────────────
+  (tag "contractiles"
+    (memories
+      "feedback_contractile_layout_rules.md"
+      "user_6a2_is_contractile_ought.md"
+      "feedback_stale_lust_hook_150_repos.md"
+      "user_contract_negotiation_and_accountability_pledge.md")
+    (reason "Contractile layout, 6a2/contractile split, known drift sources, accountability pledge."))
+
+  (tag "6a2"
+    (memories
+      "reference_6a2_file_schema.md"
+      "user_6a2_is_contractile_ought.md")
+    (reason "Six-file schema and its relation to the contractile layer."))
+
+  ;; ─── Language-implementation general ──────────────────────────────
+  (tag "language-implementation"
+    (memories
+      "feedback_language_scope_in_thesis.md"
+      "feedback_semantic_analyser_caution.md")
+    (reason "Thesis is authoritative over code; SA should not be naively rewritten."))
+
+  ;; ─── Proof-analysis affinity pool ─────────────────────────────────
+  (tag "proof-analysis"
+    (memories
+      "feedback_canonical_proof_suite_v1_v1_1_closure_standards.md"
+      "reference_coquelicot_and_mathcomp_in_007_switch.md"
+      "feedback_coquelicot_proof_gotchas.md"
+      "project_cerro_torre_postulate_conversion.md"
+      "feedback_panic_attack_proofdrift_parameter_pattern.md")
+    (reason "What Opus needs when claiming 'proof-analysis' tasks in 007-lang.")))

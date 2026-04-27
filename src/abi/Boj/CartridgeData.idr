@@ -228,6 +228,14 @@ nesy_mcp = MkCartridge "nesy-mcp" "0.1.0" Ready Teranga NeSyDom [MCP, NeSy] ua "
 -- Agent Domain
 -- ═══════════════════════════════════════════════════════════════════════════
 
+||| 007-mcp: 007 agent meta-language cartridge.
+||| Exposes the full oo7 CLI surface (parse/run/trace/build/test/lint/verify/
+||| canonical-proof-suite/groove/self-assess) plus OnEnter/OnExit lifecycle
+||| hooks that register the session as a coord peer, load the 6a2 methodology
+||| pack, and perform drift checks on exit.  Loopback-only (127.0.0.1:1066).
+oo7_mcp : Cartridge
+oo7_mcp = MkCartridge "007-mcp" "0.1.0" Ready Ayo Agent [MCP, Agentic] ua "007-lang"
+
 agent_mcp : Cartridge
 agent_mcp = MkCartridge "agent-mcp" "0.1.0" Ready Ayo Agent [MCP, Agentic] ua "universal"
 
@@ -321,8 +329,8 @@ bojCatalogue =
   , fleet_mcp
   -- NeSy (2)
   , hypatia_mcp, nesy_mcp
-  -- Agent (4)
-  , agent_mcp, claude_agents_power_mcp, claude_ai_mcp, model_router_mcp
+  -- Agent (5 — oo7_mcp + 4 universal)
+  , oo7_mcp, agent_mcp, claude_agents_power_mcp, claude_ai_mcp, model_router_mcp
   -- LSP (2 — lsp_mcp Ready, orchestrator_lsp_mcp Development)
   , lsp_mcp, orchestrator_lsp_mcp
   -- DAP (1)
