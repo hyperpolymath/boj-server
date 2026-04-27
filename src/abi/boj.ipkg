@@ -14,6 +14,7 @@ sourcedir  = "."
 modules    = Boj.Protocol
            , Boj.Domain
            , Boj.Catalogue
+           , Boj.CartridgeData
            , Boj.Menu
            , Boj.Federation
            , Boj.Guardian

@@ -1,0 +1,65 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+// Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+= orchestrator-lsp-mcp
+:description: Cross-domain LSP orchestrator for the BoJ cartridge matrix
+:status: Development
+
+Status: *Development* — cartridge manifest + ABI layer in place; Elixir implementation pending.
+
+== What it does
+
+Routes LSP requests across all 12 domain-specific poly-*-lsp servers
+(cloud, container, IAC, Kubernetes, database, queue, secrets, git, SSG,
+proof, observability, browser) via a single GenLSP supervisor. Exposes a
+unified `textDocument/*` interface to editors and AI agents — they connect
+once and get cross-domain intelligence.
+
+== Architecture
+
+----
+   Editor / AI agent
+         │ LSP JSON-RPC
+         ▼
+  OrchestratorLSP.Server   ← GenLSP supervisor
+         │ routes by domain
+         ├──→ poly-cloud-lsp (AWS/GCP/Azure)
+         ├──→ poly-container-lsp (Podman/OCI)
+         ├──→ poly-iac-lsp (OpenTofu/Pulumi)
+         ├──→ poly-k8s-lsp (Kubernetes)
+         ├──→ poly-db-lsp (21 databases)
+         ├──→ poly-queue-lsp (NATS/RabbitMQ)
+         ├──→ poly-secret-lsp (Vault/SOPS)
+         ├──→ poly-git-lsp (GitHub/GitLab)
+         ├──→ poly-ssg-lsp (60+ SSGs)
+         ├──→ poly-proof-lsp (Coq/Lean/Isabelle)
+         ├──→ poly-observability-lsp (Prometheus/Grafana)
+         └──→ claude-firefox-lsp (browser)
+         │ session history
+         ▼
+      VeriSimDB
+----
+
+== Design reference
+
+`polystack/poly-orchestrator-lsp` (archived 2026-04-27) — the 13-file Elixir
+implementation is the design reference. Key modules to port:
+
+* `lib/lsp/server.ex` — GenLSP application entry point
+* `lib/orchestrator/planner.ex` — domain-routing decision logic
+* `lib/orchestrator/executor.ex` — fan-out + response merge
+* `lib/orchestrator/lsp_client.ex` — per-domain LSP client pool
+* `lib/orchestrator/stack_parser.ex` — reads `.machine_readable/integrations/`
+* `lib/verisimdb/client.ex` — session history persistence
+
+== MCP tools
+
+`lsp_orchestrate_start` → `lsp_orchestrate_request` → `lsp_orchestrate_stop`
+`lsp_orchestrate_status` — see `cartridge.json` for full schemas.
+
+== Next steps
+
+. Implement `lib/` Elixir modules (port from poly-orchestrator-lsp design)
+. Write Zig FFI stub (`ffi/zig/src/main.zig`) for `boj_cartridge_invoke`
+. Add ReScript VSCode extension (`panels/`)
+. Connect to VeriSimDB session tracking
+. Set status → Ready in `Boj.CartridgeData`
