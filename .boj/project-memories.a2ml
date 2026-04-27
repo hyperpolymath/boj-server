@@ -1,0 +1,100 @@
+; SPDX-License-Identifier: PMPL-1.0-or-later
+; SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell (hyperpolymath)
+;
+; .boj/project-memories.a2ml — Worker briefing template
+; Auto-prepended to every Claude worker session via claude() shell hook.
+; Media-Type: application/a2ml
+
+(project-memories
+  (version "1.0.0")
+  (repo "boj-server")
+  (purpose "Standing context for parallel Claude workers on BoJ / ECHIDNA expansion tasks")
+
+  ; ===================================================================
+  ; REGISTRATION — do this before any code
+  ; ===================================================================
+
+  (on-start
+    (step 1 "Register with local coord adapter"
+      "curl -sf -X POST http://127.0.0.1:7745/tools/coord_register \
+         -H 'Content-Type: application/json' \
+         -d '{\"kind\":\"claude\",\"role\":\"journeyman\",\"context\":\"<your-task-id>\",\"variant\":\"sonnet-4.6\"}'")
+    (step 2 "Claim your task (if claim fails — held — pick a different task-id from the roadmap)"
+      "curl -sf -X POST http://127.0.0.1:7745/tools/coord_claim_task \
+         -H 'Content-Type: application/json' \
+         -d '{\"task_id\":\"<your-task-id>\"}'")
+    (step 3 "Read the plan"
+      "cat .machine_readable/6a2/STATE.a2ml  # look for [expansion-roadmap]"))
+
+  ; ===================================================================
+  ; COMPLETION CONTRACT — the most important rule
+  ; ===================================================================
+
+  (completion-contract
+    (rule "End-of-task = git push origin main succeeding")
+    (rule "NOT cargo build succeeding")
+    (rule "NOT a TODO list")
+    (rule "If you are blocked, send a coord_send to your supervisor with the blocker — do not stop with a list")
+    (why "Workers that stop with TODO lists require manual supervisor intervention; a push + coord_send is self-contained"))
+
+  ; ===================================================================
+  ; BACKEND TEMPLATE
+  ; ===================================================================
+
+  (backend-template
+    (reference-files
+      "src/rust/provers/dafny.rs"
+      "src/rust/provers/gnatprove.rs")
+    (required-wiring
+      "ProverKind enum variant"
+      "ProverFactory match arm"
+      "default_executable"
+      "complexity / tier / implementation_time"
+      "FromStr impl"
+      "auto-detect by extension (if applicable)"
+      "FFI: kind_to_u8 / kind_from_u8"
+      "STATE.a2ml backend count update")
+    (minimum-tests 3 "unit tests per new backend file"))
+
+  ; ===================================================================
+  ; BANNED PATTERNS — panic-attack will catch these at pre-commit
+  ; ===================================================================
+
+  (banned-patterns
+    (pattern "unimplemented!()" "use a real impl or surface a blocker")
+    (pattern "todo!()"          "same")
+    (pattern "sorry"            "Idris2 — banned estate-wide")
+    (pattern "Admitted"         "Coq — banned estate-wide")
+    (pattern "believe_me"       "Idris2 — banned estate-wide")
+    (pattern ".unwrap() as debt marker" "use .expect(\"TODO\") only if you mean it — better: handle the error"))
+
+  ; ===================================================================
+  ; COMMUNICATION PROTOCOL
+  ; ===================================================================
+
+  (after-every-commit
+    (action "coord_status — one-line current activity")
+    (action "coord_send target='supervisor-peer-id' — what landed, paths, follow-ups"))
+
+  (before-new-task
+    (action "coord_receive — drain inbox before starting"))
+
+  ; ===================================================================
+  ; GIT HYGIENE
+  ; ===================================================================
+
+  (git
+    (push-target "origin only — other forges are downstream-mirrored")
+    (no-force-push true)
+    (pre-commit "panic-attack assail <your-file>.rs runs automatically")
+    (commit-scope "one logical unit per commit; conventional-commit prefix"))
+
+  ; ===================================================================
+  ; LANGUAGE POLICY (echidna-specific)
+  ; ===================================================================
+
+  (language-policy
+    (primary "Rust — prover backends, trust pipeline, CLI")
+    (ml      "Julia — training, inference, batch")
+    (proofs  "Idris2 (ABI), Agda (meta-checker)")
+    (banned  "Python, TypeScript, Node.js, Go")))
