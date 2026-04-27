@@ -59,9 +59,11 @@ Ports 7700–7744 are allocated. 7745 is the next sequential assignment.
 
 *Decision:* Hybrid — human-readable prefix + 4-char hex suffix.
 
-Examples: `claude-7f3a`, `gemini-b2c1`, `copilot-4e9d`. Readable in logs
-and tool output, unique enough to prevent collisions on a single machine.
-Supports the 4-LLM workflow split (Claude, Gemini, Copilot, custom).
+Examples: `claude-7f3a`, `gemini-b2c1`, `copilot-4e9d`, `openai-5fab`,
+`mistral-9c0e`. Readable in logs and tool output, unique enough to prevent
+collisions on a single machine. Supports the 6-LLM workflow split — Claude,
+Gemini, Copilot, OpenAI, Mistral, plus a `custom` fall-through (Task #33
+extended `openai` + `mistral`).
 
 == Security Architecture
 
@@ -166,11 +168,13 @@ primitives — these are not introduced by this cartridge.)
 
 Register this instance. Returns a hybrid peer ID and a session token.
 
-*Input:* `{ client_kind: "claude" | "gemini" | "copilot" | "custom" }`
+*Input:* `{ client_kind: "claude" | "gemini" | "copilot" | "custom" | "openai" | "mistral", context?: string, declared_affinities?: [string], variant?: string }`
 
 *Output:* `{ peer_id: "claude-7f3a", token: "abc123..." }`
 
-*Side effects:* Allocates a peer slot (1 of 16).
+*Side effects:* Allocates a peer slot (1 of 16). Optional `variant` is
+applied via the same code path as `coord_set_variant` and rolls back the
+registration on validation failure.
 
 === coord_list_peers
 

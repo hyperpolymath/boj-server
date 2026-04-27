@@ -293,13 +293,14 @@ function buildToolList() {
   // Local coordination (localhost multi-instance AI coordination — local-coord-mcp cartridge)
   tools.push({
     name: "coord_register",
-    description: "Register this AI instance as a coordination peer on the loopback coord bus (127.0.0.1:7745). Side-effectful on the bus (creates peer entry + inbox); Loopback-only for security. Returns `{peer_id, token}` where the token must be passed to all subsequent coord_* calls. Optional `context` disambiguates windows; `declared_affinities` seeds the reassignment engine. Essential for multi-agent collaboration.",
+    description: "Register this AI instance as a coordination peer on the loopback coord bus (127.0.0.1:7745). Side-effectful on the bus (creates peer entry + inbox); Loopback-only for security. Returns `{peer_id, token}` where the token must be passed to all subsequent coord_* calls. Optional `context` disambiguates windows; `declared_affinities` seeds the reassignment engine; `variant` sets the model identifier in one shot (otherwise call `coord_set_variant` later). Essential for multi-agent collaboration.",
     inputSchema: {
       type: "object",
       properties: {
-        client_kind: { type: "string", enum: ["claude", "gemini", "copilot", "custom"], description: "Client type prefix for the generated peer ID (`<kind>-<4hex>[@<context>]`)." },
+        client_kind: { type: "string", enum: ["claude", "gemini", "copilot", "custom", "openai", "mistral"], description: "Client family prefix for the generated peer ID (`<kind>-<4hex>[@<context>]`). Task #33 extended `openai` + `mistral`; `custom` covers anything else." },
         context: { type: "string", description: "Optional disambiguator, e.g. current repo name. Alphanumeric + hyphen/underscore, max 32 bytes. Absent = plain `<kind>-<4hex>` form.", maxLength: 32, pattern: "^[A-Za-z0-9_-]*$" },
         declared_affinities: { type: "array", items: { type: "string", maxLength: 64 }, description: "Optional self-reported strength tags (e.g. ['proof-analysis', 'supervision']). Max 256 bytes as CSV; feeds reassignment-engine comparisons (DD-28)." },
+        variant: { type: "string", description: "Optional free-form model/variant label set at register time (Task #33). Alphanumeric + `.`/`-`/`_`, max 32 bytes. e.g. `opus-4.7`, `flash-2.5`, `leanstral`. Equivalent to a follow-up `coord_set_variant` call.", maxLength: 32, pattern: "^[A-Za-z0-9._-]*$" },
       },
       required: ["client_kind"],
       additionalProperties: false,
