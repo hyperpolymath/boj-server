@@ -9,7 +9,7 @@
 - **gRPC**: gRPC support for high-performance clients
 
 ### Cartridge System
-- **106 Cartridges**: Covering databases, git, cloud, comms, ML, browser, and more
+- **115 Cartridges**: Covering databases, git, cloud, comms, ML, browser, and more
 - **1041 Tools**: Specialized operations across all domains
 - **Hot-Reloading**: Add/remove cartridges without restarting
 - **Isolation**: Each cartridge runs in its own sandbox

@@ -58,7 +58,7 @@ and many more.
 | `ffi/zig/src/catalogue.zig` | Mount/unmount operations |
 | `ffi/zig/src/boj_invoke_main.zig` | boj-invoke CLI (dlopen dispatch) |
 | `elixir/lib/boj_rest/` | Elixir REST server (Catalog, Router, JsWorkerPool) |
-| `cartridges/` | 112 cartridge directories |
+| `cartridges/` | 115 cartridge directories |
 
 ## Invariants
 

@@ -63,7 +63,7 @@ elixir/                     Elixir/BEAM REST server
   test/                     50 ExUnit tests (catalog, router, crypto, JS dispatch)
   config/                   config.exs / test.exs
 
-cartridges/                 112 cartridge directories
+cartridges/                 115 cartridge directories
   database-mcp/             Example cartridge
     abi/database-mcp.ipkg   Idris2 ABI
     abi/Database/Mcp.idr    Idris2 source
@@ -113,7 +113,7 @@ panll/src/                  PanLL panel (ReScript/TEA)
 ```bash
 just build            # Build all Zig FFI layers (catalogue + cartridges)
 just build-release    # Optimized build (-Doptimize=ReleaseFast)
-just run              # Start Elixir/BEAM server (REST 7700, auto-discovers 112 cartridges)
+just run              # Start Elixir/BEAM server (REST 7700, auto-discovers 115 cartridges)
 just serve            # Server + Cloudflare tunnel
 just test             # Elixir ExUnit test suite (mix test)
 just test-smoke       # Quick: typecheck core ABI + ExUnit smoke
@@ -204,7 +204,7 @@ POST /cartridge/{name}/invoke: { "tool": "...", "args": {...}, "credential_envel
 
 ## Cartridge Matrix
 
-112 cartridges organized in a 2D matrix (Protocol x Domain).
+115 cartridges organized in a 2D matrix (Protocol x Domain).
 Each has: `abi/` (Idris2), `ffi/` (Zig), `mod.js` (Deno adapter).
 View status: `just matrix`
 

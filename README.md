@@ -4,7 +4,7 @@
 [![Glama MCP Server](https://glama.ai/mcp/servers/hyperpolymath/boj-server/badge)](https://glama.ai/mcp/servers/hyperpolymath/boj-server)
 [![Green Hosting](https://api.thegreenwebfoundation.org/greencheckimage/boj-server.net)](https://www.thegreenwebfoundation.org/green-web-check/?url=boj-server.net)
 
-BoJ (Bundle of Joy) is a unified MCP server that consolidates all hyperpolymath tooling into a single endpoint — GitHub, GitLab, Cloudflare, Vercel, Verpex, Gmail, Calendar, browser automation, research, ML, and 50+ open-source cartridges.
+BoJ (Bundle of Joy) is a unified MCP server that consolidates all hyperpolymath tooling into a single endpoint — GitHub, GitLab, Cloudflare, Vercel, Verpex, Gmail, Calendar, browser automation, research, ML, and 115 open-source cartridges.
 
 ## Install
 
@@ -35,7 +35,7 @@ Glama listing: <https://glama.ai/mcp/servers/hyperpolymath/boj-server>
 - **Research** — Semantic Scholar papers, citations, authors
 - **ML** — Hugging Face model / dataset / inference
 - **Local coordination** — `local-coord-mcp` (24 tools): multi-instance AI peer discovery, typed envelopes, claim/heartbeat/watchdog, quarantine + master/journeyman/apprentice supervision, track-record affinity, capability advertisement
-- **Cartridges** — 100 pluggable cartridges across Teranga / Shield / Ayo trust tiers
+- **Cartridges** — 115 pluggable cartridges across Teranga / Shield / Ayo trust tiers
 
 ## Local-coord-mcp at a glance
 

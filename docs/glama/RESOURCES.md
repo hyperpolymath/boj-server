@@ -40,7 +40,7 @@ Factual statements about entities with temporal validity.
 {
   "id": "obs_456",
   "entity_id": "ent_123",
-  "content": "BoJ Server supports 106 cartridges",
+  "content": "BoJ Server supports 115 cartridges",
   "source": "documentation",
   "valid_from": "2026-01-01T00:00:00Z",
   "valid_to": null,
