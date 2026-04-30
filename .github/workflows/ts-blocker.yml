@@ -17,7 +17,9 @@ jobs:
           # Zero-tolerance: NO .ts files anywhere in the tree.
           EXISTING_TS=$(find . -name "*.ts" -o -name "*.tsx" | grep -v './.git/' | grep -v node_modules | grep -v '\.gen\.' || true)
           if [ -n "$EXISTING_TS" ]; then
-            echo "❌ TypeScript files found (must be zero — port to Zig or ReScript):"
+            echo "❌ TypeScript files found (must be zero — port to Zig or AffineScript):"
+            echo "   Estate-wide policy 2026-04-30: RS/TS/JS → AffineScript→typed-wasm."
+            echo "   For systems-level code, Zig→WASM is the alternative."
             printf '%s\n' "$EXISTING_TS"
             exit 1
           fi
@@ -25,7 +27,10 @@ jobs:
           # JS: block new additions only (existing JS tracked for WASM migration).
           NEW_JS=$(git diff --name-only --diff-filter=A HEAD~1 2>/dev/null | grep -E '\.(js|jsx)$' | grep -v '\.res\.js$' | grep -v '\.gen\.' | grep -v 'node_modules' || true)
           if [ -n "$NEW_JS" ]; then
-            echo "❌ New .js files detected. Target language is Zig→WASM; use Zig or ReScript instead."
+            echo "❌ New .js files detected."
+            echo "   Estate-wide policy 2026-04-30: target language is AffineScript→typed-wasm"
+            echo "   for application code, Zig→WASM for systems work. ReScript is being"
+            echo "   phased out (only allowed as upstream-system adapter shims)."
             printf '%s\n' "$NEW_JS"
             exit 1
           fi
