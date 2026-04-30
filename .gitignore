@@ -138,8 +138,10 @@ tools/cartridge-minter/target/
 panic-attack-report*.json
 /json
 
-# asdf version manager
-.tool-versions
+# asdf version manager — tracked in this repo to pin reproducible
+# toolchain versions (zig 0.15.1 not 0.16.0; elixir 1.18+ not apt's 1.14;
+# etc.). asdf reads .tool-versions on `cd` into the repo and automatically
+# uses the pinned versions.
 
 # wokelangiser generated i18n locale files (too large for GitHub)
 generated/wokelangiser/i18n/
