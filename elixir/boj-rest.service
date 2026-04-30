@@ -24,6 +24,15 @@ Wants=local-coord-mcp.service
 Type=simple
 WorkingDirectory=$BOJ_ROOT/elixir
 
+# PATH must include asdf shims and ~/.cargo/bin for users running
+# asdf-managed Elixir or cargo-installed `just`. Falls through to
+# system paths if asdf isn't installed (in which case the elixir/mix.exs
+# version requirement will fail loudly — apt's Elixir 1.14 on Ubuntu
+# 24.04 LTS does not satisfy `~> 1.15`). %h is the user home directory.
+Environment=PATH=%h/.asdf/shims:%h/.cargo/bin:%h/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+Environment=ASDF_DIR=%h/.asdf
+Environment=ASDF_DATA_DIR=%h/.asdf
+
 # Env vars — see elixir/config/config.exs for the full list
 Environment=MIX_ENV=dev
 Environment=BOJ_PORT=7700
@@ -31,11 +40,14 @@ Environment=BOJ_CARTRIDGES_ROOT=$BOJ_ROOT/cartridges
 Environment=BOJ_DATA_DIR=$HOME/.local/share/boj-server
 Environment=BOJ_INVOKE_CLI=$BOJ_ROOT/ffi/zig/zig-out/bin/boj-invoke
 
-ExecStart=/usr/bin/mix run --no-halt
+# Use `mix` resolved via PATH (the asdf shim picks up the version
+# pinned in .tool-versions). Hardcoding /usr/bin/mix breaks when
+# Elixir is asdf-managed and apt's mix is too old.
+ExecStart=mix run --no-halt
 Restart=on-failure
 RestartSec=5
 
-# Give the Elixir/BEAM VM enough file descriptors for 112 cartridges +
+# Give the Elixir/BEAM VM enough file descriptors for 115 cartridges +
 # one Deno worker port per JS cartridge (up to 256 concurrent workers).
 LimitNOFILE=65536
 

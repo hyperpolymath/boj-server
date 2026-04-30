@@ -3,7 +3,9 @@
 # SPDX-License-Identifier: MPL-2.0
 #
 # Enforces: No TypeScript, No Go, No Python (except SaltStack), No npm
-# Allows: ReScript, Deno, WASM, Rust, OCaml, Haskell, Guile/Scheme
+# Allows: AffineScript, Deno, WASM, Rust/SPARK, OCaml, Haskell, Guile/Scheme,
+#         ReScript (only as adapter shim to upstream ReScript-using systems —
+#         per estate-wide policy 2026-04-30, RS/TS/JS default is AffineScript)
 
 name: RSR Anti-Pattern Check
 
@@ -31,7 +33,9 @@ jobs:
           # Exclude .d.ts files - those are TypeScript type declarations for ReScript FFI
           TS_FILES=$(find . \( -name "*.ts" -o -name "*.tsx" \) | grep -v node_modules | grep -v 'bindings/deno' | grep -v '\.d\.ts$' || true)
           if [ -n "$TS_FILES" ]; then
-            echo "❌ TypeScript files detected - use ReScript instead"
+            echo "❌ TypeScript files detected — use AffineScript→typed-wasm instead"
+            echo "   (Estate-wide policy 2026-04-30: RS/TS/JS default is AffineScript;"
+            echo "    ReScript is also being phased out except as upstream-system adapters.)"
             echo "$TS_FILES"
             exit 1
           fi
@@ -67,7 +71,8 @@ jobs:
       - name: Check for tsconfig
         run: |
           if [ -f "tsconfig.json" ]; then
-            echo "❌ tsconfig.json detected - use ReScript instead"
+            echo "❌ tsconfig.json detected — use AffineScript→typed-wasm instead"
+            echo "   (Estate-wide policy 2026-04-30: see RSR Anti-Pattern Allows list.)"
             exit 1
           fi
           echo "✅ No tsconfig.json"
@@ -83,11 +88,15 @@ jobs:
 
       - name: Summary
         run: |
-          echo "╔════════════════════════════════════════════════════════════╗"
-          echo "║           RSR Anti-Pattern Check Passed ✅                 ║"
-          echo "║                                                            ║"
-          echo "║  Allowed: ReScript, Deno, WASM, Rust, OCaml, Haskell,     ║"
-          echo "║           Guile/Scheme, SaltStack (Python)                 ║"
-          echo "║                                                            ║"
-          echo "║  Blocked: TypeScript, Go, npm, Python (non-Salt)          ║"
-          echo "╚════════════════════════════════════════════════════════════╝"
+          echo "╔══════════════════════════════════════════════════════════════════╗"
+          echo "║              RSR Anti-Pattern Check Passed ✅                    ║"
+          echo "║                                                                  ║"
+          echo "║  Allowed (default for new code):                                 ║"
+          echo "║    AffineScript→typed-wasm, Deno, WASM, Rust/SPARK, OCaml,       ║"
+          echo "║    Haskell, Guile/Scheme, SaltStack (Python)                     ║"
+          echo "║                                                                  ║"
+          echo "║  Allowed (transitional / adapter-shim only):                     ║"
+          echo "║    ReScript — for shims to upstream RS-using systems             ║"
+          echo "║                                                                  ║"
+          echo "║  Blocked: TypeScript, Go, npm, Python (non-Salt)                 ║"
+          echo "╚══════════════════════════════════════════════════════════════════╝"

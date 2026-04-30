@@ -13,11 +13,16 @@ on:
 
 permissions:
   contents: read
+  security-events: read   # Hypatia queries Dependabot alerts via the GraphQL API
 
 jobs:
   scan:
     name: Hypatia Neurosymbolic Analysis
     runs-on: ubuntu-latest
+    env:
+      # Hypatia's CLI calls `gh api` for Dependabot alert lookups; without this
+      # env var it logs "Dependabot alerts unavailable: GITHUB_TOKEN not set".
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
     steps:
       - name: Checkout repository
