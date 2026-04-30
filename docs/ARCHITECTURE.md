@@ -135,8 +135,10 @@ The `mod.js` files serve as behavioural reference implementations for what each
 cartridge's Zig FFI symbols must produce. They are **transitional** — as each
 cartridge's `.so` is compiled and verified, the Elixir Router switches to the
 Zig FFI path automatically (presence of `"ffi"` key in `cartridge.json` controls
-which path is taken). Once all 112 cartridges have verified `.so` builds,
-the Deno pool is retired.
+which path is taken). Once all 115 cartridges have verified `.so` builds,
+the Deno pool is retired. (As of 2026-04-30: 111/115 have `.so`; 4
+pending — `database-mcp`, `echidna-llm-mcp`, `lang-mcp`,
+`orchestrator-lsp-mcp`.)
 
 **Dispatch selector (BojRest.Router):**
 ```elixir
@@ -206,10 +208,14 @@ launch-scaffolder realign <name>
   → re-applies standards (ADR-0006 ABI, spdx header, schema version)
 ```
 
-All 112 cartridges have the scaffold. Status:
-- **1 complete** (boj-health): Zig source compiled, `.so` verified, in production
-- **111 in progress**: Zig source present and substantial (100–1,260 lines each),
-  `.so` not yet compiled — transitional `mod.js` in use
+All 115 cartridges have the scaffold. Status (re-measured 2026-04-30):
+- **111 with `.so` built**: Zig source compiles cleanly, artefact present
+  under `cartridges/<name>/ffi/zig-out/lib/lib<name>.so`, dispatched via
+  the Zig FFI path (`cartridge.json` has the `"ffi"` key).
+- **4 not yet building**: `database-mcp`, `echidna-llm-mcp`, `lang-mcp`,
+  `orchestrator-lsp-mcp` — Zig source present but `just build` doesn't
+  emit a `.so` for these; transitional `mod.js` (Deno fork-per-call)
+  remains the dispatch path until they build cleanly.
 
 > **Note:** `tools/cartridge-minter/` exists but uses Node.js (banned language).
 > The `launch-scaffolder` is the canonical tool; cartridge-minter is a legacy artefact.
