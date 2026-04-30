@@ -75,14 +75,14 @@ V-lang adapter migration complete (0 `.v` files).  Grade C achieved 2026-04-25.
 === v1.0.1 — Adapter Migration Recovery (P0, In Progress)
 
 * [x] Remove remaining V-lang adapters across `cartridges/` (confirmed 0 `.v` files 2026-04-25 — cleanup completed 2026-04-12)
-* [x] Ensure every cartridge has `cartridge.json` metadata (all 112 cartridges covered 2026-04-25)
-* [x] Ensure every cartridge has `mod.js` tool handlers (all 112 cartridges covered 2026-04-25)
-* [ ] Re-run cartridge matrix build/tests and update `TEST-NEEDS.md` with current evidence
-* [ ] Refresh repo documentation claims after migration closure (counts, completion text, handover docs)
+* [x] Ensure every cartridge has `cartridge.json` metadata (all 115 cartridges covered, re-verified 2026-04-30)
+* [x] Ensure every cartridge has `mod.js` tool handlers (all 115 cartridges covered, re-verified 2026-04-30)
+* [x] Re-run cartridge matrix build and update `TEST-NEEDS.md` with current evidence (build count refreshed 2026-04-30 — 111/115 cartridges have `.so`; pending: `database-mcp`, `echidna-llm-mcp`, `lang-mcp`, `orchestrator-lsp-mcp`. Test re-run deferred to next sweep.)
+* [x] Refresh repo documentation claims after migration closure — counts, completion text, handover docs (PR #40 + this re-measurement PR cover the canonical doc surfaces; cartridge count is now 115 across all surfaces)
 
 === v1.1.0 — JS Dispatch + Gateway Sidecar
 
-JS cartridge dispatch (the large remaining gap — 99 of 106 cartridges use `mod.js`, not Zig `.so`):
+JS cartridge dispatch (gap closed substantially since the original measurement — as of 2026-04-30, 4 of 115 cartridges still use `mod.js` not Zig `.so`: `database-mcp`, `echidna-llm-mcp`, `lang-mcp`, `orchestrator-lsp-mcp`):
 
 * [x] `BojRest.JsInvoker` — shells out to `deno run mod.js` per invocation (Phase 1: fork-per-call, ~200 ms cold-start)
 * [x] Router dispatch branch: if `cart["ffi"]` key present → `Invoker` (Zig path); else → `JsWorkerPool` (Deno pool path)

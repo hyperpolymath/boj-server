@@ -121,6 +121,6 @@ Grade B requires:
 - **E2E tests are Deno-gated** — tagged `@tag :e2e` and skip cleanly if `deno` is absent.
   CI must install Deno for E2E coverage.
 - **FFI/Zig tests** are not in this suite — they run via `zig test` in `ffi/zig/`.
-- **112 cartridges loaded** from `cartridges/` as of 2026-04-25.
+- **115 cartridges loaded** from `cartridges/` as of 2026-04-30 (111 with `.so` built; the 4 without are `database-mcp`, `echidna-llm-mcp`, `lang-mcp`, `orchestrator-lsp-mcp`).
 - **Panic-attack pre-commit hook** runs `panic-attack assail` — check `PANIC-ATTACK.a2ml`
   for current Clade classification and any open findings.
