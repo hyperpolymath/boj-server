@@ -5,8 +5,8 @@
 # https://smithery.ai
 
 name: boj-server
-description: "Bundle of Joy — cartridge-based MCP server with 53 formally verified domain cartridges (database, cloud, git, k8s, containers, observability, secrets, IaC, and more)"
-version: "0.4.0"
+description: "Bundle of Joy — cartridge-based MCP server with 115 formally verified domain cartridges (database, cloud, git, k8s, containers, observability, secrets, IaC, and more)"
+version: "0.4.6"
 author: "Jonathan D.A. Jewell"
 license: "PMPL-1.0-or-later"
 homepage: "https://github.com/hyperpolymath/boj-server"
@@ -33,7 +33,7 @@ tools:
   - name: boj_health
     description: "Check BoJ server health status"
   - name: boj_menu
-    description: "List all 53 cartridges with domains, protocols, and tiers"
+    description: "List all 115 cartridges with domains, protocols, and tiers"
   - name: boj_cartridges
     description: "Show the cartridge matrix — protocol x domain grid"
   - name: boj_cartridge_info

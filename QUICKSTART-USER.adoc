@@ -10,7 +10,7 @@ toc::[]
 
 == What is BoJ Server?
 
-Bundle of Joy (BoJ) Server is a cartridge-based MCP protocol gateway. Each cartridge (database-mcp, fleet-mcp, nesy-mcp, etc.) is a formally verified Idris2 ABI + Zig FFI + Deno/JS adapter triple. The server exposes REST (port 7700) via Elixir/BEAM with Zig FFI for `.so` cartridges and a persistent Deno worker pool for JS cartridges. 112 cartridges cover databases, clouds, messaging, CI/CD, git forges, secrets, queues, proofs, and more.
+Bundle of Joy (BoJ) Server is a cartridge-based MCP protocol gateway. Each cartridge (database-mcp, fleet-mcp, nesy-mcp, etc.) is a formally verified Idris2 ABI + Zig FFI + Deno/JS adapter triple. The server exposes REST (port 7700) via Elixir/BEAM with Zig FFI for `.so` cartridges and a persistent Deno worker pool for JS cartridges. 115 cartridges cover databases, clouds, messaging, CI/CD, git forges, secrets, queues, proofs, and more.
 
 Three-class architecture: Class 1 (simple CLI), Class 2 (orchestrator with webhooks/MQTT), Class 3 (BEAM multiplier for global scale).
 
@@ -76,7 +76,7 @@ Start the Elixir/BEAM server:
 just run
 ----
 
-This starts the BEAM application, auto-discovers all 112 cartridges, and launches the Deno worker pool for JS dispatch:
+This starts the BEAM application, auto-discovers all 115 cartridges, and launches the Deno worker pool for JS dispatch:
 
 - REST API on http://localhost:7700
 
@@ -142,16 +142,23 @@ Starts the server + Cloudflare Quick Tunnel (requires `cloudflared`).
 
 | 7700
 | REST (HTTP)
-| Primary API, status endpoint
+| Primary API, status endpoint — implemented in `elixir/lib/boj_rest/router.ex`
 
 | 7701
 | gRPC
-| Binary protocol
+| Planned (binary protocol). The `Boj.Protocol` ABI enum lists `GRPC` but no `.proto` files exist and no gRPC server is wired into the BEAM application yet.
 
 | 7702
 | GraphQL
-| Query interface
+| Planned (query interface). Not present in the `Boj.Protocol` ABI enum and no schema or Absinthe server is wired into the BEAM application yet.
 |===
+
+[NOTE]
+====
+Only the REST surface on port 7700 is currently implemented. The gRPC and
+GraphQL rows above are forward-looking; until they ship, only `7700` will
+actually accept connections.
+====
 
 == Guided Tour
 

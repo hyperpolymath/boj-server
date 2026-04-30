@@ -18,7 +18,7 @@ This is the Model-Controller-Processor pattern: cartridges are pluggable service
 
 **Location**: `elixir/lib/boj_rest/catalog.ex` (Elixir GenServer cartridge discovery and initialization)
 
-**How verified**: `BojRest.Catalog` scans `cartridges/*/cartridge.json` at startup, reads tool schemas from each, and stores them in an ETS table. It validates `name`, `version`, `tools` required fields and prevents duplicate names. 112 cartridges are auto-discovered. This enables the "unified endpoint" claim: a single REST server exposes the union of all cartridges' tools without hardcoding each one.
+**How verified**: `BojRest.Catalog` scans `cartridges/*/cartridge.json` at startup, reads tool schemas from each, and stores them in an ETS table. It validates `name`, `version`, `tools` required fields and prevents duplicate names. 115 cartridges are auto-discovered. This enables the "unified endpoint" claim: a single REST server exposes the union of all cartridges' tools without hardcoding each one.
 
 **Caveat**: Auto-discovery is runtime dynamic; there is no compile-time verification that all cartridge schemas are valid JSON Schema. A malformed `cartridge.json` is silently skipped at startup. The authoritative manifest format is Nickel (closed decision `boj-cartridge-manifest-format-dd.md`); migration from JSON is future work.
 
@@ -41,7 +41,7 @@ This is the Model-Controller-Processor pattern: cartridges are pluggable service
 | gossamer, burble, ephapax, hypatia, verisimdb, typed-wasm — universal ABI/FFI pattern across the estate
 
 | *Pluggable cartridge architecture*
-| 112 cartridge directories (`cartridges/*/`), each with `abi/`, `ffi/`, `mod.js` structure; auto-discovered at startup via manifest scan
+| 115 cartridge directories (`cartridges/*/`), each with `abi/`, `ffi/`, `mod.js` structure; auto-discovered at startup via manifest scan
 | echidna (prover orchestration as cartridges), hypatia (rule composition), gitbot-fleet (bot cartridges per service)
 
 | *PanLL ReScript workspace layer*
@@ -49,7 +49,7 @@ This is the Model-Controller-Processor pattern: cartridges are pluggable service
 | idaptik (game UI panels), gossamer-powered SPAs, PanLL monorepo panels estate-wide
 
 | *panic-attack security gate*
-| Pre-commit `panic-attack assail` enforces PA001-PA025 across all 112 cartridges; security module tests cover injection, unicode bypass, SSRF
+| Pre-commit `panic-attack assail` enforces PA001-PA025 across all 115 cartridges; security module tests cover injection, unicode bypass, SSRF
 | Every RSR repo in the estate; panicbot wraps it in CI
 
 | *Elixir/BEAM + Deno runtime*
@@ -69,7 +69,7 @@ This is the Model-Controller-Processor pattern: cartridges are pluggable service
 | `elixir/lib/boj_rest/js_worker.ex` | GenServer wrapping a single Deno port; newline-delimited JSON protocol
 | `elixir/lib/boj_rest/node_key.ex` | X25519 keypair persistence; ChaCha20-Poly1305 credential decryption
 | `elixir/priv/js_pool_worker.js` | Deno-side pool worker; module cache, env isolation per request
-| `cartridges/*/` | 112 cartridge directories, each with abi/, ffi/, mod.js structure
+| `cartridges/*/` | 115 cartridge directories, each with abi/, ffi/, mod.js structure
 | `src/abi/Boj/` | Idris2 ABI definitions (Protocol, Domain, Catalogue, Safety, etc.)
 | `panll/` | ReScript/TEA panel framework for UI workspace layer
 |===

@@ -9,11 +9,11 @@ openapi: "3.1.0"
 info:
   title: Bundle of Joy Server API
   description: |
-    Cartridge-based DevOps toolkit with 106 formally verified domain cartridges.
+    Cartridge-based DevOps toolkit with 115 formally verified domain cartridges.
     Each cartridge has an Idris2 ABI (dependent type proofs), Zig FFI bridge,
     and HTTP adapter. The REST API at port 7700 provides discovery,
     inspection, and invocation of all cartridges.
-  version: "0.4.0"
+  version: "0.4.6"
   contact:
     name: Jonathan D.A. Jewell
     email: j.d.a.jewell@open.ac.uk
