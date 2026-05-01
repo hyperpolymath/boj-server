@@ -13,7 +13,7 @@
     "boj-server": "mcp-bridge/main.js"
   },
   "scripts": {
-    "start": "node mcp-bridge/main.js",
+    "start": "deno run -A mcp-bridge/main.js",
     "test": "node --test mcp-bridge/tests/dispatch_test.js"
   },
   "engines": {
