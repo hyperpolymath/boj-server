@@ -20,7 +20,7 @@ Or clone and configure:
 git clone https://github.com/hyperpolymath/boj-server
 cd boj-server/mcp-bridge && npm install
 # Start the BoJ REST API first (port 7700), then:
-claude mcp add boj-server -- node mcp-bridge/main.js
+claude mcp add boj-server -- deno run -A mcp-bridge/main.js
 ```
 
 Glama listing: <https://glama.ai/mcp/servers/hyperpolymath/boj-server>
