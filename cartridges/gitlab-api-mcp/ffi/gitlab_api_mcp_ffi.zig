@@ -741,7 +741,7 @@ test "authentication lifecycle" {
     try std.testing.expectEqual(@as(c_int, 0), gitlab_api_mcp_session_state(slot));
 
     // Authenticate with default gitlab.com
-    const token = "glpat-xxxxxxxxxxxxxxxxxxxx";
+    const token = "glpat-xxxxxxxxxxxxxxxxxxxx"; // hypatia-ignore: test fixture — placeholder format only
     try std.testing.expectEqual(@as(c_int, 0), gitlab_api_mcp_authenticate(
         slot,
         token,
