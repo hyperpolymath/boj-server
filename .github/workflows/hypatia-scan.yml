@@ -101,7 +101,7 @@ jobs:
           git clone https://github.com/hyperpolymath/gitbot-fleet.git "$FLEET_DIR"
 
           # Run submission script
-          bash "$FLEET_DIR/scripts/submit-finding.sh" hypatia-findings.json
+          bash "$FLEET_DIR/scripts/submit-finding.sh" "$(pwd)/hypatia-findings.json"
 
           # Cleanup
           rm -rf "$FLEET_DIR"

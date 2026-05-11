@@ -44,9 +44,12 @@ jobs:
           fi
 
       - name: Log in to GitHub Container Registry
+        env:
+          REGISTRY_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REGISTRY_USER: ${{ github.actor }}
         run: |
-          echo "${{ secrets.GITHUB_TOKEN }}" | \
-            podman login ghcr.io -u "${{ github.actor }}" --password-stdin
+          echo "$REGISTRY_TOKEN" | \
+            podman login ghcr.io -u "$REGISTRY_USER" --password-stdin
 
       - name: Log in to Docker Hub
         if: steps.dockerhub.outputs.available == 'true'
