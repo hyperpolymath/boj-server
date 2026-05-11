@@ -80,7 +80,7 @@ let args_prop = str_prop "Optional extra arguments forwarded to the recipe" in
       "rust",
     ],
     graceful_degrade = true,  # If coord server is down on enter, log a warning and continue
-    coord_url = "http://127.0.0.1:7745",
+    coord_url = "http://127.0.0.1:7745",  # loopback-only; TLS not needed or used on localhost
   },
 
   # Memory auto-lift (task #12) — static-mapping fallback per DD-26 option (b).

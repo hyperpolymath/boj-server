@@ -6,10 +6,6 @@
 
 import { readFile, writeFile, mkdir, readdir, copyFile } from 'node:fs/promises';
 import { join, dirname } from 'node:path';
-import { exec } from 'node:child_process';
-import { promisify } from 'node:util';
-
-const execAsync = promisify(exec);
 
 async function readJsonFile(filePath) {
   const content = await readFile(filePath, 'utf8');

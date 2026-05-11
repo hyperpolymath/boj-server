@@ -64,11 +64,11 @@ external make: (string, string, serverOptions, clientOptions) => t = "LanguageCl
 // Start the language client and server.  Returns a promise that resolves when
 // the server has initialised.
 @send
-external start: t => Js.Promise.t<unit> = "start"
+external start: t => promise<unit> = "start"
 
 // Gracefully stop the language client and server.
 @send
-external stop: t => Js.Promise.t<unit> = "stop"
+external stop: t => promise<unit> = "stop"
 
 // Cast the client as a disposable for subscription registration.
 // LanguageClient implements the disposable protocol — this is a safe identity cast.
