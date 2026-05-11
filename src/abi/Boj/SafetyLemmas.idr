@@ -47,12 +47,14 @@ notTrueNotTrue Refl impossible
 
 ||| Primitive char equality soundness: c1 == c2 = True implies c1 = c2.
 ||| Axiomatic: correctness of Idris2's prim__eqChar backend primitive.
+%unsafe
 export
 charEqSound : (c1, c2 : Char) -> c1 == c2 = True -> c1 = c2
 charEqSound _ _ _ = believe_me ()
 
 ||| Helper: symmetry of Char equality.
 ||| Axiomatic: symmetry of prim__eqChar on the BEAM/Chez backend.
+%unsafe
 export
 charEqSym : (x, y : Char) -> (x == y) = (y == x)
 charEqSym _ _ = believe_me ()
@@ -203,6 +205,7 @@ allNeqImpliesNotElem {target} {xs = x :: xs'} prf with (x == target) proof xEq
 
 ||| `unpack s` has the same length as `s`.
 ||| Axiomatic: prim__strToCharList preserves length (backend primitive guarantee).
+%unsafe
 export
 unpackLength : (s : String) -> length (unpack s) = length s
 unpackLength _ = believe_me ()
@@ -210,12 +213,14 @@ unpackLength _ = believe_me ()
 ||| String concatenation length equals the sum of both argument lengths.
 ||| Axiomatic: prim__strAppend is a backend primitive not reducible at the
 ||| Idris2 type level. Established by semantics of all supported backends.
+%unsafe
 export
 appendLengthSum : (s t : String) -> length (s ++ t) = length s + length t
 appendLengthSum _ _ = believe_me ()
 
 ||| Substring of a string has length at most the requested count.
 ||| Axiomatic: prim__strSubstr semantics — result is never longer than `len`.
+%unsafe
 export
 substrLengthBound : (s : String) -> (start len : Nat) -> LTE (length (substr start len s)) len
 substrLengthBound _ _ _ = believe_me ()
