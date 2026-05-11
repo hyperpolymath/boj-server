@@ -23,11 +23,13 @@ jobs:
           event-type: propagate
           client-payload: |-
             {
-              "repo": "${{ github.event.repository.name }}",
-              "ref": "${{ github.ref }}",
-              "sha": "${{ github.sha }}",
+              "repo": ${{ toJSON(github.event.repository.name) }},
+              "ref": ${{ toJSON(github.ref) }},
+              "sha": ${{ toJSON(github.sha) }},
               "forges": ""
             }
 
       - name: Confirm
-        run: echo "::notice::Propagation triggered for ${{ github.event.repository.name }}"
+        env:
+          REPO_NAME: ${{ github.event.repository.name }}
+        run: echo "::notice::Propagation triggered for ${REPO_NAME}"
