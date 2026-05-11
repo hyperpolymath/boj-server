@@ -47,7 +47,7 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Install Zig
-        uses: goto-bus-stop/setup-zig@7ab2955eb728f5440978d7b4f723a50dea1f3608  # v2
+        uses: goto-bus-stop/setup-zig@9566bb3e8749893055694249726756f25e099b30  # v2
         with:
           version: 0.15.0
 
@@ -97,7 +97,7 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Install Zig
-        uses: goto-bus-stop/setup-zig@7ab2955eb728f5440978d7b4f723a50dea1f3608  # v2
+        uses: goto-bus-stop/setup-zig@9566bb3e8749893055694249726756f25e099b30  # v2
         with:
           version: 0.15.0
 
@@ -131,7 +131,7 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Install Zig
-        uses: goto-bus-stop/setup-zig@7ab2955eb728f5440978d7b4f723a50dea1f3608  # v2
+        uses: goto-bus-stop/setup-zig@9566bb3e8749893055694249726756f25e099b30  # v2
         with:
           version: 0.15.0
 
