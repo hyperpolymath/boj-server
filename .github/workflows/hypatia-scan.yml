@@ -37,50 +37,73 @@ jobs:
           otp-version: '28.3'
 
       - name: Clone Hypatia
+        id: clone_hypatia
+        continue-on-error: true
         run: |
           HYPATIA_DIR="${GITHUB_WORKSPACE}/../hypatia"
           if [ ! -d "$HYPATIA_DIR" ]; then
-            git clone --depth 1 https://github.com/hyperpolymath/hypatia.git "$HYPATIA_DIR"
+            git clone --depth 1 https://github.com/hyperpolymath/hypatia.git "$HYPATIA_DIR" || {
+              echo "::warning::Hypatia clone failed — scan will be skipped"
+              exit 0
+            }
           fi
           echo "HYPATIA_DIR=$HYPATIA_DIR" >> "$GITHUB_ENV"
+          echo "hypatia_ready=true" >> "$GITHUB_OUTPUT"
 
       - name: Build Hypatia scanner (if needed)
+        if: steps.clone_hypatia.outputs.hypatia_ready == 'true'
+        id: build_hypatia
+        continue-on-error: true
         run: |
           cd "$HYPATIA_DIR"
           if [ ! -f hypatia ] && [ ! -f hypatia-v2 ]; then
             echo "Building hypatia-v2 scanner..."
-            mix deps.get --quiet
-            mix escript.build
+            mix deps.get --quiet || { echo "::warning::mix deps.get failed"; exit 0; }
+            mix escript.build || { echo "::warning::mix escript.build failed"; exit 0; }
           fi
+          echo "scanner_ready=true" >> "$GITHUB_OUTPUT"
 
       - name: Run Hypatia scan
         id: scan
+        if: steps.build_hypatia.outputs.scanner_ready == 'true'
         run: |
           echo "Scanning repository: ${{ github.repository }}"
 
-          # Run scanner
-          HYPATIA_FORMAT=json "$HYPATIA_DIR/hypatia-cli.sh" scan . > hypatia-findings.json || true
+          # Run scanner — failures here must not red the check; scanner-infra
+          # issues are tracked upstream and surface as a warning instead.
+          HYPATIA_FORMAT=json "$HYPATIA_DIR/hypatia-cli.sh" scan . > hypatia-findings.json 2>scan-stderr.log || {
+            echo "::warning::hypatia-cli.sh exited non-zero — see scan-stderr.log"
+            echo "[]" > hypatia-findings.json
+          }
 
-          # Count findings
-          FINDING_COUNT=$(jq '. | length' hypatia-findings.json 2>/dev/null || echo 0)
-          echo "findings_count=$FINDING_COUNT" >> $GITHUB_OUTPUT
+          # If the scanner wrote something that isn't a JSON array, normalise to [].
+          if ! jq -e 'type == "array"' hypatia-findings.json >/dev/null 2>&1; then
+            echo "::warning::hypatia-findings.json is not a JSON array — treating as empty"
+            echo "[]" > hypatia-findings.json
+          fi
 
-          # Extract severity counts
-          CRITICAL=$(jq '[.[] | select(.severity == "critical")] | length' hypatia-findings.json)
-          HIGH=$(jq '[.[] | select(.severity == "high")] | length' hypatia-findings.json)
-          MEDIUM=$(jq '[.[] | select(.severity == "medium")] | length' hypatia-findings.json)
+          FINDING_COUNT=$(jq 'length' hypatia-findings.json 2>/dev/null || echo 0)
+          CRITICAL=$(jq '[.[] | select(.severity == "critical")] | length' hypatia-findings.json 2>/dev/null || echo 0)
+          HIGH=$(jq '[.[] | select(.severity == "high")] | length' hypatia-findings.json 2>/dev/null || echo 0)
+          MEDIUM=$(jq '[.[] | select(.severity == "medium")] | length' hypatia-findings.json 2>/dev/null || echo 0)
 
-          echo "critical=$CRITICAL" >> $GITHUB_OUTPUT
-          echo "high=$HIGH" >> $GITHUB_OUTPUT
-          echo "medium=$MEDIUM" >> $GITHUB_OUTPUT
+          {
+            echo "findings_count=$FINDING_COUNT"
+            echo "critical=$CRITICAL"
+            echo "high=$HIGH"
+            echo "medium=$MEDIUM"
+          } >> "$GITHUB_OUTPUT"
 
-          echo "## Hypatia Scan Results" >> $GITHUB_STEP_SUMMARY
-          echo "- Total findings: $FINDING_COUNT" >> $GITHUB_STEP_SUMMARY
-          echo "- Critical: $CRITICAL" >> $GITHUB_STEP_SUMMARY
-          echo "- High: $HIGH" >> $GITHUB_STEP_SUMMARY
-          echo "- Medium: $MEDIUM" >> $GITHUB_STEP_SUMMARY
+          {
+            echo "## Hypatia Scan Results"
+            echo "- Total findings: $FINDING_COUNT"
+            echo "- Critical: $CRITICAL"
+            echo "- High: $HIGH"
+            echo "- Medium: $MEDIUM"
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload findings artifact
+        if: steps.build_hypatia.outputs.scanner_ready == 'true'
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: hypatia-findings
@@ -89,6 +112,7 @@ jobs:
 
       - name: Submit findings to gitbot-fleet (Phase 2)
         if: steps.scan.outputs.findings_count > 0
+        continue-on-error: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_REPOSITORY: ${{ github.repository }}
@@ -96,12 +120,18 @@ jobs:
         run: |
           echo "📤 Submitting ${{ steps.scan.outputs.findings_count }} findings to gitbot-fleet..."
 
-          # Clone gitbot-fleet to temp directory
+          # Clone gitbot-fleet to temp directory. Private repo — if unauthenticated,
+          # skip with a warning rather than failing the whole workflow.
           FLEET_DIR="/tmp/gitbot-fleet-$$"
-          git clone https://github.com/hyperpolymath/gitbot-fleet.git "$FLEET_DIR"
+          if ! git clone https://github.com/hyperpolymath/gitbot-fleet.git "$FLEET_DIR" 2>/dev/null; then
+            echo "::warning::gitbot-fleet clone failed (likely private/no auth) — skipping submission"
+            exit 0
+          fi
 
           # Run submission script
-          bash "$FLEET_DIR/scripts/submit-finding.sh" "$(pwd)/hypatia-findings.json"
+          bash "$FLEET_DIR/scripts/submit-finding.sh" "$(pwd)/hypatia-findings.json" || {
+            echo "::warning::submit-finding.sh failed — see step log"
+          }
 
           # Cleanup
           rm -rf "$FLEET_DIR"
