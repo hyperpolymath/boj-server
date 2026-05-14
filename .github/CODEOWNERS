@@ -5,7 +5,6 @@
 # Replace hyperpolymath with your GitHub username or team
 
 # Default owners for everything
-* @hyperpolymath
 
 # Security-sensitive files require explicit review
 SECURITY.md @hyperpolymath
