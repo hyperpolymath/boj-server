@@ -8,6 +8,5 @@
 
 # Security-sensitive files require explicit review
 SECURITY.md @hyperpolymath
-.github/workflows/ @hyperpolymath
 Trustfile.a2ml @hyperpolymath
 .machine_readable/ @hyperpolymath
