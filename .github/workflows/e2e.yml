@@ -51,11 +51,6 @@ jobs:
         with:
           version: 0.15.0
 
-      - name: Install V
-        run: |
-          git clone --depth 1 https://github.com/vlang/v /tmp/vlang
-          cd /tmp/vlang && make && sudo cp v /usr/local/bin/
-
       - name: Install Deno
         uses: denoland/setup-deno@5fae568d37c3b73e0e4ca63d4e2c4e324a2b3497  # v2
         with:
