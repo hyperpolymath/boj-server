@@ -5,7 +5,7 @@ body:
     attributes:
       value: |
         Proposing a new cartridge for the Ayo (community) menu? Tell us about it!
-        Cartridges follow the three-layer stack: Idris2 ABI + Zig FFI + V-lang Adapter.
+        Cartridges follow the stack: Idris2 ABI + Zig FFI, served by the Elixir adapter.
         See docs/DEVELOPERS.md for the full guide.
   - type: input
     attributes:

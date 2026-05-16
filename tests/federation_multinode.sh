@@ -11,14 +11,14 @@
 #   bash tests/federation_multinode.sh
 #
 # Prerequisites:
-#   - BoJ binary built (just build-adapter)
+#   - Elixir backend available (elixir/ dir + mix on PATH)
 #   - curl, jq on PATH
 
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
-BOJ_BIN="$PROJECT_DIR/adapter/v/boj-server"
+ELIXIR_DIR="$PROJECT_DIR/elixir"
 export LD_LIBRARY_PATH="$PROJECT_DIR/ffi/zig/zig-out/lib:$PROJECT_DIR/cartridges/container-mcp/ffi/zig-out/lib"
 
 green() { printf '\033[32m%s\033[0m\n' "$*"; }
@@ -66,26 +66,26 @@ echo "  BoJ Server — Multi-Node Federation Test"
 echo "================================================================="
 echo ""
 
-if [[ ! -x "$BOJ_BIN" ]]; then
-    red "ERROR: BoJ binary not found at $BOJ_BIN"
-    red "Run 'just build-adapter' first."
+if [[ ! -d "$ELIXIR_DIR" ]] || ! command -v mix &>/dev/null; then
+    red "ERROR: Elixir backend not available (need $ELIXIR_DIR and 'mix')"
+    red "The BoJ REST surface is the Elixir backend."
     exit 1
 fi
 
 # ─── Node A: REST 7710, gRPC 7711, GraphQL 7712, Federation 9910 ───
 bold "Starting Node A (ports 7710/9910)..."
-BOJ_REST_PORT=7710 BOJ_GRPC_PORT=7711 BOJ_GRAPHQL_PORT=7712 \
+( cd "$ELIXIR_DIR" && BOJ_REST_PORT=7710 BOJ_GRPC_PORT=7711 BOJ_GRAPHQL_PORT=7712 \
     BOJ_FEDERATION_PORT=9910 BOJ_QUIC=1 \
     BOJ_NODE_ID="node-alpha" BOJ_REGION="eu-west-1" \
-    "$BOJ_BIN" > "$TMPDIR_TEST/boj-node-a.log" 2>&1 &
+    mix run --no-halt ) > "$TMPDIR_TEST/boj-node-a.log" 2>&1 &
 PIDS+=($!)
 
 # ─── Node B: REST 7720, gRPC 7721, GraphQL 7722, Federation 9920 ───
 bold "Starting Node B (ports 7720/9920)..."
-BOJ_REST_PORT=7720 BOJ_GRPC_PORT=7721 BOJ_GRAPHQL_PORT=7722 \
+( cd "$ELIXIR_DIR" && BOJ_REST_PORT=7720 BOJ_GRPC_PORT=7721 BOJ_GRAPHQL_PORT=7722 \
     BOJ_FEDERATION_PORT=9920 BOJ_QUIC=1 \
     BOJ_NODE_ID="node-bravo" BOJ_REGION="us-east-1" \
-    "$BOJ_BIN" > "$TMPDIR_TEST/boj-node-b.log" 2>&1 &
+    mix run --no-halt ) > "$TMPDIR_TEST/boj-node-b.log" 2>&1 &
 PIDS+=($!)
 
 # Wait for both nodes to be ready

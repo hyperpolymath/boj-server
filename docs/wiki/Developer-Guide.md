@@ -10,14 +10,14 @@ This guide is for people **developing** BoJ itself -- contributing cartridges, f
 Every BoJ cartridge follows a three-layer stack:
 
 ```
-Idris2 ABI (formal proofs) --> Zig FFI (native execution) --> V-lang Adapter (network)
+Idris2 ABI (formal proofs) --> Zig FFI (native execution) --> Elixir Adapter (network)
 ```
 
 | Layer | Language | Purpose | Location |
 |-------|----------|---------|----------|
 | **ABI** | Idris2 | Dependent-type proofs, state machines, `%default total`, zero `believe_me` | `src/abi/` (core), `cartridges/*/abi/` |
 | **FFI** | Zig | C-compatible native execution, zero runtime dependencies | `ffi/zig/` (core), `cartridges/*/ffi/` |
-| **Adapter** | V-lang | Triple API: REST (7700) + gRPC (7701) + GraphQL (7702) | `adapter/v/` |
+| **Adapter** | Elixir | Triple API: REST (7700) + gRPC (7701) + GraphQL (7702) | `elixir/` |
 
 ### Why these languages?
 
@@ -25,7 +25,7 @@ Idris2 ABI (formal proofs) --> Zig FFI (native execution) --> V-lang Adapter (ne
 
 **Zig** provides native C ABI compatibility without runtime overhead. It bridges Idris2's proofs and actual system calls. Cross-compilation is built-in for varied community node hardware.
 
-**V-lang** exposes all three API styles (REST, gRPC, GraphQL) from a single codebase. One port per protocol, one codebase to maintain.
+**Elixir** exposes all three API styles (REST, gRPC, GraphQL) from a single codebase on the BEAM (Plug/Cowboy). One port per protocol, one codebase to maintain.
 
 ### The Capability Matrix
 
@@ -52,7 +52,7 @@ Cloud      |  ##  |      |      |      |      |       |      |  ##  |  ##  |
 | Tool | Version | Required? |
 |------|---------|-----------|
 | [Zig](https://ziglang.org/) | 0.15.2+ | Yes |
-| [V-lang](https://vlang.io/) | 0.5.0+ | Yes (for adapter) |
+| [Elixir](https://elixir-lang.org/) | 1.15+ | Yes (for adapter) |
 | GCC | any recent | Yes (linking) |
 | [Idris2](https://www.idris-lang.org/) | 0.8.0 | Only to modify ABI |
 | [just](https://just.systems/) | 1.40+ | Optional (convenience) |
@@ -78,10 +78,10 @@ for cart in cartridges/*/ffi; do
   (cd "$cart" && zig build 2>/dev/null)
 done
 
-# Build V-lang adapter
-cd adapter/v
-v -cc gcc src/main.v -o boj-server
-cd ../..
+# Fetch Elixir backend deps (the REST/gRPC/GraphQL surface)
+cd elixir
+mix deps.get && mix compile
+cd ..
 ```
 
 With `just`:
@@ -108,8 +108,10 @@ Pick a capability domain and protocol(s):
 cartridges/your-cartridge-name/
   abi/           # Idris2 source
   ffi/           # Zig source (with build.zig)
-  adapter/       # V-lang source
 ```
+
+The network surface (REST/gRPC/GraphQL) is served centrally by the
+Elixir backend in `elixir/`; cartridges expose only the ABI + FFI layers.
 
 ### 3. Write the Idris2 ABI
 
@@ -127,12 +129,14 @@ Requirements:
 - Zero runtime dependencies
 - Wrap all mutable globals with `std.Thread.Mutex` (see Thread-Safety below)
 
-### 5. Write the V-lang adapter
+### 5. Wire the cartridge into the Elixir adapter
 
-Requirements:
-- Expose the cartridge via the declared protocols
-- Handle the order-ticket protocol
-- Return proper status responses
+The network surface (REST/gRPC/GraphQL) is served centrally by the
+Elixir backend in `elixir/` — there is no per-cartridge adapter to write.
+Ensure your cartridge:
+- Is reachable via the declared protocols through the Elixir backend
+- Handles the order-ticket protocol
+- Returns proper status responses
 
 ### 6. Register in the menu
 
@@ -281,12 +285,11 @@ ffi/zig/              # Zig FFI -- native execution
   src/e2e_order.zig   #   End-to-end order-ticket tests
 
 cartridges/           # 18 cartridge directories
-  database-mcp/       #   Each has abi/ + ffi/ + adapter/
+  database-mcp/       #   Each has abi/ + ffi/
   container-mcp/
   ...
 
-adapter/v/            # V-lang triple adapter
-  src/main.v          #   REST + gRPC + GraphQL server
+elixir/               # REST + gRPC + GraphQL server (Plug/Cowboy)
 
 container/            # Deployment
   Containerfile       #   Chainguard base image

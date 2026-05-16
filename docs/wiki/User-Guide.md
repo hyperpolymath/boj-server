@@ -75,7 +75,7 @@ Any MCP-compatible client can consume BoJ. Start the server in MCP mode:
 
 ```bash
 LD_LIBRARY_PATH=ffi/zig/zig-out/lib \
-  ./adapter/v/boj-server --mcp
+  bash -c 'cd elixir && mix run --no-halt -- --mcp'
 ```
 
 The server reads JSON-RPC 2.0 from stdin and writes responses to stdout.
