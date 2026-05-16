@@ -3,8 +3,8 @@
   "spdx": "PMPL-1.0-or-later",
   "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath)",
   "name": "typed-wasm-mcp",
-  "version": "0.1.0",
-  "description": "Typed WASM module verifier and compiler. Validates WebAssembly type safety and compiles with type-level guarantees.",
+  "version": "0.2.0",
+  "description": "AffineScript typed-wasm gateway. Compiles .affine source to Wasm with the typed-wasm Level 7/10 ownership contract, runs the intra-module verifier, and runs the cross-module boundary verifier between two compiled modules.",
   "domain": "Compiler",
   "tier": "Ayo",
   "protocols": [
@@ -23,13 +23,13 @@
   "tools": [
     {
       "name": "typed_wasm_validate_module",
-      "description": "Validate a WASM module file for structural correctness and type safety.",
+      "description": "Compile a .affine source and run the intra-module typed-wasm Level 7/10 verifier (Tw_verify) against the emitted Wasm. Returns valid=true when every [own] param is consumed exactly once on every path and every [mut] param is exclusively held; otherwise valid=false with a per-violation report.",
       "inputSchema": {
         "type": "object",
         "properties": {
           "module_path": {
             "type": "string",
-            "description": "Absolute path to the .wasm file"
+            "description": "Path to the .affine source file"
           }
         },
         "required": [
@@ -39,13 +39,13 @@
     },
     {
       "name": "typed_wasm_check_types",
-      "description": "Run the typed-WASM type checker on a module.",
+      "description": "Run the AffineScript type checker on a .affine source. Reports type errors without emitting Wasm or running the ownership verifier.",
       "inputSchema": {
         "type": "object",
         "properties": {
           "module_path": {
             "type": "string",
-            "description": "Absolute path to the .wasm or source file"
+            "description": "Path to the .affine source file"
           }
         },
         "required": [
@@ -55,21 +55,42 @@
     },
     {
       "name": "typed_wasm_compile_module",
-      "description": "Compile a source file to WASM with typed-WASM guarantees.",
+      "description": "Compile a .affine source to Wasm. The emitted module carries the [affinescript.ownership] custom section that downstream typed-wasm verifiers consume.",
       "inputSchema": {
         "type": "object",
         "properties": {
           "module_path": {
             "type": "string",
-            "description": "Absolute path to the source file"
+            "description": "Path to the .affine source file"
           },
-          "target": {
+          "output_path": {
             "type": "string",
-            "description": "Compilation target: wasm32 (default) or wasm64"
+            "description": "Optional path for the .wasm output. Defaults to <module_path with .wasm extension>."
           }
         },
         "required": [
           "module_path"
+        ]
+      }
+    },
+    {
+      "name": "typed_wasm_verify_boundary",
+      "description": "Run the cross-module typed-wasm Level 10 boundary verifier on a callee/caller pair. Compiles both .affine sources, extracts the callee's ownership-annotated export interface, and checks that every local function in the caller invokes each Linear-param import exactly once per execution path. Returns clean=true on success; otherwise clean=false with the boundary violations.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "callee_path": {
+            "type": "string",
+            "description": "Path to the .affine source for the exporter (whose pub fns define the contract)"
+          },
+          "caller_path": {
+            "type": "string",
+            "description": "Path to the .affine source for the importer (whose function bodies are checked against the callee's contract)"
+          }
+        },
+        "required": [
+          "callee_path",
+          "caller_path"
         ]
       }
     }
