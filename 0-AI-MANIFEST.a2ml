@@ -20,7 +20,7 @@
      Class 1 (Simple) — self-contained cartridges via GitHub Actions.
      Class 2 (Orchestrator) — unified gateways (WS/MQTT/Webhook).
      Class 3 (Multiplier) — Elixir/BEAM for mass concurrency.
-     Every cartridge has Idris2 ABI + Zig FFI + V-lang Adapter triple.")
+     Every cartridge has Idris2 ABI + Zig FFI; the Elixir backend serves the network adapter.")
 
   ;; ===================================================================
   ;; CONTEXT TIERS
@@ -65,7 +65,7 @@
      ├── src/abi/                   # Idris2 ABI (Catalogue, Protocol, Domain, Menu, Federation)
      ├── ffi/zig/                   # Zig FFI (catalogue mount/unmount, loader)
      ├── generated/abi/             # Auto-generated C headers
-     ├── adapter/v/                 # V-lang triple adapter (REST+gRPC+GraphQL, port 9000)
+     ├── elixir/                    # Elixir triple adapter (REST+gRPC+GraphQL, Plug/Cowboy)
      ├── cartridges/                # One dir per matrix cell (database-mcp, nesy-mcp, fleet-mcp, ...)
      ├── container/                 # Stapeln container ecosystem
      ├── panll/src/                 # PanLL panel (ReScript/TEA)
@@ -77,7 +77,7 @@
   ;; ===================================================================
 
   (critical-invariants
-    (rule "Three-Layer Stack: every cartridge = Idris2 ABI + Zig FFI + V-lang Adapter")
+    (rule "Stack: every cartridge = Idris2 ABI + Zig FFI; Elixir backend serves the network adapter")
     (rule "Zero believe_me anywhere in src/abi/ or cartridges/*/abi/")
     (rule "%default total on all Idris2 files")
     (rule "IsUnbreakable proof required for Ready cartridges")

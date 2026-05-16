@@ -13,7 +13,7 @@
 #   bash tests/e2e_full.sh
 #
 # Prerequisites:
-#   - BoJ binary built (just build-adapter)
+#   - Elixir backend available (elixir/ dir + mix on PATH)
 #   - Zig FFI libraries built (just build-ffi)
 #   - curl, jq, node/deno on PATH
 
@@ -21,7 +21,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
-BOJ_BIN="$PROJECT_DIR/adapter/v/boj-server"
+ELIXIR_DIR="$PROJECT_DIR/elixir"
 MCP_BRIDGE="$PROJECT_DIR/mcp-bridge/main.js"
 REST_PORT="${BOJ_REST_PORT:-7700}"
 BASE_URL="http://localhost:${REST_PORT}"
@@ -92,12 +92,12 @@ echo ""
 # ─── Preflight checks ────────────────────────────────────────────────
 bold "Preflight: Checking prerequisites..."
 
-if [[ ! -x "$BOJ_BIN" ]]; then
-    red "  ERROR: BoJ binary not found at $BOJ_BIN"
-    red "  Run 'just build-adapter' first."
+if [[ ! -d "$ELIXIR_DIR" ]] || ! command -v mix &>/dev/null; then
+    red "  ERROR: Elixir backend not available (need $ELIXIR_DIR and 'mix')"
+    red "  Install Elixir/Mix; the BoJ REST surface is the Elixir backend."
     exit 1
 fi
-green "  BoJ binary found"
+green "  Elixir backend found"
 
 if ! command -v curl &>/dev/null; then
     red "  ERROR: curl not found on PATH"
@@ -125,10 +125,10 @@ fi
 echo ""
 
 # ═══════════════════════════════════════════════════════════════════════
-# Step 1: Start the V-lang server
+# Step 1: Start the Elixir REST server
 # ═══════════════════════════════════════════════════════════════════════
 bold "Step 1: Starting BoJ server on port $REST_PORT..."
-BOJ_REST_PORT="$REST_PORT" "$BOJ_BIN" > "$TMPDIR_TEST/boj-e2e-full.log" 2>&1 &
+( cd "$ELIXIR_DIR" && BOJ_REST_PORT="$REST_PORT" mix run --no-halt ) > "$TMPDIR_TEST/boj-e2e-full.log" 2>&1 &
 PIDS+=($!)
 
 # Wait for health check (up to 10 seconds)

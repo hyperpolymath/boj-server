@@ -47,14 +47,9 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Install Zig
-        uses: goto-bus-stop/setup-zig@7ab2955eb728f5440978d7b4f723a50dea1f3608  # v2
+        uses: goto-bus-stop/setup-zig@9566bb3e8749893055694249726756f25e099b30  # v2
         with:
           version: 0.15.0
-
-      - name: Install V
-        run: |
-          git clone --depth 1 https://github.com/vlang/v /tmp/vlang
-          cd /tmp/vlang && make && sudo cp v /usr/local/bin/
 
       - name: Install Deno
         uses: denoland/setup-deno@5fae568d37c3b73e0e4ca63d4e2c4e324a2b3497  # v2
@@ -70,10 +65,6 @@ jobs:
           for cart in cartridges/*/ffi; do
             [ -f "$cart/build.zig" ] && (cd "$cart" && zig build) || true
           done
-
-      - name: Build V adapter
-        run: |
-          cd adapter/v && v -o boj-server . || echo "V adapter build attempted"
 
       - name: Run E2E full test suite
         run: bash tests/e2e_full.sh
@@ -97,7 +88,7 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Install Zig
-        uses: goto-bus-stop/setup-zig@7ab2955eb728f5440978d7b4f723a50dea1f3608  # v2
+        uses: goto-bus-stop/setup-zig@9566bb3e8749893055694249726756f25e099b30  # v2
         with:
           version: 0.15.0
 
@@ -131,7 +122,7 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Install Zig
-        uses: goto-bus-stop/setup-zig@7ab2955eb728f5440978d7b4f723a50dea1f3608  # v2
+        uses: goto-bus-stop/setup-zig@9566bb3e8749893055694249726756f25e099b30  # v2
         with:
           version: 0.15.0
 

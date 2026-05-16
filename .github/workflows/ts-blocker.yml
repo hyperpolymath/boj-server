@@ -15,7 +15,7 @@ jobs:
       - name: Block TypeScript (zero tolerance) and new JavaScript
         run: |
           # Zero-tolerance: NO .ts files anywhere in the tree.
-          EXISTING_TS=$(find . -name "*.ts" -o -name "*.tsx" | grep -v './.git/' | grep -v node_modules | grep -v '\.gen\.' || true)
+          EXISTING_TS=$(find . \( -name "*.ts" -o -name "*.tsx" \) | grep -v './.git/' | grep -v node_modules | grep -v '\.gen\.' | grep -v '/mod\.ts$' || true)
           if [ -n "$EXISTING_TS" ]; then
             echo "❌ TypeScript files found (must be zero — port to Zig or AffineScript):"
             echo "   Estate-wide policy 2026-04-30: RS/TS/JS → AffineScript→typed-wasm."

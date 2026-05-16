@@ -46,7 +46,7 @@ const INJECTION_PATTERNS = [
   "DAN mode",
   "developer mode",
   "base64:",
-  "eval(",
+  "eval(",  // pattern string only — not a JS eval() call; Hypatia js_eval finding is a false positive
   "exec(",
 ];
 

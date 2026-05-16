@@ -56,7 +56,10 @@ export function contractsPath() {
   return cachedContractsPath;
 }
 
-/** Probe whether `nickel` is on PATH. Cached. */
+/** Probe whether \`nickel\` is on PATH. Cached. */
+// spawnSync is used intentionally: this is a one-time startup probe with fixed
+// args (no user input), so there is no injection risk and event-loop blocking
+// is acceptable at bridge initialisation time.
 function probeNickel() {
   if (nickelAvailable !== null) return nickelAvailable;
   try {
@@ -139,6 +142,7 @@ export function validateEnvelope(envelope, senderRole) {
 
   try {
     writeFileSync(tmp, script);
+    // spawnSync: fixed arg array (tmp path is process-controlled), no shell interpolation.
     const r = spawnSync("nickel", ["eval", tmp], {
       encoding: "utf8",
     });

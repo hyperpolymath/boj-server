@@ -7,8 +7,7 @@ on:
     - cron: '0 4 * * *'
   workflow_dispatch:
 
-permissions:
-  contents: read
+permissions: read-all
 
 jobs:
   analysis:
@@ -22,12 +21,12 @@ jobs:
           persist-credentials: false
 
       - name: Run Scorecard
-        uses: ossf/scorecard-action@62b2cac7ed8198b15735ed49ab1e5cf35480ba46 # v2.4.0
+        uses: ossf/scorecard-action@99c09fe975337306107572b4fdf4db224cf8e2f2 # v2.4.3
         with:
           results_file: results.sarif
           results_format: sarif
 
       - name: Upload results
-        uses: github/codeql-action/upload-sarif@ebcb5b36ded6beda4ceefea6a8bc4cc885255bb3 # v3
+        uses: github/codeql-action/upload-sarif@52485aec7be33610227643b0fe83936b8b5f061a # v3
         with:
           sarif_file: results.sarif

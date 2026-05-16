@@ -122,14 +122,14 @@ test "ASPECT: timeout from one cartridge does not prevent others" {
 // ── Credential Scrubbing ──────────────────────────────────────────────────
 
 test "ASPECT: API key token must not appear in response body" {
-    const api_key = "ghp_xxxxxxxxxxxxxxxxxxxx";
+    const api_key = "ghp_xxxxxxxxxxxxxxxxxxxx"; // hypatia-ignore: test-only placeholder, not a real token
     // Mock response body — must not contain the key.
     const response_body = "{\"repos\":[{\"name\":\"boj-server\"}]}";
     try testing.expect(std.mem.indexOf(u8, response_body, api_key) == null);
 }
 
 test "ASPECT: password must not appear in error detail" {
-    const password = "my_super_secret_password";
+    const password = "my_super_secret_password"; // hypatia-ignore: test-only placeholder
     const error_detail = "Connection failed";
     try testing.expect(std.mem.indexOf(u8, error_detail, password) == null);
 }

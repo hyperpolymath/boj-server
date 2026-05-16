@@ -62,7 +62,7 @@ The typical developer server is Python or TypeScript. BoJ uses none of those. In
 |-------|----------|-----|
 | ABI | Idris2 | Prove the interface is correct |
 | FFI | Zig | Execute it natively |
-| Adapter | V-lang | Serve it over the network |
+| Adapter | Elixir | Serve it over the network |
 
 **Why Idris2?** Because it has dependent types. Not "type-safe" in the TypeScript sense. Actually provably correct at compile time. The core safety gate is a type called `IsUnbreakable` -- it's a mathematical proof that only cartridges in the `Ready` state can be activated. The type checker enforces this, not a runtime check, not a unit test. If the proof doesn't hold, the code doesn't compile.
 
@@ -78,7 +78,7 @@ You literally cannot call `mount` on a cartridge that isn't `Ready`. The type sy
 
 **Why Zig?** Because it produces C-ABI-compatible shared libraries with zero runtime dependencies. Each cartridge compiles to a `.so` file. The Zig layer bridges Idris2's proofs with actual system calls -- file I/O, networking, database connections. Cross-compilation is built in, which matters when community members run nodes on ARM, x86, or whatever they have.
 
-**Why V-lang?** Because one V codebase exposes all three API styles (REST + gRPC + GraphQL) on dedicated ports. One language, three protocols, no code generation step.
+**Why Elixir?** Because one Elixir codebase on the BEAM (Plug/Cowboy) exposes all three API styles (REST + gRPC + GraphQL) on dedicated ports, with the fault-tolerance and concurrency the BEAM is known for. One runtime, three protocols, no code generation step.
 
 The result: a compact binary. 219 Zig tests + 8 integration tests + 32 seam checks. Thread-safe (every FFI entry point serialises on a per-module mutex). No virtualenvs, no node_modules, no pip install.
 
@@ -90,8 +90,7 @@ Start the server:
 git clone https://github.com/hyperpolymath/boj-server.git
 cd boj-server
 cd ffi/zig && zig build && cd ../..
-cd adapter/v && v -cc gcc src/main.v -o boj-server
-./boj-server
+cd elixir && mix deps.get && mix run --no-halt
 ```
 
 Three ports open:

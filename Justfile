@@ -430,14 +430,14 @@ matrix:
         ABI="✗"; FFI="✗"; ADAPTER="✗"; TESTS="✗"
         [ -f "cartridges/$cart/abi"/*/*.idr ] 2>/dev/null && ABI="✓"
         [ -f "cartridges/$cart/ffi"/*_ffi.zig ] 2>/dev/null && FFI="✓"
-        [ -f "cartridges/$cart/adapter"/*_adapter.v ] 2>/dev/null && ADAPTER="✓"
+        [ -d "elixir" ] 2>/dev/null && ADAPTER="✓"
         [ -f "cartridges/$cart/ffi/build.zig" ] 2>/dev/null && TESTS="✓"
         printf "  %-20s %s      %s      %s        %s\n" "$cart" "$ABI" "$FFI" "$ADAPTER" "$TESTS"
     done
     echo ""
     echo "  Core catalogue:    ffi/zig/src/catalogue.zig"
     echo "  Dynamic loader:    ffi/zig/src/loader.zig"
-    echo "  V-lang adapter:    adapter/v/src/ (directory)"
+    echo "  REST server:       elixir/ (Plug/Cowboy)"
     echo "  Menu:              .machine_readable/servers/menu.a2ml"
     echo ""
 
@@ -449,49 +449,24 @@ matrix:
 run *args: build
     #!/usr/bin/env bash
     set -euo pipefail
-    # Preference: Elixir (Class 3) > V-lang (deprecated/banned)
+    # The REST surface is the Elixir backend (Class 3 Multiplier).
     if [ -d "elixir" ] && command -v mix >/dev/null 2>&1; then
         echo "Starting BoJ Server (Elixir Class 3 Multiplier)..."
         cd elixir && exec mix run --no-halt {{args}}
     else
-        ADAPTER="adapter/v/boj-server"
-        if [ ! -f "$ADAPTER" ]; then
-            if command -v v >/dev/null 2>&1; then
-                just build-adapter
-            else
-                echo "ERROR: V-lang adapter not built and 'v' not found."
-                echo "V-lang was banned 2026-04-10. Please use the Elixir backend (cd elixir && mix run)."
-                exit 1
-            fi
-        fi
-        echo "Starting BoJ Server (Legacy V-lang Adapter)..."
-        LLP="$(pwd)/ffi/zig/zig-out/lib"
-        for d in cartridges/*/ffi/zig-out/lib; do [ -d "$d" ] && LLP="${LLP}:$(pwd)/${d}"; done
-        LD_LIBRARY_PATH="${LLP}${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" exec "$ADAPTER" {{args}}
+        echo "ERROR: Elixir backend not available (need 'elixir/' dir and 'mix')."
+        echo "Install Elixir/Mix, then: cd elixir && mix run --no-halt"
+        exit 1
     fi
 
 # Run with verbose output
 run-verbose *args: build
     BOJ_VERBOSE=1 just run {{args}}
 
-# Build V-lang adapter binary (compiles full directory: REST+gRPC+GraphQL+SSE)
-build-adapter: build
-    #!/usr/bin/env bash
-    set -euo pipefail
-    echo "Building V-lang adapter (REST+gRPC+GraphQL+SSE)..."
-    LFLAGS="-L$(pwd)/ffi/zig/zig-out/lib"
-    for d in cartridges/*/ffi/zig-out/lib; do
-        [ -d "$d" ] && LFLAGS="${LFLAGS} -L$(pwd)/${d}"
-    done
-    v -cc gcc -cflags "${LFLAGS} -Wl,--allow-multiple-definition -no-pie" \
-        -o adapter/v/boj-server adapter/v/src/
-    echo "Built: adapter/v/boj-server ($(du -h adapter/v/boj-server | cut -f1))"
-
-# Install to user path
-install: build-adapter
-    @echo "Installing boj-server..."
-    cp adapter/v/boj-server ~/.local/bin/boj-server
-    @echo "Installed to ~/.local/bin/boj-server"
+# Install: the REST surface is served by the Elixir backend (cd elixir && mix run)
+install: build
+    @echo "The BoJ REST surface is the Elixir backend; no binary is installed."
+    @echo "Run it with: cd elixir && mix run --no-halt   (or: just run)"
 
 # Start Cloudflare quick tunnel (exposes BoJ at *.trycloudflare.com)
 tunnel:
@@ -503,14 +478,14 @@ tunnel:
 serve: build
     #!/usr/bin/env bash
     set -euo pipefail
-    ADAPTER="adapter/v/boj-server"
-    if [ ! -f "$ADAPTER" ]; then
-        just build-adapter
+    if [ ! -d "elixir" ] || ! command -v mix >/dev/null 2>&1; then
+        echo "ERROR: Elixir backend not available (need 'elixir/' dir and 'mix')."
+        exit 1
     fi
     echo "Starting BoJ Server..."
     echo "  Local: http://localhost:7700/status"
     echo "  SSE:   http://localhost:7703/sse"
-    LD_LIBRARY_PATH="$(pwd)/ffi/zig/zig-out/lib" "$ADAPTER" &
+    (cd elixir && mix run --no-halt) &
     BOJ_PID=$!
     trap "kill $BOJ_PID 2>/dev/null; kill $TUNNEL_PID 2>/dev/null; exit" INT TERM
     sleep 2
@@ -1218,7 +1193,6 @@ doctor:
     check "git"               git       "2.0+"
     echo ""
     echo "Optional tools:"
-    check_optional "V (vlang)"    v            "deprecated/banned 2026-04-10"
     check_optional "Cargo"        cargo        "needed by launch-scaffolder (mint/provision/config)"
     check_optional "cloudflared"  cloudflared  "needed for tunnel"
     check_optional "panic-attack" panic-attack "pre-commit scanner"
@@ -1254,10 +1228,10 @@ doctor:
     else
         echo "  [INFO] ffi/zig/zig-out/ not found — run 'just build'"
     fi
-    if [ -f "adapter/v/boj-server" ]; then
-        echo "  [OK]   adapter/v/boj-server binary exists"
+    if [ -d "elixir" ]; then
+        echo "  [OK]   elixir/ exists (REST server backend)"
     else
-        echo "  [INFO] V-lang adapter not built — run 'just build-adapter'"
+        echo "  [INFO] elixir/ backend not found"
     fi
     if [ -d "src/abi/build" ]; then
         echo "  [OK]   src/abi/build/ exists (Idris2 ABI compiled)"
@@ -1317,25 +1291,6 @@ heal:
         ZIG_VER=$(asdf list zig 2>/dev/null | tail -1 | tr -d ' ')
         [ -n "$ZIG_VER" ] && asdf global zig "$ZIG_VER" && echo "  Zig global version set: $ZIG_VER"
     fi
-    # --- Install V (vlang) ---
-    if ! command -v v >/dev/null 2>&1; then
-        echo "Installing V (API adapter)..."
-        if [ ! -d "$HOME/vlang" ]; then
-            git clone https://github.com/vlang/v "$HOME/vlang"
-        fi
-        (cd "$HOME/vlang" && make)
-        # Symlink without sudo — use ~/.local/bin if writable
-        mkdir -p "$HOME/.local/bin"
-        ln -sf "$HOME/vlang/v" "$HOME/.local/bin/v"
-        export PATH="$HOME/.local/bin:$PATH"
-        if ! grep -q '\.local/bin' "$HOME/.bashrc" 2>/dev/null; then
-            echo 'export PATH="$HOME/.local/bin:$PATH"' >> "$HOME/.bashrc"
-        fi
-        echo "  V installed at ~/.local/bin/v"
-        echo "  (If 'v' is still not found in a new shell, run: sudo ~/vlang/v symlink)"
-        HEALED=$((HEALED + 1))
-        echo ""
-    fi
     # --- System library dependencies ---
     if command -v apt-get >/dev/null 2>&1; then
         MISSING_PKGS=""
@@ -1390,7 +1345,7 @@ tour:
     echo ""
     echo "  1. Idris2 ABI  — Dependent types prove correctness"
     echo "  2. Zig FFI     — C-compatible native execution"
-    echo "  3. V-lang API  — REST + gRPC + GraphQL adapter"
+    echo "  3. Elixir API  — REST + gRPC + GraphQL surface"
     echo ""
     echo "Three-Class Architecture:"
     echo "  Class 1: Simple Track    — CLI/curl, self-contained"
@@ -1406,7 +1361,7 @@ tour:
     echo "Key directories:"
     echo "  cartridges/     70+ cartridge directories"
     echo "  ffi/zig/        Core catalogue FFI"
-    echo "  adapter/v/      V-lang triple adapter"
+    echo "  elixir/         REST server (Plug/Cowboy)"
     echo "  container/      Stapeln container ecosystem"
     echo ""
     CART_COUNT=$(ls -d cartridges/*-mcp 2>/dev/null | wc -l)
@@ -1442,7 +1397,6 @@ help-me:
     echo "BUILD & RUN:"
     echo "  just build            Build all Zig FFI layers (catalogue + cartridges)"
     echo "  just build-release    Build with optimizations"
-    echo "  just build-adapter    Build V-lang API triple adapter"
     echo "  just run              Build + start server (REST 7700, gRPC 7701, GraphQL 7702)"
     echo "  just run-verbose      Start with verbose output"
     echo "  just serve            Server + Cloudflare tunnel"

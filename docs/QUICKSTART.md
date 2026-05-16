@@ -45,7 +45,7 @@ cartridges/        # Matrix cells — one dir per (Protocol x Domain) pair
   fleet-mcp/       # MCP x Fleet (abi/ + ffi/)
   nesy-mcp/        # MCP x NeSy (abi/ + ffi/)
   agent-mcp/       # MCP x Agent (abi/ + ffi/)
-adapter/v/         # V-lang triple adapter (REST+gRPC+GraphQL) — Phase 3
+elixir/            # REST server backend (REST+gRPC+GraphQL, Plug/Cowboy)
 container/         # Stapeln container ecosystem
 docs/              # Architecture, federation, developer guides
 .machine_readable/ # State files, menu, policies, contractiles

@@ -6,11 +6,10 @@
 #
 # Validates architectural invariants that span the entire codebase:
 #   1. Thread safety — all Zig FFI modules use Mutex protection
-#   2. ABI/FFI contract — V-lang C declarations match Zig exports
-#   3. Formal verification safety — no believe_me or assert_total in Idris2
-#   4. SPDX compliance — all source files have license headers
-#   5. Cartridge completeness — all cartridges have ABI + FFI + Adapter layers
-#   6. Error handling — no panic/unreachable in production Zig code paths
+#   2. Formal verification safety — no believe_me or assert_total in Idris2
+#   3. SPDX compliance — all source files have license headers
+#   4. Cartridge completeness — all cartridges have ABI + FFI layers
+#   5. Error handling — no panic/unreachable in production Zig code paths
 #
 # Usage:
 #   bash tests/aspect_tests.sh
@@ -110,59 +109,9 @@ done
 echo ""
 
 # ═══════════════════════════════════════════════════════════════════════
-# Aspect 2: ABI/FFI Contract — V-lang C declarations match Zig exports
+# Aspect 2: Formal Verification Safety — banned patterns in Idris2
 # ═══════════════════════════════════════════════════════════════════════
-bold "Aspect 2: V-lang C FFI declarations match Zig exports"
-
-v_main="$PROJECT_DIR/adapter/v/src/main.v"
-
-if [[ ! -f "$v_main" ]]; then
-    fail "V-lang adapter main.v not found"
-else
-    # Extract C function names declared in V
-    v_cffi=$(grep -oP '(?<=fn C\.)\w+' "$v_main" | sort -u)
-
-    # Extract Zig export function names from core FFI
-    zig_exports=""
-    for zigfile in "$zig_ffi_dir"/*.zig; do
-        zig_exports+=$(grep -oP '(?:pub )?export fn \K\w+' "$zigfile" 2>/dev/null || true)
-        zig_exports+=$'\n'
-    done
-
-    # Also check cartridge FFI files for exports
-    for cart_dir in "$PROJECT_DIR"/cartridges/*/ffi; do
-        [ -d "$cart_dir" ] || continue
-        for zigfile in $(find "$cart_dir" -name '*.zig' 2>/dev/null); do
-            zig_exports+=$(grep -oP '(?:pub )?export fn \K\w+' "$zigfile" 2>/dev/null || true)
-            zig_exports+=$'\n'
-        done
-    done
-
-    zig_sorted=$(echo "$zig_exports" | grep -v '^$' | sort -u)
-
-    # Check that every V C.xxx declaration has a matching Zig export
-    mismatch_count=0
-    matched_count=0
-    while IFS= read -r cfunc; do
-        [[ -z "$cfunc" ]] && continue
-        if echo "$zig_sorted" | grep -qx "$cfunc"; then
-            matched_count=$((matched_count + 1))
-        else
-            fail "V declares C.$cfunc but no Zig export found"
-            mismatch_count=$((mismatch_count + 1))
-        fi
-    done <<< "$v_cffi"
-
-    if [[ $mismatch_count -eq 0 ]]; then
-        pass "All $matched_count V C-FFI declarations have matching Zig exports"
-    fi
-fi
-echo ""
-
-# ═══════════════════════════════════════════════════════════════════════
-# Aspect 3: Formal Verification Safety — banned patterns in Idris2
-# ═══════════════════════════════════════════════════════════════════════
-bold "Aspect 3: Formal verification safety (Idris2)"
+bold "Aspect 2: Formal verification safety (Idris2)"
 
 # believe_me — unsafe cast, bypasses type checker
 believe_hits=$(grep -rn 'believe_me' "$PROJECT_DIR" --include='*.idr' \
@@ -236,9 +185,9 @@ fi
 echo ""
 
 # ═══════════════════════════════════════════════════════════════════════
-# Aspect 4: SPDX Compliance — license headers on all source files
+# Aspect 3: SPDX Compliance — license headers on all source files
 # ═══════════════════════════════════════════════════════════════════════
-bold "Aspect 4: SPDX header compliance"
+bold "Aspect 3: SPDX header compliance"
 
 spdx_missing=0
 spdx_checked=0
@@ -257,15 +206,6 @@ for idrfile in $(find "$PROJECT_DIR" -name '*.idr' -not -path '*/build/*' 2>/dev
     spdx_checked=$((spdx_checked + 1))
     if ! head -5 "$idrfile" | grep -q 'SPDX-License-Identifier'; then
         fail "Missing SPDX header: $(basename "$idrfile") ($(dirname "$idrfile" | sed "s|$PROJECT_DIR/||"))"
-        spdx_missing=$((spdx_missing + 1))
-    fi
-done
-
-# Check V files
-for vfile in $(find "$PROJECT_DIR" -name '*.v' -not -path '*/v/*/.git/*' 2>/dev/null); do
-    spdx_checked=$((spdx_checked + 1))
-    if ! head -5 "$vfile" | grep -q 'SPDX-License-Identifier'; then
-        fail "Missing SPDX header: $(basename "$vfile") ($(dirname "$vfile" | sed "s|$PROJECT_DIR/||"))"
         spdx_missing=$((spdx_missing + 1))
     fi
 done
@@ -296,40 +236,39 @@ fi
 echo ""
 
 # ═══════════════════════════════════════════════════════════════════════
-# Aspect 5: Cartridge Completeness — ABI + FFI + Adapter layers
+# Aspect 4: Cartridge Completeness — ABI + FFI layers
 # ═══════════════════════════════════════════════════════════════════════
-bold "Aspect 5: Cartridge layer completeness (ABI + FFI + Adapter)"
+bold "Aspect 4: Cartridge layer completeness (ABI + FFI)"
 
 incomplete=0
 complete=0
 
 for cart_dir in "$PROJECT_DIR"/cartridges/*/; do
     cart_name=$(basename "$cart_dir")
-    has_abi=false; has_ffi=false; has_adapter=false
+    has_abi=false; has_ffi=false
 
     [ -d "$cart_dir/abi" ] && has_abi=true
     [ -d "$cart_dir/ffi" ] && has_ffi=true
-    [ -d "$cart_dir/adapter" ] && has_adapter=true
 
-    if $has_abi && $has_ffi && $has_adapter; then
+    if $has_abi && $has_ffi; then
         complete=$((complete + 1))
     else
-        fail "$cart_name: incomplete layers (ABI=$has_abi FFI=$has_ffi Adapter=$has_adapter)"
+        fail "$cart_name: incomplete layers (ABI=$has_abi FFI=$has_ffi)"
         incomplete=$((incomplete + 1))
     fi
 done
 
 if [[ $incomplete -eq 0 ]]; then
-    pass "All $complete cartridges have ABI + FFI + Adapter layers"
+    pass "All $complete cartridges have ABI + FFI layers"
 else
     red "  $incomplete cartridges are incomplete"
 fi
 echo ""
 
 # ═══════════════════════════════════════════════════════════════════════
-# Aspect 6: Error handling — no unreachable in production Zig exports
+# Aspect 5: Error handling — no unreachable in production Zig exports
 # ═══════════════════════════════════════════════════════════════════════
-bold "Aspect 6: Error handling (no bare unreachable in Zig exports)"
+bold "Aspect 5: Error handling (no bare unreachable in Zig exports)"
 
 # Check for bare `unreachable` in production code paths (not test files)
 unreachable_count=0

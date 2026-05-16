@@ -6,7 +6,7 @@
 | Tool | Version | Purpose |
 |------|---------|---------|
 | [Zig](https://ziglang.org/download/) | 0.15+ | FFI compilation |
-| [V-lang](https://vlang.io/) | 0.5.0+ | Adapter compilation |
+| [Elixir](https://elixir-lang.org/) | 1.15+ | REST/gRPC/GraphQL adapter |
 | GCC | any recent | Linking |
 
 Optional:
@@ -29,18 +29,18 @@ for cart in cartridges/*/ffi; do
   (cd "$cart" && zig build 2>/dev/null)
 done
 
-# Build the V adapter
-cd adapter/v
-v -cc gcc src/main.v -o boj-server
-cd ../..
+# Fetch + compile the Elixir backend (REST/gRPC/GraphQL adapter)
+cd elixir
+mix deps.get && mix compile
+cd ..
 ```
 
 ### 2. Run
 
 ```bash
-cd adapter/v
-export LD_LIBRARY_PATH=../../ffi/zig/zig-out/lib:../../cartridges/container-mcp/ffi/zig-out/lib:../../cartridges/feedback-mcp/ffi/zig-out/lib
-./boj-server
+cd elixir
+export LD_LIBRARY_PATH=../ffi/zig/zig-out/lib:../cartridges/container-mcp/ffi/zig-out/lib:../cartridges/feedback-mcp/ffi/zig-out/lib
+mix run --no-halt
 ```
 
 The server starts on three ports:
@@ -107,12 +107,12 @@ All ports are configurable via environment variables:
 ## Architecture
 
 ```
-Idris2 ABI (proofs) → Zig FFI (execution) → V-lang Adapter (network)
+Idris2 ABI (proofs) → Zig FFI (execution) → Elixir Adapter (network)
 ```
 
 - **Idris2** defines types with dependent-type proofs (IsUnbreakable safety gate)
 - **Zig** implements C-ABI exports (mount/unmount, federation, feedback, etc.)
-- **V-lang** exposes everything as REST + gRPC + GraphQL
+- **Elixir** exposes everything as REST + gRPC + GraphQL (Plug/Cowboy on the BEAM)
 
 The capability matrix is 2D (protocol × domain) with an optional third axis
 (backend/provider) for community extensions.  See `docs/EXTENSIBILITY.md`.

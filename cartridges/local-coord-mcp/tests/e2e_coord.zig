@@ -24,7 +24,7 @@ const net = std.net;
 
 const PORT: u16 = 7745;
 const HOST = "127.0.0.1";
-const SUP_SECRET = "e2e-test-supervisor-secret-do-not-deploy";
+const SUP_SECRET = "e2e-test-supervisor-secret-do-not-deploy"; // hypatia-ignore: e2e test fixture — not a production credential
 
 // Path to the built adapter binary, relative to the cartridge root.
 const ADAPTER_REL_PATH = "adapter/zig-out/bin/local_coord_adapter";
