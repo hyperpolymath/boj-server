@@ -100,7 +100,7 @@ boj-server/
 │   └── agent-mcp/             # MCP × Agent
 │       ├── abi/               # SafeOODA.idr
 │       └── ffi/               # agent_ffi.zig + build.zig
-├── adapter/v/                 # V-lang triple adapter (Phase 3)
+├── elixir/                    # REST server backend (Plug/Cowboy)
 ├── container/                 # Stapeln container ecosystem
 │   ├── Containerfile          # Multi-stage OCI build (Chainguard)
 │   ├── compose.toml           # selur-compose orchestration

@@ -91,34 +91,6 @@ jobs:
             cd "$GITHUB_WORKSPACE"
           done
 
-  adapter-check:
-    name: V-lang Adapter Check
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      - name: Install V-lang
-        run: |
-          sudo apt-get update && sudo apt-get install -y libgc-dev
-          git clone --depth=1 https://github.com/vlang/v
-          cd v && make && sudo ./v symlink
-      - name: Check LSP/DAP/BSP adapters
-        run: |
-          for cart in lsp-mcp dap-mcp bsp-mcp; do
-            echo "=== Checking $cart adapter ==="
-            adapter_dir="cartridges/$cart/adapter"
-            if [ ! -d "$adapter_dir" ]; then
-              echo "ERROR: $adapter_dir missing"
-              exit 1
-            fi
-            v_files=$(find "$adapter_dir" -name '*.v' | wc -l)
-            if [ "$v_files" -eq 0 ]; then
-              echo "ERROR: No .v files in $adapter_dir"
-              exit 1
-            fi
-            v check "$adapter_dir"/*.v 2>&1 || { echo "ERROR: V check failed for $cart"; exit 1; }
-            echo "  V-lang check passed ($v_files files)"
-          done
-
   panel-validation:
     name: Panel Manifest Validation
     runs-on: ubuntu-latest
@@ -153,7 +125,7 @@ jobs:
   completeness:
     name: Cartridge Completeness Check
     runs-on: ubuntu-latest
-    needs: [abi-check, ffi-build, adapter-check, panel-validation]
+    needs: [abi-check, ffi-build, panel-validation]
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - name: Verify triadic structure

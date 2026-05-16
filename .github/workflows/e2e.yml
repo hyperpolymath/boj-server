@@ -66,10 +66,6 @@ jobs:
             [ -f "$cart/build.zig" ] && (cd "$cart" && zig build) || true
           done
 
-      - name: Build V adapter
-        run: |
-          cd adapter/v && v -o boj-server . || echo "V adapter build attempted"
-
       - name: Run E2E full test suite
         run: bash tests/e2e_full.sh
 
