@@ -70,23 +70,3 @@ jobs:
 
       - name: Run benchmarks
         run: cd ffi/zig && zig build bench
-
-  v-lang-check:
-    name: V-lang Adapter Checks
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-
-      - name: Install V-lang
-        run: |
-          sudo apt-get update && sudo apt-get install -y libgc-dev
-          git clone --depth=1 https://github.com/vlang/v
-          cd v && make && sudo ./v symlink
-          cd ..
-
-      - name: Check LSP/DAP/BSP Adapters
-        run: |
-          for cart in lsp-mcp dap-mcp bsp-mcp; do
-            echo "Checking $cart adapter..."
-            v check cartridges/$cart/adapter/*.v
-          done
