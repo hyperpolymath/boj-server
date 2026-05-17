@@ -27,4 +27,10 @@ pub fn build(b: *std.Build) void {
         .root_module = adapter_mod,
     });
     b.installArtifact(adapter);
+
+    // Unified-adapter tests (classify/toolFor/dispatch → one Zig ABI).
+    const adapter_tests = b.addTest(.{ .root_module = adapter_mod });
+    const run_tests = b.addRunArtifact(adapter_tests);
+    const test_step = b.step("test", "Run k9iser-mcp unified adapter tests");
+    test_step.dependOn(&run_tests.step);
 }
