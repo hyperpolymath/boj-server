@@ -122,8 +122,68 @@ defmodule BojRest.Router do
     end
   end
 
+  # Server-Sent Events surface for the same unified dispatch. The cartridge
+  # ABI is request/response (one boj_cartridge_invoke buffer), so the stream
+  # is: `open` → `result`|`error` → `done`. This makes the unified surface
+  # genuinely four-protocol (REST + SSE here; gRPC-compat + GraphQL in the
+  # per-cartridge Zig adapter).
+  post "/cartridge/:name/sse" do
+    case BojRest.Catalog.get(name) do
+      {:ok, cart} ->
+        body = conn.body_params || %{}
+        tool = Map.get(body, "tool") || Map.get(body, "operation")
+        args = Map.get(body, "arguments") || Map.get(body, "params") || %{}
+        is_local = loopback?(conn.remote_ip)
+        trust_level = conn |> get_req_header("x-trust-level") |> List.first()
+        node_id = conn |> get_req_header("x-node-identity") |> List.first()
+
+        if node_id, do: Logger.info("BoJ SSE caller=#{node_id} cart=#{name} tool=#{inspect(tool)}")
+
+        cond do
+          is_nil(tool) ->
+            json(conn, 400, %{error: "missing-tool-field", cartridge: name})
+
+          true ->
+            with :ok <- check_trust(cart, trust_level, is_local),
+                 {:ok, creds} <- BojRest.CredentialDecryptor.extract(body, is_local) do
+              conn =
+                conn
+                |> Plug.Conn.put_resp_content_type("text/event-stream")
+                |> Plug.Conn.put_resp_header("cache-control", "no-cache")
+                |> Plug.Conn.send_chunked(200)
+
+              {:ok, conn} = Plug.Conn.chunk(conn, sse_event("open", %{cartridge: name, tool: tool}))
+
+              event =
+                case dispatch(cart, tool, args, creds) do
+                  {:ok, data} -> sse_event("result", data)
+                  {:error, info} -> sse_event("error", %{error: "invocation-failed", info: info})
+                end
+
+              {:ok, conn} = Plug.Conn.chunk(conn, event)
+              {:ok, conn} = Plug.Conn.chunk(conn, sse_event("done", %{}))
+              conn
+            else
+              {:error, :forbidden, required} ->
+                json(conn, 403, %{error: "forbidden", detail: "insufficient-trust", required: to_string(required)})
+
+              {:error, reason} ->
+                json(conn, 403, %{error: "credential-error", detail: reason})
+            end
+        end
+
+      :not_found ->
+        json(conn, 404, %{error: "unknown-cartridge", cartridge: name})
+    end
+  end
+
   match _ do
     json(conn, 404, %{error: "route-not-found", path: conn.request_path})
+  end
+
+  # One SSE frame: `event: <name>\ndata: <json>\n\n` (text/event-stream).
+  defp sse_event(event, data) do
+    "event: #{event}\ndata: #{Jason.encode!(data)}\n\n"
   end
 
   defp json(conn, status, body) do

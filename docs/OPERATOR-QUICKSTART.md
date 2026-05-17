@@ -9,8 +9,18 @@ Total setup time: under 5 minutes.
 - **Podman 4.0+** (never Docker)
 - **IPv6 connectivity** (dual-stack preferred; IPv4-only is not supported)
 - **UDP port 9999** open inbound (federation gossip)
-- **TCP port 7700** open inbound (REST health/status)
+- **TCP port 7700** open inbound (REST/SSE health/status)
 - Ports 7701 (gRPC) and 7702 (GraphQL) are optional depending on your use case
+
+> **Architecture note (ADR-0004).** 7700/7701/7702 are protocol *facets*
+> of one internally-unified, transaction-gated core — not independent
+> dispatchers. The only *governed public ingress* is the
+> `http-capability-gateway` (tier-2: verb governance, rate-limit,
+> trust-level derivation) which proxies inward to the core. Cartridge
+> adapters are internal/loopback and never exposed directly. Until the
+> gateway is production-wired (a tracked programme — ADR-0004 estimates
+> 8–12 weeks), expose this node only behind the documented Cloudflare
+> edge (tier-1) / hardened quadlet, not raw.
 
 Verify Podman:
 

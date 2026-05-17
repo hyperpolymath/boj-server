@@ -106,9 +106,9 @@ async function invokeCartridge(name, params) {
     return await res.json();
   } catch {
     return {
-      error: "rest-unavailable",
+      error: "rest-unreachable",
       cartridge: name,
-      message: "Cartridge invocation requires the BoJ REST server, which is not currently deployed (pending Elixir rewrite). The stdio MCP bridge cannot route /cartridge/" + name + "/invoke on its own.",
+      message: "Could not reach the BoJ REST core at " + BOJ_BASE + " to route /cartridge/" + name + "/invoke. The core is implemented (Elixir REST/SSE → unified Zig ABI; see elixir/README.adoc and docs/ARCHITECTURE.md) — this means it is not running/reachable here, or the http-capability-gateway (ADR-0004 tier-2) is not yet wired. The stdio MCP bridge cannot dispatch on its own.",
       base_url_probed: BOJ_BASE,
     };
   }
