@@ -1,0 +1,211 @@
+# SPDX-License-Identifier: PMPL-1.0-or-later
+# Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+#
+# http-capability-gateway — Verb Governance Spec (WORKED EXAMPLE)
+# Phase A deliverable A3.
+#
+# Status: EXAMPLE ONLY. No running service loads this file. It is a worked
+#   reference derived from docs/specification/openapi.yaml and a validation
+#   fixture for the gateway's PolicyLoader + PolicyValidator. The live BoJ
+#   policy (config/gateway-policy.yaml) is authored in Phase E.
+#
+# DSL: v1, per the gateway integration audit §2
+#   (docs/integration/http-capability-gateway-audit.md).
+# Contract: docs/integration/http-capability-gateway-boj-contract.md (A1).
+# Workflow: docs/integration/http-capability-gateway-policy-workflow.md (A2).
+#
+# Scope: BoJ REST surface, port 7700, only. The gRPC (7701), GraphQL (7702),
+#   and MCP/SSE (7703) surfaces are intentionally NOT governed here; placing
+#   the gateway in front of them is post-Phase-E work.
+#
+# Default-deny posture: global_verbs is kept to the single minimum the
+#   validator requires. Every intended route is enumerated explicitly with an
+#   exposure. Reliance on the global GET fallback is a policy bug (see A2 §6).
+#   stealth is enabled so denials do not advertise capability existence.
+
+dsl_version: "1"
+
+governance:
+  # Minimal required global list. Intentionally NOT a real access grant:
+  # see policy-workflow.md §6. Unmatched paths must hit an explicit rule;
+  # anything falling through to this global GET is a missing-route bug.
+  global_verbs:
+    - GET
+
+  routes:
+    # ── Core: public probes ────────────────────────────────────────────
+    - path: "/health"
+      verbs: [GET]
+      exposure: "public"
+      name: "core-health"
+      narrative: "Liveness probe. Always public; no catalogue data exposed."
+
+    # ── Core: discovery / status (authenticated) ───────────────────────
+    - path: "/status"
+      verbs: [GET]
+      exposure: "authenticated"
+      name: "core-status"
+      narrative: "Detailed status exposes catalogue + cartridge counts;
+        requires an authenticated trust level."
+    - path: "/menu"
+      verbs: [GET]
+      exposure: "authenticated"
+      name: "core-menu"
+      narrative: "Cartridge menu (Teranga/Shield/Ayo). Discovery is
+        authenticated, not public."
+    - path: "/matrix"
+      verbs: [GET]
+      exposure: "authenticated"
+      name: "core-matrix"
+      narrative: "Protocol-domain cartridge matrix. Authenticated discovery."
+    - path: "/cartridges"
+      verbs: [GET]
+      exposure: "authenticated"
+      name: "core-cartridges-alias"
+      narrative: "Alias for /matrix (openapi.yaml). Same posture as /matrix."
+
+    # ── Cartridges: detail + invoke (authenticated) ────────────────────
+    - path: "^/cartridge/[a-z0-9][a-z0-9-]{0,63}$"
+      verbs: [GET]
+      exposure: "authenticated"
+      name: "cartridge-detail"
+      narrative: "Cartridge detail. Name pattern mirrors the openapi.yaml
+        CartridgeName schema (^[a-z0-9][a-z0-9-]{0,63}$)."
+    - path: "^/cartridge/[a-z0-9][a-z0-9-]{0,63}/invoke$"
+      verbs: [POST]
+      exposure: "authenticated"
+      name: "cartridge-invoke"
+      narrative: "Tool invocation on a mounted cartridge. Authenticated.
+        POST only; other verbs default-deny."
+
+    # ── Cartridges: lifecycle (internal only) ──────────────────────────
+    - path: "^/cartridge/[a-z0-9][a-z0-9-]{0,63}/load$"
+      verbs: [POST]
+      exposure: "internal"
+      name: "cartridge-load"
+      narrative: "Mount a cartridge. Lifecycle control is internal-only."
+    - path: "^/cartridge/[a-z0-9][a-z0-9-]{0,63}/unload$"
+      verbs: [POST]
+      exposure: "internal"
+      name: "cartridge-unload"
+      narrative: "Unmount a cartridge. Internal-only."
+    - path: "^/cartridge/[a-z0-9][a-z0-9-]{0,63}/reload$"
+      verbs: [POST]
+      exposure: "internal"
+      name: "cartridge-reload"
+      narrative: "Hot-reload (unmount, re-verify hash, remount). Internal-only."
+
+    # ── SSG webhook (public path, HMAC-verified downstream) ─────────────
+    - path: "/cartridges/ssg-mcp/webhook"
+      verbs: [POST]
+      exposure: "public"
+      name: "ssg-webhook"
+      narrative: "GitHub push webhook. Reachable publicly but authenticated
+        by HMAC-SHA256 (X-Hub-Signature-256) inside ssg-mcp, not by trust
+        level. Gateway governs verb+path only; signature is downstream."
+
+    # ── Order model (authenticated) ────────────────────────────────────
+    - path: "/order"
+      verbs: [POST]
+      exposure: "authenticated"
+      name: "order-submit"
+      narrative: "Teranga order submission. Authenticated."
+    - path: "/order-ticket"
+      verbs: [POST]
+      exposure: "authenticated"
+      name: "order-ticket"
+      narrative: "Raw order ticket, async processing. Authenticated."
+
+    # ── SSE stream (authenticated, rate-limited) ───────────────────────
+    - path: "/sse"
+      verbs: [GET]
+      exposure: "authenticated"
+      name: "mcp-sse"
+      narrative: "MCP/SSE event stream. Authenticated; tier-2 token bucket
+        rate-limits this endpoint (Trustfile rate_limiting)."
+
+    # ── Federation (Umoja) ─────────────────────────────────────────────
+    - path: "/umoja/status"
+      verbs: [GET]
+      exposure: "authenticated"
+      name: "umoja-status"
+      narrative: "Federation membership status. Authenticated."
+    - path: "/umoja/peers"
+      verbs: [GET, POST]
+      exposure: "internal"
+      name: "umoja-peers"
+      narrative: "Peer list (GET) and peer registration (POST). Mutating the
+        federation mesh is internal-only; GET kept internal too so the peer
+        topology is not exposed at authenticated level."
+    - path: "/umoja/transport"
+      verbs: [GET]
+      exposure: "authenticated"
+      name: "umoja-transport"
+      narrative: "Federation transport mode (QUIC/UDP). Authenticated."
+    - path: "/coprocessor/status"
+      verbs: [GET]
+      exposure: "authenticated"
+      name: "coprocessor-status"
+      narrative: "Coprocessor dispatch status. Authenticated."
+    - path: "/coprocessor/select"
+      verbs: [POST]
+      exposure: "internal"
+      name: "coprocessor-select"
+      narrative: "Select a coprocessor for workload dispatch. Internal-only."
+    - path: "/sla/status"
+      verbs: [GET]
+      exposure: "authenticated"
+      name: "sla-status"
+      narrative: "SLA metrics. Authenticated."
+    - path: "/community/submissions"
+      verbs: [GET]
+      exposure: "authenticated"
+      name: "community-submissions"
+      narrative: "Pending community cartridge submissions. Authenticated."
+    - path: "/community/submit"
+      verbs: [POST]
+      exposure: "authenticated"
+      name: "community-submit"
+      narrative: "Submit a community cartridge for Ayo-tier review.
+        Authenticated."
+    - path: "/sdp/status"
+      verbs: [GET]
+      exposure: "internal"
+      name: "sdp-status"
+      narrative: "Auto-SDP subsystem status. Internal-only; SDP internals
+        are not exposed at authenticated level."
+
+    # ── GraphQL on the REST port ───────────────────────────────────────
+    - path: "/graphql"
+      verbs: [POST]
+      exposure: "authenticated"
+      name: "graphql"
+      narrative: "GraphQL query endpoint advertised on the REST surface
+        (openapi.yaml). Authenticated. The dedicated GraphQL port (7702)
+        is out of scope for initial wiring."
+
+    # ── gRPC-over-HTTP compatibility shim ──────────────────────────────
+    - path: "^/grpc/[A-Za-z0-9_]+/[A-Za-z0-9_]+$"
+      verbs: [POST]
+      exposure: "internal"
+      name: "grpc-compat"
+      narrative: "JSON-over-HTTP gRPC compatibility shim. Internal-only at
+        the gateway; the dedicated gRPC port (7701) is out of scope."
+
+    # ── Admin surface (internal, stealth) ──────────────────────────────
+    # Not in openapi.yaml but required by the Phase A plan (A3) and present
+    # in Trustfile [CAPABILITY_GATEWAY] (/admin → device attestation).
+    - path: "^/admin(/.*)?$"
+      verbs: [GET]
+      exposure: "internal"
+      stealth_profile: "default"
+      name: "admin"
+      narrative: "Admin surface. Internal-only and stealthed: unprivileged
+        callers receive the stealth status (404), not 403, so the surface's
+        existence is not advertised."
+
+# Denials return 404 (not 403) so capability existence is not disclosed to
+# unprivileged callers. See ADR 0004 'Stealth mode' and policy-workflow.md §6.
+stealth:
+  enabled: true
+  status_code: 404
