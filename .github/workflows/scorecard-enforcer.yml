@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: MPL-2.0
+# SPDX-License-Identifier: PMPL-1.0-or-later
 # Prevention workflow - runs OpenSSF Scorecard and fails on low scores
 name: OpenSSF Scorecard Enforcer
 
@@ -39,7 +39,7 @@ jobs:
           publish_results: true
 
       - name: Upload SARIF
-        uses: github/codeql-action/upload-sarif@0d579ffd059c29b07949a3cce3983f0780820c98 # v4
+        uses: github/codeql-action/upload-sarif@c6f931105cb2c34c8f901cc885ba1e2e259cf745 # v4
         with:
           sarif_file: results.sarif
 
@@ -66,8 +66,8 @@ jobs:
 
       - name: Check SECURITY.md exists
         run: |
-          if [ ! -f "SECURITY.md" ] && [ ! -f ".github/SECURITY.md" ] && [ ! -f "docs/SECURITY.md" ]; then
-            echo "::error::SECURITY.md is required (root, .github/, or docs/)"
+          if [ ! -f "SECURITY.md" ]; then
+            echo "::error::SECURITY.md is required"
             exit 1
           fi
 
