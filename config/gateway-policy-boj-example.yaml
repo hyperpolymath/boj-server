@@ -1,0 +1,258 @@
+# SPDX-License-Identifier: PMPL-1.0-or-later
+# Copyright (c) 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+#
+# ===========================================================================
+# Verb Governance Spec — WORKED EXAMPLE for BoJ's HTTP surface
+# ===========================================================================
+# Phase A deliverable A3 (standards#96 / standards#91).
+#
+# This is the *example* policy. The live policy will be config/gateway-policy-boj.yaml,
+# added in a later phase. See:
+#   - docs/integration/http-capability-gateway-boj-contract.md   (the seam contract)
+#   - docs/integration/http-capability-gateway-policy-authoring.md (authoring workflow)
+#
+# Conforms to DSL v1 (gateway audit §2). Validator invariants honoured:
+#   * dsl_version is exactly the string "1"
+#   * governance.global_verbs is a non-empty list of all-caps HTTP verbs
+#   * every route has a non-empty `verbs` list
+#   * exposure ∈ {public, authenticated, internal}
+#   * stealth has boolean `enabled` and integer `status_code` in 100..599
+#
+# Surface source: docs/specification/openapi.yaml, cross-checked against
+# elixir/lib/boj_rest/router.ex (per the plan's "surface drift" risk). Routes
+# declared in openapi.yaml but not yet wired in router.ex are governed anyway
+# (contract §8) so they are not silently exposed when implemented.
+#
+# ---------------------------------------------------------------------------
+# DEFAULT-DENY NOTE (must be confirmed in the Phase A manual verification)
+# ---------------------------------------------------------------------------
+# The gateway's three-tier lookup is exact → regex → global-fallback. A path
+# that matches NO route entry must be DENIED, not served as public via the
+# global-fallback rule. `global_verbs` below is the set of verbs the gateway
+# will route AT ALL (DELETE/PUT/PATCH/OPTIONS absent ⇒ globally denied — the
+# core verb-governance win of ADR-0004). When the gateway is first stood up,
+# the manual verification (authoring-workflow §6) MUST confirm that an
+# unlisted path does NOT fall through global-fallback to `public`. If the
+# gateway treats global-fallback as public-by-default, the live policy must
+# pin global exposure to deny / internal before go-live. This caveat is
+# recorded here deliberately rather than papered over.
+# ===========================================================================
+
+dsl_version: "1"
+
+governance:
+  # Only GET and POST are used anywhere on BoJ's declared surface. Every other
+  # verb (DELETE, PUT, PATCH, OPTIONS, HEAD, ...) is globally denied by omission.
+  global_verbs:
+    - GET
+    - POST
+
+  routes:
+    # ---- Public (reachable pre-auth) ------------------------------------
+    - path: "/health"
+      verbs: [GET]
+      exposure: "public"
+      name: "health-get"
+      narrative: "Liveness/readiness probe. Must be reachable without trust by
+        load balancers and Cloudflare health checks."
+
+    - path: "/.well-known/boj-node-pubkey"
+      verbs: [GET]
+      exposure: "public"
+      name: "node-pubkey-get"
+      narrative: "X25519 node public key. Callers MUST fetch this before they
+        can encrypt per-invocation credentials (docs/AUTH-DESIGN.adoc Option
+        A), so it is necessarily pre-auth and public."
+
+    # Deliberate public exception: external webhook ----------------------
+    - path: "/cartridges/ssg-mcp/webhook"
+      verbs: [POST]
+      exposure: "public"
+      name: "ssg-mcp-webhook-post"
+      narrative: "GitHub push-event webhook. The sender (GitHub) cannot present
+        a gateway trust level, so this route is intentionally `public` at the
+        gateway. Real authentication is the GitHub HMAC signature verified by
+        the ssg-mcp cartridge, with Cloudflare tier-1 WAF in front. Documented
+        exception — do not generalise to other POST routes."
+
+    # ---- Authenticated (credentialed callers) ---------------------------
+    - path: "/status"
+      verbs: [GET]
+      exposure: "authenticated"
+      name: "status-get"
+      narrative: "Detailed server status exposes internal topology; gate behind
+        authentication. (Declared in openapi.yaml; not yet wired in router.ex —
+        governed in advance, contract §8.)"
+
+    - path: "/menu"
+      verbs: [GET]
+      exposure: "authenticated"
+      name: "menu-get"
+      narrative: "Full cartridge catalogue (Teranga menu). Enumerates installed
+        capabilities; requires authentication."
+
+    - path: "/matrix"
+      verbs: [GET]
+      exposure: "authenticated"
+      name: "matrix-get"
+      narrative: "Protocol-domain cartridge matrix. Capability enumeration;
+        authenticated. (Declared-not-yet-wired, contract §8.)"
+
+    - path: "/cartridges"
+      verbs: [GET]
+      exposure: "authenticated"
+      name: "cartridges-list-get"
+      narrative: "Cartridge name list. Capability enumeration; authenticated."
+
+    - path: "^/cartridge/[A-Za-z0-9_.-]+$"
+      verbs: [GET]
+      exposure: "authenticated"
+      name: "cartridge-detail-get"
+      narrative: "Single cartridge metadata (cartridge.json). Regex matches one
+        cartridge name segment; deliberately does NOT match the /invoke,
+        /load, /unload, /reload sub-paths (separate rules)."
+
+    - path: "^/cartridge/[A-Za-z0-9_.-]+/invoke$"
+      verbs: [POST]
+      exposure: "authenticated"
+      name: "cartridge-invoke-post"
+      narrative: "Tool dispatch into a cartridge. Credentialed: BojRest.Router
+        check_trust/3 requires internal/authenticated for cartridges whose
+        auth.method is not `none`."
+
+    - path: "/graphql"
+      verbs: [POST]
+      exposure: "authenticated"
+      name: "graphql-post"
+      narrative: "GraphQL query endpoint. Arbitrary query surface; authenticated.
+        (Declared-not-yet-wired, contract §8.)"
+
+    - path: "^/grpc/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$"
+      verbs: [POST]
+      exposure: "authenticated"
+      name: "grpc-method-post"
+      narrative: "gRPC method endpoint. CAVEAT: gRPC is HTTP/2; the gateway
+        governs the HTTP request line/path only. If gRPC traffic does not
+        traverse the gateway's HTTP path it is out of this policy's reach —
+        flagged for the Phase C seam test. (Declared-not-yet-wired.)"
+
+    - path: "/sse"
+      verbs: [GET]
+      exposure: "authenticated"
+      name: "sse-get"
+      narrative: "MCP/SSE long-lived event stream. CAVEAT: streaming/long-poll
+        interacts with the proxy timeout and circuit breaker — Phase C/D must
+        confirm the gateway does not prematurely break long-lived SSE
+        connections. (Declared-not-yet-wired.)"
+
+    - path: "/order"
+      verbs: [POST]
+      exposure: "authenticated"
+      name: "order-post"
+      narrative: "Submit a cartridge order. State-changing; authenticated.
+        (Declared-not-yet-wired, contract §8.)"
+
+    - path: "/order-ticket"
+      verbs: [POST]
+      exposure: "authenticated"
+      name: "order-ticket-post"
+      narrative: "Submit an order ticket. State-changing; authenticated.
+        (Declared-not-yet-wired, contract §8.)"
+
+    - path: "/umoja/status"
+      verbs: [GET]
+      exposure: "authenticated"
+      name: "umoja-status-get"
+      narrative: "Umoja federation status. Federation topology; authenticated."
+
+    - path: "/umoja/transport"
+      verbs: [GET]
+      exposure: "authenticated"
+      name: "umoja-transport-get"
+      narrative: "Federation transport mode. Authenticated read."
+
+    - path: "/umoja/peers"
+      verbs: [GET]
+      exposure: "authenticated"
+      name: "umoja-peers-get"
+      narrative: "List federation peers. Authenticated read. Mutating POST to
+        the same path is a separate internal rule below."
+
+    - path: "/coprocessor/status"
+      verbs: [GET]
+      exposure: "authenticated"
+      name: "coprocessor-status-get"
+      narrative: "Coprocessor dispatch status. Authenticated read."
+
+    - path: "/sla/status"
+      verbs: [GET]
+      exposure: "authenticated"
+      name: "sla-status-get"
+      narrative: "SLA monitoring status. Authenticated read."
+
+    - path: "/community/submissions"
+      verbs: [GET]
+      exposure: "authenticated"
+      name: "community-submissions-get"
+      narrative: "List community cartridge submissions. Authenticated read."
+
+    - path: "/community/submit"
+      verbs: [POST]
+      exposure: "authenticated"
+      name: "community-submit-post"
+      narrative: "Submit a community cartridge. Authenticated write; further
+        review/quarantine is a downstream cartridge concern."
+
+    # ---- Internal-only (stealth: hidden from lesser trust) --------------
+    - path: "^/cartridge/[A-Za-z0-9_.-]+/load$"
+      verbs: [POST]
+      exposure: "internal"
+      stealth_profile: "default"
+      name: "cartridge-load-post"
+      narrative: "Mount a cartridge. Lifecycle mutation; internal-only and
+        stealthed (404) so the capability is invisible to lesser trust."
+
+    - path: "^/cartridge/[A-Za-z0-9_.-]+/unload$"
+      verbs: [POST]
+      exposure: "internal"
+      stealth_profile: "default"
+      name: "cartridge-unload-post"
+      narrative: "Unmount a cartridge. Lifecycle mutation; internal + stealth."
+
+    - path: "^/cartridge/[A-Za-z0-9_.-]+/reload$"
+      verbs: [POST]
+      exposure: "internal"
+      stealth_profile: "default"
+      name: "cartridge-reload-post"
+      narrative: "Reload (unmount, verify, remount) a cartridge. Lifecycle
+        mutation; internal + stealth."
+
+    - path: "/umoja/peers"
+      verbs: [POST]
+      exposure: "internal"
+      stealth_profile: "default"
+      name: "umoja-peers-post"
+      narrative: "Mutate federation peer set. Membership control is internal +
+        stealth. (Same path as the authenticated GET above; the gateway keys
+        rules by {path, verb}.)"
+
+    - path: "/coprocessor/select"
+      verbs: [POST]
+      exposure: "internal"
+      stealth_profile: "default"
+      name: "coprocessor-select-post"
+      narrative: "Select a coprocessor. Operational dispatch control; internal
+        + stealth. (Declared-not-yet-wired, contract §8.)"
+
+    - path: "/sdp/status"
+      verbs: [GET]
+      exposure: "internal"
+      stealth_profile: "default"
+      name: "sdp-status-get"
+      narrative: "Auto-SDP (single-packet-authorisation) status. A recon target
+        for an attacker probing the auth perimeter; internal-only and stealthed
+        so its existence is not confirmable from outside."
+
+stealth:
+  enabled: true
+  status_code: 404
