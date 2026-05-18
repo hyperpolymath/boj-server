@@ -317,7 +317,7 @@ async function handleMessage(line) {
       sendResult(id, {
         protocolVersion: "2024-11-05",
         capabilities: {
-          tools: { listChanged: false },
+          tools: { listChanged: true },
           resources: { subscribe: false },
           prompts: { listChanged: false },
           logging: {
@@ -345,6 +345,11 @@ async function handleMessage(line) {
     }
 
     case "tools/list": {
+      // buildToolList() returns whole tool objects (name, description,
+      // inputSchema, annotations, outputSchema) and reads BOJ_TOOL_SCOPE
+      // internally for the Teranga scoped-surface lever. We pass the
+      // objects through verbatim so annotations + outputSchema reach the
+      // wire unmodified — no field whitelisting here by design.
       const tools = buildToolList();
       sendResult(id, { tools });
       break;

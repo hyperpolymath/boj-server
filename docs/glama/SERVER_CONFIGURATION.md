@@ -12,6 +12,40 @@
 | `BOJ_REST_PORT` | No | TCP port for REST API | `7700` |
 | `BOJ_MCP_BRIDGE` | No | Path to MCP bridge executable | `mcp-bridge/main.js` |
 
+### Tool Surface Scoping
+
+| Name | Required | Description | Default |
+|------|----------|-------------|---------|
+| `BOJ_TOOL_SCOPE` | No | Controls which tools are *advertised* over `tools/list` | `full` |
+
+`BOJ_TOOL_SCOPE` is a coherence lever: it narrows the advertised tool
+surface without removing any capability. It accepts three forms:
+
+- **`full`** (or unset) — advertise every tool. This is the default and
+  preserves backward compatibility with all existing clients.
+- **`core`** — advertise only the always-present discovery/dispatch
+  core: `boj_health`, `boj_menu`, `boj_cartridges`,
+  `boj_cartridge_info`, `boj_cartridge_invoke`, plus **all** `coord_*`
+  tools (the local coordination surface is a single coherent unit).
+- **CSV of domain prefixes** — e.g. `core,github,browser` advertises
+  the core plus the named explicit domain groups
+  (`github`, `gitlab`, `cloud`, `comms`, `ml`, `browser`, `research`,
+  `codeseeker`). `core` is always implied.
+
+The unified-endpoint thesis is preserved in every mode: each explicit
+`boj_<domain>_*` tool remains fully reachable through the generic
+`boj_cartridge_invoke` dispatcher even when it is not advertised.
+Narrowing the surface only changes discovery, not capability — which is
+exactly what Glama's Server Coherence sub-score rewards.
+
+```bash
+# Minimal surface — discovery/dispatch core + coordination only
+docker run -e BOJ_TOOL_SCOPE=core boj-server
+
+# Core plus the GitHub and browser domain groups
+docker run -e BOJ_TOOL_SCOPE=core,github,browser boj-server
+```
+
 ### Authentication
 
 | Name | Required | Description | Default |

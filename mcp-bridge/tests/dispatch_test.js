@@ -163,3 +163,129 @@ test("tool names are unique", () => {
   const dup = names.filter((n, i) => names.indexOf(n) !== i);
   assert.deepEqual(dup, [], `Duplicate tool names: ${dup.join(", ")}`);
 });
+
+// -----------------------------------------------------------------
+// 7. MCP annotations — every advertised tool must carry the full
+//    MCP-spec annotations block: a non-empty Title-Case `title`
+//    string plus the four boolean behaviour hints. Glama and modern
+//    MCP clients surface these for safety/UX; a missing or
+//    wrong-typed hint is a coherence regression.
+// -----------------------------------------------------------------
+test("every tool has a complete annotations block", () => {
+  const HINTS = [
+    "readOnlyHint",
+    "destructiveHint",
+    "idempotentHint",
+    "openWorldHint",
+  ];
+  for (const t of tools) {
+    assert.ok(
+      t.annotations && typeof t.annotations === "object",
+      `${t.name}: missing annotations object`,
+    );
+    assert.equal(
+      typeof t.annotations.title,
+      "string",
+      `${t.name}: annotations.title must be a string`,
+    );
+    assert.ok(
+      t.annotations.title.length > 0,
+      `${t.name}: annotations.title must be non-empty`,
+    );
+    for (const h of HINTS) {
+      assert.equal(
+        typeof t.annotations[h],
+        "boolean",
+        `${t.name}: annotations.${h} must be a boolean`,
+      );
+    }
+  }
+});
+
+// -----------------------------------------------------------------
+// 8. outputSchema — every advertised tool must declare a JSON Schema
+//    object describing its return, with a non-empty top-level
+//    description and an explicit additionalProperties flag (Glama
+//    scores documented return shapes).
+// -----------------------------------------------------------------
+test("every tool has a typed, described outputSchema", () => {
+  for (const t of tools) {
+    assert.ok(
+      t.outputSchema && typeof t.outputSchema === "object",
+      `${t.name}: missing outputSchema`,
+    );
+    assert.equal(
+      t.outputSchema.type,
+      "object",
+      `${t.name}: outputSchema.type must be "object"`,
+    );
+    assert.equal(
+      typeof t.outputSchema.description,
+      "string",
+      `${t.name}: outputSchema.description must be a string`,
+    );
+    assert.ok(
+      t.outputSchema.description.length > 0,
+      `${t.name}: outputSchema.description must be non-empty`,
+    );
+    assert.equal(
+      typeof t.outputSchema.additionalProperties,
+      "boolean",
+      `${t.name}: outputSchema.additionalProperties must be set explicitly`,
+    );
+  }
+});
+
+// -----------------------------------------------------------------
+// 9. BOJ_TOOL_SCOPE back-compat — with the env var unset (and no
+//    explicit scope arg), buildToolList() must advertise the FULL
+//    surface. This guards the default-preserving contract: scoping
+//    is opt-in and must never silently shrink an existing client's
+//    tool list.
+// -----------------------------------------------------------------
+test("BOJ_TOOL_SCOPE unset advertises the full surface (back-compat)", () => {
+  const saved = process.env.BOJ_TOOL_SCOPE;
+  try {
+    delete process.env.BOJ_TOOL_SCOPE;
+    const full = buildToolList();
+    // The full surface includes explicit domain tools that `core`
+    // would drop — assert a representative explicit tool is present.
+    const names = new Set(full.map((t) => t.name));
+    assert.ok(
+      names.has("boj_github_list_repos"),
+      "explicit boj_github_* tools must be advertised when scope is unset",
+    );
+    assert.ok(
+      names.has("boj_browser_navigate"),
+      "explicit boj_browser_* tools must be advertised when scope is unset",
+    );
+    assert.equal(
+      full.length,
+      tools.length,
+      "unset scope must match the module-load full surface length",
+    );
+
+    // And `core` must be a strict subset (the scope lever works).
+    const core = buildToolList("core");
+    assert.ok(
+      core.length < full.length,
+      "core scope must advertise fewer tools than full",
+    );
+    const coreNames = new Set(core.map((t) => t.name));
+    assert.ok(
+      !coreNames.has("boj_github_list_repos"),
+      "core scope must NOT advertise explicit boj_github_* tools",
+    );
+    assert.ok(
+      coreNames.has("boj_cartridge_invoke"),
+      "core scope must keep boj_cartridge_invoke (unified endpoint)",
+    );
+    assert.ok(
+      [...coreNames].some((n) => n.startsWith("coord_")),
+      "core scope must keep the coord_* coordination unit",
+    );
+  } finally {
+    if (saved === undefined) delete process.env.BOJ_TOOL_SCOPE;
+    else process.env.BOJ_TOOL_SCOPE = saved;
+  }
+});
