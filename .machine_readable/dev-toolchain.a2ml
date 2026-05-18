@@ -1,0 +1,49 @@
+# SPDX-License-Identifier: PMPL-1.0-or-later
+# Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+#
+# BoJ Server — Permanent Dev-Toolchain Manifest
+#
+# Single source of truth for the standing local dev loop so it NEVER has to be
+# re-assembled per session. Paths are the canonical /dev/tools toolchain and
+# are verified-present (do not list a tool that is not actually installed —
+# an unresolved entry is worse than none).
+#
+# Wired NOW: the LSP row is live via `cartridges/lsp-mcp/presets.json`
+#   (lsp_start {"preset":"rust"} → rust-analyzer, no per-use wiring).
+# Adoption path: bsp-mcp (build), dap-mcp (debug) and a lint surface should
+#   read this same manifest for their Rust/Zig/Julia/Idris presets — same
+#   pattern as lsp-mcp. Declared here so the contract exists before the wiring.
+
+@canonical-location: `.machine_readable/dev-toolchain.a2ml`
+
+[authorization]
+standing = true
+note = "Owner standing authorization (2026-05-18): use these boj dev-loop capabilities on demand without asking for permission."
+
+[rust]
+lsp        = "/home/hyperpolymath/dev/tools/languages/rust/cargo-home/bin/rust-analyzer"   # verified: rust-analyzer 1.95.0 (rustup component)
+cargo      = "/home/hyperpolymath/dev/tools/languages/rust/cargo-home/bin/cargo"            # verified: cargo 1.95.0
+build      = "cargo build"
+check      = "cargo check"
+lint       = "cargo clippy --all-targets -- -D warnings"
+test       = "cargo test"
+debug      = "rust-gdb / lldb via dap-mcp"   # dap-mcp adoption pending
+env        = { CARGO_HOME = "/home/hyperpolymath/dev/tools/languages/rust/cargo-home", RUSTUP_HOME = "/home/hyperpolymath/dev/tools/languages/rust/rustup-home" }
+wired_lsp  = true   # cartridges/lsp-mcp/presets.json -> preset "rust"
+
+[zig]
+toolchain  = "zig 0.15.2"   # verified on PATH
+build      = "zig build"
+test       = "zig build test"
+wired_lsp  = false   # zls not installed; do NOT add an lsp preset until it is
+
+[julia]
+launcher   = "/home/hyperpolymath/dev/tools/languages/julia/juliaup-home/bin/julia"   # verified: 1.12.6 (release) / 1.10.11 (lts)
+test       = "julia --project=. -e 'using Pkg; Pkg.test()'"
+instantiate= "julia --project=. -e 'using Pkg; Pkg.instantiate()'"
+quality    = "Aqua.test_all + JET (when wired in a package's test deps)"
+wired_lsp  = false   # no julia LSP installed yet
+
+[idris2]
+check      = "/home/hyperpolymath/dev/tools/provers/idris2/0.8.0/bin/idris2 --check"   # verified: Idris2 0.8.0
+wired_lsp  = false   # idris2-lsp not installed yet

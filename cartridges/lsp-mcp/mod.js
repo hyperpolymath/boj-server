@@ -159,6 +159,21 @@ function getSession(session_id) {
   return entry;
 }
 
+// Permanent pinned toolchain presets (presets.json, co-located). Lets callers
+// pass {preset:"rust"} instead of re-specifying the rust-analyzer path every
+// time. Loaded once, lazily; missing/invalid file degrades to "no presets".
+let _presets = null;
+async function loadPresets() {
+  if (_presets) return _presets;
+  try {
+    const txt = await Deno.readTextFile(new URL("./presets.json", import.meta.url));
+    _presets = JSON.parse(txt).presets ?? {};
+  } catch {
+    _presets = {};
+  }
+  return _presets;
+}
+
 // ---------------------------------------------------------------------------
 // Tool handlers
 // ---------------------------------------------------------------------------
@@ -168,8 +183,21 @@ export async function handleTool(toolName, args) {
 
     // -- lsp_start -----------------------------------------------------------
     case "lsp_start": {
-      const { command, args: extraArgs = [], workspace_root } = args;
-      if (!command) return { status: 400, data: { error: "command is required" } };
+      let { command, preset, args: extraArgs = [], workspace_root } = args;
+
+      // Resolve a permanent pinned preset (e.g. "rust" → rust-analyzer) so
+      // callers never re-assemble the toolchain. Explicit `command` still
+      // wins and stays fully backward-compatible.
+      if (!command && preset) {
+        const presets = await loadPresets();
+        const p = presets[preset];
+        if (!p) {
+          return { status: 400, data: { error: `Unknown preset '${preset}'. Available: ${Object.keys(presets).join(", ") || "(none)"}` } };
+        }
+        command = p.command;
+        if (Array.isArray(p.args) && p.args.length) extraArgs = [...p.args, ...extraArgs];
+      }
+      if (!command) return { status: 400, data: { error: "command or preset is required" } };
 
       const cmdParts = command.trim().split(/\s+/);
       const proc = new Deno.Command(cmdParts[0], {

@@ -29,23 +29,25 @@
         "properties": {
           "command": {
             "type": "string",
-            "description": "Language server executable (e.g. 'rust-analyzer', 'affinescript server --stdio', 'clangd')"
+            "description": "Language server executable (e.g. 'rust-analyzer', 'affinescript server --stdio', 'clangd'). Optional when `preset` is given."
+          },
+          "preset": {
+            "type": "string",
+            "description": "Permanent pinned toolchain preset from presets.json (e.g. 'rust' → the canonical rust-analyzer at /dev/tools). Use this instead of re-specifying the command/path every session. One of `command` or `preset` is required; an explicit `command` overrides the preset."
           },
           "args": {
             "type": "array",
             "items": {
               "type": "string"
             },
-            "description": "Additional command arguments"
+            "description": "Additional command arguments (appended after any preset args)"
           },
           "workspace_root": {
             "type": "string",
             "description": "Workspace root directory path"
           }
         },
-        "required": [
-          "command"
-        ]
+        "required": []
       }
     },
     {
