@@ -1,31 +1,39 @@
 // SPDX-License-Identifier: PMPL-1.0-or-later
 // Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
-= BoJ Server — Elixir REST skeleton
+= BoJ Server — Elixir REST core
 :orientation: shallow
 
 == Purpose
 
-Serves the five HTTP endpoints `mcp-bridge/lib/api-clients.js` calls, on
-port **7700** by default. This is a **skeleton**, not the finished REST
-server:
+The gated internal REST/SSE core that fronts the unified Zig ABI, on port
+**7700** by default. It is the Elixir "scalability multiplier" over the
+Idris2-logic / pure-Zig-interface stack (see `docs/ARCHITECTURE.md`,
+v1.1.0). It is NOT a public ingress — per ADR-0004 the only governed
+public surface is the `http-capability-gateway` (tier-2) in front of this
+core. This listener binds the trusted/internal interface and every
+invocation passes the `TrustPolicy` + `CredentialDecryptor` transaction
+gate before dispatch.
 
-* `GET /health` — returns `{"status": "ok", "mode": "skeleton", ...}` with
-  live cartridge-load count.
-* `GET /menu` — summarises each cartridge (name / domain / tier /
-  description).
+Endpoints:
+
+* `GET /health` — `{"status":"ok","version":...,"cartridges_loaded":N}`.
+* `GET /menu` — per-cartridge name / domain / tier / description.
 * `GET /cartridges` — cartridge-name list.
-* `GET /cartridge/:name` — full `cartridge.json` for that cartridge, or
-  404 if unknown.
-* `POST /cartridge/:name/invoke` — **returns 501** with
-  `{"error": "invocation-not-yet-wired"}`. Dispatch to the Zig FFI is
-  Phase 2.
+* `GET /cartridge/:name` — full `cartridge.json`, or 404 if unknown.
+* `POST /cartridge/:name/invoke` — **wired.** Trust-gated, then dispatched
+  via `BojRest.Invoker` (shells `boj-invoke` → `dlopen`s the cartridge
+  `.so` → ADR-0006 `boj_cartridge_invoke`) for `ffi` cartridges, or the
+  Deno `JsWorkerPool` fallback for no-`ffi` cartridges. Returns `200` with
+  the cartridge's JSON result.
+* `POST /cartridge/:name/sse` — same gated dispatch, streamed as
+  `text/event-stream` (`open` → `result`|`error` → `done`). Makes the
+  surface four-protocol (REST + SSE here; gRPC-compat + GraphQL via the
+  per-cartridge internal Zig adapter).
 
 == Relationship to the stdio bridge
 
 The Node.js stdio bridge at `mcp-bridge/` is what Claude Code and Glama
-talk to. When the REST server behind it was missing, `boj_health` and
-`boj_research` returned misleading errors pointing at a nonexistent
-listener. This skeleton closes that gap:
+talk to. This core is the REST server behind it:
 
 [cols="1,3"]
 |===
@@ -35,7 +43,8 @@ listener. This skeleton closes that gap:
 | `/menu`                        | `boj_menu`
 | `/cartridges`                  | `boj_cartridges`
 | `/cartridge/:name`             | `boj_cartridge_info`
-| `/cartridge/:name/invoke`      | `boj_cartridge_invoke` (501 until Phase 2)
+| `/cartridge/:name/invoke`      | `boj_cartridge_invoke` (live — Zig ABI)
+| `/cartridge/:name/sse`         | streaming variant of the above
 |===
 
 == Build
@@ -45,7 +54,14 @@ listener. This skeleton closes that gap:
 cd elixir
 mix deps.get
 mix compile
-mix test          # five endpoint tests
+mix test          # full suite (router, invoker, catalog, trust, …)
+----
+
+The Zig dispatch CLI must be built once so the FFI path is live:
+
+[source,bash]
+----
+cd ../ffi/zig && zig build invoke   # produces zig-out/bin/boj-invoke
 ----
 
 == Run
@@ -54,38 +70,40 @@ mix test          # five endpoint tests
 ----
 cd elixir
 mix run --no-halt
-# listener binds http://localhost:7700
+# listener binds http://127.0.0.1:7700 (internal; front with the gateway)
 ----
 
 Configure via env vars:
 
 * `BOJ_PORT` — listener port (default `7700`).
-* `BOJ_CARTRIDGES_ROOT` — where to scan for `cartridge.json` (default:
-  `../cartridges` relative to the Elixir project).
+* `BOJ_CARTRIDGES_ROOT` — where to scan for `cartridge.json`
+  (default: `../cartridges` relative to the Elixir project).
+* `BOJ_INVOKE_CLI` — path to the `boj-invoke` Zig CLI (else auto-probed).
 
 == Design notes
 
-* **Cowboy + Plug** — matches the http-capability-gateway decision
-  (`docs/decisions/0004-adopt-http-capability-gateway.md`), so this
-  listener is a natural attachment point for that gateway's verb-governance
-  and trust-level plugs in a later phase.
-* **ETS-backed catalog, read-only.** The cartridge catalog is loaded once
-  at boot and never mutated. Re-scanning requires a restart. This matches
-  the current mount lifecycle (`cartridge.json` changes are already
-  restart-gated).
+* **Cowboy + Plug, single listener.** One supervised listener, routed
+  internally (REST + SSE); NOT N parallel HTTP servers. The
+  `http-capability-gateway` (ADR-0004) attaches in front as tier-2.
+* **Transaction-gated dispatch.** `TrustPolicy` derives required exposure
+  from the cartridge's `auth.method`; loopback callers are locally
+  trusted; `CredentialDecryptor` runs before any dispatch. No
+  gatekeeperless path to the ABI.
+* **ETS-backed catalog, read-only.** Loaded once at boot; re-scan needs a
+  restart (matches the restart-gated `cartridge.json` mount lifecycle).
 * **Best-effort load.** A malformed `cartridge.json` is logged and
   skipped; the listener still comes up with whatever parsed cleanly.
-* **Skeleton only.** Invocation routing, federation, auth, rate-limiting,
-  TLS — all out of scope for this file. Those land with the Elixir port
-  phases declared in the dogfood log.
 
 == Phase plan
 
-. **Phase 1 — this.** REST listener serves cartridge metadata. `boj_health`
-  stops lying. `boj_research` still returns 501 but with a structured,
-  explainable error. **DONE 2026-04-18.**
-. **Phase 2.** Wire `POST /cartridge/:name/invoke` into the Zig FFI via
-  the loader (`ffi/zig/src/loader.zig`). `boj_cartridge_invoke` becomes
-  live.
-. **Phase 3.** Attach http-capability-gateway per ADR-0004 at tier 2.
-. **Phase 4.** mTLS / SDP (see `Trustfile.a2ml` `[SDP_RULES]`).
+. **Phase 1 — REST metadata.** Listener serves cartridge metadata.
+  **DONE 2026-04-18.**
+. **Phase 2 — invocation wired.** `POST /cartridge/:name/invoke` (and
+  `/sse`) dispatch through the unified Zig ABI via `boj-invoke`, trust-
+  gated. **DONE.**
+. **Phase 3 — gateway.** Attach `http-capability-gateway` at tier-2 per
+  ADR-0004 (verb governance, rate-limit tier-2, trust-level primary path).
+  *Accepted; production-wiring is a tracked programme — ADR-0004 estimates
+  8–12 weeks (mTLS-as-primary, E2E, benchmarks). Until then this core
+  stays internal/loopback-bound.*
+. **Phase 4 — mTLS / SDP.** Per `Trustfile.a2ml` `[SDP_RULES]`.

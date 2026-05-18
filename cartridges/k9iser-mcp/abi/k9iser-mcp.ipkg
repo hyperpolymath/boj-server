@@ -1,0 +1,11 @@
+-- SPDX-License-Identifier: PMPL-1.0-or-later
+package k9isermcp
+
+authors    = "Jonathan D.A. Jewell"
+version    = 0.1.0
+license    = "PMPL-1.0-or-later"
+brief      = "k9iser-mcp cartridge — K9 contract regeneration pipeline state machine"
+
+sourcedir  = "."
+modules    = K9iserMcp.SafeK9iser
+depends    = base, contrib

@@ -449,4 +449,26 @@ defmodule BojRest.RouterTest do
 
     assert conn.status in [200, 500]
   end
+
+  test "POST /cartridge/:name/sse streams text/event-stream open→…→done" do
+    conn =
+      conn(:post, "/cartridge/#{@public_cart}/sse", Jason.encode!(%{tool: "boj_health_status"}))
+      |> put_req_header("content-type", "application/json")
+      |> BojRest.Router.call(@opts)
+
+    assert conn.status == 200
+    assert {"content-type", "text/event-stream; charset=utf-8"} in conn.resp_headers
+    assert conn.resp_body =~ "event: open"
+    assert conn.resp_body =~ "event: done"
+  end
+
+  test "POST /cartridge/:name/sse without tool is 400 (not a stream)" do
+    conn =
+      conn(:post, "/cartridge/#{@public_cart}/sse", Jason.encode!(%{}))
+      |> put_req_header("content-type", "application/json")
+      |> BojRest.Router.call(@opts)
+
+    assert conn.status == 400
+    assert Jason.decode!(conn.resp_body)["error"] == "missing-tool-field"
+  end
 end
