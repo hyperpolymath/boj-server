@@ -8,7 +8,7 @@
 **Status:** Phase A deliverable A2 (Policy authoring workflow)  
 **Plan:** `docs/integration/http-capability-gateway-plan.md` (Phase A, A2)  
 **Contract:** `docs/integration/http-capability-gateway-boj-contract.md` (A1)  
-**Example:** `config/gateway-policy-boj-example.yaml` (A3)
+**Example:** `configs/gateway-policy-boj-example.yaml` (A3)
 
 ---
 
@@ -18,9 +18,19 @@ The Verb Governance Spec is a **BoJ-repo artefact**. It lives in this
 repository at:
 
 ```
-config/gateway-policy.yaml          # the live BoJ policy (added in Phase E)
-config/gateway-policy-boj-example.yaml   # the worked example (Phase A, A3)
+configs/gateway-policy.yaml               # the live BoJ policy (added in Phase E)
+configs/gateway-policy-boj-example.yaml   # the worked example (Phase A, A3)
 ```
+
+> **Path note.** The integration plan (Phase A, A2) names this location
+> `config/...` (singular). The boj-server repository's established convention
+> is the existing top-level **`configs/`** (plural) directory — see
+> `configs/config.ncl`. Introducing a second, singular `config/` directory is
+> a repository-structure anti-pattern (and is rejected by the estate
+> governance gate). This deliverable therefore uses `configs/`, the real repo
+> layout, resolving the plan's documented Phase A *“surface drift”* risk in
+> favour of the actual tree. The plan text should be read with this
+> correction.
 
 Rationale (resolves the Phase A A2 question): the policy *describes BoJ's HTTP
 surface*, so it is version-controlled alongside `docs/specification/openapi.yaml`
@@ -38,8 +48,8 @@ it is a worked reference and a validation fixture.
   approved like any change to `docs/specification/openapi.yaml`.
 - **Coupling rule (normative):** when `openapi.yaml` changes in a way that
   adds, removes, or changes the trust posture of a route, the same PR MUST
-  update `config/gateway-policy.yaml`, **or** the PR description MUST state why
-  the policy is unchanged (e.g. “new route is internal-only and already
+  update `configs/gateway-policy.yaml`, **or** the PR description MUST state
+  why the policy is unchanged (e.g. “new route is internal-only and already
   covered by the `/admin` internal rule”). This mirrors the cross-phase note
   in the integration plan and the Trustfile `[SEAMS]` policy
   (`every PR that touches either side of a declared seam MUST exercise the
@@ -78,7 +88,7 @@ validator. From a checkout of `web-ecosystem/http-capability-gateway`:
 # manual verification (Phase A acceptance for A3)
 iex -S mix
 iex> {:ok, p} = HttpCapabilityGateway.PolicyLoader.load_policy(
-...>   "/path/to/boj-server/config/gateway-policy-boj-example.yaml")
+...>   "/path/to/boj-server/configs/gateway-policy-boj-example.yaml")
 iex> :ok = HttpCapabilityGateway.PolicyValidator.validate(p)
 ```
 
@@ -89,7 +99,7 @@ manual run above. The example file (A3) is authored to pass it.
 
 - **Load path:** the gateway container reads the policy from the path given by
   the `POLICY_PATH` environment variable. BoJ mounts
-  `config/gateway-policy.yaml` at that path (bind-mount or ConfigMap; decided
+  `configs/gateway-policy.yaml` at that path (bind-mount or ConfigMap; decided
   in the Phase E deployment spec).
 - **Hot-reload:** the gateway compiles the new policy into a fresh ETS table
   pair and swaps it atomically; a compile failure leaves the last-known-good
@@ -124,8 +134,8 @@ assert “no path outside the enumerated set is served at a trust level above
 
 ## 7. Acceptance (Phase A, deliverable A2)
 
-- [x] Policy location decided (`config/gateway-policy.yaml` in this repo) and
-      justified (§1).
+- [x] Policy location decided (`configs/gateway-policy.yaml` in this repo,
+      matching the existing `configs/` convention) and justified (§1).
 - [x] Authorship + review gate + openapi-coupling rule stated (§2).
 - [x] DSL v1 schema referenced normatively (§3).
 - [x] Validation procedure documented (§4).

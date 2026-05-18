@@ -10,7 +10,7 @@
 **Plan:** `docs/integration/http-capability-gateway-plan.md` (Phase A)  
 **Audit baseline:** `docs/integration/http-capability-gateway-audit.md`  
 **Companion:** `docs/integration/http-capability-gateway-policy-workflow.md` (A2),
-`config/gateway-policy-boj-example.yaml` (A3)
+`configs/gateway-policy-boj-example.yaml` (A3)
 
 ---
 
