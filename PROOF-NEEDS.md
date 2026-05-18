@@ -1,12 +1,46 @@
 # PROOF-NEEDS.md — boj-server
 
-## Current State (Updated 2026-04-25)
+## Current State (Updated 2026-05-18)
 
 - **src/abi/Boj/**: 16 Idris2 ABI files
-- **Dangerous patterns**: 4 `believe_me` (all documented axioms in SafetyLemmas.idr;
-  `logSafeBounded` restructured to use them structurally — down from 31)
+- **Dangerous patterns**: **5** `believe_me` invocations, **all** in
+  `src/abi/Boj/SafetyLemmas.idr`, **all** classified `(J)` genuinely
+  unavoidable (see audit table below). `logSafeBounded` (SafeAPIKey.idr)
+  consumes these structurally and contains no direct `believe_me` —
+  down from 31 historically.
+  - Note: a raw `grep believe_me *.idr` returns **9** hits. 4 of these
+    are documentation/comment mentions of the word (1 in SafeHTTP.idr
+    line 15, 1 in SafetyLemmas.idr line 9, 2 in
+    cartridges/fleet-mcp/abi/FleetMcp/SafeFleet.idr lines 14 & 34) and
+    are **not** axiom uses. The audited true count is 5.
 - **LOC**: ~5,400 (Elixir + Idris2)
 - **ABI layer**: Comprehensive dependent-type ABI
+
+## Axiom Audit (2026-05-18)
+
+Every real `believe_me` invocation, with its classification.
+Classification key: **(J)** genuinely unavoidable, documented as an axiom;
+**(R)** replaceable with a real proof / total definition;
+**(S)** stub/laziness to fix.
+
+| # | Site | Function | Type | Class | Rationale |
+|---|------|----------|------|-------|-----------|
+| 1 | `SafetyLemmas.idr:53` | `charEqSound` | `(c1,c2:Char) -> c1 == c2 = True -> c1 = c2` | **J** | `Char` is an opaque primitive; `==` is `prim__eqChar` (foreign `Bool`). Idris2 0.8.0 has no in-language soundness principle for primitive equality. Standard, well-understood axiom. |
+| 2 | `SafetyLemmas.idr:60` | `charEqSym` | `(x,y:Char) -> (x == y) = (y == x)` | **J** | Symmetry of `prim__eqChar`. Same reason as #1 — opaque primitive, no decision procedure to recurse on. |
+| 3 | `SafetyLemmas.idr:211` | `unpackLength` | `length (unpack s) = length s` | **J** | `unpack` = `prim__strToCharList` (foreign). `String` is opaque with no induction principle; the relation between primitive `String` length and `List Char` length is not reducible in-language. |
+| 4 | `SafetyLemmas.idr:219` | `appendLengthSum` | `length (s ++ t) = length s + length t` | **J** | `++` on `String` = `prim__strAppend` (foreign). Length additivity is a backend-semantics guarantee, not type-level reducible. |
+| 5 | `SafetyLemmas.idr:226` | `substrLengthBound` | `LTE (length (substr start len s)) len` | **J** | `substr` = `prim__strSubstr` (foreign). The "result no longer than `len`" bound is a primitive-semantics guarantee with no in-language proof. |
+
+**Verdict: 5/5 are class (J).** All five reduce to the same root cause:
+Idris2 treats `Char` and `String` as opaque primitive types whose
+operations are foreign functions with no constructors and no induction
+principle. There is no constructive in-language proof for any of them; a
+`believe_me` (or an equivalent `%foreign` postulate) is the only option
+short of changing the trusted computing base. They are correctly marked
+`%unsafe`, individually documented, and isolated in one module.
+
+No **(R)** or **(S)** sites were found. The audit's "9" was a raw text
+count conflating 5 real axioms with 4 comment mentions.
 
 ## Completed Proofs
 
@@ -32,22 +66,35 @@ All P1/P2 proof obligations are now closed.
 | BJ2 | Auth/credential handling — full isolation model | ✅ DONE (`CredentialIsolation.idr`) |
 | BJ3 | API contract compliance — protocol/domain coverage | ✅ DONE (`APIContractCoverage.idr`) |
 
-### Remaining axiomatic surface (4 believe_me, all in SafetyLemmas.idr)
+### Remaining axiomatic surface (5 believe_me, all in SafetyLemmas.idr)
 
-| Axiom | Justification |
-|-------|---------------|
-| `charEqSound` | Soundness of `prim__eqChar` — backend primitive correctness |
-| `charEqSym` | Symmetry of `prim__eqChar` — backend primitive correctness |
-| `unpackLength` | `prim__strToCharList` preserves length — backend primitive correctness |
-| `appendLengthSum` | `prim__strAppend` length semantics — not reducible at type level |
-| `substrLengthBound` | `prim__strSubstr` length bound — not reducible at type level |
+All five are class **(J)** — genuinely unavoidable in Idris2 0.8.0
+(opaque `Char`/`String` primitives, foreign-backed operations). See the
+**Axiom Audit (2026-05-18)** table above for per-site detail.
+
+| Axiom | Site | Justification |
+|-------|------|---------------|
+| `charEqSound` | `SafetyLemmas.idr:53` | Soundness of `prim__eqChar` — backend primitive correctness |
+| `charEqSym` | `SafetyLemmas.idr:60` | Symmetry of `prim__eqChar` — backend primitive correctness |
+| `unpackLength` | `SafetyLemmas.idr:211` | `prim__strToCharList` preserves length — backend primitive correctness |
+| `appendLengthSum` | `SafetyLemmas.idr:219` | `prim__strAppend` length semantics — not reducible at type level |
+| `substrLengthBound` | `SafetyLemmas.idr:226` | `prim__strSubstr` length bound — not reducible at type level |
 
 Note: `logSafeBounded` in SafeAPIKey.idr no longer uses `believe_me` directly;
 it calls the documented SafetyLemmas axioms via structural proof.
+`charEqSound` is consumed by `Safety.idr` (`shellContra`, `sqlContra`);
+`unpackLength` by `SafeAPIKey.idr` (`sufficientEntropyNonEmpty`).
 
 ## Priority Going Forward
 
 **LOW** — All named proof obligations closed. Future work:
 - Proofs for Dap/Bsp/CodeIntel domains when those cartridges reach Ready status
 - Proof that `dispatch` is surjective onto all BJ3-covered (domain, protocol) pairs
-- Eliminate string-primitive axioms via a trusted extraction layer
+- The 5 string/char-primitive axioms are **irreducible within Idris2**
+  (opaque primitive types). They cannot be "proved away" in-language;
+  the only reduction path is to shrink the trusted base by validating
+  `prim__eqChar` / `prim__strToCharList` / `prim__strAppend` /
+  `prim__strSubstr` against the chosen backend (Chez/BEAM) via an
+  external trusted-extraction or property-test harness, then citing
+  that evidence here. This is a backend-assurance task, not a proof
+  obligation — keep it tracked but do not expect a constructive proof.
