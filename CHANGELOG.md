@@ -3,6 +3,44 @@
 
 All notable changes to Bundle of Joy Server are documented here.
 
+## [Unreleased]
+
+### Added
+
+- **k9iser-mcp cartridge** — reference implementation of the `-iser`
+  regeneration-cartridge pattern (central K9 contract regeneration), mirroring
+  ssg-mcp: `cartridge.json`, `mod.js`, Idris2 ABI, Zig FFI, panels.
+- **Unified transaction-gated adapter**: one internal/loopback listener,
+  protocol-routed REST + SSE + GraphQL + gRPC-compat → single dispatch → one
+  Zig ABI. Replaces the ssg-era 3-parallel-port anti-pattern; the trust gate
+  runs before every dispatch, mirroring the Idris2 `exposureSatisfied`
+  contract (no gatekeeperless path). Internal-only behind
+  `http-capability-gateway` per ADR-0004.
+- **boj-rest SSE surface**: `POST /cartridge/:name/sse` on the same single
+  Cowboy listener and trust-gated dispatch, `text/event-stream`.
+
+### Changed
+
+- **Doc reconciliation to ADR-0004**: `elixir/README.adoc`,
+  `mcp-bridge/api-clients.js`, and `OPERATOR-QUICKSTART.md` corrected to the
+  verified runtime + ADR-0004 tiered model (they previously and wrongly
+  described it as "skeleton/501/pending rewrite").
+
+### Fixed
+
+- **`dogfood-gate.yml` failed YAML validation at startup** (0 s, no jobs) on
+  every branch including `main`: an inline `python3 -c "` block placed Python
+  source at column 1 inside a `run: |` block scalar, terminating the scalar
+  early. Because **Dogfood Gate** is a required status check, this silently
+  blocked every PR in the repo. The validator now lives in
+  `.github/scripts/validate-eclexiaiser.py` and is invoked from the workflow.
+
+> Verification (k9iser-mcp): Elixir suite 177/177 (incl. 2 SSE tests); Zig
+> ffi 16/16 and unified adapter 5/5 (exposure-gate truth table mirroring the
+> Idris2 contract); `idris2 --check K9iserMcp/SafeK9iser.idr` passes.
+> http-capability-gateway production-wiring (ADR-0004 tier-2) and the
+> iseriser-scaffold rollout remain out of scope and separately tracked.
+
 ## [0.4.0] — 2026-04-17
 
 ### Changed
