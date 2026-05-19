@@ -7,6 +7,14 @@
 # as a FALLBACK for contributors who use Nix instead of Guix. The .envrc checks
 # for Guix first, then falls back to Nix.
 #
+# Retained per standards#102 rule 3 (KEEP+DEP). guix.scm declares
+# empty (native-inputs (list)) / (inputs (list)) and acknowledges
+# "idris2 and zig packages may need custom channels". This flake's
+# devShell is therefore the SOLE source of the language layer
+# (idris2, zig, zls) and the RSR-template common dev tools (git, just,
+# nickel, curl, bash, coreutils). Remove only once those packages are
+# available via Guix.
+#
 # Usage:
 #   nix develop          # Enter development shell
 #   nix build            # Build the project
