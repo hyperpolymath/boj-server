@@ -1,0 +1,65 @@
+// SPDX-License-Identifier: PMPL-1.0-or-later
+// Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+= k9iser-mcp — K9 contract regeneration cartridge
+:toc: macro
+:orientation: shallow
+
+toc::[]
+
+== Purpose
+
+Wraps the `k9iser` generator as a BoJ cartridge so that a repository's
+`generated/k9iser/*.k9` contracts are regenerated *centrally, on trigger*
+instead of being run ad hoc and hand-committed (which is how they rot —
+see hyperpolymath/k9iser#8 and the idaptik#77 triage).
+
+This is the reference implementation for the `-iser` regeneration-cartridge
+pattern (standards epic): every `-iser` generator should ship an equivalent
+so `generated/*` stops being hand-maintained drift estate-wide.
+
+== Pipeline
+
+[source]
+----
+Empty -> ManifestLoaded -> Generated -> Validated -> Applied
+----
+
+Enforced safety invariants (formally in `abi/K9iserMcp/SafeK9iser.idr`,
+executably in `ffi/k9iser_ffi.zig`):
+
+. *No apply without validate* — contracts that fail the canonical
+  `k9-validate` ruleset (K9! magic + pedigree) can never be committed back
+  to a repository.
+. *No validate without generate* — stale/absent output is never validated.
+. *Generate requires a loaded manifest.*
+
+== Tools (`cartridge.json`)
+
+[cols="1,3"]
+|===
+| `k9_load_manifest` | Load a repo's `k9iser.toml`
+| `k9_generate`      | Generate K9 contracts from configs + manifest rules
+| `k9_validate`      | Validate against the canonical K9! + pedigree ruleset
+| `k9_apply`         | Commit + push regenerated contracts to the branch
+| `k9_clean`         | Clean the session
+|===
+
+== Layout
+
+* `cartridge.json` — manifest (tools, ADR-0006 ffi symbols)
+* `mod.js` — Deno MCP bridge → backend at `K9ISER_BACKEND_URL`
+  (default `http://127.0.0.1:7743`)
+* `abi/` — Idris2 ABI: pipeline state machine + safety GADT
+* `ffi/` — Zig FFI: C-ABI exports + ADR-0006 `boj_cartridge_invoke`
+  dispatch (16/16 tests pass)
+* `adapter/` — three-protocol (REST/gRPC-compat/GraphQL) adapter
+* `panels/` — Panll dashboard manifest
+
+== Status
+
+Grade D Alpha. Cartridge package + verified state machine are complete.
+`boj_cartridge_invoke` returns shaped stubs; the live path additionally
+needs the backend service (runs the `k9iser` binary against a checked-out
+working tree) *and* the BoJ REST runtime, which is pending the Elixir
+rewrite — until that deploys, the templated `k9iser-regen` trigger is
+fire-and-forget exactly like `boj-build.yml` is today.
