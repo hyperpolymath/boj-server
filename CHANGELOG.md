@@ -29,6 +29,23 @@ All notable changes to Bundle of Joy Server are documented here.
 
 ### Added
 
+- **ADR-0014 — cross-cartridge composition safety (RFC)** — frames the
+  unresolved research question that the per-cartridge ABI proofs do not
+  compose automatically across `boj_cartridge_invoke`. Defines composition
+  safety as a two-level contract: a static Idris2 envelope
+  (`Boj.Composition.InvocationOf` lifting `IsUnbreakable` + `ProtocolMatch`
+  + per-cartridge `ArgsContract` into the inter-cartridge call) and a
+  dynamic Nickel `compositions` block in ADR-0007's `policy-mcp` PDP.
+  First proof pair is `panic-attack-mcp → vordr-mcp` (both cartridges
+  exist on disk); the prompt-suggested `panic-attack → sandbox → vordr`
+  chain is parked behind ADR-0009's `sandbox-mcp` build-out.
+
+- **README "Formal verification" section** — surfaces the audited posture
+  outside `PROOF-NEEDS.md` so external readers can see, without digging,
+  that all P1/P2 obligations are closed with constructive proofs and that
+  the remaining `believe_me` invocations are *principled assumptions over
+  Idris2 primitives*, not unproven debt.
+
 - **Streamable HTTP transport (ADR-0013, PR1 of 2)** — MCP bridge now selects
   between stdio (default), `http`, and `both` via `BOJ_TRANSPORT`. HTTP
   endpoints: `POST /mcp` for JSON-RPC, `GET /mcp` for the server-initiated
@@ -64,6 +81,18 @@ All notable changes to Bundle of Joy Server are documented here.
   described it as "skeleton/501/pending rewrite").
 
 ### Fixed
+
+- **Honest framing of the ABI axiom count.** `src/abi/Boj/SafetyLemmas.idr`'s
+  module docstring claimed "Three axiomatic `believe_me` primitives" while
+  five live in the file. Docstring now enumerates all five and tags each to
+  its underlying `prim__*` primitive. `appendLengthSum` and
+  `substrLengthBound` also had `(x y : T)` multi-binder syntax that Idris2
+  0.8.0 rejects at parse time — comma-separated form `(x, y : T)` restores
+  parsability. Types and proof terms unchanged. The 2026-05-18
+  `PROOF-NEEDS.md` audit (5 axioms, all class (J) — irreducible over Idris2
+  primitives, principled assumptions not unproven debt) is now consistent
+  with the source and surfaced via the new README "Formal verification"
+  section.
 
 - **`dogfood-gate.yml` failed YAML validation at startup** (0 s, no jobs) on
   every branch including `main`: an inline `python3 -c "` block placed Python
