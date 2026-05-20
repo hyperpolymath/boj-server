@@ -1,0 +1,22 @@
+{
+  "$schema": "https://boj.dev/schemas/cartridge/v1.json",
+  "spdx": "MPL-2.0",
+  "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>",
+  "name": "pinecone-mcp",
+  "version": "0.1.0",
+  "description": "Pinecone hosted vector DB — serverless indexes, upsert, similarity search, namespaces, metadata filtering.",
+  "domain": "vector",
+  "tier": "Teranga",
+  "protocols": ["MCP", "REST"],
+  "auth": { "method": "api_key", "env_var": "PINECONE_API_KEY", "credential_source": "Pinecone console; environment-scoped." },
+  "api": { "base_url": "local://pinecone-mcp", "content_type": "application/json" },
+  "tools": [
+    { "name": "vector_authenticate", "description": "Store Pinecone API key.", "inputSchema": { "type": "object", "properties": { "api_key": { "type": "string" }, "environment": { "type": "string" } }, "required": ["api_key"] } },
+    { "name": "vector_list_collections", "description": "List indexes (Pinecone calls them indexes).", "inputSchema": { "type": "object", "properties": {} } },
+    { "name": "vector_create_collection", "description": "Create a new index. Pinecone-specific: dimension + metric required.", "inputSchema": { "type": "object", "properties": { "name": { "type": "string" }, "dimension": { "type": "integer" }, "metric": { "type": "string", "enum": ["cosine", "euclidean", "dotproduct"] } }, "required": ["name", "dimension"] } },
+    { "name": "vector_delete_collection", "description": "Delete an index.", "inputSchema": { "type": "object", "properties": { "name": { "type": "string" } }, "required": ["name"] } },
+    { "name": "vector_upsert", "description": "Insert/update vectors with optional metadata + namespace.", "inputSchema": { "type": "object", "properties": { "collection": { "type": "string" }, "vectors": { "type": "array" }, "namespace": { "type": "string" } }, "required": ["collection", "vectors"] } },
+    { "name": "vector_query", "description": "Similarity search. Supports metadata filter + namespace.", "inputSchema": { "type": "object", "properties": { "collection": { "type": "string" }, "query": { "type": "array" }, "top_k": { "type": "integer" }, "namespace": { "type": "string" }, "filter": { "type": "object" } }, "required": ["collection", "query"] } },
+    { "name": "vector_delete", "description": "Delete vectors by id, namespace, or filter.", "inputSchema": { "type": "object", "properties": { "collection": { "type": "string" }, "ids": { "type": "array" }, "namespace": { "type": "string" }, "filter": { "type": "object" } }, "required": ["collection"] } }
+  ]
+}
