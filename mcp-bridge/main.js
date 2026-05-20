@@ -30,6 +30,8 @@ import {
   invokeCartridge,
 } from "./lib/api-clients.js";
 import { buildToolList } from "./lib/tools.js";
+import { listResources, readResource } from "./lib/resources.js";
+import { listPrompts, getPrompt } from "./lib/prompts.js";
 import {
   initValidator,
   tryParseEnvelope,
@@ -356,12 +358,47 @@ async function handleMessage(line) {
     }
 
     case "resources/list": {
-      sendResult(id, { resources: [] });
+      sendResult(id, { resources: listResources() });
+      break;
+    }
+
+    case "resources/read": {
+      const uri = params?.uri;
+      if (typeof uri !== "string" || !uri.startsWith("boj://")) {
+        sendError(id, -32602, "resources/read requires a boj:// URI");
+        break;
+      }
+      try {
+        const result = await readResource(uri);
+        if (result === null) {
+          sendError(id, -32602, `Unknown resource: ${uri}`);
+        } else {
+          sendResult(id, result);
+        }
+      } catch (e) {
+        sendError(id, -32603, sanitizeErrorMessage(e?.message ?? String(e)));
+      }
       break;
     }
 
     case "prompts/list": {
-      sendResult(id, { prompts: [] });
+      sendResult(id, { prompts: listPrompts() });
+      break;
+    }
+
+    case "prompts/get": {
+      const name = params?.name;
+      const args = params?.arguments ?? {};
+      if (typeof name !== "string" || name.length === 0) {
+        sendError(id, -32602, "prompts/get requires a 'name'");
+        break;
+      }
+      const { result, error: promptError } = getPrompt(name, args);
+      if (promptError) {
+        sendError(id, promptError.code, promptError.message);
+      } else {
+        sendResult(id, result);
+      }
       break;
     }
 
