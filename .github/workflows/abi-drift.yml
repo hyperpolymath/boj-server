@@ -1,0 +1,123 @@
+# SPDX-License-Identifier: MPL-2.0
+# Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+#
+# ABI Drift Gate (standards#92 Phase 2)
+#
+# For every cartridge that has a paired `abi/.../Safe*.idr` (Idris2 ABI
+# source of truth) and `ffi/*_ffi.zig` (Zig FFI mirror), this workflow:
+#   1. emits the ABI manifest from the Idris2 source (`iseriser abi-emit-manifest`)
+#   2. verifies the Zig FFI against the emitted manifest (`iseriser abi-verify`)
+# Fails the PR check on any structural drift in: enum encoding,
+# transition table, or accept-by-omission. See iseriser/README and
+# `iseriser/examples/abi-manifests/README.adoc` for the drift taxonomy.
+#
+# Triggers only when an ABI- or FFI-bearing file under cartridges/
+# changes, so unrelated PRs do not pay for it.
+
+name: ABI Drift Gate
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'cartridges/**/abi/**'
+      - 'cartridges/**/ffi/**'
+      - '.github/workflows/abi-drift.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'cartridges/**/abi/**'
+      - 'cartridges/**/ffi/**'
+      - '.github/workflows/abi-drift.yml'
+
+concurrency:
+  group: abi-drift-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Emit manifest + verify FFI
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Install Rust toolchain (stable)
+        uses: dtolnay/rust-toolchain@b3b07ba8b418998c39fb20f53e8b695cdcc8de1b # stable
+        with:
+          toolchain: stable
+
+      - name: Cache cargo bin (iseriser install)
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/bin/iseriser
+            ~/.cargo/registry
+            ~/.cargo/git
+          key: iseriser-${{ runner.os }}-${{ github.sha }}
+          restore-keys: |
+            iseriser-${{ runner.os }}-
+
+      - name: Install iseriser
+        run: |
+          set -euo pipefail
+          if ! command -v iseriser >/dev/null 2>&1; then
+            cargo install --git https://github.com/hyperpolymath/iseriser --branch main --locked
+          fi
+          iseriser --version || true
+
+      - name: Resolve cartridge allowlist
+        id: discover
+        # 80 cartridges in the tree carry a paired Safe*.idr + *_ffi.zig.
+        # The gate starts narrow: only cartridges audited and known clean
+        # against the Phase 1b emitter + Phase 1 verifier are enforced.
+        # Expand this list as cartridges are individually verified — the
+        # broader spot-check (PR body) found real drift (e.g. 007-mcp's
+        # `ToolRisk` enum) plus Zig-reserved-word false positives (e.g.
+        # `Error → err` in airtable-mcp / postgresql-mcp) that need the
+        # converter taught about Zig reserved words first.
+        run: |
+          set -euo pipefail
+          {
+            echo 'carts<<EOF'
+            echo 'ssg-mcp'
+            echo 'k9iser-mcp'
+            echo 'EOF'
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Emit + verify each cartridge
+        env:
+          CARTS: ${{ steps.discover.outputs.carts }}
+        run: |
+          set -euo pipefail
+          failed=""
+          while IFS= read -r cart; do
+            [ -z "$cart" ] && continue
+            echo "::group::abi-drift: $cart"
+            idris_src="$(ls cartridges/${cart}/abi/*/Safe*.idr | head -n1)"
+            zig_ffi="$(ls cartridges/${cart}/ffi/*_ffi.zig | head -n1)"
+            manifest="$(mktemp --suffix=.json)"
+            if iseriser abi-emit-manifest \
+                 --idris       "$idris_src" \
+                 --cartridge   "$cart" \
+                 --source-path "$idris_src" \
+                 --out         "$manifest"; then
+              if iseriser abi-verify --manifest "$manifest" --zig-ffi "$zig_ffi"; then
+                echo "  ✓ $cart"
+              else
+                echo "  ✗ $cart DRIFT"
+                failed="$failed $cart"
+              fi
+            else
+              echo "  ✗ $cart EMIT FAILED"
+              failed="$failed $cart"
+            fi
+            rm -f "$manifest"
+            echo "::endgroup::"
+          done <<< "$CARTS"
+          if [ -n "$failed" ]; then
+            echo "::error::ABI drift detected in:$failed"
+            exit 1
+          fi
