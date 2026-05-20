@@ -1,8 +1,10 @@
 # boj-server
 
 [![OpenSSF Best Practices](https://img.shields.io/badge/OpenSSF-Best_Practices-green?logo=opensourcesecurity)](https://www.bestpractices.dev/en/projects/new?repo_url=https://github.com/hyperpolymath/boj-server)
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/hyperpolymath/boj-server/badge)](https://scorecard.dev/viewer/?uri=github.com/hyperpolymath/boj-server)
 [![Glama MCP Server](https://glama.ai/mcp/servers/hyperpolymath/boj-server/badge)](https://glama.ai/mcp/servers/hyperpolymath/boj-server)
 [![Green Hosting](https://api.thegreenwebfoundation.org/greencheckimage/boj-server.net)](https://www.thegreenwebfoundation.org/green-web-check/?url=boj-server.net)
+[![Software Heritage](https://archive.softwareheritage.org/badge/origin/https://github.com/hyperpolymath/boj-server/)](https://archive.softwareheritage.org/browse/origin/?origin_url=https://github.com/hyperpolymath/boj-server)
 
 BoJ (Bundle of Joy) is a unified MCP server that consolidates all hyperpolymath tooling into a single endpoint — GitHub, GitLab, Cloudflare, Vercel, Verpex, Gmail, Calendar, browser automation, research, ML, and 115 open-source cartridges.
 
@@ -236,6 +238,21 @@ Run the coherence tests:
 ```bash
 npm test
 ```
+
+## Citing
+
+If you use BoJ Server in academic work, citation metadata is in [`CITATION.cff`](./CITATION.cff). GitHub renders a "Cite this repository" button in the sidebar from this file.
+
+Per-release DOIs are available via Zenodo. To enable them:
+
+1. Log in to [zenodo.org](https://zenodo.org/) with your GitHub account.
+2. Account → GitHub → flip the **boj-server** repository toggle to on.
+3. Cut a new GitHub release; Zenodo auto-archives it and mints a DOI.
+4. Add the DOI badge to this README:
+   ```markdown
+   [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.XXXXXXX.svg)](https://doi.org/10.5281/zenodo.XXXXXXX)
+   ```
+5. Update the `doi:` field in `CITATION.cff` to match.
 
 ## License
 
