@@ -196,17 +196,263 @@ After install, ask the LLM: *"Use the `boj_health` tool."* You should get `{stat
 
 Glama listing: <https://glama.ai/mcp/servers/hyperpolymath/boj-server>
 
-## Features
+## Scope
 
-- **GitHub/GitLab** — repos, issues, PRs, code search, mirroring (22 tools)
-- **Cloud** — Cloudflare (DNS, Workers, KV, R2, D1), Vercel (deployments, projects), Verpex (cPanel)
-- **Communication** — Gmail, Google Calendar
-- **Browser** — Firefox automation: navigate, click, type, screenshot, arbitrary JS (7 tools)
-- **Code Intelligence** — CodeSeeker hybrid search + graph RAG
-- **Research** — Semantic Scholar papers, citations, authors
-- **ML** — Hugging Face model / dataset / inference
-- **Local coordination** — `local-coord-mcp` (24 tools): multi-instance AI peer discovery, typed envelopes, claim/heartbeat/watchdog, quarantine + master/journeyman/apprentice supervision, track-record affinity, capability advertisement
-- **Cartridges** — 115 pluggable cartridges across Teranga / Shield / Ayo trust tiers
+**115 cartridges**, organized across the domains below. Each cartridge is a formally verified Idris2 ABI + Zig FFI + Deno/JS adapter triple, reachable through a single MCP endpoint. Click any section to expand.
+
+<details>
+<summary><b>🔧 Git forges &amp; code hosting</b> — 4 cartridges</summary>
+
+| Cartridge | Description |
+|---|---|
+| `github-api-mcp` | GitHub REST API — repos, issues, PRs, search |
+| `gitlab-api-mcp` | GitLab REST API — projects, issues, MRs |
+| `github-actions-mcp` | GitHub Actions — workflows, runs, jobs, artifacts, secret rotation |
+| `git-mcp` | Multi-forge git operations (GitHub, GitLab, Gitea, Bitbucket) |
+
+Bridge-level tools: `boj_github_*` (14), `boj_gitlab_*` (8) — 22 explicit tools. Auth via `GITHUB_TOKEN` / `GITLAB_TOKEN` env vars.
+
+</details>
+
+<details>
+<summary><b>☁️ Cloud platforms</b> — 10 cartridges</summary>
+
+| Cartridge | Description |
+|---|---|
+| `cloud-mcp` | Multi-cloud session manager (AWS / GCP / Azure / DO / Vercel) |
+| `aws-mcp` | AWS gateway — session-based auth, per-region slots, throttle management |
+| `gcp-mcp` | GCP gateway — project-scoped auth, quota tracking, multi-service routing |
+| `cloudflare-mcp` | Cloudflare v4 — Workers, D1, KV, R2, DNS, zone settings, SSL/TLS |
+| `digitalocean-mcp` | DigitalOcean — droplets, volumes, domains, SSH keys, snapshots, databases |
+| `hetzner-mcp` | Hetzner Cloud — servers, volumes, firewalls, networks, snapshots, floating IPs |
+| `fly-mcp` | Fly.io Machines v1 — apps, machines, volumes, secrets, regions, IPs, certs |
+| `linode-mcp` | Linode/Akamai — instances, volumes, domains, NodeBalancers, StackScripts |
+| `railway-mcp` | Railway GraphQL v2 — projects, services, deployments, env, domains, logs |
+| `render-mcp` | Render REST v1 — services, deploys, env groups, custom domains, jobs |
+
+Bridge-level tools: `boj_cloud_cloudflare`, `boj_cloud_vercel`, `boj_cloud_verpex`. Other providers reachable via `boj_cartridge_invoke`.
+
+</details>
+
+<details>
+<summary><b>🗄 Databases</b> — 12 cartridges</summary>
+
+| Cartridge | Description |
+|---|---|
+| `database-mcp` | Universal SQL/NoSQL gateway across multiple engines |
+| `postgresql-mcp` | PostgreSQL — full transaction support, connection pooling, query lifecycle |
+| `mongodb-mcp` | MongoDB — collection-level CRUD, aggregation pipelines, sessions |
+| `redis-mcp` | Redis — KV, sorted sets, pub/sub, streams, Lua scripting |
+| `neo4j-mcp` | Neo4j — graph database query and write |
+| `clickhouse-mcp` | ClickHouse — columnar queries, bulk inserts, real-time analytics |
+| `duckdb-mcp` | DuckDB — in-process analytics over Parquet/CSV/JSON/Arrow |
+| `arango-mcp` | ArangoDB — AQL queries, multi-model documents, graph traversals |
+| `turso-mcp` | Turso libSQL — edge SQLite, multi-DB, embedded replica sync |
+| `supabase-mcp` | Supabase — Postgres, Auth, Storage, Edge Functions |
+| `neon-mcp` | Neon — serverless Postgres, branch management, query execution |
+| `verisimdb-mcp` | **VeriSimDB** — verified simulation database with formal drift detection |
+
+</details>
+
+<details>
+<summary><b>📦 Containers, deploy &amp; integrity</b> — 5 cartridges</summary>
+
+| Cartridge | Description |
+|---|---|
+| `container-mcp` | Build / create / start / stop / remove via Podman or Docker |
+| `docker-hub-mcp` | Docker Hub — image search, repos, tag listing, manifests |
+| `k8s-mcp` | Kubernetes — namespace-scoped CRUD with lifecycle management |
+| `stapeln-mcp` | Stapeln stack manager — Chainguard-base composable container layers |
+| `vordr-mcp` | Vordr integrity monitor — BLAKE3 tamper-detection on container images |
+
+</details>
+
+<details>
+<summary><b>🔁 CI/CD &amp; observability</b> — 8 cartridges</summary>
+
+| Cartridge | Description |
+|---|---|
+| `buildkite-mcp` | Buildkite — pipelines, builds, jobs, artifacts |
+| `circleci-mcp` | CircleCI — pipelines, workflows, jobs, artifacts |
+| `laminar-mcp` | Laminar — minimalist CI/CD pipeline management |
+| `hypatia-mcp` | **Hypatia** — neurosymbolic CI security/quality/compliance scanner |
+| `observe-mcp` | Unified observability — metrics, logs, traces |
+| `grafana-mcp` | Grafana — dashboards, panel queries, alert rules, annotations |
+| `prometheus-mcp` | Prometheus — PromQL instant + range queries, alerts, targets |
+| `sentry-mcp` | Sentry — issues, events, projects, releases, deployments |
+
+</details>
+
+<details>
+<summary><b>💬 Communications &amp; messaging</b> — 6 cartridges</summary>
+
+| Cartridge | Description |
+|---|---|
+| `comms-mcp` | **Gmail + Google Calendar** — send, read, search, labels, events, free/busy |
+| `slack-mcp` | Slack — messages, channels, threads, search, users |
+| `discord-mcp` | Discord — messages, channel history, guilds, reactions |
+| `telegram-mcp` | Telegram Bot API — messages, chats, inline queries, updates |
+| `matrix-mcp` | Matrix — messages, room join/leave, history, membership |
+| `notifyhub-mcp` | Unified notify — Email, SMS, WhatsApp, Slack, Telegram, Discord |
+
+Bridge-level tools: `boj_comms_gmail`, `boj_comms_calendar`.
+
+</details>
+
+<details>
+<summary><b>📚 Productivity &amp; knowledge</b> — 10 cartridges</summary>
+
+| Cartridge | Description |
+|---|---|
+| `google-docs-mcp` | Docs — document retrieval, content, search, headings, comments |
+| `google-sheets-mcp` | Sheets — metadata, cell ranges, named ranges, sheet listing |
+| `notion-mcp` | Notion — pages, databases, blocks |
+| `obsidian-mcp` | Obsidian vault — note search, content, backlinks, tags, graph |
+| `linear-mcp` | Linear — issues, projects, cycles, labels |
+| `jira-mcp` | Jira — projects, issues, sprints, workflows |
+| `todoist-mcp` | Todoist — tasks, projects, completion, labels |
+| `airtable-mcp` | Airtable — bases, table schemas, record CRUD |
+| `zotero-mcp` | Zotero — library search, items, collections, tags |
+| `academic-workflow-mcp` | Academic workflow — Zotero integration, citations, paper review |
+
+</details>
+
+<details>
+<summary><b>🤖 ML, AI &amp; coordination</b> — 8 cartridges</summary>
+
+| Cartridge | Description |
+|---|---|
+| `ml-mcp` | **Hugging Face** + others — search, model info, inference, spaces, datasets |
+| `claude-ai-mcp` | Anthropic Messages API — Claude models, token counting, multi-turn |
+| `claude-agents-power-mcp` | Specialized AI-agent management for dev teams |
+| `model-router-mcp` | Task classifier — recommends opus/sonnet/haiku per task |
+| `echidna-llm-mcp` | LLM advisor for the ECHIDNA formal-verification engine |
+| `agent-mcp` | OODA-loop agent session enforcer |
+| `local-coord-mcp` | **Multi-instance peer discovery + typed envelopes + supervision** (21 tools) |
+| `local-memory-mcp` | Persistent local memory for Claude, Cursor, Codex (13 tools, no cloud) |
+
+Bridge-level tool: `boj_ml_huggingface`. `coord_*` tools (21) wire through `local-coord-mcp` — see the dedicated section below.
+
+</details>
+
+<details>
+<summary><b>🌐 Browser &amp; web automation</b> — 2 cartridges</summary>
+
+| Cartridge | Description |
+|---|---|
+| `browser-mcp` | Firefox automation via Marionette — navigate, click, type, screenshot, exec JS |
+| `gossamer-mcp` | Native desktop windows — panel loading, JS bridge |
+
+Bridge-level tools: `boj_browser_*` (7) — navigate, click, type, read_page, screenshot, tabs, execute_js.
+
+</details>
+
+<details>
+<summary><b>🔍 Code intelligence &amp; research</b> — 5 cartridges</summary>
+
+| Cartridge | Description |
+|---|---|
+| `codeseeker-mcp` | **CodeSeeker** — vector + BM25 + path-tier fused via RRF; KG traversal; Graph-RAG |
+| `coderag-mcp` | Enterprise code intelligence — graph-based analysis for AI-assisted dev |
+| `research-mcp` | **Semantic Scholar / OpenAlex** — papers, citations, references, authors |
+| `opendatamcp` | Public dataset access for LLM apps |
+| `origenemcp` | Biomedical platform — 600+ tools/databases (ChEMBL, PubChem, FDA, OpenTargets) |
+
+Bridge-level tools: `boj_codeseeker`, `boj_research`.
+
+</details>
+
+<details>
+<summary><b>🛠 Developer tooling (LSP/DAP/BSP, languages, registries)</b> — 14 cartridges</summary>
+
+| Cartridge | Description |
+|---|---|
+| `lsp-mcp` | Generic Language Server Protocol 3.17 gateway — spawn any LSP server |
+| `dap-mcp` | Generic Debug Adapter Protocol gateway |
+| `bsp-mcp` | Generic Build Server Protocol 2.x gateway |
+| `lang-mcp` | Multi-language session manager — Eclexia, AffineScript, BetLang, Ephapax |
+| `toolchain-mcp` | Toolchain orchestrator — mint/provision/configure language toolchains |
+| `orchestrator-lsp-mcp` | Cross-domain LSP router across all 12 poly-*-lsp servers |
+| `affinescript-mcp` | **AffineScript** — type check, parse, format, lint, compile, hover, definition |
+| `typed-wasm-mcp` | **AffineScript → typed-wasm** at Level 7/10 ownership soundness |
+| `npm-registry-mcp` | npm — search, metadata, versions, downloads, dependency analysis |
+| `pypi-mcp` | PyPI — Python packages, search, metadata, versions, downloads |
+| `crates-mcp` | crates.io — Rust crates, search, metadata, versions, downloads |
+| `hackage-mcp` | Hackage — Haskell packages |
+| `hex-mcp` | Hex.pm — Elixir/Erlang packages |
+| `opam-mcp` | opam — OCaml packages |
+
+Plus `opsm-mcp` (Odds-and-Sods Package Manager) routes search/install/dep-resolution across all of the above.
+
+</details>
+
+<details>
+<summary><b>🔒 Security &amp; secrets</b> — 7 cartridges</summary>
+
+| Cartridge | Description |
+|---|---|
+| `secrets-mcp` | Secrets management — Vault, SOPS, env-vault |
+| `vault-mcp` | Vault CLI credential broker — execute, list, verify, rotate |
+| `sanctify-mcp` | Sanctify — PHP lint + deviation detection |
+| `panic-attack-mcp` | panic-attacker static analysis — dangerous patterns, banned constructs, drift |
+| `vext-mcp` | Vext — signed-message verification, attestation chains |
+| `rokur-mcp` | Rokur — Svalinn secrets GUI authorisation layer |
+| `dns-shield-mcp` | DNS security — DoQ, DoH, DNSSEC, CAA |
+
+</details>
+
+<details>
+<summary><b>🏗 Infrastructure-as-code, config &amp; proof</b> — 7 cartridges</summary>
+
+| Cartridge | Description |
+|---|---|
+| `iac-mcp` | Terraform / OpenTofu lifecycle — plan → apply → destroy with state lifecycle |
+| `conflow-mcp` | Conflow — configuration management |
+| `bofig-mcp` | Bofig — evidence graph query for investigative workflows |
+| `proof-mcp` | Proof verification — Lean, Coq, Agda, Isabelle, Idris2, Z3, more |
+| `nesy-mcp` | **Neural-symbolic** harmonisation — symbolic truth overrides neural probability |
+| `ephapax-mcp` | Ephapax — proof-compiler query tools for formal verification |
+| `pmpl-mcp` | PMPL licence chain verification + artefact hashing |
+
+</details>
+
+<details>
+<summary><b>🌱 Hyperpolymath-native admin &amp; ecosystem</b> — 13 cartridges</summary>
+
+| Cartridge | Description |
+|---|---|
+| `boj-health` | Self-health — status, ping, uptime |
+| `fleet-mcp` | gitbot-fleet gate compliance tracker |
+| `reposystem-mcp` | Reposystem — managed repos, health, mirrors, RSR compliance |
+| `007-mcp` | oo7 agent meta-language — parse/run/trace/build/test/lint |
+| `k9iser-mcp` | K9 contract regeneration (k9iser generate/validate/apply) |
+| `idaptik-admin-mcp` | IDApTIK game server administration |
+| `burble-admin-mcp` | Burble WebRTC server administration |
+| `game-admin-mcp` | Game server admin + configuration drift |
+| `aerie-mcp` | Aerie environment lifecycle manager |
+| `hesiod-mcp` | DNS lookup cartridge |
+| `fireflag-mcp` | Fireflag — extension-to-MCP mapping and discovery |
+| `kategoria-mcp` | Type-theory learning system — classification + learner evaluation |
+| `civic-connect-mcp` | CivicConnect community engagement platform |
+
+Plus `feedback-mcp` (feedback collection + sentiment), `ssg-mcp` (Hugo/Zola/Astro/Casket), `ums-mcp` (Universal Map Specification level editor).
+
+</details>
+
+### Bridge-level tools (41 exposed)
+
+A subset of cartridges have explicit `boj_<domain>_<verb>` tools at the bridge for highest-frequency operations. Everything else is reachable via `boj_cartridge_invoke`:
+
+- **5 core**: `boj_health`, `boj_menu`, `boj_cartridges`, `boj_cartridge_info`, `boj_cartridge_invoke`
+- **3 cloud**: `boj_cloud_verpex`, `boj_cloud_cloudflare`, `boj_cloud_vercel`
+- **2 comms**: `boj_comms_gmail`, `boj_comms_calendar`
+- **1 ML**: `boj_ml_huggingface`
+- **7 browser**: `boj_browser_navigate`, `boj_browser_click`, `boj_browser_type`, `boj_browser_read_page`, `boj_browser_screenshot`, `boj_browser_tabs`, `boj_browser_execute_js`
+- **14 GitHub** + **8 GitLab**
+- **1 CodeSeeker**, **1 research**
+- **21 coord** (see below)
+
+Set `BOJ_TOOL_SCOPE=core` to advertise only the discovery surface; explicit tools remain reachable via `boj_cartridge_invoke` regardless.
 
 ## Local-coord-mcp at a glance
 
