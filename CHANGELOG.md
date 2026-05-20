@@ -82,6 +82,32 @@ All notable changes to Bundle of Joy Server are documented here.
 
 ### Fixed
 
+- **`Boj.SafeAPIKey.logSafeBounded` rebuilt for Idris2 0.8.0.** The pre-
+  existing proof did not type-check on `main`; the 2026-05-18 audit's claim
+  that `SafeAPIKey` carried constructive proofs closing BJ2-partial was a
+  desk-read, not a build. Three independent defects: (1) removed the
+  redundant local `plusLteMonotone` helper (called now-gone `lteTransitive`
+  and used wrong arg order on `plusLteMonotoneRight`/`Left`; stdlib's
+  `Data.Nat.plusLteMonotone` has exactly the needed shape); (2) lifted both
+  short and long paths out of the `with`-block (the elaborator doesn't
+  reduce `length "***"` at type level inside a `with`-block — goal stays
+  as `LTE (integerToNat (prim__cast_IntInteger (prim__strLength (if ...))))
+  11` with the `if`-arm unreduced); (3) right-associated the long-path
+  proof to match `++`'s associativity (`a ++ b ++ c = a ++ (b ++ c)`).
+  Plus two bound-name typos in `toLogSafeShortEq`/`toLogSafeLongEq`. All
+  12 safety modules now build green via per-module `idris2 --check`. No
+  new `believe_me` axioms.
+
+- **`tests/aspect_tests.sh` grep-count bash bug.** `Aspect — Thread
+  Safety + ABI Contract + SPDX` had been red on `main`, gating every PR
+  with `tests/aspect_tests.sh: line 77: [[: 0\n0: syntax error in
+  expression`. Root cause: `grep -c 'pattern' file 2>/dev/null || echo
+  "0"`. `grep -c` always prints the count (including `0`) **and** exits
+  non-zero on no-match, so `|| echo "0"` also fires — `has_export` ends
+  up `"0\n0"` and `[[ "0\n0" -gt 0 ]]` chokes on the newline in
+  arithmetic context. Swapped `|| echo "0"` → `|| true` on all four
+  call-sites.
+
 - **Honest framing of the ABI axiom count.** `src/abi/Boj/SafetyLemmas.idr`'s
   module docstring claimed "Three axiomatic `believe_me` primitives" while
   five live in the file. Docstring now enumerates all five and tags each to
