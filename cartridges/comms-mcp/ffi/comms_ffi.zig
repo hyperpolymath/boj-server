@@ -26,6 +26,24 @@ pub const CommsProvider = enum(c_int) {
     custom = 99,
 };
 
+/// Gmail resource types — mirrors `CommsMcp.SafeComms.GmailResource`
+/// + `gmResourceToInt` encoding. Declared here so `iseriser abi-verify`
+/// can structurally check the encoding against the Idris2 source.
+pub const GmailResource = enum(c_int) {
+    gm_message = 1,
+    gm_thread = 2,
+    gm_label = 3,
+    gm_draft = 4,
+};
+
+/// Google Calendar resource types — mirrors
+/// `CommsMcp.SafeComms.CalendarResource` + `calResourceToInt` encoding.
+pub const CalendarResource = enum(c_int) {
+    cal_event = 1,
+    cal_calendar = 2,
+    cal_free_busy = 3,
+};
+
 // ═══════════════════════════════════════════════════════════════════════
 // Session State Machine
 // ═══════════════════════════════════════════════════════════════════════
