@@ -70,14 +70,14 @@ jobs:
 
       - name: Resolve cartridge allowlist
         id: discover
-        # 81 cartridges in the tree carry a paired Safe*.idr + *_ffi.zig.
-        # 66 are audited green against the Phase 1b emitter + Phase 1
+        # 80 cartridges in the tree carry a paired Safe*.idr + *_ffi.zig.
+        # 65 are audited green against the Phase 1b emitter + Phase 1
         # verifier (re-run 2026-05-20 after iseriser#20 / #21 / #22 merged:
         # GADT-skip in the emitter, runtogether candidate for multi-cap
         # acronyms, and terminal `false` switch-arm tolerance in the
         # verifier). Versus the previous 56-cartridge allowlist this:
-        #   * ADDS 11 cartridges that the three iseriser fixes unblocked
-        #     (chapeliser, cloud, comms, container, git, gitlab-api, ml,
+        #   * ADDS 10 cartridges that the three iseriser fixes unblocked
+        #     (cloud, comms, container, git, gitlab-api, ml,
         #     mongodb, queues, research, vordr)
         #   * REMOVES browser-mcp — newly-detected genuine drift
         #     (`BrowserAction.Type` ↔ Zig `type_text`; cartridge-side
@@ -88,6 +88,9 @@ jobs:
         # and Class E (malformed Idris2 source) are now empty: iseriser#22
         # closed Class P (5 cartridges) and the vordr-mcp Class E case
         # was closed via iseriser#20 + the cartridge's clean re-survey.
+        # chapeliser-mcp was over-listed in #133 — the cartridge dir does
+        # not exist in the tree; the loop's `ls cartridges/<n>/abi/*/...`
+        # fails with exit code 2 and the whole job goes red.
         run: |
           set -euo pipefail
           {
@@ -98,7 +101,6 @@ jobs:
             echo 'airtable-mcp'
             echo 'arango-mcp'
             echo 'buildkite-mcp'
-            echo 'chapeliser-mcp'
             echo 'clickhouse-mcp'
             echo 'cloud-mcp'
             echo 'cloudflare-mcp'
