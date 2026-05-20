@@ -56,7 +56,7 @@ public export
 data BrowserAction
   = Navigate   -- ^ Load a URL in the current tab.
   | Click      -- ^ Click an element matching a CSS selector.
-  | Type       -- ^ Type text into an element matching a CSS selector.
+  | TypeText   -- ^ Type text into an element matching a CSS selector.
   | Screenshot -- ^ Capture a screenshot of the current viewport.
   | ReadPage   -- ^ Read the DOM text content of the current page.
   | FillForm   -- ^ Fill multiple form fields in one operation.
@@ -123,7 +123,7 @@ export
 browserActionToInt : BrowserAction -> Int
 browserActionToInt Navigate   = 0
 browserActionToInt Click      = 1
-browserActionToInt Type       = 2
+browserActionToInt TypeText   = 2
 browserActionToInt Screenshot = 3
 browserActionToInt ReadPage   = 4
 browserActionToInt FillForm   = 5
@@ -137,7 +137,7 @@ export
 intToBrowserAction : Int -> Maybe BrowserAction
 intToBrowserAction 0 = Just Navigate
 intToBrowserAction 1 = Just Click
-intToBrowserAction 2 = Just Type
+intToBrowserAction 2 = Just TypeText
 intToBrowserAction 3 = Just Screenshot
 intToBrowserAction 4 = Just ReadPage
 intToBrowserAction 5 = Just FillForm
