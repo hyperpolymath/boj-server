@@ -51,6 +51,29 @@ pub const SessionState = enum(c_int) {
     degraded = 4,
 };
 
+// ═══════════════════════════════════════════════════════════════════════
+// Tool risk tier (matches Oo7Mcp.SafeCli.ToolRisk + tierToInt encoding)
+// ═══════════════════════════════════════════════════════════════════════
+//
+// Tier 0 — pure read (status, list)
+// Tier 1 — logged (runtime reads, tests, builds, lint)
+// Tier 2 — light gate (container builds, docs generate, heal)
+// Tier 3 — hard gate (rollback, destructive clean, container-run w/ privileged)
+// Tier 4 — forbidden for supervised role (none on 007-mcp; reserved)
+//
+// Declared here so iseriser's `abi-verify` can check the encoding stays
+// in sync with `SafeCli.ToolRisk`. Risk enforcement (categoryDefaultRisk
+// / riskPromotion) is currently Idris2-only — the Zig dispatcher does
+// not yet gate on this enum; wiring is a separate follow-up.
+
+pub const ToolRisk = enum(c_int) {
+    tier0 = 0,
+    tier1 = 1,
+    tier2 = 2,
+    tier3 = 3,
+    tier4 = 4,
+};
+
 /// Session-wide state. Single-instance per adapter process.
 var g_state: SessionState = .fresh;
 var g_state_mu: std.Thread.Mutex = .{};
