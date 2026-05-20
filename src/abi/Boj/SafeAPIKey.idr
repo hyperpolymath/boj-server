@@ -145,7 +145,7 @@ sufficientEntropyNonEmpty (MkSufficientEntropy s {prf}) with (unpack s) proof up
 -- Works because toLogSafe is transparent and `if True then x else y = x`.
 private
 toLogSafeShortEq : (s : String) -> (length s <= 8 = True) -> toLogSafe s = "***"
-toLogSafeShortEq s _ with (length s <= 8)
+toLogSafeShortEq s prf with (length s <= 8)
   toLogSafeShortEq _ _ | True  = Refl
   toLogSafeShortEq _ prf | False = absurd prf
 
@@ -153,15 +153,66 @@ toLogSafeShortEq s _ with (length s <= 8)
 private
 toLogSafeLongEq : (s : String) -> (length s <= 8 = False) ->
   toLogSafe s = substr 0 4 s ++ "..." ++ substr (length s `minus` 4) 4 s
-toLogSafeLongEq s _ with (length s <= 8)
+toLogSafeLongEq s prf with (length s <= 8)
   toLogSafeLongEq _ prf | True  = absurd prf
   toLogSafeLongEq _ _ | False = Refl
 
--- Monotonicity of + over LTE (derived from Data.Nat primitives).
+-- Length bound on the redacted-short marker. Lifted out of `logSafeBounded`'s
+-- with-block so the elaborator reduces `length "***"` against the witness
+-- `LTE 3 11`. Inside the with-block the reduction does not fire on Idris2
+-- 0.8.0 (the goal is exposed as
+--   `LTE (integerToNat (prim__cast_IntInteger (prim__strLength (if ...))))`
+-- and the `if`-arm is not reduced before unification).
 private
-plusLteMonotone : {m, n, p, q : Nat} -> LTE m n -> LTE p q -> LTE (m + p) (n + q)
-plusLteMonotone lmn lpq =
-  lteTransitive (plusLteMonotoneRight _ lmn) (plusLteMonotoneLeft _ lpq)
+shortMarkerBounded : LTE (length "***") 11
+shortMarkerBounded = LTESucc (LTESucc (LTESucc (LTEZero {right = 8})))
+
+-- Length bound on the long-path ellipsis marker. Same lift-out reason as
+-- `shortMarkerBounded`.
+private
+ellipsisLen3 : LTE (length "...") 3
+ellipsisLen3 = LTESucc (LTESucc (LTESucc LTEZero))
+
+-- Short path of `logSafeBounded`, lifted out of the with-block. The return
+-- type uses the *literal* `"***"` rather than `toLogSafe s`, which matches
+-- what the with-block's True-branch substitution rewrites the goal to.
+private
+logSafeBoundedShort : (s : String) -> (length s <= 8 = True) ->
+                      LTE (length "***") 11
+logSafeBoundedShort _ _ = shortMarkerBounded
+
+-- Long path of `logSafeBounded`, lifted out of the with-block. The return
+-- type carries the substr-form directly (matching what the with-block False-
+-- branch rewrites the goal to via `if False`-evaluation of `toLogSafe`). The
+-- substr arguments are repeated rather than let-bound because Idris2 0.8.0's
+-- elaborator doesn't always propagate `let`-binding equalities through
+-- `appendLengthSum`'s implicit arguments. The proof is right-associated to
+-- match `++`'s associativity (`a ++ b ++ c = a ++ (b ++ c)`).
+private
+logSafeBoundedLong : (s : String) -> (length s <= 8 = False) ->
+                     LTE (length (substr 0 4 s ++ "..." ++ substr (length s `minus` 4) 4 s)) 11
+logSafeBoundedLong s _ =
+  let l1 : LTE (length (substr 0 4 s)) 4
+      l1 = substrLengthBound s 0 4
+      l3 : LTE (length (substr (length s `minus` 4) 4 s)) 4
+      l3 = substrLengthBound s (length s `minus` 4) 4
+      -- Length of "..." ++ p3
+      eq23 : length ("..." ++ substr (length s `minus` 4) 4 s)
+           = length "..." + length (substr (length s `minus` 4) 4 s)
+      eq23 = appendLengthSum "..." (substr (length s `minus` 4) 4 s)
+      step23 : LTE (length "..." + length (substr (length s `minus` 4) 4 s)) (3 + 4)
+      step23 = plusLteMonotone ellipsisLen3 l3
+      l23 : LTE (length ("..." ++ substr (length s `minus` 4) 4 s)) 7
+      l23 = replace {p = \n => LTE n 7} (sym eq23) step23
+      -- Length of p1 ++ ("..." ++ p3)
+      eq123 : length (substr 0 4 s ++ "..." ++ substr (length s `minus` 4) 4 s)
+            = length (substr 0 4 s) + length ("..." ++ substr (length s `minus` 4) 4 s)
+      eq123 = appendLengthSum (substr 0 4 s) ("..." ++ substr (length s `minus` 4) 4 s)
+      step123 : LTE (length (substr 0 4 s) + length ("..." ++ substr (length s `minus` 4) 4 s)) (4 + 7)
+      step123 = plusLteMonotone l1 l23
+      l123 : LTE (length (substr 0 4 s ++ "..." ++ substr (length s `minus` 4) 4 s)) 11
+      l123 = replace {p = \n => LTE n 11} (sym eq123) step123
+  in l123
 
 ||| The redacted key from `toLogSafe` is always at most 11 characters long.
 |||
@@ -173,21 +224,8 @@ plusLteMonotone lmn lpq =
 export
 logSafeBounded : (s : String) -> LTE (length (toLogSafe s)) 11
 logSafeBounded s with (length s <= 8) proof cond
-  logSafeBounded s | True  =
-    let eq = toLogSafeShortEq s cond
-    in replace {p = \t => LTE (length t) 11} (sym eq)
-         (LTESucc (LTESucc (LTESucc (LTEZero {right = 8}))))
-  logSafeBounded s | False =
-    let p1       = substr 0 4 s
-        p3       = substr (length s `minus` 4) 4 s
-        eq       = toLogSafeLongEq s cond
-        l1       = substrLengthBound s 0 4
-        l3       = substrLengthBound s (length s `minus` 4) 4
-        eq12     = appendLengthSum p1 "..."
-        eq123    = appendLengthSum (p1 ++ "...") p3
-        l12      = replace {p = \n => LTE n 7}  (sym eq12)  (plusLteMonotoneRight 3 l1)
-        l123     = replace {p = \n => LTE n 11} (sym eq123) (plusLteMonotone l12 l3)
-    in replace {p = \t => LTE (length t) 11} (sym eq) l123
+  logSafeBounded s | True  = logSafeBoundedShort s cond
+  logSafeBounded s | False = logSafeBoundedLong s cond
 
 --------------------------------------------------------------------------------
 -- FFI Bridge Declarations
