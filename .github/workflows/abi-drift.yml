@@ -71,19 +71,32 @@ jobs:
       - name: Resolve cartridge allowlist
         id: discover
         # 80 cartridges in the tree carry a paired Safe*.idr + *_ffi.zig.
-        # The gate starts narrow: only cartridges audited and known clean
-        # against the Phase 1b emitter + Phase 1 verifier are enforced.
-        # Expand this list as cartridges are individually verified — the
-        # broader spot-check (PR body) found real drift (e.g. 007-mcp's
-        # `ToolRisk` enum) plus Zig-reserved-word false positives (e.g.
-        # `Error → err` in airtable-mcp / postgresql-mcp) that need the
-        # converter taught about Zig reserved words first.
+        # 16 cartridges are audited green against the Phase 1b emitter +
+        # Phase 1 verifier (full-tree survey, 2026-05-20). 63 carry real
+        # drift, 5 hit a verifier parser limit (non-canonical Zig switch
+        # arms — separately tracked), 1 has a malformed Idris2 source.
+        # See standards#92 for the survey + drift taxonomy. Expand this
+        # list as drift classes get resolved upstream.
         run: |
           set -euo pipefail
           {
             echo 'carts<<EOF'
-            echo 'ssg-mcp'
+            echo '007-mcp'
+            echo 'agent-mcp'
+            echo 'dns-shield-mcp'
+            echo 'feedback-mcp'
+            echo 'fleet-mcp'
+            echo 'iac-mcp'
+            echo 'k8s-mcp'
             echo 'k9iser-mcp'
+            echo 'local-coord-mcp'
+            echo 'nesy-mcp'
+            echo 'observe-mcp'
+            echo 'opsm-mcp'
+            echo 'pmpl-mcp'
+            echo 'proof-mcp'
+            echo 'secrets-mcp'
+            echo 'ssg-mcp'
             echo 'EOF'
           } >> "$GITHUB_OUTPUT"
 
