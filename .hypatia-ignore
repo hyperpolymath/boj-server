@@ -1,0 +1,41 @@
+# SPDX-License-Identifier: PMPL-1.0-or-later
+# Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+#
+# .hypatia-ignore — declared exemptions from hyperpolymath/standards
+# governance-reusable.yml policy rules. Format:
+#
+#   <rule>:<repo-relative-path>
+#
+# Lines starting with `#` and blank lines are ignored. The rule
+# `cicd_rules/banned_language_file` is honoured by the
+# "package anti-pattern policy" job and the Hypatia static scanner
+# (same escape hatch).
+#
+# ─── ReScript migration backlog (boj-server#67) ─────────────────────
+#
+# These 8 .res files are tracked migration debt to AffineScript.
+# They satisfy ALL three preconditions for an exemption:
+#
+#   1. Tracked: boj-server#67 ("ReScript→AffineScript migration
+#      backlog (~543 .res LOC)") is the live tracker — these files
+#      ARE that backlog.
+#   2. Pre-policy: every .res file here predates the 2026-04-30
+#      no-new-ReScript policy. None is new; all are migration
+#      candidates.
+#   3. Unblock condition documented: each file will be removed when
+#      its AffineScript equivalent lands (per #67).
+#
+# Adding new entries to this file requires user approval + a
+# tracking-issue reference.
+
+# panll VSCode panel (5 files, model/view/controller)
+cicd_rules/banned_language_file:panll/src/commands/BojCmd.res
+cicd_rules/banned_language_file:panll/src/components/Boj.res
+cicd_rules/banned_language_file:panll/src/core/BojEngine.res
+cicd_rules/banned_language_file:panll/src/model/BojModel.res
+cicd_rules/banned_language_file:panll/src/modules/BojModule.res
+
+# orchestrator-lsp-mcp cartridge panels (3 files, VSCode webview glue)
+cicd_rules/banned_language_file:cartridges/orchestrator-lsp-mcp/panels/src/Extension.res
+cicd_rules/banned_language_file:cartridges/orchestrator-lsp-mcp/panels/src/LanguageClient.res
+cicd_rules/banned_language_file:cartridges/orchestrator-lsp-mcp/panels/src/VscodeApi.res
