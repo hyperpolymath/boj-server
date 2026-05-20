@@ -58,6 +58,38 @@ pub const HttpMethod = enum(c_int) {
 };
 
 // ---------------------------------------------------------------------------
+// GitLab actions (matches Idris2 GitLabAction + actionToInt encoding)
+// ---------------------------------------------------------------------------
+
+/// All GitLab REST/GraphQL actions exposed by this cartridge.
+/// Encoding mirrors `GitlabApiMcp.SafeGit.actionToInt` (0–19).
+/// Declared here so `iseriser abi-verify` can structurally check the
+/// encoding against the Idris2 source; dispatch wiring follows the
+/// same numbering when introduced.
+pub const GitLabAction = enum(c_int) {
+    list_projects = 0,
+    get_project = 1,
+    create_issue = 2,
+    list_issues = 3,
+    get_issue = 4,
+    comment_issue = 5,
+    create_mr = 6,
+    list_mrs = 7,
+    get_mr = 8,
+    merge_mr = 9,
+    list_branches = 10,
+    create_branch = 11,
+    search_code = 12,
+    list_pipelines = 13,
+    get_pipeline = 14,
+    trigger_pipeline = 15,
+    list_releases = 16,
+    create_release = 17,
+    push_mirror = 18,
+    get_file_contents = 19,
+};
+
+// ---------------------------------------------------------------------------
 // Session slots (thread-safe, fixed-size pool)
 // ---------------------------------------------------------------------------
 
