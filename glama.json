@@ -53,6 +53,29 @@
         "type": "string",
         "description": "Advertised tool-surface scope. 'full' (or unset) advertises every tool (default, backward-compatible). 'core' advertises only the discovery/dispatch core (boj_health, boj_menu, boj_cartridges, boj_cartridge_info, boj_cartridge_invoke) plus all coord_* tools. A CSV of domain prefixes (e.g. 'core,github,browser') advertises core plus the named explicit groups. Every explicit boj_<domain>_* tool remains reachable via boj_cartridge_invoke regardless of scope.",
         "default": "full"
+      },
+      "OTEL_EXPORTER_OTLP_ENDPOINT": {
+        "type": "string",
+        "description": "OTLP/HTTP collector endpoint (e.g. http://localhost:4318). When set, every tools/call emits an OTLP/JSON span to <endpoint>/v1/traces. Pairs with observe-mcp / grafana-mcp / prometheus-mcp for unified telemetry."
+      },
+      "OTEL_SERVICE_NAME": {
+        "type": "string",
+        "description": "Service name attribute on emitted spans.",
+        "default": "boj-server"
+      },
+      "OTEL_SERVICE_VERSION": {
+        "type": "string",
+        "description": "Service version attribute on emitted spans.",
+        "default": "0.4.7"
+      },
+      "OTEL_BATCH_MS": {
+        "type": "string",
+        "description": "Span-batch flush interval in milliseconds.",
+        "default": "5000"
+      },
+      "OTEL_EXPORTER_OTLP_HEADERS": {
+        "type": "string",
+        "description": "Optional comma-separated key=value headers attached to OTLP export POSTs (e.g. 'authorization=Bearer xyz,x-honeycomb-team=abc'). Used for hosted collectors that require auth."
       }
     }
   }

@@ -38,10 +38,15 @@ import {
   validateEnvelope,
 } from "./lib/nickel-validator.js";
 import { info, warn, error as logError, setLevel as setLogLevel } from "./lib/logger.js";
+import * as otel from "./lib/otel.js";
 
 const BOJ_BASE = env.get("BOJ_URL") ?? "http://localhost:7700";
 const SERVER_NAME = "boj-server";
 const SERVER_VERSION = "0.4.0";
+
+// Initialise OTel batch-flush + shutdown hooks (no-op unless
+// OTEL_EXPORTER_OTLP_ENDPOINT is set).
+otel.init();
 
 // ===================================================================
 // JSON-RPC stdio transport
@@ -407,19 +412,39 @@ async function handleMessage(line) {
       const args = params?.arguments || {};
       const token = params?.token;
 
+      const span = otel.startSpan("mcp.tools.call", {
+        "mcp.tool.name": toolName,
+        "mcp.tool.arg_count": Object.keys(args).length,
+      });
+
       const rejection = hardeningGate(toolName, args, token);
       if (rejection) {
+        otel.endSpan(span, {
+          status: "error",
+          error: "gate_rejected",
+          attributes: { "mcp.rejection.code": rejection.code },
+        });
         sendError(id, rejection.code, rejection.message);
         break;
       }
 
-      const result = await dispatchTool(toolName, args);
-      if (result === null) {
-        sendError(id, -32601, "Unknown tool");
-      } else {
-        sendResult(id, {
-          content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
+      try {
+        const result = await dispatchTool(toolName, args);
+        if (result === null) {
+          otel.endSpan(span, { status: "error", error: "unknown_tool" });
+          sendError(id, -32601, "Unknown tool");
+        } else {
+          otel.endSpan(span, { status: "ok" });
+          sendResult(id, {
+            content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
+          });
+        }
+      } catch (e) {
+        otel.endSpan(span, {
+          status: "error",
+          error: sanitizeErrorMessage(e?.message ?? String(e)),
         });
+        throw e;
       }
       break;
     }
