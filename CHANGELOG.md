@@ -41,6 +41,21 @@ All notable changes to Bundle of Joy Server are documented here.
   [`hyperpolymath/standards#100`](https://github.com/hyperpolymath/standards/issues/100),
   [`#91`](https://github.com/hyperpolymath/standards/issues/91).
 
+- **k8s Service for BoJ is now `type: ClusterIP`** (was: `LoadBalancer`).
+  Per ADR-0004 §1 and the Phase E rollout-runbook §1.4 prereq #8, BoJ
+  must not be externally addressable when fronted by
+  `http-capability-gateway` (HCG tier-2). External clients reach HCG;
+  HCG forwards to BoJ over the pod-network loopback. Legacy/standalone
+  deployments that need BoJ exposed externally should override `type`
+  in a kustomize/helm overlay rather than reverting the canonical
+  manifest (see header comment in `k8s/service.yaml`). Adds
+  `hyperpolymath.dev/exposure: "internal-only"` and
+  `hyperpolymath.dev/external-via: "http-capability-gateway (tier-2)"`
+  annotations so the posture is discoverable from `kubectl describe`.
+  Refs
+  [`hyperpolymath/standards#100`](https://github.com/hyperpolymath/standards/issues/100),
+  [`#91`](https://github.com/hyperpolymath/standards/issues/91).
+
 ### Added
 
 - **ADR-0014 — cross-cartridge composition safety (RFC)** — frames the
