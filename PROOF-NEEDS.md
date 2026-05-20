@@ -72,18 +72,43 @@ All five are class **(J)** — genuinely unavoidable in Idris2 0.8.0
 (opaque `Char`/`String` primitives, foreign-backed operations). See the
 **Axiom Audit (2026-05-18)** table above for per-site detail.
 
-| Axiom | Site | Justification |
-|-------|------|---------------|
-| `charEqSound` | `SafetyLemmas.idr:53` | Soundness of `prim__eqChar` — backend primitive correctness |
-| `charEqSym` | `SafetyLemmas.idr:60` | Symmetry of `prim__eqChar` — backend primitive correctness |
-| `unpackLength` | `SafetyLemmas.idr:211` | `prim__strToCharList` preserves length — backend primitive correctness |
-| `appendLengthSum` | `SafetyLemmas.idr:219` | `prim__strAppend` length semantics — not reducible at type level |
-| `substrLengthBound` | `SafetyLemmas.idr:226` | `prim__strSubstr` length bound — not reducible at type level |
+| Axiom | Site | Justification | Backend-assurance evidence |
+|-------|------|---------------|----------------------------|
+| `charEqSound` | `SafetyLemmas.idr:53` | Soundness of `prim__eqChar` — backend primitive correctness | `docs/backend-assurance/prim__eqChar.md` + `elixir/test/backend_assurance/prim_eq_char_test.exs` |
+| `charEqSym` | `SafetyLemmas.idr:60` | Symmetry of `prim__eqChar` — backend primitive correctness | `docs/backend-assurance/prim__eqChar.md` + `elixir/test/backend_assurance/prim_eq_char_test.exs` |
+| `unpackLength` | `SafetyLemmas.idr:211` | `prim__strToCharList` preserves length — backend primitive correctness | _pending_ |
+| `appendLengthSum` | `SafetyLemmas.idr:219` | `prim__strAppend` length semantics — not reducible at type level | _pending_ |
+| `substrLengthBound` | `SafetyLemmas.idr:226` | `prim__strSubstr` length bound — not reducible at type level | _pending_ |
 
 Note: `logSafeBounded` in SafeAPIKey.idr no longer uses `believe_me` directly;
 it calls the documented SafetyLemmas axioms via structural proof.
 `charEqSound` is consumed by `Safety.idr` (`shellContra`, `sqlContra`);
 `unpackLength` by `SafeAPIKey.idr` (`sufficientEntropyNonEmpty`).
+
+### Backend-assurance harness
+
+The "Backend-assurance evidence" column above cites the external
+evidence reducing each class-(J) axiom's trusted base. Two artefact
+shapes per primitive:
+
+- **Trusted-extraction validation** under `docs/backend-assurance/<primitive>.md`
+  — prose argument citing each shipping backend's lowering of the
+  primitive (Idris2 0.8.0 sources for Chez, OTP/R6RS for the runtime
+  operations) and why the lowering satisfies the axiom.
+- **Property-test harness** under `elixir/test/backend_assurance/`
+  — BEAM-native property tests via `stream_data` covering the
+  codepoint / string spaces. Run via `mix test --only backend_assurance`
+  and gated in CI by `.github/workflows/backend-assurance.yml`.
+
+This harness does not change the in-language proof — the `believe_me`
+sites stay in `SafetyLemmas.idr`. The harness shrinks the trusted base
+from "we trust the backend" to "we read the lowering and randomly
+tested the operation".
+
+First primitive landed: `prim__eqChar` (covering both `charEqSound`
+and `charEqSym`). Remaining three (`prim__strToCharList`,
+`prim__strAppend`, `prim__strSubstr`) tracked under epic #87 Tier C
+backend-assurance campaign — one PR per primitive.
 
 ## Priority Going Forward
 
