@@ -256,10 +256,10 @@ jobs:
 
           echo "has_manifest=true" >> "$GITHUB_OUTPUT"
 
-          # Validate TOML structure using Python 3.11+ tomllib.
-          # Script lives in .github/scripts/ so the YAML block scalar and
-          # Python's indentation rules don't conflict (see that file's header).
-          python3 .github/scripts/validate-eclexiaiser.py || {
+          # Validate TOML structure with a POSIX-shell + awk validator.
+          # Python is wholly outlawed estate-wide (standards Language Policy)
+          # and triggers the governance / package anti-pattern gate.
+          .github/scripts/validate-eclexiaiser.sh ./eclexiaiser.toml || {
             echo "::error file=eclexiaiser.toml::Invalid eclexiaiser.toml — see step output for details"
             exit 1
           }
