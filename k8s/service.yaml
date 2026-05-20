@@ -1,9 +1,42 @@
+# SPDX-License-Identifier: PMPL-1.0-or-later
+# Copyright (c) 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+#
+# BoJ Service — ClusterIP only.
+#
+# Per ADR-0004 §1 (http-capability-gateway tier-2 placement) and the
+# Phase E rollout-runbook (`docs/integration/hcg-tier2-rollout-runbook.md`
+# §1.4 prereq #8), BoJ MUST NOT be externally addressable. Only the HCG
+# (tier-2) gateway pod is permitted to reach BoJ. External clients reach
+# HCG, which forwards to BoJ over the pod-network loopback.
+#
+# Legacy/standalone deployments that need BoJ exposed externally (no
+# HCG in front) should override `type` in their kustomize/helm overlay
+# rather than editing this canonical manifest:
+#
+#   - op: replace
+#     path: /spec/type
+#     value: LoadBalancer  # only valid for non-HCG-fronted deployments
+#
+# Ports 7700–7703 are declared forward-compatibly (current BoJ binds
+# 7700 only; 7701/7702/7703 reserved for gRPC/GraphQL/SSE per
+# `docs/ARCHITECTURE.md`). When those bindings land, no Service edit is
+# required — they are already declared here.
+#
+# Refs:
+#   - hyperpolymath/standards#100 (Phase E parent)
+#   - hyperpolymath/standards#91  (ADR-0004 epic)
+#   - docs/decisions/0004-adopt-http-capability-gateway.md
+#   - docs/integration/hcg-tier2-rollout-runbook.md
+#   - docs/integration/http-capability-gateway-boj-contract.md (§1 transport)
 apiVersion: v1
 kind: Service
 metadata:
   name: boj-server
   labels:
     app: boj-server
+  annotations:
+    hyperpolymath.dev/exposure: "internal-only"
+    hyperpolymath.dev/external-via: "http-capability-gateway (tier-2)"
 spec:
   selector:
     app: boj-server
@@ -20,4 +53,4 @@ spec:
   - name: sse
     port: 7703
     targetPort: 7703
-  type: LoadBalancer
+  type: ClusterIP
