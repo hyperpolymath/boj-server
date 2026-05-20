@@ -56,6 +56,19 @@ All notable changes to Bundle of Joy Server are documented here.
   [`hyperpolymath/standards#100`](https://github.com/hyperpolymath/standards/issues/100),
   [`#91`](https://github.com/hyperpolymath/standards/issues/91).
 
+- **Container `APP_HOST` default is now `127.0.0.1`** (was: `"[::]"`
+  IPv6 all-interfaces). Tightens three sites that feed the Zig adapter
+  binary's `--host` flag: `stapeln.toml [targets.production]`,
+  `container/entrypoint.sh`, and `container/compose.prod.yaml`. Same
+  Phase E posture as the Cowboy bind change in the Elixir path: BoJ
+  binds loopback by default when fronted by `http-capability-gateway`
+  (HCG tier-2). Legacy/standalone deployments without HCG in front
+  should override `APP_HOST=0.0.0.0` (IPv4 all-interfaces) or
+  `APP_HOST=::` (IPv6 all-interfaces) in their deployment config.
+  Phase E rollout-runbook §1.4 prereq #7. Refs
+  [`hyperpolymath/standards#100`](https://github.com/hyperpolymath/standards/issues/100),
+  [`#91`](https://github.com/hyperpolymath/standards/issues/91).
+
 ### Added
 
 - **ADR-0014 — cross-cartridge composition safety (RFC)** — frames the
