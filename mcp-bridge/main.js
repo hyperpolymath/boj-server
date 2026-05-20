@@ -2,329 +2,48 @@
 // SPDX-License-Identifier: MPL-2.0
 // Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
 //
-// BoJ Server — MCP stdio transport bridge
+// BoJ Server — MCP transport bridge (stdio + HTTP per ADR-0013)
 //
 // Bridges the running BoJ REST API (port 7700) to the MCP JSON-RPC
-// stdio protocol so that Claude Code, Glama, and other MCP clients
-// can discover and invoke BoJ cartridge tools.
+// protocol so that Claude Code, Glama, and other MCP clients can
+// discover and invoke BoJ cartridge tools. Two transports:
 //
-// Usage: deno run --allow-net --allow-env --allow-read main.js
+//   BOJ_TRANSPORT=stdio   default — read JSON-RPC from stdin, write to stdout
+//   BOJ_TRANSPORT=http    listen on BOJ_HTTP_PORT (default 7780)
+//   BOJ_TRANSPORT=both    run both simultaneously
+//
+// Usage:
+//   deno run --allow-net --allow-env --allow-read mcp-bridge/main.js
 
 import { env, stdout } from "./lib/runtime.js";
-import {
-  RATE_LIMIT,
-  isInputSizeOk,
-  isValidToolName,
-  rateLimitAllow,
-  sanitizeErrorMessage,
-  scanObjectForInjection,
-  validateRequiredStrings,
-} from "./lib/security.js";
-import {
-  fetchCartridgeInfo,
-  fetchCartridges,
-  fetchHealth,
-  fetchMenu,
-  handleGitHubTool,
-  handleGitLabTool,
-  invokeCartridge,
-} from "./lib/api-clients.js";
-import { buildToolList } from "./lib/tools.js";
-import { listResources, readResource } from "./lib/resources.js";
-import { listPrompts, getPrompt } from "./lib/prompts.js";
-import {
-  initValidator,
-  tryParseEnvelope,
-  validateEnvelope,
-} from "./lib/nickel-validator.js";
-import { info, warn, error as logError, setLevel as setLogLevel } from "./lib/logger.js";
+import { sanitizeErrorMessage } from "./lib/security.js";
+import { dispatchMcpMessage } from "./lib/dispatcher.js";
+import { info, error as logError } from "./lib/logger.js";
 import * as otel from "./lib/otel.js";
+import { startHttpTransport } from "./lib/http-transport.js";
 
-const BOJ_BASE = env.get("BOJ_URL") ?? "http://localhost:7700";
-const SERVER_NAME = "boj-server";
-const SERVER_VERSION = "0.4.0";
+const TRANSPORT = (env.get("BOJ_TRANSPORT") ?? "stdio").toLowerCase();
 
-// Initialise OTel batch-flush + shutdown hooks (no-op unless
-// OTEL_EXPORTER_OTLP_ENDPOINT is set).
 otel.init();
 
 // ===================================================================
-// JSON-RPC stdio transport
+// stdio transport
 // ===================================================================
 
 const decoder = new TextDecoder();
-
 let buffer = "";
 const MAX_BUFFER_BYTES = 2 * 1_048_576; // 2 MB
-
 const pendingMessages = [];
 
 function send(obj) {
   stdout.writeSync(JSON.stringify(obj) + "\n");
 }
 
-function sendResult(id, result) {
-  send({ jsonrpc: "2.0", id, result });
-}
-
 function sendError(id, code, message) {
   send({ jsonrpc: "2.0", id, error: { code, message: sanitizeErrorMessage(message) } });
 }
 
-// ===================================================================
-// Hardening gate — validates every tool call before dispatch
-// ===================================================================
-
-/**
- * Run all security checks on a tool call.
- * Returns an error object {code, message} if rejected, or null if OK.
- * @param {string} toolName
- * @param {Record<string, unknown>} args
- * @returns {{code: number, message: string}|null}
- */
-function hardeningGate(toolName, args) {
-  // 1. Rate limiting
-  if (!rateLimitAllow()) {
-    return { code: -32000, message: "Rate limit exceeded. Max " + RATE_LIMIT + " tool calls per minute." };
-  }
-
-  // 2. Tool name validation
-  if (!isValidToolName(toolName)) {
-    return { code: -32602, message: "Invalid tool name" };
-  }
-
-  // 3. Input size check
-  if (!isInputSizeOk(args)) {
-    return { code: -32600, message: "Tool arguments exceed maximum size (1 MB)" };
-  }
-
-  // 4. Prompt injection detection
-  const injectionLevel = scanObjectForInjection(args);
-  if (injectionLevel === "critical" || injectionLevel === "high") {
-    logError("Injection blocked", { tool: toolName, confidence: injectionLevel });
-    return { code: -32600, message: "Request rejected: suspicious content detected" };
-  }
-  if (injectionLevel === "medium") {
-    warn("Injection warning", { tool: toolName, confidence: injectionLevel });
-  }
-
-  // 5. Required field validation
-  let validationError = null;
-  if (toolName === "boj_cartridge_info" || toolName === "boj_cartridge_invoke") {
-    validationError = validateRequiredStrings(args, ["name"]);
-  } else if (toolName === "boj_browser_navigate") {
-    validationError = validateRequiredStrings(args, ["url"]);
-  } else if (toolName === "boj_browser_click") {
-    validationError = validateRequiredStrings(args, ["selector"]);
-  } else if (toolName === "boj_browser_type") {
-    validationError = validateRequiredStrings(args, ["selector", "text"]);
-  } else if (toolName === "boj_browser_execute_js") {
-    validationError = validateRequiredStrings(args, ["script"]);
-  } else if (toolName.startsWith("boj_github_") && toolName !== "boj_github_list_repos") {
-    if (toolName === "boj_github_graphql" || toolName === "boj_github_search_code" || toolName === "boj_github_search_issues") {
-      validationError = validateRequiredStrings(args, ["query"]);
-    } else {
-      validationError = validateRequiredStrings(args, ["owner", "repo"]);
-    }
-  } else if (toolName.startsWith("boj_gitlab_") && toolName !== "boj_gitlab_list_projects") {
-    validationError = validateRequiredStrings(args, ["project_id"]);
-  } else if (toolName.startsWith("boj_cloud_") || toolName.startsWith("boj_comms_") || toolName === "boj_ml_huggingface" || toolName === "boj_research" || toolName === "boj_codeseeker" || toolName === "boj_search" || toolName === "boj_vector" || toolName === "boj_multimodal") {
-    validationError = validateRequiredStrings(args, ["operation"]);
-  } else if (toolName === "boj_browser_tabs") {
-    validationError = validateRequiredStrings(args, ["operation"]);
-  }
-
-  if (validationError) {
-    return { code: -32602, message: validationError };
-  }
-
-  return null;
-}
-
-// ===================================================================
-// Tool dispatch
-// ===================================================================
-
-/**
- * Dispatch a validated tool call to the appropriate handler.
- * @param {string} toolName
- * @param {Record<string, unknown>} args
- * @returns {Promise<object>}
- */
-async function dispatchTool(toolName, args) {
-  switch (toolName) {
-    case "boj_health":
-      return fetchHealth();
-    case "boj_menu":
-      return fetchMenu();
-    case "boj_cartridges":
-      return fetchCartridges();
-    case "boj_cartridge_info":
-      return fetchCartridgeInfo(args.name);
-    case "boj_cartridge_invoke":
-      return invokeCartridge(args.name, args.params);
-
-    case "boj_cloud_verpex":
-    case "boj_cloud_cloudflare":
-    case "boj_cloud_vercel":
-      return invokeCartridge("cloud-mcp", { provider: toolName.replace("boj_cloud_", ""), ...args });
-
-    case "boj_comms_gmail":
-    case "boj_comms_calendar":
-      return invokeCartridge("comms-mcp", { provider: toolName.replace("boj_comms_", ""), ...args });
-
-    case "boj_ml_huggingface":
-      return invokeCartridge("ml-mcp", { provider: "huggingface", ...args });
-
-    case "boj_browser_navigate":
-    case "boj_browser_click":
-    case "boj_browser_type":
-    case "boj_browser_read_page":
-    case "boj_browser_screenshot":
-    case "boj_browser_tabs":
-    case "boj_browser_execute_js":
-      return invokeCartridge("browser-mcp", { action: toolName.replace("boj_browser_", ""), ...args });
-
-    case "boj_github_list_repos":
-    case "boj_github_get_repo":
-    case "boj_github_create_issue":
-    case "boj_github_list_issues":
-    case "boj_github_get_issue":
-    case "boj_github_comment_issue":
-    case "boj_github_create_pr":
-    case "boj_github_list_prs":
-    case "boj_github_get_pr":
-    case "boj_github_merge_pr":
-    case "boj_github_search_code":
-    case "boj_github_search_issues":
-    case "boj_github_get_file":
-    case "boj_github_graphql":
-      return handleGitHubTool(toolName, args);
-
-    case "boj_gitlab_list_projects":
-    case "boj_gitlab_get_project":
-    case "boj_gitlab_create_issue":
-    case "boj_gitlab_list_issues":
-    case "boj_gitlab_create_mr":
-    case "boj_gitlab_list_mrs":
-    case "boj_gitlab_list_pipelines":
-    case "boj_gitlab_setup_mirror":
-      return handleGitLabTool(toolName, args);
-
-    case "boj_codeseeker":
-      return invokeCartridge("codeseeker-mcp", args);
-
-    case "boj_research":
-      return invokeCartridge("research-mcp", args);
-
-    case "boj_search":
-      return invokeCartridge("search-mcp", args);
-
-    case "boj_vector": {
-      const providerToCartridge = { pinecone: "pinecone-mcp", weaviate: "weaviate-mcp", qdrant: "qdrant-mcp", chromadb: "chromadb-mcp" };
-      const cart = providerToCartridge[args.provider];
-      if (!cart) return { error: "unknown provider", hint: "boj_vector requires provider: pinecone | weaviate | qdrant | chromadb" };
-      return invokeCartridge(cart, args);
-    }
-
-    case "boj_multimodal": {
-      const providerToCartridge = { whisper: "whisper-mcp", elevenlabs: "elevenlabs-mcp", replicate: "replicate-mcp", ffmpeg: "ffmpeg-mcp" };
-      const cart = providerToCartridge[args.provider];
-      if (!cart) return { error: "unknown provider", hint: "boj_multimodal requires provider: whisper | elevenlabs | replicate | ffmpeg" };
-      return invokeCartridge(cart, args);
-    }
-
-    // Local coordination — direct to loopback backend on port 7745
-    case "coord_register":
-    case "coord_list_peers":
-    case "coord_send":
-    case "coord_receive":
-    case "coord_claim_task":
-    case "coord_status":
-    case "coord_promote_to_master":
-    case "coord_promote_to_supervisor": // legacy alias — DD-32 rename; accepted for one release
-    case "coord_send_gated":
-    case "coord_review":
-    case "coord_review_entry":
-    case "coord_approve":
-    case "coord_reject":
-    case "coord_report_outcome":
-    case "coord_get_affinities":
-    case "coord_set_declared_affinities":
-    case "coord_scan_suggestions":
-    case "coord_transfer_master":
-    case "coord_set_variant":
-    case "coord_set_capabilities":
-    case "coord_get_peer_capabilities":
-    case "coord_health":
-    case "coord_progress":
-    case "coord_sweep_watchdog":
-      return dispatchLocalCoord(toolName, args);
-
-    default:
-      return null; // unknown tool
-  }
-}
-
-// ===================================================================
-// local-coord-mcp direct dispatch (loopback only, port 7745)
-// ===================================================================
-
-const LOCAL_COORD_URL = env.get("COORD_BACKEND_URL") ?? "http://127.0.0.1:7745";
-
-// Nickel contracts run on coord_send / coord_send_gated only — those
-// are the two tools whose `message` argument carries an A2ML envelope.
-// Other coord_* calls are RPC-shaped (register/list/review/approve/...)
-// and bypass contract validation. Expansion to more tools is a roadmap
-// item — see Appendix K of COORD-MCP-DESIGN-LOG.md (Task #17 extension).
-const ENVELOPE_CARRYING_TOOLS = new Set(["coord_send", "coord_send_gated"]);
-
-initValidator();
-
-async function dispatchLocalCoord(toolName, args) {
-  // Runtime envelope validation (Task #17) — BEFORE the HTTP forward.
-  if (ENVELOPE_CARRYING_TOOLS.has(toolName) && args && typeof args.message === "string") {
-    const env = tryParseEnvelope(args.message);
-    if (env && typeof env === "object") {
-      const senderRole = env._meta?.sender_role || args.sender_role;
-      const result = validateEnvelope(env, senderRole);
-      if (!result.ok) {
-        return {
-          success: false,
-          error: `envelope validation failed: ${result.error}`,
-          hint: "See cartridges/local-coord-mcp/schemas/coord-messages-contracts.ncl for the active contracts",
-        };
-      }
-    }
-    // Plain-string messages (non-JSON) skip validation — they're not
-    // A2ML envelopes. The Zig adapter still enforces shape + gating.
-  }
-
-  try {
-    const res = await fetch(`${LOCAL_COORD_URL}/tools/${toolName}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(args || {}),
-    });
-    try {
-      return await res.json();
-    } catch {
-      return { success: false, error: "local-coord-mcp backend returned non-JSON" };
-    }
-  } catch (e) {
-    return {
-      success: false,
-      error: `local-coord-mcp backend unavailable at ${LOCAL_COORD_URL}: ${e.message}`,
-      hint: "Start the adapter: cd cartridges/local-coord-mcp/adapter && zig build run",
-    };
-  }
-}
-
-// ===================================================================
-// MCP message handler
-// ===================================================================
-
-async function handleMessage(line) {
+async function handleStdioLine(line) {
   let msg;
   try {
     msg = JSON.parse(line);
@@ -332,231 +51,9 @@ async function handleMessage(line) {
     sendError(null, -32700, "Parse error");
     return;
   }
-
-  const { id, method, params } = msg;
-
-  switch (method) {
-    case "initialize": {
-      info("MCP initialize", { client: params?.clientInfo?.name });
-      sendResult(id, {
-        protocolVersion: "2024-11-05",
-        capabilities: {
-          tools: { listChanged: true },
-          resources: { subscribe: false },
-          prompts: { listChanged: false },
-          logging: {
-            levels: ["debug", "info", "warn", "error"]
-          },
-        },
-        serverInfo: { name: SERVER_NAME, version: SERVER_VERSION },
-      });
-      break;
-    }
-
-    case "notifications/initialized":
-      break;
-
-    case "logging/setLevel": {
-      const level = params?.level;
-      const applied = setLogLevel(level);
-      if (!applied) {
-        sendError(id, -32602, `Unknown log level: ${level}. Expected debug|info|warn|error|silent.`);
-      } else {
-        info("MCP logging/setLevel", { level });
-        sendResult(id, {});
-      }
-      break;
-    }
-
-    case "tools/list": {
-      // buildToolList() returns whole tool objects (name, description,
-      // inputSchema, annotations, outputSchema) and reads BOJ_TOOL_SCOPE
-      // internally for the Teranga scoped-surface lever. We pass the
-      // objects through verbatim so annotations + outputSchema reach the
-      // wire unmodified — no field whitelisting here by design.
-      const tools = buildToolList();
-      sendResult(id, { tools });
-      break;
-    }
-
-    case "resources/list": {
-      sendResult(id, { resources: listResources() });
-      break;
-    }
-
-    case "resources/read": {
-      const uri = params?.uri;
-      if (typeof uri !== "string" || !uri.startsWith("boj://")) {
-        sendError(id, -32602, "resources/read requires a boj:// URI");
-        break;
-      }
-      try {
-        const result = await readResource(uri);
-        if (result === null) {
-          sendError(id, -32602, `Unknown resource: ${uri}`);
-        } else {
-          sendResult(id, result);
-        }
-      } catch (e) {
-        sendError(id, -32603, sanitizeErrorMessage(e?.message ?? String(e)));
-      }
-      break;
-    }
-
-    case "prompts/list": {
-      sendResult(id, { prompts: listPrompts() });
-      break;
-    }
-
-    case "prompts/get": {
-      const name = params?.name;
-      const args = params?.arguments ?? {};
-      if (typeof name !== "string" || name.length === 0) {
-        sendError(id, -32602, "prompts/get requires a 'name'");
-        break;
-      }
-      const { result, error: promptError } = getPrompt(name, args);
-      if (promptError) {
-        sendError(id, promptError.code, promptError.message);
-      } else {
-        sendResult(id, result);
-      }
-      break;
-    }
-
-    case "tools/call": {
-      const toolName = params?.name;
-      const args = params?.arguments || {};
-      const token = params?.token;
-
-      const span = otel.startSpan("mcp.tools.call", {
-        "mcp.tool.name": toolName,
-        "mcp.tool.arg_count": Object.keys(args).length,
-      });
-
-      const rejection = hardeningGate(toolName, args, token);
-      if (rejection) {
-        otel.endSpan(span, {
-          status: "error",
-          error: "gate_rejected",
-          attributes: { "mcp.rejection.code": rejection.code },
-        });
-        sendError(id, rejection.code, rejection.message);
-        break;
-      }
-
-      try {
-        const result = await dispatchTool(toolName, args);
-        if (result === null) {
-          otel.endSpan(span, { status: "error", error: "unknown_tool" });
-          sendError(id, -32601, "Unknown tool");
-        } else {
-          otel.endSpan(span, { status: "ok" });
-          sendResult(id, {
-            content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
-          });
-        }
-      } catch (e) {
-        otel.endSpan(span, {
-          status: "error",
-          error: sanitizeErrorMessage(e?.message ?? String(e)),
-        });
-        throw e;
-      }
-      break;
-    }
-
-    case "groups/list": {
-      const groups = await fetchGroups();
-      sendResult(id, { groups });
-      break;
-    }
-
-    case "groups/call": {
-      const groupId = params?.groupId;
-      const toolName = params?.name;
-      const args = params?.arguments || {};
-
-      if (!groupId) {
-        sendError(id, -32602, "Group ID is required");
-        break;
-      }
-
-      const rejection = hardeningGate(toolName, args);
-      if (rejection) {
-        sendError(id, rejection.code, rejection.message);
-        break;
-      }
-
-      const result = await dispatchGroupTool(groupId, toolName, args);
-      if (result === null) {
-        sendError(id, -32601, "Unknown tool or group");
-      } else {
-        sendResult(id, {
-          content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
-        });
-      }
-      break;
-    }
-
-    case "prompts/list": {
-      const prompts = await fetchPrompts();
-      sendResult(id, { prompts });
-      break;
-    }
-
-    case "prompts/get": {
-      const promptId = params?.promptId;
-      if (!promptId) {
-        sendError(id, -32602, "Prompt ID is required");
-        break;
-      }
-
-      const prompt = await fetchPrompt(promptId);
-      if (prompt === null) {
-        sendError(id, -32601, "Unknown prompt");
-      } else {
-        sendResult(id, { prompt });
-      }
-      break;
-    }
-
-    case "resources/list": {
-      const resources = await fetchResources();
-      sendResult(id, { resources });
-      break;
-    }
-
-    case "resources/get": {
-      const resourceId = params?.resourceId;
-      if (!resourceId) {
-        sendError(id, -32602, "Resource ID is required");
-        break;
-      }
-
-      const resource = await fetchResource(resourceId);
-      if (resource === null) {
-        sendError(id, -32601, "Unknown resource");
-      } else {
-        sendResult(id, { resource });
-      }
-      break;
-    }
-
-    case "ping":
-      sendResult(id, {});
-      break;
-
-    default:
-      if (id !== undefined) {
-        sendError(id, -32601, "Method not found");
-      }
-  }
+  const response = await dispatchMcpMessage(msg, { transport: "stdio" });
+  if (response !== null) send(response);
 }
-
-// ===================================================================
-// Main I/O loop — runtime-agnostic
-// ===================================================================
 
 function processChunk(chunk) {
   buffer += decoder.decode(chunk);
@@ -570,23 +67,74 @@ function processChunk(chunk) {
     const line = buffer.slice(0, boundary).trim();
     buffer = buffer.slice(boundary + 1);
     if (line.length > 0) {
-      const p = handleMessage(line).catch(() => {});
+      const p = handleStdioLine(line).catch(() => {});
       pendingMessages.push(p);
     }
   }
 }
 
-if (typeof Deno !== "undefined") {
-  for await (const chunk of Deno.stdin.readable) {
-    processChunk(chunk);
+async function runStdio() {
+  if (typeof Deno !== "undefined") {
+    for await (const chunk of Deno.stdin.readable) processChunk(chunk);
+  } else {
+    // @ts-ignore: process is global in Node
+    for await (const chunk of process.stdin) processChunk(chunk);
   }
-} else {
-  // @ts-ignore: process is global in Node
-  for await (const chunk of process.stdin) {
-    processChunk(chunk);
+  await Promise.allSettled(pendingMessages);
+}
+
+// ===================================================================
+// HTTP transport
+// ===================================================================
+
+async function runHttp() {
+  const handle = await startHttpTransport();
+  await new Promise((resolve) => {
+    const stop = async () => {
+      info("MCP HTTP transport shutting down");
+      await handle.stop();
+      resolve();
+    };
+    if (typeof Deno !== "undefined") {
+      Deno.addSignalListener("SIGINT", stop);
+      try { Deno.addSignalListener("SIGTERM", stop); } catch { /* not supported on all platforms */ }
+    } else {
+      // @ts-ignore: process is global in Node
+      process.on("SIGINT", stop);
+      // @ts-ignore
+      process.on("SIGTERM", stop);
+    }
+  });
+}
+
+// ===================================================================
+// Main
+// ===================================================================
+
+async function main() {
+  if (TRANSPORT === "stdio") {
+    await runStdio();
+  } else if (TRANSPORT === "http") {
+    await runHttp();
+  } else if (TRANSPORT === "both") {
+    await Promise.all([runStdio(), runHttp()]);
+  } else {
+    logError("Unknown BOJ_TRANSPORT", { value: TRANSPORT, supported: ["stdio", "http", "both"] });
+    if (typeof Deno !== "undefined") Deno.exit(2);
+    // @ts-ignore: process is global in Node
+    else process.exit(2);
   }
 }
 
-await Promise.allSettled(pendingMessages);
+try {
+  await main();
+} catch (e) {
+  logError("MCP bridge fatal", { error: e?.message ?? String(e) });
+  if (typeof Deno !== "undefined") Deno.exit(1);
+  // @ts-ignore: process is global in Node
+  else process.exit(1);
+}
+
 if (typeof Deno !== "undefined") Deno.exit(0);
+// @ts-ignore: process is global in Node
 else process.exit(0);

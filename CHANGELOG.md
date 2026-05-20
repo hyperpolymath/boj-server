@@ -29,6 +29,21 @@ All notable changes to Bundle of Joy Server are documented here.
 
 ### Added
 
+- **Streamable HTTP transport (ADR-0013, PR1 of 2)** — MCP bridge now selects
+  between stdio (default), `http`, and `both` via `BOJ_TRANSPORT`. HTTP
+  endpoints: `POST /mcp` for JSON-RPC, `GET /mcp` for the server-initiated
+  SSE notifications stream, `DELETE /mcp` for explicit session teardown,
+  `GET /healthz` for liveness. Sessions are server-issued UUIDs in the
+  `Mcp-Session-Id` header; the manager expires idle sessions after 30 min
+  and fans events out across attached SSE streams. Auth: `none` (loopback
+  only — refuses non-loopback binds) or `bearer` (token list via
+  `BOJ_HTTP_AUTH_TOKENS`). The same `hardeningGate` runs on every request.
+  Zero new deps — built on `Deno.serve` and `node:http`. mTLS / OIDC auth
+  and the Cloudflare Workers / Durable-Objects shim are owed in PR2.
+- **`boj://capabilities/deployment` resource** — reports per-deployment
+  cartridge availability so clients can avoid invoking host-local-only
+  cartridges (browser-mcp, container-mcp, local-coord-mcp, sandbox-mcp,
+  ffmpeg-mcp) against a Worker / remote-HTTP deployment.
 - **k9iser-mcp cartridge** — reference implementation of the `-iser`
   regeneration-cartridge pattern (central K9 contract regeneration), mirroring
   ssg-mcp: `cartridge.json`, `mod.js`, Idris2 ABI, Zig FFI, panels.
