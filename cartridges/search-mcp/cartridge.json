@@ -1,0 +1,131 @@
+{
+  "$schema": "https://boj.dev/schemas/cartridge/v1.json",
+  "spdx": "MPL-2.0",
+  "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>",
+  "name": "search-mcp",
+  "version": "0.1.0",
+  "description": "Web search across multiple providers (Tavily, Brave, Exa, Perplexity) behind one cartridge.",
+  "domain": "research",
+  "tier": "Teranga",
+  "protocols": [
+    "MCP",
+    "REST"
+  ],
+  "auth": {
+    "method": "api_key",
+    "env_var": "SEARCH_API_KEY",
+    "credential_source": "per-provider env var (TAVILY_API_KEY / BRAVE_SEARCH_API_KEY / EXA_API_KEY / PERPLEXITY_API_KEY); see operation 'authenticate'."
+  },
+  "api": {
+    "base_url": "local://search-mcp",
+    "content_type": "application/json"
+  },
+  "tools": [
+    {
+      "name": "search_authenticate",
+      "description": "Store an API key for a search provider. Required before first use of that provider.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "provider": {
+            "type": "string",
+            "enum": ["tavily", "brave", "exa", "perplexity"],
+            "description": "Provider to authenticate."
+          },
+          "api_key": {
+            "type": "string",
+            "description": "API key from the provider's dashboard."
+          }
+        },
+        "required": ["provider", "api_key"]
+      }
+    },
+    {
+      "name": "search_web",
+      "description": "Run a web search query through the chosen provider. Read-only.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "provider": {
+            "type": "string",
+            "enum": ["tavily", "brave", "exa", "perplexity"],
+            "description": "Which provider to query. Each has different strengths: tavily = LLM-optimised summaries; brave = privacy-first index; exa = neural search over high-quality content; perplexity = Q&A-style answers with citations."
+          },
+          "query": {
+            "type": "string",
+            "description": "Search query string.",
+            "minLength": 1
+          },
+          "max_results": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 50,
+            "description": "Max results to return (default 10)."
+          },
+          "include_domains": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Optional allow-list of domains."
+          },
+          "exclude_domains": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Optional deny-list of domains."
+          },
+          "freshness": {
+            "type": "string",
+            "enum": ["day", "week", "month", "year", "any"],
+            "description": "Recency filter (provider-best-effort; not all providers honour all values)."
+          }
+        },
+        "required": ["provider", "query"]
+      }
+    },
+    {
+      "name": "search_answer",
+      "description": "Get a single answer with citations for a question. Best for Q&A workflows. Read-only.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "provider": {
+            "type": "string",
+            "enum": ["perplexity", "tavily"],
+            "description": "Only providers that support answer-mode (perplexity, tavily)."
+          },
+          "question": {
+            "type": "string",
+            "description": "Natural-language question.",
+            "minLength": 1
+          },
+          "model": {
+            "type": "string",
+            "description": "Provider-specific model identifier. Optional; defaults to provider's standard model."
+          }
+        },
+        "required": ["provider", "question"]
+      }
+    },
+    {
+      "name": "search_extract",
+      "description": "Extract structured content from one or more URLs (provider-side scraping + cleanup). Read-only.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "provider": {
+            "type": "string",
+            "enum": ["tavily", "exa"],
+            "description": "Only providers that support extraction (tavily, exa)."
+          },
+          "urls": {
+            "type": "array",
+            "items": { "type": "string", "format": "uri" },
+            "minItems": 1,
+            "maxItems": 20,
+            "description": "URLs to extract content from."
+          }
+        },
+        "required": ["provider", "urls"]
+      }
+    }
+  ]
+}

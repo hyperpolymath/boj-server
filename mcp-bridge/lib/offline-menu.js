@@ -28,6 +28,7 @@ export const OFFLINE_MENU = {
     { name: "comms-mcp", version: "0.1.0", domain: "Communications", protocols: ["MCP","REST"], status: "Available", available: true },
     { name: "ml-mcp", version: "0.1.0", domain: "ML/AI", protocols: ["MCP","REST"], status: "Available", available: true },
     { name: "research-mcp", version: "0.1.0", domain: "Research", protocols: ["MCP","REST"], status: "Available", available: true },
+    { name: "search-mcp", version: "0.1.0", domain: "Research", protocols: ["MCP","REST"], status: "Available", available: true, notes: "Multi-provider web search (Tavily, Brave, Exa, Perplexity) behind one cartridge" },
     { name: "codeseeker-mcp", version: "0.1.0", domain: "Code Intelligence", protocols: ["MCP","REST"], status: "Available", available: true },
     { name: "lang-mcp", version: "0.1.0", domain: "Languages", protocols: ["MCP","REST"], status: "Available", available: true },
   ],

@@ -467,6 +467,45 @@ function buildToolList(scope) {
     outputSchema: passthrough("Structured Semantic Scholar JSON: paper metadata, citation graphs, references, or author data depending on the operation."),
   });
 
+  // Web search (search-mcp cartridge — multi-provider)
+  tools.push({
+    name: "boj_search",
+    description: "Web search across four providers (Tavily, Brave, Exa, Perplexity) behind a single cartridge. Read-only; no side effects on the providers (each call consumes rate-limit quota with the chosen provider). Four operations: `authenticate` (store per-provider API key — required once before first use), `web` (keyword/phrase search → ranked results), `answer` (Q&A-style single answer with citations, Perplexity/Tavily only), `extract` (structured content extraction from URLs, Tavily/Exa only). Provider strengths differ: Tavily = LLM-optimised summaries; Brave = privacy-first index; Exa = neural over high-quality content (papers, Reddit, Twitter); Perplexity = conversational with citations. Returns provider-specific JSON. Pair with `boj_research` for academic-paper search (Semantic Scholar) when peer-reviewed sources are required.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        operation: {
+          type: "string",
+          enum: ["authenticate", "web", "answer", "extract"],
+          description: "Which search operation to run. `authenticate` must be called once per provider before first use.",
+        },
+        provider: {
+          type: "string",
+          enum: ["tavily", "brave", "exa", "perplexity"],
+          description: "Search provider. Not all providers support all operations: `answer` works on tavily + perplexity; `extract` works on tavily + exa; `web` and `authenticate` work on all four.",
+        },
+        api_key: { type: "string", description: "Provider API key. Required only for `operation: authenticate`; ignored otherwise (server caches the key per provider)." },
+        query: { type: "string", description: "Search query string. Required for `operation: web`.", minLength: 1 },
+        question: { type: "string", description: "Natural-language question. Required for `operation: answer`.", minLength: 1 },
+        urls: {
+          type: "array",
+          items: { type: "string", format: "uri" },
+          maxItems: 20,
+          description: "URLs to extract content from. Required for `operation: extract`. Max 20 per call.",
+        },
+        max_results: { type: "integer", minimum: 1, maximum: 50, description: "Max results to return for `operation: web` (default 10)." },
+        include_domains: { type: "array", items: { type: "string" }, description: "Optional allow-list of domains for `web`/`answer`." },
+        exclude_domains: { type: "array", items: { type: "string" }, description: "Optional deny-list of domains for `web`/`answer`." },
+        freshness: { type: "string", enum: ["day", "week", "month", "year", "any"], description: "Recency filter for `web` (provider-best-effort; not all providers honour all values)." },
+        model: { type: "string", description: "Optional provider-specific model identifier for `answer` (e.g. Perplexity `sonar-large-online`)." },
+      },
+      required: ["operation", "provider"],
+      additionalProperties: false,
+    },
+    annotations: { title: "Web Search (multi-provider)", readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
+    outputSchema: passthrough("Provider-specific JSON: ranked results array (web), single answer with citations (answer), or extracted-content array (extract). Shape varies by provider; see provider docs."),
+  });
+
   // Local coordination (localhost multi-instance AI coordination — local-coord-mcp cartridge)
   tools.push({
     name: "coord_register",
@@ -1095,6 +1134,7 @@ function buildToolList(scope) {
     if (m) return m[1]; // github | gitlab | cloud | comms | ml | browser
     if (name === "boj_research") return "research";
     if (name === "boj_codeseeker") return "codeseeker";
+    if (name === "boj_search") return "search";
     return "other";
   }
 
