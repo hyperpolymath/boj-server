@@ -25,6 +25,16 @@ pub const MlProvider = enum(c_int) {
     custom = 99,
 };
 
+/// Hugging Face resource types — mirrors `MlMcp.SafeMl.HuggingFaceResource`
+/// + `hfResourceToInt` encoding. Declared here so `iseriser abi-verify`
+/// can structurally check the encoding against the Idris2 source.
+pub const HuggingFaceResource = enum(c_int) {
+    hf_model = 1,
+    hf_space = 2,
+    hf_dataset = 3,
+    hf_inference = 4,
+};
+
 // ═══════════════════════════════════════════════════════════════════════
 // Session State Machine
 // ═══════════════════════════════════════════════════════════════════════
