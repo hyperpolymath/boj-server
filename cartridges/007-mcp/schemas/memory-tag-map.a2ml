@@ -23,6 +23,17 @@
 ;;
 ;; The adapter resolves those against $HOME at OnEnter time.
 
+;; ── Identity (required by hyperpolymath/a2ml-validate-action) ─────────
+;; TOML-shape preamble exposes name/version to the line-regex validator.
+;; The Zig consumer (cartridges/007-mcp/ffi/oo7_mcp_ffi.zig matchMemories)
+;; only honours `(tag …)` / `(memories …)` blocks, so non-`(` lines here
+;; are skipped by `if (!in_memories) continue;` at the parse loop.
+[identity]
+name = "memory-tag-map"
+project = "007-mcp"
+version = "0.1.0"
+schema_version = "1.0.0"
+
 (memory-tag-map
   (version "0.1.0")
   (generated-for "007-lang")
