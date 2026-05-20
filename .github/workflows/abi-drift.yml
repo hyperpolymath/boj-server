@@ -71,32 +71,74 @@ jobs:
       - name: Resolve cartridge allowlist
         id: discover
         # 80 cartridges in the tree carry a paired Safe*.idr + *_ffi.zig.
-        # 16 cartridges are audited green against the Phase 1b emitter +
-        # Phase 1 verifier (full-tree survey, 2026-05-20). 63 carry real
-        # drift, 5 hit a verifier parser limit (non-canonical Zig switch
-        # arms — separately tracked), 1 has a malformed Idris2 source.
-        # See standards#92 for the survey + drift taxonomy. Expand this
-        # list as drift classes get resolved upstream.
+        # 56 are audited green against the Phase 1b emitter + Phase 1
+        # verifier (re-run 2026-05-20 with current `main` iseriser binary;
+        # earlier 16-cartridge survey was contaminated by a stale local
+        # build pre-iseriser#15). 18 carry real drift (Class B name-norm,
+        # Class C missing-enum-in-Zig, Class D abbreviation drift — see
+        # standards#92 + sub-issues iseriser#18 / standards#150-155 /
+        # standards#TBD-class-D). 5 hit a verifier parser limit
+        # (iseriser#19). 1 has a malformed Idris2 source (boj-server#111).
         run: |
           set -euo pipefail
           {
             echo 'carts<<EOF'
             echo '007-mcp'
+            echo 'affinescript-mcp'
             echo 'agent-mcp'
+            echo 'airtable-mcp'
+            echo 'arango-mcp'
+            echo 'browser-mcp'
+            echo 'buildkite-mcp'
+            echo 'clickhouse-mcp'
+            echo 'cloudflare-mcp'
+            echo 'crates-mcp'
+            echo 'discord-mcp'
             echo 'dns-shield-mcp'
+            echo 'docker-hub-mcp'
+            echo 'duckdb-mcp'
             echo 'feedback-mcp'
             echo 'fleet-mcp'
+            echo 'fly-mcp'
+            echo 'github-actions-mcp'
+            echo 'github-api-mcp'
+            echo 'google-docs-mcp'
+            echo 'google-sheets-mcp'
+            echo 'grafana-mcp'
+            echo 'hackage-mcp'
+            echo 'hex-mcp'
             echo 'iac-mcp'
+            echo 'jira-mcp'
             echo 'k8s-mcp'
             echo 'k9iser-mcp'
+            echo 'linear-mcp'
             echo 'local-coord-mcp'
+            echo 'matrix-mcp'
+            echo 'neo4j-mcp'
+            echo 'neon-mcp'
             echo 'nesy-mcp'
+            echo 'notion-mcp'
+            echo 'npm-registry-mcp'
             echo 'observe-mcp'
+            echo 'obsidian-mcp'
+            echo 'opam-mcp'
             echo 'opsm-mcp'
             echo 'pmpl-mcp'
+            echo 'prometheus-mcp'
             echo 'proof-mcp'
+            echo 'pypi-mcp'
+            echo 'railway-mcp'
+            echo 'render-mcp'
+            echo 'rokur-mcp'
             echo 'secrets-mcp'
+            echo 'sentry-mcp'
+            echo 'slack-mcp'
             echo 'ssg-mcp'
+            echo 'supabase-mcp'
+            echo 'telegram-mcp'
+            echo 'todoist-mcp'
+            echo 'turso-mcp'
+            echo 'zotero-mcp'
             echo 'EOF'
           } >> "$GITHUB_OUTPUT"
 
