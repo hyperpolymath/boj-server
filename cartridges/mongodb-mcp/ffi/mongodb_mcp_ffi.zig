@@ -43,6 +43,27 @@ pub const MongodbAction = enum(c_int) {
     list_databases = 15,
 };
 
+/// BSON wire-protocol field type tags. Matches Idris2
+/// `MongodbMcp.SafeDatabase.BsonFieldType` + `bsonFieldTypeToInt`.
+/// Integer codes follow the BSON spec — gaps (6, 11–15, 17) are by
+/// design (reserved / deprecated BSON codes Idris2 does not expose).
+/// Declared here so `iseriser abi-verify` can structurally check the
+/// encoding against the Idris2 source; the wire-protocol encoder will
+/// use these values when introduced.
+pub const BsonFieldType = enum(c_int) {
+    bson_double = 1,
+    bson_string = 2,
+    bson_document = 3,
+    bson_array = 4,
+    bson_binary = 5,
+    bson_object_id = 7,
+    bson_bool = 8,
+    bson_date_time = 9,
+    bson_null = 10,
+    bson_int32 = 16,
+    bson_int64 = 18,
+};
+
 /// Validate a state transition against the proven Idris2 transition graph.
 fn isValidTransition(from: ConnState, to: ConnState) bool {
     return switch (from) {
