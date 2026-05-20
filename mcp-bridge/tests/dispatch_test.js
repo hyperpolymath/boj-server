@@ -289,3 +289,50 @@ test("BOJ_TOOL_SCOPE unset advertises the full surface (back-compat)", () => {
     else process.env.BOJ_TOOL_SCOPE = saved;
   }
 });
+
+// -----------------------------------------------------------------
+// 12. resources/list surface — every resource declared has a valid
+//     boj:// URI and a non-empty description.
+// -----------------------------------------------------------------
+test("resources surface is well-formed", async () => {
+  const { listResources, readResource } = await import("../lib/resources.js");
+  const resources = listResources();
+  assert.ok(resources.length > 0, "must expose at least one resource");
+  for (const r of resources) {
+    assert.match(r.uri, /^boj:\/\//, `URI must start with boj://: ${r.uri}`);
+    assert.ok(r.name && r.name.length > 0, `name required: ${r.uri}`);
+    assert.ok(r.description && r.description.length > 20, `description must be substantive: ${r.uri}`);
+    assert.ok(r.mimeType, `mimeType required: ${r.uri}`);
+  }
+  // boj://server/info is offline-readable and must work
+  const info = await readResource("boj://server/info");
+  assert.ok(info && info.contents && info.contents[0]?.text?.includes("boj-server"));
+  // Unknown URI returns null
+  const missing = await readResource("boj://nope/nada");
+  assert.equal(missing, null);
+});
+
+// -----------------------------------------------------------------
+// 13. prompts/list surface — every prompt has required-argument
+//     validation and produces a non-empty message body.
+// -----------------------------------------------------------------
+test("prompts surface is well-formed and required-arg-validated", async () => {
+  const { listPrompts, getPrompt } = await import("../lib/prompts.js");
+  const prompts = listPrompts();
+  assert.ok(prompts.length >= 6, "must expose at least 6 BoJ prompts");
+  for (const p of prompts) {
+    assert.ok(p.name && /^[a-z][a-z0-9-]*$/.test(p.name), `kebab-case name: ${p.name}`);
+    assert.ok(p.description && p.description.length > 30, `description must be substantive: ${p.name}`);
+    assert.ok(Array.isArray(p.arguments), `arguments must be array: ${p.name}`);
+  }
+  // Missing required arg → error
+  const missingArg = getPrompt("audit-repo", {});
+  assert.ok(missingArg.error, "missing required arg must produce error");
+  assert.match(missingArg.error.message, /requires argument/);
+  // Unknown prompt → error
+  const unknown = getPrompt("does-not-exist", {});
+  assert.ok(unknown.error);
+  // Valid call → non-empty message
+  const ok = getPrompt("audit-repo", { owner: "hyperpolymath", repo: "boj-server" });
+  assert.ok(ok.result?.messages?.[0]?.content?.text?.length > 100);
+});
