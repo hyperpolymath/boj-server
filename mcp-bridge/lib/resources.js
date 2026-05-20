@@ -13,6 +13,20 @@
 
 import { OFFLINE_MENU } from "./offline-menu.js";
 import { fetchMenu, fetchCartridges, fetchCartridgeInfo } from "./api-clients.js";
+import { env } from "./runtime.js";
+
+// Cartridges that need host-local resources (subprocess, loopback bus,
+// browser, codec binaries). Under transport=http on a remote deployment
+// (e.g. a Cloudflare Worker) they don't function. ADR-0013 §"Cartridge
+// compatibility under HTTP". Kept static for PR1; PR2 derives from
+// per-cartridge cartridge.json `requires_local: true` flags.
+const LOCAL_ONLY_CARTRIDGES = [
+  { name: "browser-mcp", reason: "Marionette session against a host Firefox profile" },
+  { name: "container-mcp", reason: "shells out to podman / kubectl on the host" },
+  { name: "local-coord-mcp", reason: "loopback bus on 127.0.0.1:7745" },
+  { name: "sandbox-mcp", reason: "local backend uses host process isolation (SaaS backends work over HTTP)" },
+  { name: "ffmpeg-mcp", reason: "invokes the host ffmpeg binary" },
+];
 
 const STATIC_RESOURCES = [
   {
@@ -43,6 +57,12 @@ const STATIC_RESOURCES = [
     uri: "boj://server/info",
     name: "Server identity",
     description: "Server name, version, runtime, supported protocol versions, advertised MCP capabilities. JSON.",
+    mimeType: "application/json",
+  },
+  {
+    uri: "boj://capabilities/deployment",
+    name: "Deployment capabilities",
+    description: "Per-deployment cartridge availability. Flags cartridges that need host-local resources (browser, podman, ffmpeg, loopback bus) and so cannot serve traffic when the bridge runs HTTP-only on a remote target (e.g. Cloudflare Worker). MCP clients should consult this before invoking flagged tools. JSON. (ADR-0013)",
     mimeType: "application/json",
   },
   {
@@ -219,6 +239,34 @@ async function readResource(uri) {
           mimeType: "application/json",
           text: JSON.stringify(PROOFS_MANIFEST, null, 2),
         },
+      ],
+    };
+  }
+
+  if (uri === "boj://capabilities/deployment") {
+    const transport = (env.get("BOJ_TRANSPORT") ?? "stdio").toLowerCase();
+    const bind = env.get("BOJ_HTTP_BIND") ?? "127.0.0.1";
+    const remoteHttp = transport !== "stdio" && bind !== "127.0.0.1" && bind !== "localhost" && bind !== "::1";
+    const payload = {
+      transport,
+      bind,
+      remote_http: remoteHttp,
+      // PR1 list is static; PR2 will read `requires_local` from per-cartridge manifests.
+      local_only_cartridges: LOCAL_ONLY_CARTRIDGES.map((c) => ({
+        name: c.name,
+        requires_local: true,
+        available: !remoteHttp,
+        reason: c.reason,
+      })),
+      notes: [
+        "Cartridges flagged requires_local=true need host-local resources and do not function on remote HTTP deployments.",
+        "Cartridges absent from the list are HTTP-API-based and work on any deployment.",
+        "PR2 (epic #87 item 14 follow-up) wires per-cartridge `requires_local` flags from cartridge.json.",
+      ],
+    };
+    return {
+      contents: [
+        { uri, mimeType: "application/json", text: JSON.stringify(payload, null, 2) },
       ],
     };
   }

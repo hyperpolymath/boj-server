@@ -76,6 +76,30 @@
       "OTEL_EXPORTER_OTLP_HEADERS": {
         "type": "string",
         "description": "Optional comma-separated key=value headers attached to OTLP export POSTs (e.g. 'authorization=Bearer xyz,x-honeycomb-team=abc'). Used for hosted collectors that require auth."
+      },
+      "BOJ_TRANSPORT": {
+        "type": "string",
+        "description": "MCP transport selection (ADR-0013). 'stdio' (default) reads JSON-RPC from stdin and writes to stdout — the protocol clients like Claude Code launch the bridge as a subprocess over. 'http' starts an HTTP+SSE listener on BOJ_HTTP_PORT for remote / Workers / browser deployments. 'both' runs both simultaneously.",
+        "default": "stdio"
+      },
+      "BOJ_HTTP_PORT": {
+        "type": "string",
+        "description": "TCP port for the HTTP transport (used only when BOJ_TRANSPORT=http or BOJ_TRANSPORT=both).",
+        "default": "7780"
+      },
+      "BOJ_HTTP_BIND": {
+        "type": "string",
+        "description": "Bind address for the HTTP transport. Defaults to 127.0.0.1 (loopback only). Set to 0.0.0.0 for remote access — BOJ_HTTP_AUTH=none is refused on non-loopback binds.",
+        "default": "127.0.0.1"
+      },
+      "BOJ_HTTP_AUTH": {
+        "type": "string",
+        "description": "Authentication mode for the HTTP transport. 'none' is permitted only on loopback (refused otherwise). 'bearer' requires Authorization: Bearer <token> against the BOJ_HTTP_AUTH_TOKENS list. 'mtls' and 'oidc' are owed in PR2 of ADR-0013 — not yet implemented.",
+        "default": "none"
+      },
+      "BOJ_HTTP_AUTH_TOKENS": {
+        "type": "string",
+        "description": "Comma-separated list of accepted bearer tokens when BOJ_HTTP_AUTH=bearer. Whitespace around each token is trimmed; empty entries dropped. Required when BOJ_HTTP_AUTH=bearer."
       }
     }
   }
