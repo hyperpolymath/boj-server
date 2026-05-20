@@ -5,6 +5,16 @@
 ; Auto-prepended to every Claude worker session via claude() shell hook.
 ; Media-Type: application/a2ml
 
+; ── Identity (required by hyperpolymath/a2ml-validate-action) ─────────
+; TOML-shape preamble exposes name/version to the line-regex validator.
+; Consumers of the s-exp body below ignore non-`(...)` lines, so this
+; header is benign for the claude() shell-hook cat-and-prepend pipeline.
+[identity]
+name = "project-memories"
+project = "boj-server"
+version = "1.0.0"
+schema_version = "1.0.0"
+
 (project-memories
   (version "1.0.0")
   (repo "boj-server")
