@@ -71,7 +71,7 @@ jobs:
       - name: Resolve cartridge allowlist
         id: discover
         # 80 cartridges in the tree carry a paired Safe*.idr + *_ffi.zig.
-        # 65 are audited green against the Phase 1b emitter + Phase 1
+        # 66 are audited green against the Phase 1b emitter + Phase 1
         # verifier (re-run 2026-05-20 after iseriser#20 / #21 / #22 merged:
         # GADT-skip in the emitter, runtogether candidate for multi-cap
         # acronyms, and terminal `false` switch-arm tolerance in the
@@ -79,10 +79,11 @@ jobs:
         #   * ADDS 10 cartridges that the three iseriser fixes unblocked
         #     (cloud, comms, container, git, gitlab-api, ml,
         #     mongodb, queues, research, vordr)
-        #   * REMOVES browser-mcp — newly-detected genuine drift
-        #     (`BrowserAction.Type` ↔ Zig `type_text`; cartridge-side
-        #     fix, not a verifier defect)
-        # 15 cartridges carry real drift across Classes B/C/D — see
+        #   * RESTORES browser-mcp — the Class D `BrowserAction.Type` ↔
+        #     Zig `type_text` drift was fixed in cartridge-side PR #134
+        #     (`Type` renamed to `TypeText` in the Idris2 ADT to match
+        #     the underlying Zig FFI tag).
+        # 14 cartridges carry real drift across Classes B/C/D — see
         # standards#92 plus open sub-issues standards#150-155 (Class C)
         # and standards#156 (Class D). Class P (verifier parser limit)
         # and Class E (malformed Idris2 source) are now empty: iseriser#22
@@ -100,6 +101,7 @@ jobs:
             echo 'agent-mcp'
             echo 'airtable-mcp'
             echo 'arango-mcp'
+            echo 'browser-mcp'
             echo 'buildkite-mcp'
             echo 'clickhouse-mcp'
             echo 'cloud-mcp'
