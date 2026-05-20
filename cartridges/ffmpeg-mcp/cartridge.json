@@ -1,0 +1,21 @@
+{
+  "$schema": "https://boj.dev/schemas/cartridge/v1.json",
+  "spdx": "MPL-2.0",
+  "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>",
+  "name": "ffmpeg-mcp",
+  "version": "0.1.0",
+  "description": "Local FFmpeg gateway — probe metadata, transcode formats, extract audio, extract frames, concatenate, trim. Glue between whisper / replicate / browser screenshots. Local-only — requires host ffmpeg binary; not Worker-compatible.",
+  "domain": "multimodal",
+  "tier": "Teranga",
+  "protocols": ["MCP", "REST"],
+  "auth": { "method": "none", "env_var": null, "credential_source": "No auth — operates on local files. Sandbox via FFMPEG_ALLOWED_PATHS env if exposing to multi-tenant deployments." },
+  "api": { "base_url": "local://ffmpeg-mcp", "content_type": "application/json" },
+  "tools": [
+    { "name": "media_probe", "description": "Probe metadata (codec, duration, streams, dimensions). Read-only.", "inputSchema": { "type": "object", "properties": { "input": { "type": "string" } }, "required": ["input"] } },
+    { "name": "media_transcode", "description": "Convert between formats with optional bitrate / resolution / codec overrides.", "inputSchema": { "type": "object", "properties": { "input": { "type": "string" }, "output": { "type": "string" }, "video_codec": { "type": "string" }, "audio_codec": { "type": "string" }, "video_bitrate": { "type": "string" }, "resolution": { "type": "string" } }, "required": ["input", "output"] } },
+    { "name": "media_extract_audio", "description": "Extract audio track to its own file (mp3 / wav / opus). Useful as a Whisper input prep step.", "inputSchema": { "type": "object", "properties": { "input": { "type": "string" }, "output": { "type": "string" }, "format": { "type": "string", "enum": ["mp3", "wav", "opus", "aac"] } }, "required": ["input", "output"] } },
+    { "name": "media_extract_frames", "description": "Extract frames at a given interval or specific timestamps. Useful as Replicate vision-model input prep.", "inputSchema": { "type": "object", "properties": { "input": { "type": "string" }, "output_pattern": { "type": "string" }, "fps": { "type": "number" }, "timestamps": { "type": "array" } }, "required": ["input", "output_pattern"] } },
+    { "name": "media_concat", "description": "Concatenate multiple files into one (same codec required, or transcode-then-concat).", "inputSchema": { "type": "object", "properties": { "inputs": { "type": "array" }, "output": { "type": "string" } }, "required": ["inputs", "output"] } },
+    { "name": "media_trim", "description": "Trim/cut to a specific time range.", "inputSchema": { "type": "object", "properties": { "input": { "type": "string" }, "output": { "type": "string" }, "start": { "type": "string" }, "end": { "type": "string" }, "duration": { "type": "string" } }, "required": ["input", "output", "start"] } }
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "$schema": "https://boj.dev/schemas/cartridge/v1.json",
+  "spdx": "MPL-2.0",
+  "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>",
+  "name": "elevenlabs-mcp",
+  "version": "0.1.0",
+  "description": "Text-to-speech via ElevenLabs API — high-quality voices, multilingual, voice cloning (premium tier), streaming output.",
+  "domain": "multimodal",
+  "tier": "Teranga",
+  "protocols": ["MCP", "REST"],
+  "auth": { "method": "api_key", "env_var": "ELEVENLABS_API_KEY", "credential_source": "ElevenLabs account → Profile → API Keys." },
+  "api": { "base_url": "local://elevenlabs-mcp", "content_type": "application/json" },
+  "tools": [
+    { "name": "audio_authenticate", "description": "Store ElevenLabs API key.", "inputSchema": { "type": "object", "properties": { "api_key": { "type": "string" } }, "required": ["api_key"] } },
+    { "name": "audio_synthesize", "description": "Generate speech from text. Returns audio (mp3 / pcm / opus).", "inputSchema": { "type": "object", "properties": { "text": { "type": "string" }, "voice_id": { "type": "string" }, "model_id": { "type": "string", "enum": ["eleven_multilingual_v2", "eleven_turbo_v2", "eleven_monolingual_v1"] }, "output_format": { "type": "string", "enum": ["mp3_44100_128", "pcm_44100", "opus_48000_128"] }, "stability": { "type": "number" }, "similarity_boost": { "type": "number" } }, "required": ["text", "voice_id"] } },
+    { "name": "audio_list_voices", "description": "List available voices on the account (preset + custom).", "inputSchema": { "type": "object", "properties": {} } },
+    { "name": "audio_clone_voice", "description": "Create a custom voice from sample audio (premium tier only).", "inputSchema": { "type": "object", "properties": { "name": { "type": "string" }, "samples": { "type": "array" }, "description": { "type": "string" } }, "required": ["name", "samples"] } }
+  ]
+}
