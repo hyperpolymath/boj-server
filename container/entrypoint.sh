@@ -37,7 +37,7 @@ done
 export LD_LIBRARY_PATH="${LD_LIBRARY_PATH:+${LD_LIBRARY_PATH}:}${CART_LIBS}"
 
 echo "Starting boj-server..."
-echo "  Host: ${APP_HOST:-[::]}"
+echo "  Host: ${APP_HOST:-127.0.0.1}"
 echo "  Port: ${APP_PORT:-7700}"
 echo "  Data: ${APP_DATA_DIR:-/data}"
 echo "  Log:  ${APP_LOG_FORMAT:-json}"
@@ -137,4 +137,8 @@ bootstrap_federation &
 # Replace the entrypoint shell with the application process so that
 # signals are delivered directly and PID 1 is the application.
 
-exec /app/boj-server serve --host "${APP_HOST:-[::]}" --port "${REST_PORT}"
+# Default to 127.0.0.1 (loopback) per ADR-0004 §1 — BoJ is fronted by
+# http-capability-gateway (HCG tier-2) and is not externally routable
+# in canonical deployments. Override APP_HOST for legacy/standalone use.
+# See docs/integration/hcg-tier2-rollout-runbook.md §1.4 prereq #7.
+exec /app/boj-server serve --host "${APP_HOST:-127.0.0.1}" --port "${REST_PORT}"

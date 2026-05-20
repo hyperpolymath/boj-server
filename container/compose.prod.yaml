@@ -40,8 +40,12 @@ services:
     volumes:
       - boj-node-data:/data:Z
     environment:
-      # Server binding
-      APP_HOST: "[::]"
+      # Server binding — loopback by default per ADR-0004 §1 (BoJ is
+      # fronted by http-capability-gateway tier-2 and not externally
+      # routable). Override APP_HOST=0.0.0.0 or APP_HOST=:: for
+      # legacy/standalone deployments without HCG in front.
+      # See docs/integration/hcg-tier2-rollout-runbook.md §1.4 prereq #7.
+      APP_HOST: "127.0.0.1"
       APP_PORT: "7700"
       APP_DATA_DIR: "/data"
       APP_LOG_FORMAT: "json"
