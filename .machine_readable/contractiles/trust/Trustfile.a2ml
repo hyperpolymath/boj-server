@@ -455,6 +455,15 @@ seams:
     failure_mode: "fail-closed (supervisor restart)"
     tier: "elixir-disciplined"
     notes: ""
+  - id: "gateway-boj-gnosis"
+    description: "http-capability-gateway ↔ BoJ unified Zig API gnosis handler"
+    from: "web-ecosystem/http-capability-gateway"
+    to: "src/zig-api/ (gnosis handler)"
+    contract: "docs/integration/http-capability-gateway-boj-contract.md"
+    test_ref: "web-ecosystem/http-capability-gateway:test/e2e_boj_integration_test.exs"
+    failure_mode: "fail-closed (circuit breaker)"
+    tier: "elixir-disciplined"
+    notes: "Phase C (hyperpolymath/standards#98). Tier-2 HTTP governance seam declared per ADR 0004; the gateway resolves trust at the transport (mTLS, Phase B) and forwards an authoritative X-Trust-Level to the gnosis handler. E2E seam test lives in the gateway repo because that is the side that owns the policy pipeline and the proxy."
 policy:
   seam_check: "every PR that touches either side of a declared seam MUST exercise the P2P test for that seam before merge"
 security:
