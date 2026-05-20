@@ -71,8 +71,8 @@ for zigfile in "$zig_ffi_dir"/*.zig; do
             ;;
     esac
 
-    has_export=$(grep -cP '(?:pub )?export fn' "$zigfile" 2>/dev/null || echo "0")
-    has_mutex=$(grep -c 'Mutex' "$zigfile" 2>/dev/null || echo "0")
+    has_export=$(grep -cP '(?:pub )?export fn' "$zigfile" 2>/dev/null || true)
+    has_mutex=$(grep -c 'Mutex' "$zigfile" 2>/dev/null || true)
 
     if [[ "$has_export" -gt 0 && "$has_mutex" -eq 0 ]]; then
         fail "$basename_zig has $has_export C-ABI exports but no Mutex"
@@ -95,8 +95,8 @@ for cart_dir in "$PROJECT_DIR"/cartridges/*/ffi; do
     fi
 
     if [[ -n "$ffi_zig" ]]; then
-        has_export=$(grep -c 'pub export fn' "$ffi_zig" 2>/dev/null || echo "0")
-        has_mutex=$(grep -c 'Mutex' "$ffi_zig" 2>/dev/null || echo "0")
+        has_export=$(grep -c 'pub export fn' "$ffi_zig" 2>/dev/null || true)
+        has_mutex=$(grep -c 'Mutex' "$ffi_zig" 2>/dev/null || true)
 
         if [[ "$has_export" -gt 0 && "$has_mutex" -eq 0 ]]; then
             fail "$cart_name FFI: $has_export exports, no Mutex"
