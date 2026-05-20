@@ -49,14 +49,24 @@ defmodule BojRest.TrustPolicyTest do
     assert TrustPolicy.satisfies?(:public, "internal", false)
   end
 
-  test "satisfies?: :authenticated requires authenticated or internal" do
-    assert TrustPolicy.satisfies?(:authenticated, "authenticated", false)
-    assert TrustPolicy.satisfies?(:authenticated, "internal", false)
+  test "satisfies?: :authenticated requires authenticated or internal when loopback" do
+    assert TrustPolicy.satisfies?(:authenticated, "authenticated", true)
+    assert TrustPolicy.satisfies?(:authenticated, "internal", true)
   end
 
   test "satisfies?: :authenticated rejects public or nil" do
     refute TrustPolicy.satisfies?(:authenticated, "public", false)
     refute TrustPolicy.satisfies?(:authenticated, nil, false)
     refute TrustPolicy.satisfies?(:authenticated, "garbage", false)
+  end
+
+  # ── Phase A §3 invariant 3 — non-loopback `X-Trust-Level` is ignored ─────
+
+  test "satisfies?: :authenticated rejects non-loopback authenticated (header ignored, §3)" do
+    refute TrustPolicy.satisfies?(:authenticated, "authenticated", false)
+  end
+
+  test "satisfies?: :authenticated rejects non-loopback internal (header ignored, §3)" do
+    refute TrustPolicy.satisfies?(:authenticated, "internal", false)
   end
 end
