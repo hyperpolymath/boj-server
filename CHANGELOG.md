@@ -27,6 +27,20 @@ All notable changes to Bundle of Joy Server are documented here.
 
 ## [Unreleased]
 
+### Changed
+
+- **Cowboy listener now binds to `127.0.0.1` by default** (was: all
+  interfaces). Configurable via the `BOJ_BIND_IP` environment variable;
+  invalid values fail-fast at boot rather than silently falling back to
+  `0.0.0.0`. This is the code-enforced expression of the ADR-0004 §1
+  invariant that BoJ's back-side bind is not externally routable in
+  deployments fronted by `http-capability-gateway` (HCG tier-2). Phase E
+  rollout-runbook §1.4 prerequisite #6. Legacy/standalone deployments
+  that want all-interfaces exposure must now opt in explicitly
+  (`BOJ_BIND_IP=0.0.0.0` or `BOJ_BIND_IP=::`). Refs
+  [`hyperpolymath/standards#100`](https://github.com/hyperpolymath/standards/issues/100),
+  [`#91`](https://github.com/hyperpolymath/standards/issues/91).
+
 ### Added
 
 - **ADR-0014 — cross-cartridge composition safety (RFC)** — frames the
