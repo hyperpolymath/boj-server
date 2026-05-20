@@ -128,7 +128,7 @@ function hardeningGate(toolName, args) {
     }
   } else if (toolName.startsWith("boj_gitlab_") && toolName !== "boj_gitlab_list_projects") {
     validationError = validateRequiredStrings(args, ["project_id"]);
-  } else if (toolName.startsWith("boj_cloud_") || toolName.startsWith("boj_comms_") || toolName === "boj_ml_huggingface" || toolName === "boj_research" || toolName === "boj_codeseeker") {
+  } else if (toolName.startsWith("boj_cloud_") || toolName.startsWith("boj_comms_") || toolName === "boj_ml_huggingface" || toolName === "boj_research" || toolName === "boj_codeseeker" || toolName === "boj_search") {
     validationError = validateRequiredStrings(args, ["operation"]);
   } else if (toolName === "boj_browser_tabs") {
     validationError = validateRequiredStrings(args, ["operation"]);
@@ -216,6 +216,9 @@ async function dispatchTool(toolName, args) {
 
     case "boj_research":
       return invokeCartridge("research-mcp", args);
+
+    case "boj_search":
+      return invokeCartridge("search-mcp", args);
 
     // Local coordination — direct to loopback backend on port 7745
     case "coord_register":

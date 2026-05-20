@@ -1,0 +1,39 @@
+// SPDX-License-Identifier: MPL-2.0
+= search-mcp — Multi-provider web search
+
+Cartridge that exposes web search across four providers behind a single MCP tool surface:
+
+|===
+| Provider | Strengths | Auth env var
+
+| Tavily
+| LLM-optimised summaries; answer-mode; extract API
+| `TAVILY_API_KEY`
+
+| Brave
+| Privacy-first index; broad freshness; no tracking
+| `BRAVE_SEARCH_API_KEY`
+
+| Exa
+| Neural search over high-quality content (Twitter, Reddit, papers, blogs); extract API
+| `EXA_API_KEY`
+
+| Perplexity
+| Q&A-style answers with citations; conversational search
+| `PERPLEXITY_API_KEY`
+|===
+
+== Tools
+
+* `search_authenticate` — store provider API key (per-provider; called once)
+* `search_web` — keyword/phrase search; returns ranked results
+* `search_answer` — single answer with citations (perplexity, tavily)
+* `search_extract` — structured content extraction from URLs (tavily, exa)
+
+== Bridge tool
+
+The MCP bridge exposes a single high-level `boj_search` tool that dispatches to `search-mcp` via `boj_cartridge_invoke`. See `boj_search` in `mcp-bridge/lib/tools.js`.
+
+== Status
+
+Cartridge surface declared (this manifest); backend implementation in the Elixir/Zig dispatch layer is tracked separately. Until backend lands, `search_*` operations route through the unified gateway and return `{error, hint}` for unimplemented providers.
