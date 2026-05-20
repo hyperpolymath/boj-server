@@ -6,12 +6,20 @@
 ||| proofs in SafeHTTP, SafeCORS, SafeWebSocket, SafePromptInjection,
 ||| SafeAPIKey, and Safety modules.
 |||
-||| Three axiomatic believe_me primitives are declared here:
-|||   charEqSound  — soundness of prim__eqChar (c1 == c2 = True → c1 = c2)
-|||   charEqSym    — symmetry of prim__eqChar (x == y = y == x)
-|||   unpackLength — prim__strToCharList preserves length
+||| Five axiomatic believe_me primitives are declared here. Each is
+||| class (J) — genuinely unavoidable in Idris2 0.8.0 because `Char`
+||| and `String` are opaque primitive types whose operations are
+||| foreign functions with no constructors and no in-language induction
+||| principle. They are documented as principled assumptions, not
+||| unproven debt; see PROOF-NEEDS.md for the per-site audit.
 |||
-||| All other proofs are constructive.
+|||   charEqSound       — soundness of prim__eqChar (c1 == c2 = True → c1 = c2)
+|||   charEqSym         — symmetry of prim__eqChar (x == y = y == x)
+|||   unpackLength      — prim__strToCharList preserves length
+|||   appendLengthSum   — prim__strAppend: length (s ++ t) = length s + length t
+|||   substrLengthBound — prim__strSubstr: result no longer than the requested count
+|||
+||| All other proofs in this module are constructive.
 module Boj.SafetyLemmas
 
 import Data.List
@@ -215,12 +223,12 @@ unpackLength _ = believe_me ()
 ||| Idris2 type level. Established by semantics of all supported backends.
 %unsafe
 export
-appendLengthSum : (s t : String) -> length (s ++ t) = length s + length t
+appendLengthSum : (s, t : String) -> length (s ++ t) = length s + length t
 appendLengthSum _ _ = believe_me ()
 
 ||| Substring of a string has length at most the requested count.
 ||| Axiomatic: prim__strSubstr semantics — result is never longer than `len`.
 %unsafe
 export
-substrLengthBound : (s : String) -> (start len : Nat) -> LTE (length (substr start len s)) len
+substrLengthBound : (s : String) -> (start, len : Nat) -> LTE (length (substr start len s)) len
 substrLengthBound _ _ _ = believe_me ()
