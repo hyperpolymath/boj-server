@@ -253,7 +253,7 @@ async function dispatchTool(toolName, args) {
 // local-coord-mcp direct dispatch (loopback only, port 7745)
 // ===================================================================
 
-const LOCAL_COORD_URL = Deno.env.get("COORD_BACKEND_URL") ?? "http://127.0.0.1:7745";
+const LOCAL_COORD_URL = env.get("COORD_BACKEND_URL") ?? "http://127.0.0.1:7745";
 
 // Nickel contracts run on coord_send / coord_send_gated only — those
 // are the two tools whose `message` argument carries an A2ML envelope.
