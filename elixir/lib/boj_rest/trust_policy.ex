@@ -14,6 +14,19 @@ defmodule BojRest.TrustPolicy do
   Loopback callers (127.x.x.x, ::1) bypass trust enforcement — they are
   implicitly trusted as local processes (mcp-bridge, developer curl, etc.).
 
+  ## Phase A §3 invariant 3 — non-loopback ignores `X-Trust-Level`
+
+  Per the http-capability-gateway BoJ contract §3 invariant 3, a
+  non-loopback caller presenting an `X-Trust-Level` header has the
+  header **ignored** — the caller is treated as if it presented no
+  header at all. The gateway is the only source authorised to assert a
+  trust class, and reaches BoJ on the loopback bind; any other source
+  is by definition not the gateway. This is BoJ-side defence in depth;
+  the gateway-side strip is the primary control. Without this clause an
+  attacker who reaches BoJ's back-side bind directly (a §4 violation —
+  back-side bind not network-isolated) could claim `internal` trust by
+  setting a header.
+
   ## Exposure inference from auth.method
 
   | auth.method          | Required caller exposure |
@@ -49,10 +62,15 @@ defmodule BojRest.TrustPolicy do
   True when the given `X-Trust-Level` header value satisfies `required`.
 
   Loopback callers (`is_local: true`) always satisfy any exposure level.
+  Non-loopback callers (`is_local: false`) have their `X-Trust-Level`
+  header **ignored** per Phase A §3 invariant 3 — they can therefore
+  only satisfy `:public` exposure. The header alone cannot promote a
+  non-loopback caller's trust class.
   """
   @spec satisfies?(exposure(), trust_header(), boolean()) :: boolean()
   def satisfies?(_required, _trust, true), do: true
   def satisfies?(:public, _trust, _local), do: true
+  def satisfies?(_required, _trust, false), do: false
   def satisfies?(:authenticated, trust, _local) when trust in ["authenticated", "internal"], do: true
   def satisfies?(_required, _trust, _local), do: false
 end

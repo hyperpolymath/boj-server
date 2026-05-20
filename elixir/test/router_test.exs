@@ -401,7 +401,11 @@ defmodule BojRest.RouterTest do
     assert body["required"] == "authenticated"
   end
 
-  test "POST /invoke on keyed cartridge with X-Trust-Level: authenticated → allowed" do
+  # Phase A §3 invariant 3: non-loopback X-Trust-Level is IGNORED. These two
+  # used to assert the header was honoured for non-loopback callers; that was
+  # the §3 hole the gateway was supposed to plug at the front and BoJ at the
+  # back. BoJ-side enforcement now lives in TrustPolicy.satisfies?/3.
+  test "POST /invoke on keyed cartridge with X-Trust-Level: authenticated from non-loopback → 403 (header ignored, §3)" do
     conn =
       conn(:post, "/cartridge/#{@keyed_cart}/invoke", Jason.encode!(%{tool: "airtable_list_bases"}))
       |> put_req_header("content-type", "application/json")
@@ -409,12 +413,13 @@ defmodule BojRest.RouterTest do
       |> Map.put(:remote_ip, {1, 2, 3, 4})
       |> BojRest.Router.call(@opts)
 
-    assert conn.status in [200, 500]
+    assert conn.status == 403
     body = Jason.decode!(conn.resp_body)
-    refute body["error"] == "forbidden"
+    assert body["error"] == "forbidden"
+    assert body["detail"] == "insufficient-trust"
   end
 
-  test "POST /invoke on keyed cartridge with X-Trust-Level: internal → allowed" do
+  test "POST /invoke on keyed cartridge with X-Trust-Level: internal from non-loopback → 403 (header ignored, §3)" do
     conn =
       conn(:post, "/cartridge/#{@keyed_cart}/invoke", Jason.encode!(%{tool: "airtable_list_bases"}))
       |> put_req_header("content-type", "application/json")
@@ -422,9 +427,10 @@ defmodule BojRest.RouterTest do
       |> Map.put(:remote_ip, {1, 2, 3, 4})
       |> BojRest.Router.call(@opts)
 
-    assert conn.status in [200, 500]
+    assert conn.status == 403
     body = Jason.decode!(conn.resp_body)
-    refute body["error"] == "forbidden"
+    assert body["error"] == "forbidden"
+    assert body["detail"] == "insufficient-trust"
   end
 
   test "POST /invoke on keyed cartridge with X-Trust-Level: public → 403 forbidden" do
