@@ -1,0 +1,20 @@
+{
+  "$schema": "https://boj.dev/schemas/cartridge/v1.json",
+  "spdx": "MPL-2.0",
+  "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>",
+  "name": "replicate-mcp",
+  "version": "0.1.0",
+  "description": "Replicate hosted ML models — image generation (Stable Diffusion, FLUX), video (Veo, Kling), upscaling, vision (LLaVA), audio (MusicGen). Async prediction model with polling.",
+  "domain": "multimodal",
+  "tier": "Teranga",
+  "protocols": ["MCP", "REST"],
+  "auth": { "method": "api_token", "env_var": "REPLICATE_API_TOKEN", "credential_source": "Replicate account → API tokens." },
+  "api": { "base_url": "local://replicate-mcp", "content_type": "application/json" },
+  "tools": [
+    { "name": "media_authenticate", "description": "Store Replicate API token.", "inputSchema": { "type": "object", "properties": { "api_token": { "type": "string" } }, "required": ["api_token"] } },
+    { "name": "media_run_model", "description": "Run a model by owner/name:version with inputs. Returns prediction_id; poll via media_get_prediction.", "inputSchema": { "type": "object", "properties": { "model": { "type": "string", "description": "Format owner/name or owner/name:version" }, "inputs": { "type": "object" }, "webhook": { "type": "string" } }, "required": ["model", "inputs"] } },
+    { "name": "media_list_models", "description": "Search or list models in the Replicate catalog by collection/owner/name.", "inputSchema": { "type": "object", "properties": { "query": { "type": "string" }, "owner": { "type": "string" }, "collection": { "type": "string" } } } },
+    { "name": "media_get_prediction", "description": "Get status + output of a prediction.", "inputSchema": { "type": "object", "properties": { "prediction_id": { "type": "string" } }, "required": ["prediction_id"] } },
+    { "name": "media_cancel_prediction", "description": "Cancel a running prediction.", "inputSchema": { "type": "object", "properties": { "prediction_id": { "type": "string" } }, "required": ["prediction_id"] } }
+  ]
+}

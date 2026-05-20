@@ -128,7 +128,7 @@ function hardeningGate(toolName, args) {
     }
   } else if (toolName.startsWith("boj_gitlab_") && toolName !== "boj_gitlab_list_projects") {
     validationError = validateRequiredStrings(args, ["project_id"]);
-  } else if (toolName.startsWith("boj_cloud_") || toolName.startsWith("boj_comms_") || toolName === "boj_ml_huggingface" || toolName === "boj_research" || toolName === "boj_codeseeker" || toolName === "boj_search") {
+  } else if (toolName.startsWith("boj_cloud_") || toolName.startsWith("boj_comms_") || toolName === "boj_ml_huggingface" || toolName === "boj_research" || toolName === "boj_codeseeker" || toolName === "boj_search" || toolName === "boj_vector" || toolName === "boj_multimodal") {
     validationError = validateRequiredStrings(args, ["operation"]);
   } else if (toolName === "boj_browser_tabs") {
     validationError = validateRequiredStrings(args, ["operation"]);
@@ -219,6 +219,20 @@ async function dispatchTool(toolName, args) {
 
     case "boj_search":
       return invokeCartridge("search-mcp", args);
+
+    case "boj_vector": {
+      const providerToCartridge = { pinecone: "pinecone-mcp", weaviate: "weaviate-mcp", qdrant: "qdrant-mcp", chromadb: "chromadb-mcp" };
+      const cart = providerToCartridge[args.provider];
+      if (!cart) return { error: "unknown provider", hint: "boj_vector requires provider: pinecone | weaviate | qdrant | chromadb" };
+      return invokeCartridge(cart, args);
+    }
+
+    case "boj_multimodal": {
+      const providerToCartridge = { whisper: "whisper-mcp", elevenlabs: "elevenlabs-mcp", replicate: "replicate-mcp", ffmpeg: "ffmpeg-mcp" };
+      const cart = providerToCartridge[args.provider];
+      if (!cart) return { error: "unknown provider", hint: "boj_multimodal requires provider: whisper | elevenlabs | replicate | ffmpeg" };
+      return invokeCartridge(cart, args);
+    }
 
     // Local coordination — direct to loopback backend on port 7745
     case "coord_register":

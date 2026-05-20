@@ -506,6 +506,82 @@ function buildToolList(scope) {
     outputSchema: passthrough("Provider-specific JSON: ranked results array (web), single answer with citations (answer), or extracted-content array (extract). Shape varies by provider; see provider docs."),
   });
 
+  // Vector databases (item 7) — umbrella tool routing to pinecone/weaviate/qdrant/chromadb-mcp
+  tools.push({
+    name: "boj_vector",
+    description: "Vector database + RAG operations across four providers (Pinecone, Weaviate, Qdrant, ChromaDB) behind a single cartridge family. Side-effectful for `upsert` / `delete` / `create_collection` / `delete_collection`; read-only for `list_collections` / `query`. Provider strengths differ: Pinecone = managed serverless; Weaviate = hybrid (vector+BM25) + schema; Qdrant = Rust-native + payload filtering; ChromaDB = embedded or client/server, LLM-app-focused. Returns provider-specific JSON. Composes with `local-memory-mcp` for hybrid local-cloud memory, with `codeseeker-mcp` for code RAG, and with `boj_search` for retrieval-augmented Q&A. See ADR for the full operation taxonomy.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        operation: {
+          type: "string",
+          enum: ["authenticate", "list_collections", "create_collection", "delete_collection", "upsert", "query", "delete"],
+          description: "Which vector operation to run. `authenticate` must be called once per provider before first use.",
+        },
+        provider: {
+          type: "string",
+          enum: ["pinecone", "weaviate", "qdrant", "chromadb"],
+          description: "Vector DB provider.",
+        },
+        collection: { type: "string", description: "Collection / index / class name. Required for non-list operations. Provider naming maps: Pinecone=index, Weaviate=class, Qdrant=collection, Chroma=collection." },
+        vectors: { type: "array", description: "Vectors to upsert (for `upsert`). Shape varies by provider — see cartridge manifest." },
+        query: { description: "Query vector (array) or query text (string) for `query`. Chroma + Weaviate accept text; Pinecone + Qdrant require vector." },
+        ids: { type: "array", items: { type: "string" }, description: "Document/point IDs for `delete`." },
+        filter: { type: "object", description: "Metadata filter for `query` / `delete` (provider-specific dialect)." },
+        params: { type: "object", description: "Op-and-provider-specific extras: top_k / limit / dimension / metric / namespace / where / score_threshold / alpha (hybrid weight). See cartridge manifest." },
+        api_key: { type: "string", description: "Provider API key. Required only for `authenticate`; ignored otherwise (server caches per provider)." },
+        endpoint: { type: "string", description: "Provider endpoint URL. Required at authenticate-time for Weaviate / Qdrant / Chroma (which support self-host); ignored for Pinecone (cloud-only)." },
+      },
+      required: ["operation", "provider"],
+      additionalProperties: false,
+    },
+    annotations: { title: "Vector Database (multi-provider)", readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
+    outputSchema: passthrough("Provider-specific JSON: collection list, upsert acknowledgment, query results with scores+payload, or delete confirmation. Shape varies by provider."),
+  });
+
+  // Multi-modal (item 9) — umbrella tool routing to whisper/elevenlabs/replicate/ffmpeg-mcp
+  tools.push({
+    name: "boj_multimodal",
+    description: "Multi-modal audio/image/video operations across four cartridges: whisper-mcp (STT), elevenlabs-mcp (TTS + voice cloning), replicate-mcp (image/video generation via Replicate's hosted models), ffmpeg-mcp (local transcoding glue). Side-effectful for `synthesize` / `run_model` / `transcode` / `extract_*` / `concat` / `trim` (writes output files or consumes API quota); read-only for `transcribe` / `detect_language` / `list_voices` / `list_models` / `get_prediction` / `probe`. ffmpeg-mcp is **local-only** — requires host ffmpeg binary; not Worker-compatible (see ADR-0013). Composes with `boj_vector` for multi-modal RAG and with `browser-mcp` for screenshot→describe workflows.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        operation: {
+          type: "string",
+          enum: [
+            "authenticate",
+            "transcribe", "detect_language", "translate",
+            "synthesize", "list_voices", "clone_voice",
+            "run_model", "list_models", "get_prediction", "cancel_prediction",
+            "probe", "transcode", "extract_audio", "extract_frames", "concat", "trim",
+          ],
+          description: "Which multi-modal operation to run. STT ops (`transcribe`/`detect_language`/`translate`) → whisper. TTS ops (`synthesize`/`list_voices`/`clone_voice`) → elevenlabs. Generative ops (`run_model`/`list_models`/`get_prediction`/`cancel_prediction`) → replicate. Transcoding ops (`probe`/`transcode`/`extract_*`/`concat`/`trim`) → ffmpeg.",
+        },
+        provider: {
+          type: "string",
+          enum: ["whisper", "elevenlabs", "replicate", "ffmpeg"],
+          description: "Cartridge to route to. Most operations imply their provider, but explicit routing prevents ambiguity (e.g. whisper has its own local backend, openai-api backend).",
+        },
+        source: { type: "string", description: "Audio/video input file path or URL. For whisper.transcribe, replicate.run_model with audio input, ffmpeg.*." },
+        text: { type: "string", description: "Text input. For elevenlabs.synthesize." },
+        input: { type: "string", description: "Input file path. For ffmpeg.*." },
+        output: { type: "string", description: "Output file path. For ffmpeg.transcode/extract_audio/concat/trim." },
+        urls: { type: "array", items: { type: "string", format: "uri" }, description: "Input URL list. For ffmpeg.concat." },
+        model: { type: "string", description: "Model identifier. whisper: 'whisper-1' / 'tiny' / 'base' / 'small' / 'medium' / 'large-v3'. replicate: 'owner/name:version'. elevenlabs: 'eleven_multilingual_v2' / 'eleven_turbo_v2' / 'eleven_monolingual_v1'." },
+        voice_id: { type: "string", description: "Voice identifier for elevenlabs.synthesize." },
+        inputs: { type: "object", description: "Model inputs for replicate.run_model (model-specific shape)." },
+        prediction_id: { type: "string", description: "Prediction handle for replicate.get_prediction / cancel_prediction." },
+        params: { type: "object", description: "Op-specific extras — see per-cartridge manifests (timestamps, language, stability, similarity_boost, video_codec, fps, start/end, ...)." },
+        api_key: { type: "string", description: "Provider API key/token. Required only for `authenticate`; ignored otherwise." },
+        backend: { type: "string", enum: ["openai", "local"], description: "For whisper.authenticate: 'openai' uses API; 'local' uses host whisper.cpp binary." },
+      },
+      required: ["operation", "provider"],
+      additionalProperties: false,
+    },
+    annotations: { title: "Multi-modal (audio/image/video)", readOnlyHint: false, destructiveHint: true, idempotentHint: false, openWorldHint: true },
+    outputSchema: passthrough("Provider-specific JSON: transcription text, synthesised audio (base64 or path), prediction handle/status, or transcoding acknowledgment. Shape varies by operation and provider."),
+  });
+
   // Local coordination (localhost multi-instance AI coordination — local-coord-mcp cartridge)
   tools.push({
     name: "coord_register",
@@ -1135,6 +1211,8 @@ function buildToolList(scope) {
     if (name === "boj_research") return "research";
     if (name === "boj_codeseeker") return "codeseeker";
     if (name === "boj_search") return "search";
+    if (name === "boj_vector") return "vector";
+    if (name === "boj_multimodal") return "multimodal";
     return "other";
   }
 
