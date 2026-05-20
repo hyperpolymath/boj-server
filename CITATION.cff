@@ -1,0 +1,38 @@
+# Citation File Format — https://citation-file-format.github.io/
+# This file describes how to cite the boj-server software.
+cff-version: 1.2.0
+title: "BoJ Server — Bundle of Joy MCP Server"
+message: "If you use this software, please cite it using the metadata below."
+type: software
+authors:
+  - given-names: Jonathan
+    name-particle: D.A.
+    family-names: Jewell
+    email: j.d.a.jewell@open.ac.uk
+    affiliation: "The Open University"
+    alias: hyperpolymath
+repository-code: "https://github.com/hyperpolymath/boj-server"
+url: "https://github.com/hyperpolymath/boj-server"
+abstract: >-
+  Bundle of Joy (BoJ) Server is a cartridge-based Model Context Protocol (MCP)
+  gateway. Each cartridge — covering databases, container runtimes, git forges,
+  Kubernetes, observability, secrets, IaC, cloud providers, and multi-instance
+  AI coordination — is a formally verified Idris2 ABI + Zig FFI + Deno/JS
+  adapter triple. The server exposes 115 cartridges through a unified stdio
+  MCP surface plus a local REST API on port 7700. A local-coord-mcp cartridge
+  provides loopback peer discovery, typed envelopes, claim/heartbeat/watchdog,
+  and master/journeyman/apprentice supervision for multi-agent AI workflows.
+keywords:
+  - mcp
+  - model-context-protocol
+  - llm-tools
+  - formal-verification
+  - idris2
+  - zig
+  - cartridge-architecture
+  - devops
+  - multi-agent
+  - ai-coordination
+license: MPL-2.0
+version: 0.4.6
+date-released: "2026-04-27"

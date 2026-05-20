@@ -1,27 +1,198 @@
 # boj-server
 
 [![OpenSSF Best Practices](https://img.shields.io/badge/OpenSSF-Best_Practices-green?logo=opensourcesecurity)](https://www.bestpractices.dev/en/projects/new?repo_url=https://github.com/hyperpolymath/boj-server)
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/hyperpolymath/boj-server/badge)](https://scorecard.dev/viewer/?uri=github.com/hyperpolymath/boj-server)
 [![Glama MCP Server](https://glama.ai/mcp/servers/hyperpolymath/boj-server/badge)](https://glama.ai/mcp/servers/hyperpolymath/boj-server)
 [![Green Hosting](https://api.thegreenwebfoundation.org/greencheckimage/boj-server.net)](https://www.thegreenwebfoundation.org/green-web-check/?url=boj-server.net)
+[![Software Heritage](https://archive.softwareheritage.org/badge/origin/https://github.com/hyperpolymath/boj-server/)](https://archive.softwareheritage.org/browse/origin/?origin_url=https://github.com/hyperpolymath/boj-server)
 
 BoJ (Bundle of Joy) is a unified MCP server that consolidates all hyperpolymath tooling into a single endpoint — GitHub, GitLab, Cloudflare, Vercel, Verpex, Gmail, Calendar, browser automation, research, ML, and 115 open-source cartridges.
 
 ## Install
 
-Add to Claude Code:
+BoJ ships as an MCP server over stdio. Every snippet below uses the published npm package; replace `npx -y @hyperpolymath/boj-server@latest` with one of the following from a local clone:
+
+```bash
+# Preferred — Deno (no install step; fetches imports on first run)
+deno run -A /path/to/boj-server/mcp-bridge/main.js
+
+# Bun (also zero-install)
+bun /path/to/boj-server/mcp-bridge/main.js
+
+# Node — works, but Deno is the project's documented runtime
+node /path/to/boj-server/mcp-bridge/main.js
+```
+
+The bridge has **zero runtime dependencies** (see `package.json`) so no install step is ever required, regardless of runtime.
+
+Most cartridges require the BoJ REST backend running on `http://localhost:7700` — see [Backend](#backend) below.
+
+### Claude Code (CLI)
 
 ```bash
 claude mcp add boj-server -- npx -y @hyperpolymath/boj-server@latest
 ```
 
-Or clone and configure:
+### Claude Desktop
+
+Edit `claude_desktop_config.json`:
+
+- **macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
+- **Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
+- **Linux**: `~/.config/Claude/claude_desktop_config.json`
+
+```json
+{
+  "mcpServers": {
+    "boj-server": {
+      "command": "npx",
+      "args": ["-y", "@hyperpolymath/boj-server@latest"],
+      "env": { "BOJ_URL": "http://localhost:7700" }
+    }
+  }
+}
+```
+
+Restart Claude Desktop after saving.
+
+### Gemini CLI
+
+This repo ships a `gemini-extension.json` — install it directly:
 
 ```bash
-git clone https://github.com/hyperpolymath/boj-server
-cd boj-server/mcp-bridge && npm install
-# Start the BoJ REST API first (port 7700), then:
-claude mcp add boj-server -- deno run -A mcp-bridge/main.js
+gemini extensions install https://github.com/hyperpolymath/boj-server
 ```
+
+Or add to `~/.gemini/settings.json`:
+
+```json
+{
+  "mcpServers": {
+    "boj-server": {
+      "command": "npx",
+      "args": ["-y", "@hyperpolymath/boj-server@latest"],
+      "env": { "BOJ_URL": "http://localhost:7700" }
+    }
+  }
+}
+```
+
+### GitHub Copilot (VS Code)
+
+VS Code 1.99+ supports MCP servers natively. Add to **workspace** `.vscode/mcp.json`:
+
+```json
+{
+  "servers": {
+    "boj-server": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@hyperpolymath/boj-server@latest"],
+      "env": { "BOJ_URL": "http://localhost:7700" }
+    }
+  }
+}
+```
+
+For **user-level** (all workspaces): Command Palette → `MCP: Add Server` → `Command (stdio)` → paste `npx -y @hyperpolymath/boj-server@latest`. Toggle BoJ on in the Copilot Chat agent picker.
+
+### Cursor
+
+Workspace: `.cursor/mcp.json`. User-global: `~/.cursor/mcp.json`.
+
+```json
+{
+  "mcpServers": {
+    "boj-server": {
+      "command": "npx",
+      "args": ["-y", "@hyperpolymath/boj-server@latest"],
+      "env": { "BOJ_URL": "http://localhost:7700" }
+    }
+  }
+}
+```
+
+Or use Settings → MCP → **Add new MCP server**.
+
+### Cline (VS Code extension)
+
+Settings → Cline → MCP Servers → **Edit MCP Settings**:
+
+```json
+{
+  "mcpServers": {
+    "boj-server": {
+      "command": "npx",
+      "args": ["-y", "@hyperpolymath/boj-server@latest"],
+      "env": { "BOJ_URL": "http://localhost:7700" }
+    }
+  }
+}
+```
+
+### Windsurf (Codeium Cascade)
+
+Edit `~/.codeium/windsurf/mcp_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "boj-server": {
+      "command": "npx",
+      "args": ["-y", "@hyperpolymath/boj-server@latest"],
+      "env": { "BOJ_URL": "http://localhost:7700" }
+    }
+  }
+}
+```
+
+### Continue.dev
+
+In `~/.continue/config.yaml`:
+
+```yaml
+mcpServers:
+  - name: boj-server
+    command: npx
+    args: ["-y", "@hyperpolymath/boj-server@latest"]
+    env:
+      BOJ_URL: http://localhost:7700
+```
+
+### Zed
+
+Settings (`~/.config/zed/settings.json`):
+
+```json
+{
+  "context_servers": {
+    "boj-server": {
+      "command": {
+        "path": "npx",
+        "args": ["-y", "@hyperpolymath/boj-server@latest"],
+        "env": { "BOJ_URL": "http://localhost:7700" }
+      }
+    }
+  }
+}
+```
+
+### Generic stdio (any MCP client)
+
+The minimum spec is `command: npx`, `args: ["-y", "@hyperpolymath/boj-server@latest"]`, transport `stdio`. Optional env: `BOJ_URL` (default `http://localhost:7700`).
+
+This repo's `.mcp.json` is a working reference config.
+
+### Backend
+
+Most cartridges (GitHub/GitLab/Cloud/ML/Browser/CodeSeeker/etc.) call the BoJ REST API. Two options:
+
+1. **Run BoJ locally** — clone this repo and `just run` (see [QUICKSTART-USER.adoc](./QUICKSTART-USER.adoc)). REST API on port 7700.
+2. **Inspectable mode only** — without the backend, `boj_health`, `boj_menu`, `boj_cartridges`, and `boj_cartridge_info` still respond from the offline manifest fallback, so MCP clients can introspect the server without running anything else. Side-effectful tools will return `{error, hint}` until the backend is up.
+
+### Verify
+
+After install, ask the LLM: *"Use the `boj_health` tool."* You should get `{status: "ok", uptime_s, version}` when the backend is up, or a structured hint when it's offline.
 
 Glama listing: <https://glama.ai/mcp/servers/hyperpolymath/boj-server>
 
@@ -313,6 +484,21 @@ Run the coherence tests:
 ```bash
 npm test
 ```
+
+## Citing
+
+If you use BoJ Server in academic work, citation metadata is in [`CITATION.cff`](./CITATION.cff). GitHub renders a "Cite this repository" button in the sidebar from this file.
+
+Per-release DOIs are available via Zenodo. To enable them:
+
+1. Log in to [zenodo.org](https://zenodo.org/) with your GitHub account.
+2. Account → GitHub → flip the **boj-server** repository toggle to on.
+3. Cut a new GitHub release; Zenodo auto-archives it and mints a DOI.
+4. Add the DOI badge to this README:
+   ```markdown
+   [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.XXXXXXX.svg)](https://doi.org/10.5281/zenodo.XXXXXXX)
+   ```
+5. Update the `doi:` field in `CITATION.cff` to match.
 
 ## License
 

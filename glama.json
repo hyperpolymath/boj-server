@@ -44,6 +44,11 @@
         "description": "URL for the local coordination bus backend.",
         "default": "http://127.0.0.1:7745"
       },
+      "COORD_REQUIRE_NICKEL": {
+        "type": "string",
+        "description": "Set to '1' to enable strict Nickel-contract validation on coord_send_gated envelopes. Default off (envelopes validated permissively).",
+        "default": "0"
+      },
       "BOJ_TOOL_SCOPE": {
         "type": "string",
         "description": "Advertised tool-surface scope. 'full' (or unset) advertises every tool (default, backward-compatible). 'core' advertises only the discovery/dispatch core (boj_health, boj_menu, boj_cartridges, boj_cartridge_info, boj_cartridge_invoke) plus all coord_* tools. A CSV of domain prefixes (e.g. 'core,github,browser') advertises core plus the named explicit groups. Every explicit boj_<domain>_* tool remains reachable via boj_cartridge_invoke regardless of scope.",
