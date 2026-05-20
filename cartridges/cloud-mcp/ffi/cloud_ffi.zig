@@ -31,6 +31,34 @@ pub const CloudProvider = enum(c_int) {
     custom = 99,
 };
 
+/// Cloudflare resource types — mirrors `CloudMcp.SafeCloud.CloudflareResource`
+/// + `cfResourceToInt` encoding. Declared here so `iseriser abi-verify` can
+/// structurally check the encoding against the Idris2 source.
+///
+/// Note: the snake_case variants follow the iseriser converter's current
+/// output for multi-cap Idris2 names (e.g. `CfKVNamespace → cf_kvnamespace`,
+/// `CfDNSZone → cf_dnszone`). When iseriser#18 lands a smarter multi-cap
+/// normaliser, these names may be canonicalised to e.g. `cf_kv_namespace`.
+pub const CloudflareResource = enum(c_int) {
+    cf_worker = 1,
+    cf_d1_database = 2,
+    cf_kvnamespace = 3,
+    cf_r2_bucket = 4,
+    cf_dnszone = 5,
+    cf_dnsrecord = 6,
+    cf_pages_project = 7,
+};
+
+/// Vercel resource types — mirrors `CloudMcp.SafeCloud.VercelResource`
+/// + `vclResourceToInt` encoding.
+pub const VercelResource = enum(c_int) {
+    vcl_project = 1,
+    vcl_deployment = 2,
+    vcl_domain = 3,
+    vcl_env_var = 4,
+    vcl_serverless_function = 5,
+};
+
 // ═══════════════════════════════════════════════════════════════════════
 // Session State Machine
 // ═══════════════════════════════════════════════════════════════════════
