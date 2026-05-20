@@ -49,14 +49,21 @@ defmodule BojRest.TrustPolicyTest do
     assert TrustPolicy.satisfies?(:public, "internal", false)
   end
 
-  test "satisfies?: :authenticated requires authenticated or internal" do
-    assert TrustPolicy.satisfies?(:authenticated, "authenticated", false)
-    assert TrustPolicy.satisfies?(:authenticated, "internal", false)
-  end
-
-  test "satisfies?: :authenticated rejects public or nil" do
+  test "satisfies?: :authenticated from non-loopback is rejected regardless of header (§3 invariant 3)" do
+    # http-capability-gateway contract §3.3: any X-Trust-Level arriving from
+    # a non-gateway (non-loopback in this layer) source MUST be ignored.
+    refute TrustPolicy.satisfies?(:authenticated, "authenticated", false)
+    refute TrustPolicy.satisfies?(:authenticated, "internal", false)
     refute TrustPolicy.satisfies?(:authenticated, "public", false)
     refute TrustPolicy.satisfies?(:authenticated, nil, false)
     refute TrustPolicy.satisfies?(:authenticated, "garbage", false)
+  end
+
+  test "satisfies?: :authenticated from loopback honours X-Trust-Level (gateway-equivalent path)" do
+    assert TrustPolicy.satisfies?(:authenticated, "authenticated", true)
+    assert TrustPolicy.satisfies?(:authenticated, "internal", true)
+    # Loopback bypass per module doc: §4 back-side bind isolation defends in depth.
+    assert TrustPolicy.satisfies?(:authenticated, "public", true)
+    assert TrustPolicy.satisfies?(:authenticated, nil, true)
   end
 end

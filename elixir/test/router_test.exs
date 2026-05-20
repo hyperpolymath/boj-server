@@ -401,7 +401,10 @@ defmodule BojRest.RouterTest do
     assert body["required"] == "authenticated"
   end
 
-  test "POST /invoke on keyed cartridge with X-Trust-Level: authenticated → allowed" do
+  # http-capability-gateway contract §3.3: any X-Trust-Level arriving from a
+  # non-loopback (i.e. non-gateway-equivalent) caller MUST be ignored. The two
+  # tests below previously asserted the pre-fix leak; updated to assert §3.
+  test "POST /invoke on keyed cartridge with X-Trust-Level: authenticated from non-loopback → 403 (§3 ignores header)" do
     conn =
       conn(:post, "/cartridge/#{@keyed_cart}/invoke", Jason.encode!(%{tool: "airtable_list_bases"}))
       |> put_req_header("content-type", "application/json")
@@ -409,12 +412,13 @@ defmodule BojRest.RouterTest do
       |> Map.put(:remote_ip, {1, 2, 3, 4})
       |> BojRest.Router.call(@opts)
 
-    assert conn.status in [200, 500]
+    assert conn.status == 403
     body = Jason.decode!(conn.resp_body)
-    refute body["error"] == "forbidden"
+    assert body["error"] == "forbidden"
+    assert body["detail"] == "insufficient-trust"
   end
 
-  test "POST /invoke on keyed cartridge with X-Trust-Level: internal → allowed" do
+  test "POST /invoke on keyed cartridge with X-Trust-Level: internal from non-loopback → 403 (§3 ignores header)" do
     conn =
       conn(:post, "/cartridge/#{@keyed_cart}/invoke", Jason.encode!(%{tool: "airtable_list_bases"}))
       |> put_req_header("content-type", "application/json")
@@ -422,9 +426,10 @@ defmodule BojRest.RouterTest do
       |> Map.put(:remote_ip, {1, 2, 3, 4})
       |> BojRest.Router.call(@opts)
 
-    assert conn.status in [200, 500]
+    assert conn.status == 403
     body = Jason.decode!(conn.resp_body)
-    refute body["error"] == "forbidden"
+    assert body["error"] == "forbidden"
+    assert body["detail"] == "insufficient-trust"
   end
 
   test "POST /invoke on keyed cartridge with X-Trust-Level: public → 403 forbidden" do

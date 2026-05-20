@@ -1,34 +1,20 @@
 # SPDX-License-Identifier: PMPL-1.0-or-later
 # Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
 #
-# Phase C seam tests — BoJ-side documentation of the http-capability-gateway
+# Phase C seam tests — BoJ-side enforcement of the http-capability-gateway
 # contract §3 (trust-header security invariant).
 #
-# *** Finding ***
-# Phase A contract §3 invariant 3 is currently **UNENFORCED** at the BoJ
-# side. `BojRest.TrustPolicy.satisfies?/3` accepts an `X-Trust-Level:
-# authenticated|internal` header from any caller — its third clause does
-# not branch on `is_local`. The contract states (boj-contract.md §3.3):
+# Contract §3.3 (boj-contract.md):
 #
 #     BoJ's gnosis handler / BojRest.Router MUST treat X-Trust-Level as
 #     authoritative only when the connection originates from the gateway
 #     ... Any X-Trust-Level arriving from any other source MUST be ignored
 #     and treated as untrusted.
 #
-# Mitigation in practice today: §4 (back-side bind isolation) keeps the
-# non-loopback path unreachable in well-configured deployments. But the §3
-# enforcement is "mandatory, not advisory" per the contract, and is the
-# BoJ-side half of the defence-in-depth pair whose gateway-side half landed
-# in http-capability-gateway#11.
-#
-# This module:
-#   * **Tests that currently pass** — positive controls (loopback HONOURS
-#     the gateway-forwarded header; non-loopback to :public cartridge still
-#     OK) and `is_local=true` function-level parity. Live now.
-#   * **Tests that demonstrate the defect** — marked `@tag skip:` with a
-#     reason. They will start passing as-is when the §3 fix lands in
-#     `BojRest.TrustPolicy.satisfies?/3` (add clause: any non-loopback +
-#     non-:public exposure → false).
+# Enforced at the BoJ side by `BojRest.TrustPolicy.satisfies?/3`: the
+# `is_local=false` clause rejects any non-`:public` exposure regardless of
+# header. Companion to §4 (back-side bind isolation) and the gateway-side
+# half in http-capability-gateway#11.
 #
 # Refs hyperpolymath/standards#98 (Phase C).
 # Refs hyperpolymath/standards#91 (HCG tier-2 channel).
@@ -41,8 +27,6 @@ defmodule BojRest.PhaseCSeamTest do
 
   @keyed_cart "airtable-mcp"
   @public_cart "boj-health"
-
-  @skip_finding "Phase A §3 invariant 3 unenforced in TrustPolicy.satisfies?/3 — see module doc + standards#98"
 
   # ── §3 invariant 3 (positive control) — loopback HONOURS X-Trust-Level ────
 
@@ -83,11 +67,8 @@ defmodule BojRest.PhaseCSeamTest do
   end
 
   # ── §3 invariant 3 — non-loopback X-Trust-Level MUST be IGNORED ───────────
-  # The 4 tests below DEMONSTRATE THE FINDING. They are skipped today; they
-  # will pass unchanged once the §3 fix lands in TrustPolicy.satisfies?/3.
 
-  describe "non-loopback callers (header MUST be ignored per §3) — finding, skipped" do
-    @tag skip: @skip_finding
+  describe "non-loopback callers (header MUST be ignored per §3) — live tests" do
     test "X-Trust-Level: internal from 1.2.3.4 → 403 on :authenticated cartridge" do
       conn = invoke(@keyed_cart, "airtable_list_bases",
         remote_ip: {1, 2, 3, 4},
@@ -100,7 +81,6 @@ defmodule BojRest.PhaseCSeamTest do
       assert body(conn)["required"] == "authenticated"
     end
 
-    @tag skip: @skip_finding
     test "X-Trust-Level: authenticated from 1.2.3.4 → 403 on :authenticated cartridge" do
       conn = invoke(@keyed_cart, "airtable_list_bases",
         remote_ip: {1, 2, 3, 4},
@@ -111,7 +91,6 @@ defmodule BojRest.PhaseCSeamTest do
       assert body(conn)["error"] == "forbidden"
     end
 
-    @tag skip: @skip_finding
     test "X-Trust-Level: internal from IPv6 non-loopback → 403" do
       # IPv6 documentation prefix 2001:db8::/32 — never routable, never loopback.
       conn = invoke(@keyed_cart, "airtable_list_bases",
@@ -122,7 +101,6 @@ defmodule BojRest.PhaseCSeamTest do
       assert conn.status == 403
     end
 
-    @tag skip: @skip_finding
     test "SSE: X-Trust-Level: internal from 1.2.3.4 → 403 on :authenticated cartridge" do
       conn = invoke_sse(@keyed_cart, "airtable_list_bases",
         remote_ip: {1, 2, 3, 4},
@@ -143,7 +121,6 @@ defmodule BojRest.PhaseCSeamTest do
       end
     end
 
-    @tag skip: @skip_finding
     test "is_local=false rejects every non-:public exposure regardless of header" do
       for trust <- [nil, "public", "authenticated", "internal", "garbage"] do
         refute BojRest.TrustPolicy.satisfies?(:authenticated, trust, false),

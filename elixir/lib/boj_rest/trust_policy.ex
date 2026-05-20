@@ -49,10 +49,18 @@ defmodule BojRest.TrustPolicy do
   True when the given `X-Trust-Level` header value satisfies `required`.
 
   Loopback callers (`is_local: true`) always satisfy any exposure level.
+
+  Non-loopback callers requesting a non-`:public` exposure are rejected
+  regardless of the `X-Trust-Level` header value, per http-capability-gateway
+  contract §3 invariant 3: "Any X-Trust-Level arriving from any other source
+  MUST be ignored and treated as untrusted". This is the BoJ-side half of the
+  defence-in-depth pair whose gateway-side half landed in
+  http-capability-gateway#11.
   """
   @spec satisfies?(exposure(), trust_header(), boolean()) :: boolean()
   def satisfies?(_required, _trust, true), do: true
   def satisfies?(:public, _trust, _local), do: true
+  def satisfies?(_required, _trust, false), do: false
   def satisfies?(:authenticated, trust, _local) when trust in ["authenticated", "internal"], do: true
   def satisfies?(_required, _trust, _local), do: false
 end
