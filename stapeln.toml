@@ -97,7 +97,14 @@ env = { LOG_LEVEL = "debug", BOJ_DEV_MODE = "true" }
 
 [targets.production]
 layers = ["runtime"]
-env = { LOG_LEVEL = "info", APP_HOST = "[::]", APP_PORT = "7700" }
+# APP_HOST = "127.0.0.1" (was "[::]") — code-enforces the ADR-0004 §1
+# invariant that BoJ's back-side bind is not externally routable in
+# deployments fronted by http-capability-gateway (HCG tier-2). See
+# docs/integration/hcg-tier2-rollout-runbook.md §1.4 prereq #7.
+# Legacy/standalone deployments without HCG in front should override
+# APP_HOST=0.0.0.0 (IPv4 all-interfaces) or APP_HOST=:: (IPv6
+# all-interfaces) in their deployment configuration.
+env = { LOG_LEVEL = "info", APP_HOST = "127.0.0.1", APP_PORT = "7700" }
 
 [targets.test]
 layers = ["base", "zig-toolchain", "ffi-build", "adapter-build"]
