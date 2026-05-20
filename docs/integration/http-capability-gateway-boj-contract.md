@@ -123,6 +123,20 @@ router. This invariant is tested in Phase C (plan §Phase C, "Trust header
 forwarding security invariant") and hardened in Phase B (mTLS becomes the
 trust source so the resolved value cannot be header-forged at all).
 
+**Implementation status (Phase C):**
+
+- Gateway-side (1)+(2): `http-capability-gateway/lib/http_capability_gateway/proxy.ex`
+  `build_backend_headers/1` strips client-supplied `X-Trust-Level` + `X-Request-ID`
+  and re-emits the gateway-resolved values. Landed in http-capability-gateway#11.
+- BoJ-side (3): `boj_rest/lib/boj_rest/trust_policy.ex` `satisfies?/3` ignores
+  the header for any non-loopback caller via the
+  `satisfies?(_required, _trust, false), do: false` clause — defence in depth
+  against (4) being violated by a misconfiguration. Verified by
+  `elixir/test/phase_c_seam_test.exs` (9 tests, all live).
+- (4) is an operational/configuration invariant, not a code change; verified
+  during Phase E rollout (production deployments MUST front BoJ with a
+  loopback-only socket per the §Phase E runbook).
+
 ---
 
 ## 4. Headers BoJ MUST NOT forward to cartridges unchanged
