@@ -107,6 +107,27 @@ Run the coherence tests:
 node --test mcp-bridge/tests/
 ----
 
+== Formal verification
+
+BoJ's ABI safety layer is written in Idris2 with the proof obligations
+audited in `PROOF-NEEDS.md`. Headline posture (as of 2026-05-18 audit):
+
+* *All P1/P2 obligations closed.* `SafePromptInjection`, `SafeCORS`,
+  `SafeAPIKey`, `SafeWebSocket`, `SafeHTTP`, `Federation`, `Catalogue`,
+  `CartridgeDispatch` (BJ1), `CredentialIsolation` (BJ2),
+  `APIContractCoverage` (BJ3) — all carry constructive proofs.
+* *Five remaining `believe_me` invocations*, all isolated in
+  `src/abi/Boj/SafetyLemmas.idr`, all class (J) — *principled
+  assumptions*, not unproven debt. They axiomatise the soundness of
+  Idris2 0.8.0's opaque `Char`/`String` primitives (`prim__eqChar`,
+  `prim__strToCharList`, `prim__strAppend`, `prim__strSubstr`) which
+  have no in-language induction principle. The only reduction path is
+  external backend-assurance evidence (Chez/BEAM extraction or
+  property-test harness), not constructive in-language proof.
+* *No unproven obligations remain in the audited surface.* The full
+  per-site rationale and the in-progress cross-cartridge composition
+  question are tracked in `PROOF-NEEDS.md` and `docs/decisions/`.
+
 == License
 
 PMPL-1.0-or-later
