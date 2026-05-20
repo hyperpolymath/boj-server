@@ -336,3 +336,47 @@ test("prompts surface is well-formed and required-arg-validated", async () => {
   const ok = getPrompt("audit-repo", { owner: "hyperpolymath", repo: "boj-server" });
   assert.ok(ok.result?.messages?.[0]?.content?.text?.length > 100);
 });
+
+// -----------------------------------------------------------------
+// 14. OTel exporter — disabled by default; startSpan returns null
+//     unless OTEL_EXPORTER_OTLP_ENDPOINT is set.
+// -----------------------------------------------------------------
+test("otel disabled-mode is a no-op", async () => {
+  const saved = process.env.OTEL_EXPORTER_OTLP_ENDPOINT;
+  delete process.env.OTEL_EXPORTER_OTLP_ENDPOINT;
+  try {
+    // Fresh import (esm caches by URL, so use cache-busting query)
+    const otel = await import("../lib/otel.js?disabled=1");
+    assert.equal(otel.isEnabled(), false);
+    const span = otel.startSpan("test", { foo: "bar" });
+    assert.equal(span, null, "disabled mode returns null span");
+    otel.endSpan(span, { status: "ok" }); // must not throw on null
+    await otel.flush(); // must not throw / no network call
+  } finally {
+    if (saved !== undefined) process.env.OTEL_EXPORTER_OTLP_ENDPOINT = saved;
+  }
+});
+
+// -----------------------------------------------------------------
+// 15. OTel exporter — when enabled, spans carry traceId/spanId,
+//     start/end times, and attributes survive endSpan.
+// -----------------------------------------------------------------
+test("otel enabled-mode produces well-formed span handles", async () => {
+  process.env.OTEL_EXPORTER_OTLP_ENDPOINT = "http://127.0.0.1:0/never-reached";
+  try {
+    const otel = await import("../lib/otel.js?enabled=1");
+    assert.equal(otel.isEnabled(), true);
+    const span = otel.startSpan("mcp.tools.call", {
+      "mcp.tool.name": "boj_health",
+      "mcp.tool.arg_count": 0,
+    });
+    assert.ok(span && span.traceId && span.spanId);
+    assert.match(span.traceId, /^[0-9a-f]{32}$/);
+    assert.match(span.spanId, /^[0-9a-f]{16}$/);
+    assert.ok(span.startNs && /^\d+$/.test(span.startNs));
+    // endSpan must not throw and must accept a status
+    otel.endSpan(span, { status: "ok", attributes: { result: "ok" } });
+  } finally {
+    delete process.env.OTEL_EXPORTER_OTLP_ENDPOINT;
+  }
+});
