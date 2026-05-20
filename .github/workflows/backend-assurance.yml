@@ -1,0 +1,82 @@
+# SPDX-License-Identifier: MPL-2.0
+# Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+#
+# Backend-Assurance Harness (epic #87 Tier C)
+#
+# Runs the BEAM-native property tests that validate the backend
+# operations underlying the 5 class-(J) believe_me axioms in
+# src/abi/Boj/SafetyLemmas.idr. See docs/backend-assurance/ and
+# PROOF-NEEDS.md for the campaign framing.
+#
+# This is *external* evidence — it does not change the in-language
+# proof; the believe_me sites stay in source. The harness shrinks the
+# trusted base from "we trust the backend" to "we read the lowering and
+# randomly tested the operation".
+#
+# Triggers only on changes that could affect the harness or the
+# proof contract it backs.
+
+name: Backend-Assurance Harness
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/abi/Boj/SafetyLemmas.idr'
+      - 'elixir/test/backend_assurance/**'
+      - 'elixir/mix.exs'
+      - 'elixir/mix.lock'
+      - 'docs/backend-assurance/**'
+      - '.github/workflows/backend-assurance.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'src/abi/Boj/SafetyLemmas.idr'
+      - 'elixir/test/backend_assurance/**'
+      - 'elixir/mix.exs'
+      - 'elixir/mix.lock'
+      - 'docs/backend-assurance/**'
+      - '.github/workflows/backend-assurance.yml'
+
+concurrency:
+  group: backend-assurance-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  property-test:
+    name: BEAM property tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: elixir
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Set up BEAM (Elixir + OTP)
+        uses: erlef/setup-beam@fc68ffb90438ef2936bbb3251622353b3dcb2f93 # v1.24.0
+        with:
+          elixir-version: '1.18.4'
+          otp-version: '27.0'
+
+      - name: Cache deps + _build
+        uses: actions/cache@d4323d4df104b026a6aa633fdb11d772146be0bf # v4.2.2
+        with:
+          path: |
+            elixir/deps
+            elixir/_build
+          key: backend-assurance-${{ runner.os }}-${{ hashFiles('elixir/mix.lock') }}
+          restore-keys: |
+            backend-assurance-${{ runner.os }}-
+
+      - name: Fetch deps
+        run: mix deps.get
+
+      - name: Compile
+        run: mix compile --warnings-as-errors
+
+      - name: Run backend-assurance property tests
+        run: mix test --only backend_assurance --color
