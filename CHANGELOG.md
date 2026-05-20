@@ -29,6 +29,23 @@ All notable changes to Bundle of Joy Server are documented here.
 
 ### Added
 
+- **ADR-0014 — cross-cartridge composition safety (RFC)** — frames the
+  unresolved research question that the per-cartridge ABI proofs do not
+  compose automatically across `boj_cartridge_invoke`. Defines composition
+  safety as a two-level contract: a static Idris2 envelope
+  (`Boj.Composition.InvocationOf` lifting `IsUnbreakable` + `ProtocolMatch`
+  + per-cartridge `ArgsContract` into the inter-cartridge call) and a
+  dynamic Nickel `compositions` block in ADR-0007's `policy-mcp` PDP.
+  First proof pair is `panic-attack-mcp → vordr-mcp` (both cartridges
+  exist on disk); the prompt-suggested `panic-attack → sandbox → vordr`
+  chain is parked behind ADR-0009's `sandbox-mcp` build-out.
+
+- **README "Formal verification" section** — surfaces the audited posture
+  outside `PROOF-NEEDS.md` so external readers can see, without digging,
+  that all P1/P2 obligations are closed with constructive proofs and that
+  the remaining `believe_me` invocations are *principled assumptions over
+  Idris2 primitives*, not unproven debt.
+
 - **Streamable HTTP transport (ADR-0013, PR1 of 2)** — MCP bridge now selects
   between stdio (default), `http`, and `both` via `BOJ_TRANSPORT`. HTTP
   endpoints: `POST /mcp` for JSON-RPC, `GET /mcp` for the server-initiated
@@ -64,6 +81,44 @@ All notable changes to Bundle of Joy Server are documented here.
   described it as "skeleton/501/pending rewrite").
 
 ### Fixed
+
+- **`Boj.SafeAPIKey.logSafeBounded` rebuilt for Idris2 0.8.0.** The pre-
+  existing proof did not type-check on `main`; the 2026-05-18 audit's claim
+  that `SafeAPIKey` carried constructive proofs closing BJ2-partial was a
+  desk-read, not a build. Three independent defects: (1) removed the
+  redundant local `plusLteMonotone` helper (called now-gone `lteTransitive`
+  and used wrong arg order on `plusLteMonotoneRight`/`Left`; stdlib's
+  `Data.Nat.plusLteMonotone` has exactly the needed shape); (2) lifted both
+  short and long paths out of the `with`-block (the elaborator doesn't
+  reduce `length "***"` at type level inside a `with`-block — goal stays
+  as `LTE (integerToNat (prim__cast_IntInteger (prim__strLength (if ...))))
+  11` with the `if`-arm unreduced); (3) right-associated the long-path
+  proof to match `++`'s associativity (`a ++ b ++ c = a ++ (b ++ c)`).
+  Plus two bound-name typos in `toLogSafeShortEq`/`toLogSafeLongEq`. All
+  12 safety modules now build green via per-module `idris2 --check`. No
+  new `believe_me` axioms.
+
+- **`tests/aspect_tests.sh` grep-count bash bug.** `Aspect — Thread
+  Safety + ABI Contract + SPDX` had been red on `main`, gating every PR
+  with `tests/aspect_tests.sh: line 77: [[: 0\n0: syntax error in
+  expression`. Root cause: `grep -c 'pattern' file 2>/dev/null || echo
+  "0"`. `grep -c` always prints the count (including `0`) **and** exits
+  non-zero on no-match, so `|| echo "0"` also fires — `has_export` ends
+  up `"0\n0"` and `[[ "0\n0" -gt 0 ]]` chokes on the newline in
+  arithmetic context. Swapped `|| echo "0"` → `|| true` on all four
+  call-sites.
+
+- **Honest framing of the ABI axiom count.** `src/abi/Boj/SafetyLemmas.idr`'s
+  module docstring claimed "Three axiomatic `believe_me` primitives" while
+  five live in the file. Docstring now enumerates all five and tags each to
+  its underlying `prim__*` primitive. `appendLengthSum` and
+  `substrLengthBound` also had `(x y : T)` multi-binder syntax that Idris2
+  0.8.0 rejects at parse time — comma-separated form `(x, y : T)` restores
+  parsability. Types and proof terms unchanged. The 2026-05-18
+  `PROOF-NEEDS.md` audit (5 axioms, all class (J) — irreducible over Idris2
+  primitives, principled assumptions not unproven debt) is now consistent
+  with the source and surfaced via the new README "Formal verification"
+  section.
 
 - **`dogfood-gate.yml` failed YAML validation at startup** (0 s, no jobs) on
   every branch including `main`: an inline `python3 -c "` block placed Python
