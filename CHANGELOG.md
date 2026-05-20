@@ -3,6 +3,28 @@
 
 All notable changes to Bundle of Joy Server are documented here.
 
+## [0.4.7] — 2026-05-20
+
+### Changed
+
+- **README install section expanded** to cover every major MCP client: Claude Code,
+  Claude Desktop, Gemini CLI, GitHub Copilot (VS Code), Cursor, Cline, Windsurf,
+  Continue.dev, Zed, plus a generic stdio template. Copy-paste-ready snippets
+  for each client's config-file path.
+- **Runtime documentation corrected**: clone-and-configure path now lists Deno
+  (preferred per CLAUDE.md policy), Bun, and Node as equally valid runtimes for
+  `mcp-bridge/main.js`. Spurious `npm install` step removed — `package.json`
+  declares zero runtime dependencies, so no install is ever required.
+
+### Notes
+
+- This is the release that publishes the **AAA-tier tool descriptions** to npm.
+  The description rewrite landed in `25887157` / `ad837abe` after 0.4.1 but was
+  never npm-published; downstream MCP clients (and Glama's quality scoring)
+  were running 0.4.1 with the older one-liner descriptions. Republishing as
+  0.4.7 ships the rich Purpose / Behavior / Returns / Errors / Usage text on
+  every tool and the per-parameter `description` fields with patterns/enums.
+
 ## [Unreleased]
 
 ### Added
