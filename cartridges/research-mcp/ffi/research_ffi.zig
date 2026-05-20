@@ -27,6 +27,16 @@ pub const ResearchProvider = enum(c_int) {
     custom = 99,
 };
 
+/// Research resource types — mirrors `ResearchMcp.SafeResearch.ResearchResource`
+/// + `resResourceToInt` encoding. Declared here so `iseriser abi-verify` can
+/// structurally check the encoding against the Idris2 source.
+pub const ResearchResource = enum(c_int) {
+    res_paper = 1,
+    res_author = 2,
+    res_citation = 3,
+    res_venue = 4,
+};
+
 // ═══════════════════════════════════════════════════════════════════════
 // Session State Machine
 // ═══════════════════════════════════════════════════════════════════════
