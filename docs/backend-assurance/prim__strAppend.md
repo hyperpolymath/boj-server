@@ -55,9 +55,10 @@ compile-time-only artefacts; the runtime strings flowing through the
 system are BEAM UTF-8 binaries. On BEAM:
 
 - **String model.** Elixir strings are UTF-8 encoded binaries.
-  `String.length/1` returns the **codepoint count** (not the byte
-  count) by scanning the UTF-8 boundaries. This matches Idris2's
-  `length`-on-`String` semantics on Chez (codepoint count).
+  Idris2's `length`-on-`String` semantics on Chez are codepoint
+  count. Elixir's `String.length/1` counts grapheme clusters, so the
+  BEAM-side harness measures codepoint count explicitly via
+  `String.codepoints/1`.
 - **Concatenation lowering.** Elixir's `<>` on binaries is the
   built-in `bif erlang:'++'/2` for iolists, ultimately compiling to
   a byte-level binary append. UTF-8 is prefix-free: appending two
@@ -65,8 +66,8 @@ system are BEAM UTF-8 binaries. On BEAM:
   codepoint boundaries are exactly the boundaries of the operands.
 - **Length additivity.** Because UTF-8 is prefix-free, the codepoint
   boundaries of `s <> t` are exactly the boundaries of `s` followed
-  by the boundaries of `t`. Hence
-  `String.length(s <> t) == String.length(s) + String.length(t)`.
+  by the boundaries of `t`. Hence the codepoint count of `s <> t`
+  equals the codepoint count of `s` plus the codepoint count of `t`.
 
 The property test exercises this over random strings sampled from the
 legal codepoint range (excluding surrogates), plus explicit boundary
@@ -75,14 +76,14 @@ the empty-string identity case.
 
 ## Why this isn't circular
 
-The harness does not call `prim__strAppend`. It calls Elixir `<>` and
-`String.length/1` directly on UTF-8 binaries. The argument is: *the
-operation that Idris2 lowers `prim__strAppend` + `prim__strLength` to
-on the BEAM is `<>` + `String.length/1` on UTF-8 binaries*, so
-demonstrating those operations satisfy the property is sufficient.
-The trusted-extraction step is reading the lowering; the
-property-test step is verifying the operation behaves as the lowering
-claims.
+The harness does not call `prim__strAppend`. It calls Elixir `<>`
+directly on UTF-8 binaries and measures codepoint count explicitly.
+The argument is: *BEAM binary concatenation preserves the exact
+UTF-8 codepoint sequence of both operands*, so demonstrating that the
+resulting codepoint count is additive validates the backend operation
+at the semantic level the axiom uses. The trusted-extraction step is
+reading the lowering; the property-test step is verifying the
+operation behaves as the lowering claims.
 
 For Chez, we do not run a Scheme harness — R6RS is sufficient
 documentary evidence. If BoJ ever ships a backend whose string model
@@ -126,7 +127,7 @@ byte length** — see the *Honest framing* clause in
   for `prim__strAppend` and `prim__strLength`.
 - R6RS §6.7, §11.12 — Scheme string model and `string-append`
   specification.
-- Elixir `String` module documentation — UTF-8 codepoint counting via
-  `String.length/1`.
+- Elixir `String` module documentation — UTF-8 codepoint enumeration
+  via `String.codepoints/1`.
 - `PROOF-NEEDS.md` — axiom audit (2026-05-18) and class-(J) framing.
 - `src/abi/Boj/SafetyLemmas.idr` — axiom declaration (line 226).

@@ -19,10 +19,11 @@
 # trusted base from "we trust the backend" to "we randomly tested the
 # operation against the property over N strings".
 #
-# Idris2's `length` on `String` is codepoint count (Chez `string-length`
-# on R6RS characters; BEAM `String.length/1` on UTF-8 binaries). Tests
-# below use codepoint count, *not* byte count — the axiom is about
-# logical-character length, not encoded-byte length.
+# Idris2's `length` on `String` is codepoint count (Chez
+# `string-length` on R6RS characters). Elixir's `String.length/1`
+# counts grapheme clusters, so the BEAM harness uses explicit
+# codepoint counts. The axiom is about logical-character/codepoint
+# length, not grapheme-cluster or encoded-byte length.
 defmodule Boj.BackendAssurance.PrimStrAppendTest do
   use ExUnit.Case, async: true
   use ExUnitProperties
@@ -45,17 +46,21 @@ defmodule Boj.BackendAssurance.PrimStrAppendTest do
     end)
   end
 
+  defp codepoint_count(s), do: s |> String.codepoints() |> length()
+
   # ── Length additivity: |s <> t| = |s| + |t| ──────────────────────────
   #
   # Backs `appendLengthSum`. On BEAM, `<>` on UTF-8 binaries appends the
   # byte sequences; codepoint count of the result equals the sum of the
   # operand codepoint counts because UTF-8 encoding is prefix-free.
   property "BEAM <> is length-additive on codepoint count (appendLengthSum)" do
-    check all s <- legal_string(),
-              t <- legal_string() do
-      assert String.length(s <> t) == String.length(s) + String.length(t),
+    check all(
+            s <- legal_string(),
+            t <- legal_string()
+          ) do
+      assert codepoint_count(s <> t) == codepoint_count(s) + codepoint_count(t),
              "appendLengthSum violation: |#{inspect(s)} <> #{inspect(t)}| = " <>
-               "#{String.length(s <> t)}, expected #{String.length(s) + String.length(t)}"
+               "#{codepoint_count(s <> t)}, expected #{codepoint_count(s) + codepoint_count(t)}"
     end
   end
 
@@ -65,16 +70,16 @@ defmodule Boj.BackendAssurance.PrimStrAppendTest do
   # worth pinning explicitly — a backend that special-cased empty-string
   # append (e.g. allocating a sentinel byte) would surface here.
   property "right identity: s <> \"\" = s (length and content)" do
-    check all s <- legal_string() do
+    check all(s <- legal_string()) do
       assert s <> "" == s
-      assert String.length(s <> "") == String.length(s)
+      assert codepoint_count(s <> "") == codepoint_count(s)
     end
   end
 
   property "left identity: \"\" <> s = s (length and content)" do
-    check all s <- legal_string() do
+    check all(s <- legal_string()) do
       assert "" <> s == s
-      assert String.length("" <> s) == String.length(s)
+      assert codepoint_count("" <> s) == codepoint_count(s)
     end
   end
 
@@ -84,12 +89,18 @@ defmodule Boj.BackendAssurance.PrimStrAppendTest do
   # associative; BEAM `<>` is binary-concatenation-associative on the
   # byte level, which the codepoint count inherits.
   property "<> on codepoint count distributes over three-way append" do
-    check all s <- legal_string(),
-              t <- legal_string(),
-              u <- legal_string() do
-      assert String.length((s <> t) <> u) == String.length(s <> (t <> u))
-      assert String.length((s <> t) <> u) ==
-               String.length(s) + String.length(t) + String.length(u)
+    check all(
+            s <- legal_string(),
+            t <- legal_string(),
+            u <- legal_string()
+          ) do
+      left = (s <> t) <> u
+      right = s <> t <> u
+
+      assert codepoint_count(left) == codepoint_count(right)
+
+      assert codepoint_count(left) ==
+               codepoint_count(s) + codepoint_count(t) + codepoint_count(u)
     end
   end
 
@@ -114,12 +125,14 @@ defmodule Boj.BackendAssurance.PrimStrAppendTest do
       "\u{10000}",
       "\u{10FFFF}",
       "café",
+      "e\u0301",
+      "圮ੈ",
       "日本語",
       "🦀"
     ]
 
     for s <- boundaries, t <- boundaries do
-      assert String.length(s <> t) == String.length(s) + String.length(t),
+      assert codepoint_count(s <> t) == codepoint_count(s) + codepoint_count(t),
              "appendLengthSum boundary violation: #{inspect(s)} <> #{inspect(t)}"
     end
   end

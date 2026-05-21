@@ -25,11 +25,11 @@ Classification key: **(J)** genuinely unavoidable, documented as an axiom;
 
 | # | Site | Function | Type | Class | Rationale |
 |---|------|----------|------|-------|-----------|
-| 1 | `SafetyLemmas.idr:53` | `charEqSound` | `(c1,c2:Char) -> c1 == c2 = True -> c1 = c2` | **J ✓** | `Char` is an opaque primitive; `==` is `prim__eqChar` (foreign `Bool`). Idris2 0.8.0 has no in-language soundness principle for primitive equality. Standard, well-understood axiom. **Externally validated** via backend-assurance harness (`docs/backend-assurance/prim__eqChar.md` + BEAM property test). |
-| 2 | `SafetyLemmas.idr:60` | `charEqSym` | `(x,y:Char) -> (x == y) = (y == x)` | **J ✓** | Symmetry of `prim__eqChar`. Same reason as #1 — opaque primitive, no decision procedure to recurse on. **Externally validated** (same harness as #1). |
-| 3 | `SafetyLemmas.idr:211` | `unpackLength` | `length (unpack s) = length s` | **J** | `unpack` = `prim__strToCharList` (foreign). `String` is opaque with no induction principle; the relation between primitive `String` length and `List Char` length is not reducible in-language. _Backend-assurance harness pending._ |
-| 4 | `SafetyLemmas.idr:219` | `appendLengthSum` | `length (s ++ t) = length s + length t` | **J ✓** | `++` on `String` = `prim__strAppend` (foreign). Length additivity is a backend-semantics guarantee, not type-level reducible. **Externally validated** via backend-assurance harness (`docs/backend-assurance/prim__strAppend.md` + BEAM property test). |
-| 5 | `SafetyLemmas.idr:226` | `substrLengthBound` | `LTE (length (substr start len s)) len` | **J ✓** | `substr` = `prim__strSubstr` (foreign). The "result no longer than `len`" bound is a primitive-semantics guarantee with no in-language proof. **Externally validated** via backend-assurance harness (`docs/backend-assurance/prim__strSubstr.md` + BEAM property test). |
+| 1 | `SafetyLemmas.idr:60` | `charEqSound` | `(c1,c2:Char) -> c1 == c2 = True -> c1 = c2` | **J ✓** | `Char` is an opaque primitive; `==` is `prim__eqChar` (foreign `Bool`). Idris2 0.8.0 has no in-language soundness principle for primitive equality. Standard, well-understood axiom. **Externally validated** via backend-assurance harness (`docs/backend-assurance/prim__eqChar.md` + BEAM property test). |
+| 2 | `SafetyLemmas.idr:67` | `charEqSym` | `(x,y:Char) -> (x == y) = (y == x)` | **J ✓** | Symmetry of `prim__eqChar`. Same reason as #1 — opaque primitive, no decision procedure to recurse on. **Externally validated** (same harness as #1). |
+| 3 | `SafetyLemmas.idr:218` | `unpackLength` | `length (unpack s) = length s` | **J ✓** | `unpack` = `prim__strToCharList` (foreign). `String` is opaque with no induction principle; the relation between primitive `String` length and `List Char` length is not reducible in-language. **Externally validated** via backend-assurance harness (`docs/backend-assurance/prim__strToCharList.md` + BEAM property test). |
+| 4 | `SafetyLemmas.idr:226` | `appendLengthSum` | `length (s ++ t) = length s + length t` | **J ✓** | `++` on `String` = `prim__strAppend` (foreign). Length additivity is a backend-semantics guarantee, not type-level reducible. **Externally validated** via backend-assurance harness (`docs/backend-assurance/prim__strAppend.md` + BEAM property test). |
+| 5 | `SafetyLemmas.idr:233` | `substrLengthBound` | `LTE (length (substr start len s)) len` | **J ✓** | `substr` = `prim__strSubstr` (foreign). The "result no longer than `len`" bound is a primitive-semantics guarantee with no in-language proof. **Externally validated** via backend-assurance harness (`docs/backend-assurance/prim__strSubstr.md` + BEAM property test). |
 
 **Verdict: 5/5 are class (J).** All five reduce to the same root cause:
 Idris2 treats `Char` and `String` as opaque primitive types whose
@@ -83,11 +83,11 @@ All five are class **(J)** — genuinely unavoidable in Idris2 0.8.0
 
 | Axiom | Site | Justification | Backend-assurance evidence |
 |-------|------|---------------|----------------------------|
-| `charEqSound` | `SafetyLemmas.idr:53` | Soundness of `prim__eqChar` — backend primitive correctness, externally validated | `docs/backend-assurance/prim__eqChar.md` + `elixir/test/backend_assurance/prim_eq_char_test.exs` |
-| `charEqSym` | `SafetyLemmas.idr:60` | Symmetry of `prim__eqChar` — backend primitive correctness, externally validated | `docs/backend-assurance/prim__eqChar.md` + `elixir/test/backend_assurance/prim_eq_char_test.exs` |
-| `unpackLength` | `SafetyLemmas.idr:211` | `prim__strToCharList` preserves length — backend primitive correctness | _pending_ |
-| `appendLengthSum` | `SafetyLemmas.idr:219` | `prim__strAppend` length semantics — not reducible at type level, externally validated | `docs/backend-assurance/prim__strAppend.md` + `elixir/test/backend_assurance/prim_str_append_test.exs` |
-| `substrLengthBound` | `SafetyLemmas.idr:226` | `prim__strSubstr` length bound — not reducible at type level, externally validated | `docs/backend-assurance/prim__strSubstr.md` + `elixir/test/backend_assurance/prim_str_substr_test.exs` |
+| `charEqSound` | `SafetyLemmas.idr:60` | Soundness of `prim__eqChar` — backend primitive correctness, externally validated | `docs/backend-assurance/prim__eqChar.md` + `elixir/test/backend_assurance/prim_eq_char_test.exs` |
+| `charEqSym` | `SafetyLemmas.idr:67` | Symmetry of `prim__eqChar` — backend primitive correctness, externally validated | `docs/backend-assurance/prim__eqChar.md` + `elixir/test/backend_assurance/prim_eq_char_test.exs` |
+| `unpackLength` | `SafetyLemmas.idr:218` | `prim__strToCharList` preserves length — backend primitive correctness, externally validated | `docs/backend-assurance/prim__strToCharList.md` + `elixir/test/backend_assurance/prim_str_to_char_list_test.exs` |
+| `appendLengthSum` | `SafetyLemmas.idr:226` | `prim__strAppend` length semantics — not reducible at type level, externally validated | `docs/backend-assurance/prim__strAppend.md` + `elixir/test/backend_assurance/prim_str_append_test.exs` |
+| `substrLengthBound` | `SafetyLemmas.idr:233` | `prim__strSubstr` length bound — not reducible at type level, externally validated | `docs/backend-assurance/prim__strSubstr.md` + `elixir/test/backend_assurance/prim_str_substr_test.exs` |
 
 Note: `logSafeBounded` in SafeAPIKey.idr no longer uses `believe_me` directly;
 it calls the documented SafetyLemmas axioms via structural proof.
@@ -115,10 +115,10 @@ from "we trust the backend" to "we read the lowering and randomly
 tested the operation".
 
 Primitives validated so far: `prim__eqChar` (covering `charEqSound`
-and `charEqSym`), `prim__strAppend` (covering `appendLengthSum`),
-`prim__strSubstr` (covering `substrLengthBound`). Remaining:
-`prim__strToCharList` (covering `unpackLength`). Tracked under epic
-#87 Tier C backend-assurance campaign.
+and `charEqSym`), `prim__strToCharList` (covering `unpackLength`),
+`prim__strAppend` (covering `appendLengthSum`), and `prim__strSubstr`
+(covering `substrLengthBound`). Tracked under epic #87 Tier C
+backend-assurance campaign.
 
 ## Priority Going Forward
 

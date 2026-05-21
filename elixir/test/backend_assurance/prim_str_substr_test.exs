@@ -3,8 +3,8 @@
 #
 # Backend-assurance harness for `prim__strSubstr`.
 #
-# Validates that BEAM substring extraction (`String.slice/3` over UTF-8
-# binaries) satisfies the length-bound axiom declared at:
+# Validates that BEAM codepoint substring extraction over UTF-8
+# binaries satisfies the length-bound axiom declared at:
 #
 #   src/abi/Boj/SafetyLemmas.idr:233  substrLengthBound :
 #     (s : String) -> (start, len : Nat) ->
@@ -20,8 +20,10 @@
 # trusted base from "we trust the backend" to "we randomly tested the
 # operation against the property over N (start, len, s) tuples".
 #
-# Length is codepoint count (`String.length/1`), matching Idris2's
-# `prim__strLength` semantics on Chez (`string-length`).
+# Length is codepoint count, matching Idris2's `prim__strLength`
+# semantics on Chez (`string-length`). Elixir's `String.length/1` and
+# `String.slice/3` are grapheme-oriented, so this harness uses
+# explicit charlist/codepoint operations.
 defmodule Boj.BackendAssurance.PrimStrSubstrTest do
   use ExUnit.Case, async: true
   use ExUnitProperties
@@ -41,18 +43,28 @@ defmodule Boj.BackendAssurance.PrimStrSubstrTest do
     end)
   end
 
+  defp codepoint_count(s), do: s |> String.codepoints() |> length()
+
+  defp codepoint_slice(s, start, len) do
+    s
+    |> String.to_charlist()
+    |> Enum.slice(start, len)
+    |> to_string()
+  end
+
   # ── Length bound: |substr(start, len, s)| ≤ len ──────────────────────
   #
-  # Backs `substrLengthBound`. On BEAM, `String.slice(s, start, len)`
-  # returns at most `len` codepoints starting at offset `start`, clamped
-  # to the string's actual length. The clamp means the result can be
+  # Backs `substrLengthBound`. On BEAM, the harness slices the decoded
+  # codepoint list and re-encodes it. The clamp means the result can be
   # shorter than `len` (when `start + len > length(s)` or `start ≥
   # length(s)`), never longer.
-  property "BEAM String.slice respects the requested length bound (substrLengthBound)" do
-    check all s <- legal_string(),
-              start <- StreamData.integer(0..96),
-              len <- StreamData.integer(0..96) do
-      result_len = String.length(String.slice(s, start, len))
+  property "BEAM codepoint slice respects the requested length bound (substrLengthBound)" do
+    check all(
+            s <- legal_string(),
+            start <- StreamData.integer(0..96),
+            len <- StreamData.integer(0..96)
+          ) do
+      result_len = codepoint_count(codepoint_slice(s, start, len))
 
       assert result_len <= len,
              "substrLengthBound violation: substr(#{start}, #{len}, " <>
@@ -66,9 +78,11 @@ defmodule Boj.BackendAssurance.PrimStrSubstrTest do
   # string (length 0 ≤ 0). A backend that returned at least one char
   # for `len = 0` would surface here.
   property "len = 0 always yields the empty string" do
-    check all s <- legal_string(),
-              start <- StreamData.integer(0..96) do
-      assert String.slice(s, start, 0) == "",
+    check all(
+            s <- legal_string(),
+            start <- StreamData.integer(0..96)
+          ) do
+      assert codepoint_slice(s, start, 0) == "",
              "substr(#{start}, 0, #{inspect(s)}) was not empty"
     end
   end
@@ -78,10 +92,13 @@ defmodule Boj.BackendAssurance.PrimStrSubstrTest do
   # When `start ≥ length(s)`, the result is the empty string regardless
   # of `len`. This is the bound-clamp path through the backend.
   property "start ≥ length(s) yields the empty string" do
-    check all s <- legal_string(),
-              len <- StreamData.integer(0..96) do
-      start = String.length(s) + 5
-      assert String.slice(s, start, len) == "",
+    check all(
+            s <- legal_string(),
+            len <- StreamData.integer(0..96)
+          ) do
+      start = codepoint_count(s) + 5
+
+      assert codepoint_slice(s, start, len) == "",
              "substr(#{start}, #{len}, #{inspect(s)}) past end was not empty"
     end
   end
@@ -91,9 +108,9 @@ defmodule Boj.BackendAssurance.PrimStrSubstrTest do
   # When the bound matches the actual string length, the slice should
   # be the whole string. Anchors the upper edge of the bound.
   property "start = 0, len = length(s) returns the whole string" do
-    check all s <- legal_string() do
-      assert String.slice(s, 0, String.length(s)) == s
-      assert String.length(String.slice(s, 0, String.length(s))) == String.length(s)
+    check all(s <- legal_string()) do
+      assert codepoint_slice(s, 0, codepoint_count(s)) == s
+      assert codepoint_count(codepoint_slice(s, 0, codepoint_count(s))) == codepoint_count(s)
     end
   end
 
@@ -107,6 +124,8 @@ defmodule Boj.BackendAssurance.PrimStrSubstrTest do
       "a",
       "abc",
       "café",
+      "e\u0301",
+      "圮ੈ",
       "日本語",
       "🦀🦀🦀",
       String.duplicate("x", 64)
@@ -116,7 +135,7 @@ defmodule Boj.BackendAssurance.PrimStrSubstrTest do
     lens = [0, 1, 3, 8, 64, 1000]
 
     for s <- strings, start <- starts, len <- lens do
-      result_len = String.length(String.slice(s, start, len))
+      result_len = codepoint_count(codepoint_slice(s, start, len))
 
       assert result_len <= len,
              "substrLengthBound boundary: substr(#{start}, #{len}, " <>

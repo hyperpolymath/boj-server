@@ -27,12 +27,11 @@ companion property-test harness lives under
 | Primitive          | Axioms covered                       | Trusted-extraction               | Property test                                                  |
 |--------------------|--------------------------------------|----------------------------------|----------------------------------------------------------------|
 | `prim__eqChar`     | `charEqSound`, `charEqSym`           | `prim__eqChar.md`                | `elixir/test/backend_assurance/prim_eq_char_test.exs`          |
-| `prim__strToCharList` | `unpackLength`                    | _pending_                        | _pending_                                                      |
+| `prim__strToCharList` | `unpackLength`                    | `prim__strToCharList.md`         | `elixir/test/backend_assurance/prim_str_to_char_list_test.exs` |
 | `prim__strAppend`  | `appendLengthSum`                    | `prim__strAppend.md`             | `elixir/test/backend_assurance/prim_str_append_test.exs`       |
 | `prim__strSubstr`  | `substrLengthBound`                  | `prim__strSubstr.md`             | `elixir/test/backend_assurance/prim_str_substr_test.exs`       |
 
-Each row is delivered as one PR per primitive. `prim__eqChar` is the
-first; the other three follow the same shape.
+Each row is delivered as one PR per primitive.
 
 ## Constraints
 

@@ -64,26 +64,28 @@ the R6RS guarantee for `substring` combined with the codegen's clamp.
 ## BEAM backend (Erlang / Elixir, where BoJ runs)
 
 BoJ's REST surface is Elixir on the BEAM. The runtime strings are
-UTF-8 encoded binaries; substring extraction goes through Elixir's
-`String.slice/3`.
+UTF-8 encoded binaries; the BEAM-side harness models substring over
+the decoded codepoint sequence (`String.to_charlist/1` + `Enum.slice/3`
++ `to_string/1`).
 
 On BEAM:
 
 - **String model.** As with `prim__strAppend`, strings are UTF-8
-  binaries and `String.length/1` returns codepoint count. The
-  `length` referred to in the axiom is codepoint count, matching
-  Idris2 semantics on Chez.
-- **`String.slice/3` semantics.** Per the Elixir `String` module
-  documentation, `String.slice(s, start, len)` returns at most `len`
-  codepoints from `s`, starting at codepoint offset `start`. The
-  function clamps to the string's actual codepoint length: when
-  `start ≥ length(s)`, the result is `""`; when `start + len >
-  length(s)`, the result is the suffix from `start` to the end (which
-  is strictly shorter than `len`).
-- **Length bound.** Combining the two facts:
-  `String.length(String.slice(s, start, len)) ≤ len` for all
-  `(start, len, s)`. The clamp can only *shorten* the result;
-  it never extends past `len`.
+  binaries. The `length` referred to in the axiom is codepoint count,
+  matching Idris2 semantics on Chez. Elixir's `String.length/1` and
+  `String.slice/3` are grapheme-oriented, so the BEAM-side harness
+  uses explicit codepoint operations.
+- **Codepoint-slice semantics.** The harness decodes `s` with
+  `String.to_charlist/1`, slices that codepoint list with
+  `Enum.slice(start, len)`, and re-encodes it with `to_string/1`.
+  This returns at most `len` codepoints from `s`, starting at
+  codepoint offset `start`. The slice clamps to the string's actual
+  codepoint length: when `start ≥ length(s)`, the result is `""`;
+  when `start + len > length(s)`, the result is the suffix from
+  `start` to the end (which is strictly shorter than `len`).
+- **Length bound.** Combining the two facts: the codepoint count of
+  the codepoint slice is `≤ len` for all `(start, len, s)`. The clamp
+  can only *shorten* the result; it never extends past `len`.
 
 The property test exercises this over random `(start, len, s)` tuples
 plus explicit boundary cases: `len = 0`, `start ≥ length(s)`,
@@ -93,12 +95,13 @@ where codepoint count differs from byte count.
 ## Why this isn't circular
 
 The harness does not call `prim__strSubstr`. It calls Elixir
-`String.slice/3` and `String.length/1` directly. The argument is:
-*the operation that Idris2 lowers `prim__strSubstr` to on the BEAM
-is `String.slice/3` on a UTF-8 binary*, so demonstrating
-`String.slice/3` satisfies the property is sufficient. The
-trusted-extraction step is reading the lowering; the property-test
-step is verifying the operation behaves as the lowering claims.
+charlist/codepoint operations directly. The argument is: *a
+codepoint-level substring operation over a UTF-8 binary clamps to at
+most the requested number of codepoints*, so demonstrating that
+operation satisfies the property validates the backend semantics the
+axiom uses. The trusted-extraction step is reading the lowering; the
+property-test step is verifying the operation behaves as the lowering
+claims.
 
 For Chez, we do not run a Scheme harness — the R6RS `substring`
 semantics combined with the codegen's clamp are sufficient
@@ -108,7 +111,7 @@ documentary evidence.
 
 - **`len = 0`.** The tight corner of the bound: result must be the
   empty string. R6RS `substring` with `end = start` returns `""`;
-  BEAM `String.slice/3` with `len = 0` returns `""`. Both satisfy
+  the BEAM codepoint slice with `len = 0` returns `""`. Both satisfy
   `LTE 0 0`.
 - **`start ≥ length(s)`** (start past end). Both backends clamp to
   the empty string; the bound `LTE 0 len` is trivial.
@@ -120,9 +123,9 @@ documentary evidence.
   result is `s` itself; the bound is tight (`LTE length(s)
   length(s)`).
 - **Multi-byte codepoints.** Tested via boundary strings covering
-  ASCII, Latin-1 supplement, CJK, and astral plane. `String.slice/3`
-  counts codepoints, not bytes, so a slice of length `len` from an
-  emoji-heavy string spans `4 * len` bytes but `len` codepoints.
+  ASCII, Latin-1 supplement, CJK, and astral plane. The harness slices
+  codepoints, not bytes, so a slice of length `len` from an emoji-heavy
+  string spans up to `4 * len` bytes but at most `len` codepoints.
 - **Surrogates** (`0xD800..0xDFFF`): excluded from the codepoint
   generator. Same rationale as `prim__strAppend`.
 - **Negative `start` / `len`.** Idris2's `substr` takes `Nat`, so
@@ -137,7 +140,7 @@ documentary evidence.
 - Idris2 0.8.0 `src/Compiler/Scheme/Chez.idr` — Chez codegen for
   `prim__strSubstr` (clamp + R6RS `substring`).
 - R6RS §11.12 — `substring` specification.
-- Elixir `String` module documentation — `String.slice/3` clamp
-  semantics.
+- Elixir `String` module documentation — `String.to_charlist/1`
+  semantics over UTF-8 binaries.
 - `PROOF-NEEDS.md` — axiom audit (2026-05-18) and class-(J) framing.
 - `src/abi/Boj/SafetyLemmas.idr` — axiom declaration (line 233).
