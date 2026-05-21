@@ -62,17 +62,20 @@ UTF-8 encoded binaries; the analogue of `unpack` on the BEAM is
 On BEAM:
 
 - **String model.** As with the other string primitives in this
-  campaign, strings are UTF-8 binaries and `String.length/1` returns
-  codepoint count. The `length` referred to in the axiom is codepoint
-  count, matching Idris2 semantics on Chez.
+  campaign, strings are UTF-8 binaries. The `length` referred to in
+  the axiom is codepoint count, matching Idris2 semantics on Chez.
+  Elixir's `String.length/1` counts grapheme clusters, so the
+  BEAM-side harness measures codepoint count explicitly via
+  `String.codepoints/1`.
 - **`String.to_charlist/1` semantics.** Per the Elixir `String`
   module documentation, `String.to_charlist/1` decodes a UTF-8 binary
   to a list of codepoint integers. Each codepoint becomes exactly one
   list cell; UTF-8 is prefix-free, so the decode is unambiguous and
   the cell count equals the codepoint count.
 - **Length preservation.** Combining the two facts:
-  `length(String.to_charlist(s)) == String.length(s)` for every
-  legal UTF-8 binary `s`. The harness exercises this directly.
+  `length(String.to_charlist(s)) == length(String.codepoints(s))`
+  for every legal UTF-8 binary `s`. The harness exercises this
+  directly.
 
 The property test exercises this over random strings sampled from the
 legal codepoint range (excluding surrogates), plus explicit boundary
@@ -82,13 +85,13 @@ the empty-string corner.
 ## Why this isn't circular
 
 The harness does not call `prim__strToCharList`. It calls Elixir
-`String.to_charlist/1` and `String.length/1` directly. The argument
-is: *the operation that Idris2 lowers `prim__strToCharList` +
-`prim__strLength` to on the BEAM is `String.to_charlist/1` +
-`String.length/1` on UTF-8 binaries*, so demonstrating those
-operations satisfy the property is sufficient. The trusted-extraction
-step is reading the lowering; the property-test step is verifying
-the operation behaves as the lowering claims.
+`String.to_charlist/1` and an explicit `String.codepoints/1` count
+directly. The argument is: *BEAM charlist conversion decodes a UTF-8
+binary into the same codepoint sequence that Idris `String.length`
+counts*, so demonstrating those operations agree validates the
+backend operation at the semantic level the axiom uses. The
+trusted-extraction step is reading the lowering; the property-test
+step is verifying the operation behaves as the lowering claims.
 
 For Chez, we do not run a Scheme harness — R6RS is sufficient
 documentary evidence. If BoJ ever ships a backend whose string model
@@ -135,6 +138,6 @@ see the *Honest framing* clause in
 - R6RS §6.7, §11.12 — Scheme string model and `string->list`
   specification.
 - Elixir `String` module documentation — `String.to_charlist/1`
-  semantics over UTF-8 binaries.
+  and `String.codepoints/1` semantics over UTF-8 binaries.
 - `PROOF-NEEDS.md` — axiom audit (2026-05-18) and class-(J) framing.
 - `src/abi/Boj/SafetyLemmas.idr` — axiom declaration (line 218).

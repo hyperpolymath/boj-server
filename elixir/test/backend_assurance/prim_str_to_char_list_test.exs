@@ -23,11 +23,10 @@
 # operation against the property over N strings".
 #
 # Idris2's `length` on `String` is codepoint count (Chez
-# `string-length` on R6RS characters; BEAM `String.length/1` on UTF-8
-# binaries). `String.to_charlist/1` returns a list of codepoint
-# integers; `length/1` on that list returns the same count. Tests
-# below use codepoint count, *not* byte count — the axiom is about
-# logical-character length, not encoded-byte length.
+# `string-length` on R6RS characters). Elixir's `String.length/1`
+# counts grapheme clusters, so the BEAM harness uses explicit
+# codepoint counts. The axiom is about logical-character/codepoint
+# length, not grapheme-cluster or encoded-byte length.
 defmodule Boj.BackendAssurance.PrimStrToCharListTest do
   use ExUnit.Case, async: true
   use ExUnitProperties
@@ -50,18 +49,20 @@ defmodule Boj.BackendAssurance.PrimStrToCharListTest do
     end)
   end
 
+  defp codepoint_count(s), do: s |> String.codepoints() |> length()
+
   # ── Length preservation: |to_charlist(s)| = |s| ──────────────────────
   #
   # Backs `unpackLength`. On BEAM, `String.to_charlist/1` decodes a
   # UTF-8 binary to a list of codepoint integers; the list length is
-  # the codepoint count, which matches `String.length/1` because UTF-8
-  # is prefix-free (each codepoint occupies a self-delimiting
-  # 1-/2-/3-/4-byte sequence with no ambiguity).
+  # the codepoint count. This intentionally compares against
+  # `String.codepoints/1`, not `String.length/1`, because Elixir's
+  # public length API counts grapheme clusters.
   property "BEAM String.to_charlist/1 preserves codepoint count (unpackLength)" do
-    check all s <- legal_string() do
-      assert length(String.to_charlist(s)) == String.length(s),
+    check all(s <- legal_string()) do
+      assert length(String.to_charlist(s)) == codepoint_count(s),
              "unpackLength violation: |to_charlist(#{inspect(s)})| = " <>
-               "#{length(String.to_charlist(s))}, expected #{String.length(s)}"
+               "#{length(String.to_charlist(s))}, expected #{codepoint_count(s)}"
     end
   end
 
@@ -73,7 +74,7 @@ defmodule Boj.BackendAssurance.PrimStrToCharListTest do
   test "empty string maps to empty charlist (both lengths zero)" do
     assert String.to_charlist("") == []
     assert length(String.to_charlist("")) == 0
-    assert String.length("") == 0
+    assert codepoint_count("") == 0
   end
 
   # ── Round-trip: to_string(to_charlist(s)) = s ────────────────────────
@@ -84,7 +85,7 @@ defmodule Boj.BackendAssurance.PrimStrToCharListTest do
   # (e.g. a 1-codepoint replacement on decode error). If round-trip
   # fails, length preservation is suspect even when the counts agree.
   property "to_string ∘ to_charlist is identity on legal strings" do
-    check all s <- legal_string() do
+    check all(s <- legal_string()) do
       assert s |> String.to_charlist() |> to_string() == s,
              "round-trip violation on #{inspect(s)}"
     end
@@ -97,7 +98,7 @@ defmodule Boj.BackendAssurance.PrimStrToCharListTest do
   # surrogate range). Not the axiom but a sanity check that the
   # `length` we are measuring is over real codepoints.
   property "to_charlist elements are legal codepoint integers" do
-    check all s <- legal_string() do
+    check all(s <- legal_string()) do
       for cp <- String.to_charlist(s) do
         assert is_integer(cp), "non-integer codepoint: #{inspect(cp)}"
         assert cp >= 0 and cp <= 0x10FFFF, "out-of-range codepoint: #{cp}"
@@ -127,15 +128,17 @@ defmodule Boj.BackendAssurance.PrimStrToCharListTest do
       "\u{10000}",
       "\u{10FFFF}",
       "café",
+      "e\u0301",
+      "圮ੈ",
       "日本語",
       "🦀"
     ]
 
     for s <- boundaries do
-      assert length(String.to_charlist(s)) == String.length(s),
+      assert length(String.to_charlist(s)) == codepoint_count(s),
              "unpackLength boundary violation: " <>
                "|to_charlist(#{inspect(s)})| = #{length(String.to_charlist(s))}, " <>
-               "expected #{String.length(s)}"
+               "expected #{codepoint_count(s)}"
 
       assert s |> String.to_charlist() |> to_string() == s,
              "round-trip boundary violation: #{inspect(s)}"
