@@ -27,7 +27,7 @@ companion property-test harness lives under
 | Primitive          | Axioms covered                       | Trusted-extraction               | Property test                                                  |
 |--------------------|--------------------------------------|----------------------------------|----------------------------------------------------------------|
 | `prim__eqChar`     | `charEqSound`, `charEqSym`           | `prim__eqChar.md`                | `elixir/test/backend_assurance/prim_eq_char_test.exs`          |
-| `prim__strToCharList` | `unpackLength`                    | _pending_                        | _pending_                                                      |
+| `prim__strToCharList` | `unpackLength`                    | `prim__strToCharList.md`         | `elixir/test/backend_assurance/prim_str_to_char_list_test.exs` |
 | `prim__strAppend`  | `appendLengthSum`                    | _pending_                        | _pending_                                                      |
 | `prim__strSubstr`  | `substrLengthBound`                  | _pending_                        | _pending_                                                      |
 
