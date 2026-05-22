@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: PMPL-1.0-or-later
+// SPDX-License-Identifier: MPL-2.0
 // Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
 //
 // BoJ Federation FFI — Umoja gossip protocol runtime.
@@ -1498,7 +1498,7 @@ pub export fn umoja_gossip_round_count() usize {
 // ═══════════════════════════════════════════════════════════════════════
 // C-ABI exports — Proven-hardened diagnostics
 //
-// Circuit breaker, rate limiter, and retry state exposed for the V-lang
+// Circuit breaker, rate limiter, and retry state exposed for the zig
 // adapter's /health and /status endpoints.
 // ═══════════════════════════════════════════════════════════════════════
 

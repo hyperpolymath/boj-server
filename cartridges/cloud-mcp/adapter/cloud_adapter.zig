@@ -1,11 +1,11 @@
-// SPDX-License-Identifier: PMPL-1.0-or-later
+// SPDX-License-Identifier: MPL-2.0
 // Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
 //
 // cloud-mcp/adapter/cloud_adapter.zig
 //
 // Three-protocol BoJ adapter: REST (port 9211), gRPC-compat (port 9212),
 // GraphQL (port 9213).
-// Replaces the banned V-lang adapter (cloud_adapter.v).
+// Replaces the banned zig adapter (cloud_adapter.v).
 
 const std = @import("std");
 const ffi = @import("cloud_ffi");

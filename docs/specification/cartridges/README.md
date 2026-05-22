@@ -1,4 +1,4 @@
-<!-- SPDX-License-Identifier: PMPL-1.0-or-later -->
+<!-- SPDX-License-Identifier: MPL-2.0 -->
 <!-- Copyright (c) 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk> -->
 # BoJ Cartridge Specification
 
@@ -352,7 +352,7 @@ A `TransportEntry` has the following shape:
 ### 6.3 Example Nickel Manifest
 
 ```nickel
-# SPDX-License-Identifier: PMPL-1.0-or-later
+# SPDX-License-Identifier: MPL-2.0
 # git-mcp cartridge manifest (Nickel)
 {
   name = "git-mcp",
@@ -407,7 +407,7 @@ For migration reference, a legacy `cartridge.json` has this top-level structure:
 ```json
 {
   "$schema": "https://boj.dev/schemas/cartridge/v1.json",
-  "spdx": "PMPL-1.0-or-later",
+  "spdx": "MPL-2.0",
   "name": "aerie-mcp",
   "version": "0.1.0",
   "domain": "infrastructure",

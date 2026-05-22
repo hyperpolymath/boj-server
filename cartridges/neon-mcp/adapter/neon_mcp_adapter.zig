@@ -1,8 +1,8 @@
-// SPDX-License-Identifier: PMPL-1.0-or-later
+// SPDX-License-Identifier: MPL-2.0
 // Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
 //
 // neon-mcp/adapter/neon_mcp_adapter.zig -- Unified three-protocol adapter.
-// Replaces banned neon_mcp_adapter.v (V-lang, removed 2026-04-12).
+// Replaces banned neon_mcp_adapter.v (zig, removed 2026-04-12).
 // REST:9172 gRPC:9173 GraphQL:9174
 // Tools: neon_connect, neon_query, neon_execute, neon_list_branches...
 

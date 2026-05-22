@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
-# SPDX-License-Identifier: PMPL-1.0-or-later
+# SPDX-License-Identifier: MPL-2.0
 # Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
 #
 # BoJ Server — End-to-end integration test.
 #
 # Tests the full pipeline:
 #   1. Build Zig FFI library
-#   2. Build V-lang adapter
+#   2. Build zig adapter
 #   3. Start the server
 #   4. Exercise all REST endpoints
 #   5. Exercise GraphQL endpoint

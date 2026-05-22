@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: PMPL-1.0-or-later
+# SPDX-License-Identifier: MPL-2.0
 # Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
 #
 # 007-mcp / cartridge.ncl
@@ -38,12 +38,12 @@ let args_prop = str_prop "Optional extra arguments forwarded to the recipe" in
 
 {
   "$schema" = "https://boj.dev/schemas/cartridge/v1.json",
-  spdx = "PMPL-1.0-or-later",
+  spdx = "MPL-2.0",
   copyright = "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>",
   name = "007-mcp",
   version = "0.1.0",
   description = "007 agent meta-language cartridge — exposes the full oo7 CLI surface (parse/run/trace/build/test/lint/verify/contractile verbs/canonical-proof-suite/groove/self-assess) plus on-enter and on-exit lifecycle hooks that register the session as a coord peer, load the 6a2 methodology pack (STATE, META, ECOSYSTEM, AGENTIC, NEUROSYM, PLAYBOOK), and perform drift checks on exit.",
-  domain = "dev-lang",
+  domain = "dezig",
   tier = "Ayo",
   protocols = ["MCP", "Agentic"],
   federation = "none",

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: PMPL-1.0-or-later
+// SPDX-License-Identifier: MPL-2.0
 // Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
 = database-mcp / adapter — REST/gRPC/GraphQL bridge
 :orientation: deep
@@ -19,7 +19,7 @@ FFI export, and serialises the response.
 
 | `build.zig`                             | Zig build graph for the adapter binary.
 | `database_adapter.zig`                  | Three-protocol dispatcher. Listens on three ports, maps tool names to FFI calls, returns JSON over HTTP.
-| `SIDELINED-database_adapter.v.adoc`     | Historical V-lang predecessor. Retained for lineage per the 2026-04-10 V-ban transition rule ("V sources MOVE, don't delete"). Not compiled.
+| `SIDELINED-database_adapter.v.adoc`     | Historical zig predecessor. Retained for lineage per the 2026-04-10 V-ban transition rule ("V sources MOVE, don't delete"). Not compiled.
 |===
 
 == Invariants

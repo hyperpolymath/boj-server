@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: PMPL-1.0-or-later
+# SPDX-License-Identifier: MPL-2.0
 # BoJ Server Invariant Classifications
 # This file defines the invariants for the BoJ Server repository.
 # All updates must comply with these invariants.
@@ -6,7 +6,7 @@
 # --- Core Invariants (Must Always Hold) ---
 BOJ_MUST_ALWAYS:
 	- The BoJ Server must be licensed under Palimpsest-MPL 1.0.
-	- The Unbreakable Stack (Idris2 ABI, Zig FFI, V-lang Triple Adapter, A2ML Manifests) must be maintained.
+	- The Unbreakable Stack (Idris2 ABI, Zig FFI, zig Triple Adapter, A2ML Manifests) must be maintained.
 	- Cartridges must be signed with Sigstore before deployment.
 	- The BoJ Server must support REST/gRPC/GraphQL interfaces.
 	- Cartridge registries must be publicly accessible (or opt-in private).

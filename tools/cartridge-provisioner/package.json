@@ -8,6 +8,6 @@
   },
   "keywords": ["boj-server", "cartridge", "provisioner"],
   "author": "Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>",
-  "license": "PMPL-1.0-or-later",
+  "license": "MPL-2.0",
   "type": "module"
 }

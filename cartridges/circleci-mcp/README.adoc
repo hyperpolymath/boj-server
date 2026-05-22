@@ -1,8 +1,8 @@
-// SPDX-License-Identifier: PMPL-1.0-or-later
+// SPDX-License-Identifier: MPL-2.0
 // Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
 = circleci-mcp
 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
-:spdx: PMPL-1.0-or-later
+:spdx: MPL-2.0
 :tier: Ayo
 :domain: CI/CD
 :protocols: MCP, REST
@@ -38,7 +38,7 @@ environment variable browsing.
 
 | ABI | Idris2 | Formally verified state machine (CircleciMcp.SafeRegistry)
 | FFI | Zig | Thread-safe session pool, action recording
-| Adapter | V-lang | REST bridge to BoJ unified adapter protocol
+| Adapter | zig | REST bridge to BoJ unified adapter protocol
 |===
 
 == Building

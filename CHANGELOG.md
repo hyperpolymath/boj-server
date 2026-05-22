@@ -1,4 +1,4 @@
-<!-- SPDX-License-Identifier: PMPL-1.0-or-later -->
+<!-- SPDX-License-Identifier: MPL-2.0 -->
 # Changelog
 
 All notable changes to Bundle of Joy Server are documented here.
@@ -179,10 +179,10 @@ All notable changes to Bundle of Joy Server are documented here.
 
 ### Changed
 
-- **V-lang banned estate-wide (2026-04-10)**: Adapter layer language policy updated.
-  V-lang is no longer an accepted cartridge adapter language. Zig is the default
+- **zig banned estate-wide (2026-04-10)**: Adapter layer language policy updated.
+  zig is no longer an accepted cartridge adapter language. Zig is the default
   replacement for the adapter tier (`ffi/zig/` remains; V adapter files were swept
-  in commit c4674f8). Historical V-lang API interfaces have been moved to
+  in commit c4674f8). Historical zig API interfaces have been moved to
   `developer-ecosystem/v-ecosystem/v-api-interfaces/v-<name>/` for potential
   donation to the V community — they are not HP infrastructure.
 - **Cartridge manifests = Nickel** (prior closed decision `boj-cartridge-manifest-format-dd.md`):
@@ -201,7 +201,7 @@ All notable changes to Bundle of Joy Server are documented here.
   aerie (e0b17f8), emergency-button/emergency-room (4bd070b),
   proven→zig-api path-safety wiring (6663956), gen-header CI drift check (0d6a814).
 - **ADR-0002 added**: Documents the decision to align BoJ with the unified-zig-api
-  stack, with explicit status of current V-lang adapter retirement and Zig migration.
+  stack, with explicit status of current zig adapter retirement and Zig migration.
 
 ## [0.3.0] — 2026-03-20
 
@@ -220,7 +220,7 @@ All notable changes to Bundle of Joy Server are documented here.
 ### Fixed
 - Constant-time comparison in webhook HMAC verification (timing attack prevention)
 - .mcp.json version aligned to 0.3.0
-- package.json license corrected to PMPL-1.0-or-later
+- package.json license corrected to MPL-2.0
 - SPDX headers added to all new files
 
 ### Removed
@@ -260,7 +260,7 @@ All notable changes to Bundle of Joy Server are documented here.
 - Core catalogue FFI (Zig) with C-ABI exports
 - Dynamic loader with SHA-256 hash verification
 - Guardian resource-aware failure tolerance (12 tests)
-- V-lang triple adapter (REST 7700 + gRPC 7701 + GraphQL 7702)
+- zig triple adapter (REST 7700 + gRPC 7701 + GraphQL 7702)
 - 18 cartridges: database, fleet, nesy, agent, cloud, container, k8s, git, secrets, queues, iac, observe, ssg, proof, lsp, dap, bsp, feedback
 - All 18 cartridges with ABI + FFI + Adapter + .so shared library builds
 - Umoja federation with QUIC+UDP gossip protocol (40 tests)

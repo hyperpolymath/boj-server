@@ -98,7 +98,7 @@ Your tasks in order:
   - Layout: abi/ ffi/ adapter/ cartridge.ncl schemas/
   - Expose the FULL oo7 CLI surface as MCP tools (DD-25)
   - Install hook in 007's Justfile deploys to boj-server/cartridges/
-  - Domain=dev-lang, protocols=[MCP, Agentic]
+  - Domain=dezig, protocols=[MCP, Agentic]
 
 #10: 007 on-enter/on-exit contractile hooks
   - On-enter: register coord peer, read STATE.a2ml + methodology.a2ml,

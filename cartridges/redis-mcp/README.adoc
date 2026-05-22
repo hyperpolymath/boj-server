@@ -1,7 +1,7 @@
-// SPDX-License-Identifier: PMPL-1.0-or-later
+// SPDX-License-Identifier: MPL-2.0
 = redis-mcp
 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
-:spdx: PMPL-1.0-or-later
+:spdx: MPL-2.0
 :tier: Ayo
 :domain: Database
 :protocols: MCP, REST
@@ -50,7 +50,7 @@ Info, Ping
 | C-ABI implementation with hiredis RESP stubs, pipeline support
 
 | Adapter
-| V-lang
+| zig
 | REST/MCP bridge exposing all 20 actions
 
 | Panels

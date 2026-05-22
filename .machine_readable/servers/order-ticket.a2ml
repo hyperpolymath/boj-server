@@ -1,4 +1,4 @@
-; SPDX-License-Identifier: PMPL-1.0-or-later
+; SPDX-License-Identifier: MPL-2.0
 ; Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
 ;
 ; Order Ticket Protocol Specification
@@ -10,7 +10,7 @@
 ;   2. AI writes an order ticket (this format)
 ;   3. BoJ validates the order against the catalogue
 ;   4. BoJ mounts requested cartridges via Zig FFI
-;   5. V-lang adapter exposes mounted cartridges as REST+gRPC+GraphQL
+;   5. zig adapter exposes mounted cartridges as REST+gRPC+GraphQL
 ;   6. AI receives confirmation with endpoints
 ;
 ; The metaphor: AI is the Maitre D', presenting the menu to the user,

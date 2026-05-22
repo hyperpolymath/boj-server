@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: PMPL-1.0-or-later
+# SPDX-License-Identifier: MPL-2.0
 # must.ncl — baseline invariant runner for boj-server
 #
 # Pairs with: Mustfile.a2ml (same directory)

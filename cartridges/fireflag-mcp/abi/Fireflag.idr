@@ -1,4 +1,4 @@
--- SPDX-License-Identifier: PMPL-1.0-or-later
+-- SPDX-License-Identifier: MPL-2.0
 -- Fireflag Cartridge ABI — Extension-to-MCP mapping interface
 
 module ABI.Fireflag

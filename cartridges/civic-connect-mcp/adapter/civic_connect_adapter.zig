@@ -1,11 +1,11 @@
-// SPDX-License-Identifier: PMPL-1.0-or-later
+// SPDX-License-Identifier: MPL-2.0
 // Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
 //
 // civic-connect-mcp/adapter/civic_connect_adapter.zig
 //
 // Three-protocol BoJ adapter: REST (port 9208), gRPC-compat (port 9209),
 // GraphQL (port 9210).
-// Replaces the banned V-lang adapter (civic_connect_adapter.v).
+// Replaces the banned zig adapter (civic_connect_adapter.v).
 
 const std = @import("std");
 const ffi = @import("civic_connect_ffi");

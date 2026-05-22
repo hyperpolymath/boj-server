@@ -1,5 +1,7 @@
-<!-- SPDX-License-Identifier: PMPL-1.0-or-later -->
+<!-- SPDX-License-Identifier: MPL-2.0 -->
 # BoJ Server Gemini Extension
+
+**License:** MPL-2.0 (standard for personal repos)
 
 This extension integrates the **Bundle of Joy (BoJ) Server** infrastructure directly into Gemini CLI.
 
@@ -21,4 +23,4 @@ This extension integrates the **Bundle of Joy (BoJ) Server** infrastructure dire
 
 - All cartridge logic is formally verified via Idris2 ABIs.
 - Memory safety is guaranteed by Zig FFI layers.
-- High-performance networking provided by the V-lang Triple Adapter.
+- High-performance networking provided by the Zig Triple Adapter.

@@ -1,11 +1,11 @@
-<!-- SPDX-License-Identifier: PMPL-1.0-or-later -->
+<!-- SPDX-License-Identifier: MPL-2.0 -->
 <!-- Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk> -->
 
 # Bundle of Joy (BoJ) Server
 
 BoJ solves the combinatoric explosion of developer server protocols. Instead of hunting across dozens of MCP, LSP, DAP, and other servers, AI goes to **one place** -- the Teranga menu -- and orders what it needs.
 
-Capabilities are organised as a 2D matrix: **rows** are capability domains (what a server does), **columns** are protocol types (how you talk to it), and **cells** are formally verified, swappable **cartridges**. Each cartridge is built from three layers: Idris2 (proofs), Zig (native execution), and V-lang (network adapter exposing REST + gRPC + GraphQL).
+Capabilities are organised as a 2D matrix: **rows** are capability domains (what a server does), **columns** are protocol types (how you talk to it), and **cells** are formally verified, swappable **cartridges**. Each cartridge is built from three layers: Idris2 (proofs), Zig (native execution), and zig (network adapter exposing REST + gRPC + GraphQL).
 
 The server is **distributed**: community nodes volunteer compute time via the Umoja federation (like Tor/IPFS), with cryptographic hash attestation ensuring binary integrity.
 

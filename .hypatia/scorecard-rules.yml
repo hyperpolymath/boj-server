@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: PMPL-1.0-or-later
+# SPDX-License-Identifier: MPL-2.0
 # Hypatia Scorecard Rules — CI/CD security posture checks
 #
 # These rules teach Hypatia to monitor and enforce OpenSSF Scorecard
@@ -117,4 +117,4 @@ rules:
     scan_paths:
       - .github/workflows/*.yml
     pattern: '^# SPDX-License-Identifier:'
-    remediation: "Add '# SPDX-License-Identifier: PMPL-1.0-or-later' as first line"
+    remediation: "Add '# SPDX-License-Identifier: MPL-2.0' as first line"

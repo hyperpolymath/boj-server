@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: PMPL-1.0-or-later
+// SPDX-License-Identifier: MPL-2.0
 // Copyright (c) 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
 
 = BoJ Server — CRG Audit (2026-04-18)
@@ -71,7 +71,7 @@ Publication requires B+. Long alpha is discipline, not shame.
 | Per RSR_OUTLINE.adoc
 
 | SPDX headers on source
-| PRESENT on sampled files; `PMPL-1.0-or-later` declared
+| PRESENT on sampled files; `MPL-2.0` declared
 | `LICENSE`, `LICENSE-MPL-2.0` fallback text
 
 | `Containerfile` (not `Dockerfile`)
@@ -105,7 +105,7 @@ RSR compliance: *met* — satisfies Grade D floor.
 
 | Cartridges
 | 99 directories, each with `cartridge.json` + `mod.js` + Zig adapter
-| V-lang sweep complete 2026-04-12.
+| zig sweep complete 2026-04-12.
 
 | Axiomatic `believe_me` sites
 | 4 irreducible

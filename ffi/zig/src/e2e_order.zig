@@ -1,9 +1,9 @@
-// SPDX-License-Identifier: PMPL-1.0-or-later
+// SPDX-License-Identifier: MPL-2.0
 // Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
 //
 // BoJ Server — End-to-end order-ticket test at the Zig FFI layer.
 //
-// Simulates the full order-ticket flow without needing the V-lang server:
+// Simulates the full order-ticket flow without needing the zig server:
 //   1. Init catalogue
 //   2. Register 4 cartridges (database-mcp, fleet-mcp, nesy-mcp, agent-mcp)
 //   3. Add protocols to each cartridge

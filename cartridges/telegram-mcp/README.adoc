@@ -1,9 +1,9 @@
-// SPDX-License-Identifier: PMPL-1.0-or-later
+// SPDX-License-Identifier: MPL-2.0
 // Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
 
 = telegram-mcp
 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
-:spdx: PMPL-1.0-or-later
+:spdx: MPL-2.0
 :tier: Ayo
 :domain: Comms
 :protocols: MCP, REST
@@ -55,7 +55,7 @@ of 30 messages per second.
 | C-compatible implementation with thread-safe session pool, token validation, rate limit constants
 
 | Adapter
-| V-lang
+| zig
 | REST bridge to BoJ unified adapter protocol with all 16 actions
 |===
 

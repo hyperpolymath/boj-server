@@ -1,8 +1,8 @@
-// SPDX-License-Identifier: PMPL-1.0-or-later
+// SPDX-License-Identifier: MPL-2.0
 // Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
 //
 // database-mcp/adapter/database_adapter.zig -- Unified three-protocol adapter.
-// Replaces banned database_adapter.v (V-lang, removed 2026-04-12).
+// Replaces banned database_adapter.v (zig, removed 2026-04-12).
 // REST:9154 gRPC:9155 GraphQL:9156
 // Tools: database_connect, database_query, database_execute, database_list_tables...
 

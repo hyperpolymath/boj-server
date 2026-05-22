@@ -1,5 +1,5 @@
 K9!
-# SPDX-License-Identifier: PMPL-1.0-or-later
+# SPDX-License-Identifier: MPL-2.0
 # deploy.k9.ncl — Bundle of Joy Server deployment component (Hunt level)
 #
 # k9-svc deployment specification with full pedigree (L1-L5).

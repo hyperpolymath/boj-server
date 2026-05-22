@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: PMPL-1.0-or-later
+// SPDX-License-Identifier: MPL-2.0
 // Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
 
 = feedback-mcp Cartridge
@@ -15,7 +15,7 @@ The cartridge follows the standard BoJ triple-adapter pipeline:
 
 * **Idris2 ABI** — formal proofs for the feedback state machine
 * **Zig FFI** — C-compatible state machine execution
-* **V-lang Adapter** — HTTP/MCP dispatch with NDJSON persistence
+* **zig Adapter** — HTTP/MCP dispatch with NDJSON persistence
 
 == Tools (10)
 

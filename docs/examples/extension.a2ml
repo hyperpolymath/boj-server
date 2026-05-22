@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: PMPL-1.0-or-later
+# SPDX-License-Identifier: MPL-2.0
 # extension.a2ml — Example BoJ extension descriptor
 #
 # Copy this file, fill in the fields, and submit to a BoJ node.
@@ -16,7 +16,7 @@ protocols = ["mcp", "rest"]    # Which protocol columns this fills
 author = "Your Name <you@example.com>"
 description = "PostgreSQL-native database cartridge for BoJ"
 homepage = ""                  # Optional: URL to source repo
-license = "PMPL-1.0-or-later"
+license = "MPL-2.0"
 hash = ""                      # SHA-256 of the compiled .so — filled at build time
 
 [capabilities]

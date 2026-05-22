@@ -1,5 +1,5 @@
 {
-  "_comment": "SPDX-License-Identifier: PMPL-1.0-or-later — BoJ Server seccomp profile (restricted)",
+  "_comment": "SPDX-License-Identifier: MPL-2.0 — BoJ Server seccomp profile (restricted)",
   "defaultAction": "SCMP_ACT_ERRNO",
   "defaultErrnoRet": 1,
   "architectures": [

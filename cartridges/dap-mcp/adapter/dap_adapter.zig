@@ -1,8 +1,8 @@
-// SPDX-License-Identifier: PMPL-1.0-or-later
+// SPDX-License-Identifier: MPL-2.0
 // Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
 //
 // DAP-MCP Cartridge — Unified Zig adapter.
-// Replaces the banned dap_adapter.v (V-lang removed 2026-04-10).
+// Replaces the banned dap_adapter.v (zig removed 2026-04-10).
 //
 // Exposes the DAP session state machine from dap_ffi.zig via three protocols:
 //   REST        port 9019  HTTP/1.1, JSON responses

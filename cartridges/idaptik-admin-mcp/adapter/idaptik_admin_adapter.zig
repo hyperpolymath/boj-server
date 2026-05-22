@@ -1,11 +1,11 @@
-// SPDX-License-Identifier: PMPL-1.0-or-later
+// SPDX-License-Identifier: MPL-2.0
 // Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
 //
 // idaptik-admin-mcp/adapter/idaptik_admin_adapter.zig
 //
 // Three-protocol BoJ adapter: REST (port 9253), gRPC-compat (port 9254),
 // GraphQL (port 9255).
-// Replaces the banned V-lang adapter (idaptik_admin_adapter.v).
+// Replaces the banned zig adapter (idaptik_admin_adapter.v).
 
 const std = @import("std");
 const ffi = @import("idaptik_admin_ffi");

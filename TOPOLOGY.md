@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: PMPL-1.0-or-later
+# SPDX-License-Identifier: MPL-2.0
 # TOPOLOGY.md — BoJ Server Component Matrix
 #
 # Updated 2026-04-30. 115 cartridges across 6 tiers (111 with `.so` built, 4 pending).

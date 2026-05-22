@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: PMPL-1.0-or-later
+// SPDX-License-Identifier: MPL-2.0
 // Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
 = fleet-mcp / adapter — REST/gRPC/GraphQL bridge
 :orientation: deep
@@ -17,7 +17,7 @@ FFI mutex in `../ffi/`.
 
 | `build.zig`                          | Zig build graph for the adapter binary.
 | `fleet_adapter.zig`                  | `dispatch` routes tool names to FFI calls. Tools: `fleet_record_gate`, `fleet_bot_status`, `fleet_gate_score`, `fleet_has_mandatory`, `fleet_fleet_status`.
-| `SIDELINED-fleet_adapter.v.adoc`     | Archived V-lang predecessor. Not built.
+| `SIDELINED-fleet_adapter.v.adoc`     | Archived zig predecessor. Not built.
 |===
 
 == Invariants

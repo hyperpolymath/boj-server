@@ -1,9 +1,9 @@
-// SPDX-License-Identifier: PMPL-1.0-or-later
+// SPDX-License-Identifier: MPL-2.0
 // Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
 //
 // verisimdb-mcp/adapter/verisimdb_adapter.zig -- Unified three-protocol adapter.
 //
-// Replaces the banned verisimdb_adapter.v (V-lang, removed 2026-04-12).
+// Replaces the banned verisimdb_adapter.v (zig, removed 2026-04-12).
 //
 // REST :9115  gRPC-compat :9116  GraphQL :9117
 // VeriSimDB verified simulation database. Stores octadic records with formal drift detection and full 

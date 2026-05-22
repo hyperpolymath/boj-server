@@ -1,9 +1,9 @@
-// SPDX-License-Identifier: PMPL-1.0-or-later
+// SPDX-License-Identifier: MPL-2.0
 // Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
 //
 // zotero-mcp/adapter/zotero_adapter.zig -- Unified three-protocol adapter.
 //
-// Replaces the banned zotero_adapter.v (V-lang, removed 2026-04-12).
+// Replaces the banned zotero_adapter.v (zig, removed 2026-04-12).
 //
 // Bridges the Zig FFI (zotero_mcp_ffi.zig) to three network protocols:
 //   REST        :9100  POST /tools/<tool>

@@ -1,8 +1,8 @@
-// SPDX-License-Identifier: PMPL-1.0-or-later
+// SPDX-License-Identifier: MPL-2.0
 // Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
 //
 // container-mcp/adapter/container_adapter.zig -- Unified three-protocol adapter.
-// Replaces banned container_adapter.v (V-lang, removed 2026-04-12).
+// Replaces banned container_adapter.v (zig, removed 2026-04-12).
 // REST:9148 gRPC:9149 GraphQL:9150
 // Tools: container_build, container_create, container_start, container_stop...
 

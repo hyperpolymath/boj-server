@@ -1,6 +1,6 @@
 = linear-mcp
 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
-:spdx: PMPL-1.0-or-later
+:spdx: MPL-2.0
 :tier: Ayo
 :domain: Comms
 :protocols: MCP, GraphQL
@@ -30,7 +30,7 @@ https://api.linear.app/graphql.
   request stubs, and rate-limit tracking
 
 | Adapter
-| V-lang
+| zig
 | REST bridge exposing all 16 Linear actions to the BoJ unified adapter
 |===
 

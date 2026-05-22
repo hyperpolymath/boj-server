@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: PMPL-1.0-or-later
+// SPDX-License-Identifier: MPL-2.0
 // Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
 //
 // BoJ Server — Zig FFI build configuration (Zig 0.15+).
@@ -25,7 +25,7 @@ pub fn build(b: *std.Build) void {
     });
     loader_mod.addImport("catalogue", catalogue_mod);
 
-    // --- Static library (for V-lang adapter linking) ---
+    // --- Static library (for zig adapter linking) ---
     // Catalogue-only lib (used by V adapter for most symbols)
     const lib = b.addLibrary(.{
         .name = "boj_catalogue",
@@ -41,7 +41,7 @@ pub fn build(b: *std.Build) void {
     });
     b.installArtifact(loader_lib);
 
-    const lib_step = b.step("lib", "Build static library for V-lang linking");
+    const lib_step = b.step("lib", "Build static library for zig linking");
     lib_step.dependOn(&lib.step);
 
     // --- Benchmark binary ---
@@ -235,7 +235,7 @@ pub fn build(b: *std.Build) void {
     const community_step = b.step("community", "Run community cartridge submission tests");
     community_step.dependOn(&run_community_tests.step);
 
-    // --- Safety module (C-ABI input validation for V-lang adapter) ---
+    // --- Safety module (C-ABI input validation for zig adapter) ---
     const safety_mod = b.addModule("boj_safety", .{
         .root_source_file = b.path("src/safety.zig"),
         .target = target,

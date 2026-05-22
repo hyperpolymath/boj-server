@@ -1,11 +1,11 @@
-// SPDX-License-Identifier: PMPL-1.0-or-later
+// SPDX-License-Identifier: MPL-2.0
 // Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
 //
 // comms-mcp/adapter/comms_adapter.zig
 //
 // Three-protocol BoJ adapter: REST (port 9217), gRPC-compat (port 9218),
 // GraphQL (port 9219).
-// Replaces the banned V-lang adapter (comms_adapter.v).
+// Replaces the banned zig adapter (comms_adapter.v).
 
 const std = @import("std");
 const ffi = @import("comms_ffi");

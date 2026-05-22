@@ -1,6 +1,6 @@
 {
   "$schema": "https://boj.dev/schemas/cartridge/v1.json",
-  "spdx": "PMPL-1.0-or-later",
+  "spdx": "MPL-2.0",
   "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>",
   "name": "academic-workflow-mcp",
   "version": "1.0.0",
@@ -11,7 +11,7 @@
     "method": "none"
   },
   "author": "Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>",
-  "license": "PMPL-1.0-or-later",
+  "license": "MPL-2.0",
   "tools": [
     {
       "id": "search_zotero",

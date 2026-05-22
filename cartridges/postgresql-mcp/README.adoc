@@ -1,7 +1,7 @@
-// SPDX-License-Identifier: PMPL-1.0-or-later
+// SPDX-License-Identifier: MPL-2.0
 = postgresql-mcp
 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
-:spdx: PMPL-1.0-or-later
+:spdx: MPL-2.0
 :tier: Ayo
 :domain: Database
 :protocols: MCP, REST
@@ -54,7 +54,7 @@ Explain, CopyTo, CopyFrom, Notify
 | C-ABI implementation with libpq stubs, thread-safe connection pool
 
 | Adapter
-| V-lang
+| zig
 | REST/MCP bridge exposing all 16 actions
 
 | Panels

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: PMPL-1.0-or-later
+// SPDX-License-Identifier: MPL-2.0
 // Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath)
 = affinescript-mcp
 :toc:
@@ -27,7 +27,7 @@ Three-layer stack following the BoJ cartridge standard:
 
 | ABI | Idris2 | `SafeCompiler` state machine with dependent-type proofs
 | FFI | Zig | C-ABI implementation: session pool, action metrics, thread safety
-| Adapter | V-lang | REST bridge connecting FFI exports to BoJ adapter protocol
+| Adapter | zig | REST bridge connecting FFI exports to BoJ adapter protocol
 |===
 
 == Tools (7)

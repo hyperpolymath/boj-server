@@ -1,9 +1,9 @@
-// SPDX-License-Identifier: PMPL-1.0-or-later
+// SPDX-License-Identifier: MPL-2.0
 // Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
 //
 // vordr-mcp/adapter/vordr_adapter.zig -- Unified three-protocol adapter.
 //
-// Replaces the banned vordr_adapter.v (V-lang, removed 2026-04-12).
+// Replaces the banned vordr_adapter.v (zig, removed 2026-04-12).
 //
 // REST :9136  gRPC-compat :9137  GraphQL :9138
 // Vordr container integrity monitor. BLAKE3 hashing to detect tampering and drift in container images.

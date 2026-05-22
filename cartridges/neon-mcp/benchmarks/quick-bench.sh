@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# SPDX-License-Identifier: PMPL-1.0-or-later
+# SPDX-License-Identifier: MPL-2.0
 # Benchmarks for neon-mcp cartridge.
 set -euo pipefail
 
@@ -18,4 +18,4 @@ done
 
 echo ""
 echo "Benchmark placeholder — implement real benchmarks in Zig test blocks"
-echo "or via the V-lang adapter HTTP benchmark tool."
+echo "or via the zig adapter HTTP benchmark tool."

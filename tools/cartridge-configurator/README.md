@@ -55,4 +55,4 @@ The Cartridge Configurator applies the configuration to the cartridge and writes
 
 ## License
 
-This tool is licensed under the PMPL-1.0-or-later license. See the LICENSE file for more information.
+This tool is licensed under the MPL-2.0 license. See the LICENSE file for more information.

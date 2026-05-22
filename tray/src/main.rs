@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MPL-2.0
-// (PMPL-1.0-or-later preferred; MPL-2.0 required for boj-server ecosystem)
+// (MPL-2.0 preferred; MPL-2.0 required for boj-server ecosystem)
 // Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
 //
 //! # BoJ Node Operator — Gossamer tray application

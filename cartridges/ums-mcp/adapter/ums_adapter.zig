@@ -1,11 +1,11 @@
-// SPDX-License-Identifier: PMPL-1.0-or-later
+// SPDX-License-Identifier: MPL-2.0
 // Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
 //
 // ums-mcp/adapter/ums_adapter.zig
 //
 // Three-protocol BoJ adapter: REST (port 9295), gRPC-compat (port 9296),
 // GraphQL (port 9297).
-// Replaces the banned V-lang adapter (ums_adapter.v).
+// Replaces the banned zig adapter (ums_adapter.v).
 
 const std = @import("std");
 const ffi = @import("ums_ffi");

@@ -1,8 +1,8 @@
-// SPDX-License-Identifier: PMPL-1.0-or-later
+// SPDX-License-Identifier: MPL-2.0
 // Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
 //
 // iac-mcp/adapter/iac_adapter.zig -- Unified three-protocol adapter.
-// Replaces banned iac_adapter.v (V-lang, removed 2026-04-12).
+// Replaces banned iac_adapter.v (zig, removed 2026-04-12).
 // REST:9151 gRPC:9152 GraphQL:9153
 // Tools: iac_init, iac_plan, iac_apply, iac_destroy...
 

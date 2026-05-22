@@ -1,11 +1,11 @@
-// SPDX-License-Identifier: PMPL-1.0-or-later
+// SPDX-License-Identifier: MPL-2.0
 // Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
 //
 // linear-mcp/adapter/linear_mcp_adapter.zig
 //
 // Three-protocol BoJ adapter: REST (port 9262), gRPC-compat (port 9263),
 // GraphQL (port 9264).
-// Replaces the banned V-lang adapter (linear_mcp_adapter.v).
+// Replaces the banned zig adapter (linear_mcp_adapter.v).
 
 const std = @import("std");
 const ffi = @import("linear_mcp_ffi");

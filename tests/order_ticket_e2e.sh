@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# SPDX-License-Identifier: PMPL-1.0-or-later
+# SPDX-License-Identifier: MPL-2.0
 # Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
 #
 # BoJ Server — End-to-end order-ticket test (FFI layer only).
 #
-# Tests the full order-ticket flow WITHOUT the V-lang server by exercising
+# Tests the full order-ticket flow WITHOUT the zig server by exercising
 # the Zig FFI catalogue directly via a dedicated test module
 # (ffi/zig/src/e2e_order.zig).
 #

@@ -1,11 +1,11 @@
-// SPDX-License-Identifier: PMPL-1.0-or-later
+// SPDX-License-Identifier: MPL-2.0
 // Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
 //
 // burble-admin-mcp/adapter/burble_admin_adapter.zig
 //
 // Three-protocol BoJ adapter: REST (port 9205), gRPC-compat (port 9206),
 // GraphQL (port 9207).
-// Replaces the banned V-lang adapter (burble_admin_adapter.v).
+// Replaces the banned zig adapter (burble_admin_adapter.v).
 
 const std = @import("std");
 const ffi = @import("burble_admin_ffi");

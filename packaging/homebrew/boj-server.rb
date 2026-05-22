@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: PMPL-1.0-or-later
+# SPDX-License-Identifier: MPL-2.0
 # Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
 #
 # Homebrew formula for Bundle of Joy (BoJ) MCP Server.
@@ -15,7 +15,7 @@ class BojServer < Formula
   homepage "https://github.com/hyperpolymath/boj-server"
   url "https://github.com/hyperpolymath/boj-server/archive/refs/tags/v0.3.1.tar.gz"
   # sha256 "UPDATE_ON_RELEASE"
-  license "PMPL-1.0-or-later"
+  license "MPL-2.0"
   head "https://github.com/hyperpolymath/boj-server.git", branch: "main"
 
   depends_on "node" => ">= 18.0"
@@ -29,7 +29,7 @@ class BojServer < Formula
     # Create wrapper script
     (bin/"boj-server").write <<~EOS
       #!/usr/bin/env bash
-      # SPDX-License-Identifier: PMPL-1.0-or-later
+      # SPDX-License-Identifier: MPL-2.0
       # Bundle of Joy MCP Server — stdio transport
       exec node "#{libexec}/mcp-bridge/main.js" "$@"
     EOS
@@ -49,10 +49,10 @@ class BojServer < Formula
         }
 
       For full cartridge functionality (REST API, federation, etc.),
-      build the V-lang adapter from source:
+      build the zig adapter from source:
 
         cd $(brew --prefix)/opt/boj-server
-        # Requires V-lang 0.5.0+ and Zig 0.15.2+
+        # Requires zig 0.5.0+ and Zig 0.15.2+
     EOS
   end
 

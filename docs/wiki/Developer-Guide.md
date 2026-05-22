@@ -1,4 +1,4 @@
-<!-- SPDX-License-Identifier: PMPL-1.0-or-later -->
+<!-- SPDX-License-Identifier: MPL-2.0 -->
 <!-- Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk> -->
 
 # Developer Guide
@@ -149,7 +149,7 @@ Submit a PR. CI verifies:
 - `%default total` in all Idris2 files
 - Zig builds clean
 - All tests pass
-- SPDX headers present (`PMPL-1.0-or-later`)
+- SPDX headers present (`MPL-2.0`)
 
 When merged, your cartridge status changes to `Ready` and appears in the Ayo section of the Teranga menu.
 
@@ -308,4 +308,4 @@ docs/                 # Architecture, API contract, guides
 
 See [`CONTRIBUTING.md`](../../CONTRIBUTING.md) for the full contribution guide, including commit conventions, PR requirements, and the gitbot-fleet review process.
 
-All contributions must include SPDX headers (`PMPL-1.0-or-later`) and pass the CI pipeline (`zig-test.yml`).
+All contributions must include SPDX headers (`MPL-2.0`) and pass the CI pipeline (`zig-test.yml`).

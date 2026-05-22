@@ -1,10 +1,10 @@
-// SPDX-License-Identifier: PMPL-1.0-or-later
+// SPDX-License-Identifier: MPL-2.0
 // Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
 //
 // build.zig -- Build configuration for postgresql-mcp FFI shared library.
 //
 // Links against libpq for PostgreSQL wire protocol support.
-// Produces libpostgresql_mcp.so/.dylib/.dll for V-lang adapter consumption.
+// Produces libpostgresql_mcp.so/.dylib/.dll for zig adapter consumption.
 
 const std = @import("std");
 

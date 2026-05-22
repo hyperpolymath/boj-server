@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: PMPL-1.0-or-later
+// SPDX-License-Identifier: MPL-2.0
 // Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
 = NeSy-MCP Cartridge — Technical Report
 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
@@ -27,7 +27,7 @@ The cartridge is now accessible via *9 protocol transports*: REST, gRPC, GraphQL
         │  C-compatible exports, thread-safe
         │  40 tests, zero undefined behaviour
         ▼
-   V-lang Adapters (9 protocol servers)
+   zig Adapters (9 protocol servers)
         │  REST, gRPC, GraphQL, WebSocket, JSON-RPC,
         │  MQTT, tRPC, SOAP, Cap'n Proto
         ▼
@@ -38,7 +38,7 @@ The cartridge is now accessible via *9 protocol transports*: REST, gRPC, GraphQL
 
 * The *Idris2 layer* proves correctness at compile time. The harmonization law cannot be violated — it is a mathematical theorem, not a convention.
 * The *Zig layer* translates proofs into executable code with zero runtime overhead. No garbage collector, no exceptions, no undefined behaviour.
-* The *V-lang layer* makes the proven logic accessible from any protocol a consumer might need. Adding a new transport does not require re-proving anything.
+* The *zig layer* makes the proven logic accessible from any protocol a consumer might need. Adding a new transport does not require re-proving anything.
 
 == Core Logic
 

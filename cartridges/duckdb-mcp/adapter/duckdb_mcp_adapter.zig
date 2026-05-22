@@ -1,8 +1,8 @@
-// SPDX-License-Identifier: PMPL-1.0-or-later
+// SPDX-License-Identifier: MPL-2.0
 // Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
 //
 // duckdb-mcp/adapter/duckdb_mcp_adapter.zig -- Unified three-protocol adapter.
-// Replaces banned duckdb_mcp_adapter.v (V-lang, removed 2026-04-12).
+// Replaces banned duckdb_mcp_adapter.v (zig, removed 2026-04-12).
 // REST:9169 gRPC:9170 GraphQL:9171
 // Tools: duckdb_open, duckdb_query, duckdb_execute, duckdb_import...
 

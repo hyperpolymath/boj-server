@@ -1,9 +1,9 @@
-// SPDX-License-Identifier: PMPL-1.0-or-later
+// SPDX-License-Identifier: MPL-2.0
 // Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
 //
 // kategoria-mcp/adapter/kategoria_adapter.zig -- Unified three-protocol adapter.
 //
-// Replaces the banned kategoria_adapter.v (V-lang, removed 2026-04-12).
+// Replaces the banned kategoria_adapter.v (zig, removed 2026-04-12).
 //
 // REST :9127  gRPC-compat :9128  GraphQL :9129
 // Kategoria type-theory learning system. Classifies type-theory constructs and evaluates learner chall

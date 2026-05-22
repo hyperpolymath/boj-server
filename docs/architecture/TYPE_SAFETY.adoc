@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: PMPL-1.0-or-later
+// SPDX-License-Identifier: MPL-2.0
 = BOJ Server Mistral: Type Safety Across Boundaries
 :description: Type safety guarantees and formal mappings between language boundaries
 
@@ -20,7 +20,7 @@ rectangle "Zig FFI" as zig {
   [ZigType] as zig_type
 }
 
-rectangle "V-lang Adapter" as vlang {
+rectangle "zig Adapter" as vlang {
   [VType] as v_type
 }
 
@@ -79,7 +79,7 @@ rust_type --> elixir_type : Message Passing
 | ⚠️  Partial
 |=== 
 
-### 2. Zig → V-lang Protocol Mapping
+### 2. Zig → zig Protocol Mapping
 
 [cols="1,2,2,2", options="header"]
 |=== 
@@ -116,7 +116,7 @@ rust_type --> elixir_type : Message Passing
 | ✅ Verified
 |=== 
 
-### 3. V-lang → Rust Conversion
+### 3. zig → Rust Conversion
 
 [cols="1,2,2,2", options="header"]
 |=== 

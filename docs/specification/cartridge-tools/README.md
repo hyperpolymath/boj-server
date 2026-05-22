@@ -1,4 +1,4 @@
-<!-- SPDX-License-Identifier: PMPL-1.0-or-later -->
+<!-- SPDX-License-Identifier: MPL-2.0 -->
 # Cartridge Tools Specification
 
 **Powerful Cartridge Minter, Provisioner, Configurator, and Panel Harness**
@@ -238,7 +238,7 @@ mutation {
 |----|-------------|-------------|------------------|
 | PH-001 | BoJ Server Integration | Register cartridges as A2ML-compliant services | A2ML Manifests, :gen_server |
 | PH-002 | panll Integration | Expose cartridges as panll modules | panll's plugin system |
-| PH-003 | Protocol Translation | Convert between cartridge formats (e.g., REST ↔ gRPC ↔ GraphQL) | V-lang Triple Adapter, Phoenix Channels |
+| PH-003 | Protocol Translation | Convert between cartridge formats (e.g., REST ↔ gRPC ↔ GraphQL) | zig Triple Adapter, Phoenix Channels |
 | PH-004 | Event Routing | Route events between cartridges and BoJ Server/panll | Phoenix PubSub, A2ML Events |
 | PH-005 | CLI & API | Provide a CLI (panel harness) and REST/gRPC API | escript, Absinthe |
 

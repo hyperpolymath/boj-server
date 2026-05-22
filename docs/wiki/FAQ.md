@@ -1,4 +1,4 @@
-<!-- SPDX-License-Identifier: PMPL-1.0-or-later -->
+<!-- SPDX-License-Identifier: MPL-2.0 -->
 <!-- Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk> -->
 
 # Frequently Asked Questions
@@ -9,15 +9,15 @@
 
 ## Why three languages?
 
-The three-layer stack (Idris2, Zig, V-lang) exists because each language solves a different problem exceptionally well:
+The three-layer stack (Idris2, Zig, zig) exists because each language solves a different problem exceptionally well:
 
 | Layer | Language | Why this one? |
 |-------|----------|---------------|
 | **ABI** | Idris2 | Dependent types prove interface correctness at compile-time. The `IsUnbreakable` proof type mathematically guarantees that only `Ready` cartridges can be activated. No other language provides this level of formal verification with practical usability. |
 | **FFI** | Zig | Native C ABI compatibility with zero runtime overhead. Built-in cross-compilation for varied community node hardware. Memory-safe by default. |
-| **Adapter** | V-lang | Exposes REST + gRPC + GraphQL from a single codebase. One port per protocol, minimal boilerplate. |
+| **Adapter** | zig | Exposes REST + gRPC + GraphQL from a single codebase. One port per protocol, minimal boilerplate. |
 
-The compilation pipeline is: Idris2 defines the contract (what CAN happen), Zig implements it (what DOES happen), V-lang exposes it (how you REACH it).
+The compilation pipeline is: Idris2 defines the contract (what CAN happen), Zig implements it (what DOES happen), zig exposes it (how you REACH it).
 
 ## How does the capability matrix work?
 
@@ -74,7 +74,7 @@ See [`docs/THREAT-MODEL.md`](../THREAT-MODEL.md) for the full STRIDE analysis.
 
 Yes, through the **HAT** (Hyperpolymath Adapter Toolkit) concept.
 
-BoJ does not replace your existing tools -- it **unifies access** to them. The protocol bridge cartridges (`lsp-mcp`, `dap-mcp`, `bsp-mcp`) let you access LSP, DAP, and BSP servers through the BoJ interface. The adapter layer (V-lang) exposes everything as REST + gRPC + GraphQL, so any HTTP client works.
+BoJ does not replace your existing tools -- it **unifies access** to them. The protocol bridge cartridges (`lsp-mcp`, `dap-mcp`, `bsp-mcp`) let you access LSP, DAP, and BSP servers through the BoJ interface. The adapter layer (zig) exposes everything as REST + gRPC + GraphQL, so any HTTP client works.
 
 For AI tools specifically, BoJ speaks **MCP natively** via JSON-RPC 2.0 over stdio. Add it to `claude_desktop_config.json` or any MCP-compatible client and all 18 cartridges appear as MCP tools.
 
@@ -100,7 +100,7 @@ The order-ticket protocol is how AI agents request capabilities:
 2. AI writes an order ticket (`order-ticket.scm` or JSON via REST)
 3. BoJ validates the order against the catalogue (checks `IsUnbreakable`)
 4. BoJ mounts the requested cartridges via Zig FFI
-5. V-lang adapter exposes mounted cartridges as REST + gRPC + GraphQL
+5. zig adapter exposes mounted cartridges as REST + gRPC + GraphQL
 6. AI receives confirmation with endpoints
 
 ## How does BoJ relate to polystack?

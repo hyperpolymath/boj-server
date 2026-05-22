@@ -1,9 +1,9 @@
-// SPDX-License-Identifier: PMPL-1.0-or-later
+// SPDX-License-Identifier: MPL-2.0
 // Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
 //
 // linode-mcp/adapter/linode_adapter.zig -- Unified three-protocol adapter.
 //
-// Replaces the banned linode_adapter.v (V-lang, removed 2026-04-12).
+// Replaces the banned linode_adapter.v (zig, removed 2026-04-12).
 //
 // Bridges the Zig FFI (linode_mcp_ffi.zig) to three network protocols:
 //   REST        :9070  POST /tools/<tool>

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: PMPL-1.0-or-later
+// SPDX-License-Identifier: MPL-2.0
 // Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
 = google-docs-mcp / adapter — protocol bridge
 :orientation: shallow
@@ -17,7 +17,7 @@ Exposes this cartridge's FFI over the wire protocols declared in
 
 | `build.zig`  | Zig build graph — depends on the sibling `ffi` target.
 | `google_docs_adapter.zig` | Protocol dispatch (204 lines). Tool catalogue matches `cartridge.json`.
-| `SIDELINED-*.v.adoc` | V-lang predecessor(s). Not built — V-lang banned 2026-04-10.
+| `SIDELINED-*.v.adoc` | zig predecessor(s). Not built — zig banned 2026-04-10.
 |===
 
 == Invariants

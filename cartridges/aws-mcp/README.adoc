@@ -1,8 +1,8 @@
-// SPDX-License-Identifier: PMPL-1.0-or-later
+// SPDX-License-Identifier: MPL-2.0
 // Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
 = aws-mcp
 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
-:spdx: PMPL-1.0-or-later
+:spdx: MPL-2.0
 :tier: Ayo
 :domain: Cloud
 :protocols: MCP, REST
@@ -99,7 +99,7 @@ automatic endpoint routing, rate-limit back-pressure, and mutability tracking.
 | C-compatible implementation with thread-safe session pool, service routing, mutability checks
 
 | Adapter
-| V-lang
+| zig
 | REST bridge to BoJ unified adapter protocol
 |===
 

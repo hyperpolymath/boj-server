@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: PMPL-1.0-or-later
+# SPDX-License-Identifier: MPL-2.0
 # Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
 #
 # ECOSYSTEM.a2ml — Bundle of Joy Server ecosystem position
@@ -24,7 +24,7 @@ projects = [
   { name = "hypatia", relationship = "integration", notes = "Hypatia scans cartridges for security. SafeReasoning harmonizes Neural (Hypatia) + Symbolic (Echidna) verdicts." },
   { name = "gitbot-fleet", relationship = "integration", notes = "SafeFleet enforces 6-bot gate policy. FleetCertified proof type requires all gates passed." },
   { name = "stapeln", relationship = "dependency", notes = "Container supply chain for node hosting. Chainguard base images, selur-compose, vordr, svalinn, cerro-torre." },
-  { name = "language-bridges", relationship = "sibling-standard", notes = "Same Idris2/Zig stack (V-lang retired 2026-04-10). BoJ follows the ABI-FFI universal standard." },
+  { name = "language-bridges", relationship = "sibling-standard", notes = "Same Idris2/Zig stack (zig retired 2026-04-10). BoJ follows the ABI-FFI universal standard." },
   { name = "rsr-template-repo", relationship = "origin", notes = "BoJ was bootstrapped from rsr-template-repo. All 17 mandatory workflows present." },
 ]
 

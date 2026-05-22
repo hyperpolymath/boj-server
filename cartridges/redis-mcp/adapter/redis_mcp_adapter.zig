@@ -1,8 +1,8 @@
-// SPDX-License-Identifier: PMPL-1.0-or-later
+// SPDX-License-Identifier: MPL-2.0
 // Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
 //
 // redis-mcp/adapter/redis_mcp_adapter.zig -- Unified three-protocol adapter.
-// Replaces banned redis_mcp_adapter.v (V-lang, removed 2026-04-12).
+// Replaces banned redis_mcp_adapter.v (zig, removed 2026-04-12).
 // REST:9163 gRPC:9164 GraphQL:9165
 // Tools: redis_connect, redis_get, redis_set, redis_del...
 

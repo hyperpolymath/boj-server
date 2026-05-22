@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: PMPL-1.0-or-later
+# SPDX-License-Identifier: MPL-2.0
 # Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
 #
 # Smithery MCP Server Registry Configuration
@@ -8,7 +8,7 @@ name: boj-server
 description: "Bundle of Joy — cartridge-based MCP server with 115 formally verified domain cartridges (database, cloud, git, k8s, containers, observability, secrets, IaC, and more)"
 version: "0.4.6"
 author: "Jonathan D.A. Jewell"
-license: "PMPL-1.0-or-later"
+license: "MPL-2.0"
 homepage: "https://github.com/hyperpolymath/boj-server"
 repository: "https://github.com/hyperpolymath/boj-server"
 keywords:

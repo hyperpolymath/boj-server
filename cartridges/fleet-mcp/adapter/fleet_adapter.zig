@@ -1,11 +1,11 @@
-// SPDX-License-Identifier: PMPL-1.0-or-later
+// SPDX-License-Identifier: MPL-2.0
 // Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
 //
 // fleet-mcp/adapter/fleet_adapter.zig
 //
 // Three-protocol BoJ adapter: REST (port 9235), gRPC-compat (port 9236),
 // GraphQL (port 9237).
-// Replaces the banned V-lang adapter (fleet_adapter.v).
+// Replaces the banned zig adapter (fleet_adapter.v).
 
 const std = @import("std");
 const ffi = @import("fleet_ffi");

@@ -22,6 +22,6 @@ cd boj-server && just build && just serve
 
 Quickstart: https://github.com/hyperpolymath/boj-server/blob/main/QUICKSTART-USER.adoc
 
-PMPL-1.0-or-later license (MPL-2.0 legal fallback; OSI submission pending).
+MPL-2.0 license (MPL-2.0 legal fallback; OSI submission pending).
 
 GitHub: https://github.com/hyperpolymath/boj-server

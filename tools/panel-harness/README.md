@@ -57,4 +57,4 @@ The Panel Harness registers the cartridge with the specified target and writes t
 
 ## License
 
-This tool is licensed under the PMPL-1.0-or-later license. See the LICENSE file for more information.
+This tool is licensed under the MPL-2.0 license. See the LICENSE file for more information.

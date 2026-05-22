@@ -1,8 +1,8 @@
-// SPDX-License-Identifier: PMPL-1.0-or-later
+// SPDX-License-Identifier: MPL-2.0
 // Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
 = gcp-mcp
 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
-:spdx: PMPL-1.0-or-later
+:spdx: MPL-2.0
 :tier: Ayo
 :domain: Cloud
 :protocols: MCP, REST
@@ -67,7 +67,7 @@ and IAM (read-only) with configurable project_id and automatic service endpoint 
 | C-compatible implementation with thread-safe session pool, service routing, quota tracking
 
 | Adapter
-| V-lang
+| zig
 | REST bridge to BoJ unified adapter protocol
 |===
 

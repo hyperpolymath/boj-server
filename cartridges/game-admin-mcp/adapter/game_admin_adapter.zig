@@ -1,11 +1,11 @@
-// SPDX-License-Identifier: PMPL-1.0-or-later
+// SPDX-License-Identifier: MPL-2.0
 // Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
 //
 // game-admin-mcp/adapter/game_admin_adapter.zig
 //
 // Three-protocol BoJ adapter: REST (port 9238), gRPC-compat (port 9239),
 // GraphQL (port 9240).
-// Replaces the banned V-lang adapter (game_admin_adapter.v).
+// Replaces the banned zig adapter (game_admin_adapter.v).
 
 const std = @import("std");
 const ffi = @import("game_admin_ffi");

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: PMPL-1.0-or-later
+// SPDX-License-Identifier: MPL-2.0
 // Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
 //
 // BoJ Seam Checks — Integration contract validation.
@@ -289,7 +289,7 @@ test "seam: order validation is exact-match and status-aware" {
 //
 // Validates that the mutex protection works: multiple threads can call
 // catalogue operations without data corruption.  This is the seam between
-// the V-lang HTTP worker threads and the Zig FFI globals.
+// the zig HTTP worker threads and the Zig FFI globals.
 
 test "seam: concurrent register+query does not corrupt state" {
     _ = catalogue.boj_catalogue_init();

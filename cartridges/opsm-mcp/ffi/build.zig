@@ -1,8 +1,8 @@
-// SPDX-License-Identifier: PMPL-1.0-or-later
+// SPDX-License-Identifier: MPL-2.0
 // OPSM-MCP Cartridge — Zig FFI build configuration (Zig 0.15+).
 //
 // Bridges the Idris2 ABI (SafeRegistry state machine) to a C-compatible
-// shared library that the V-lang adapter can call.
+// shared library that the zig adapter can call.
 
 const std = @import("std");
 

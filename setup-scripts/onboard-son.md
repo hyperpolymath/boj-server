@@ -1,5 +1,5 @@
 # BoJ + PanLL Full Onboarding Script
-# SPDX-License-Identifier: PMPL-1.0-or-later
+# SPDX-License-Identifier: MPL-2.0
 #
 # INSTRUCTIONS: Copy everything below the line into Claude Code as a single message.
 # Claude will walk you through each step interactively.
@@ -73,7 +73,7 @@ For any service I'm currently using that does NOT have a cartridge, use the **ca
    ├── abi/<Name>Mcp/<Name>.idr    # Idris2 ABI definition
    ├── ffi/build.zig               # Zig FFI implementation
    ├── ffi/<name>_ffi.zig          # Zig FFI source
-   └── adapter/<name>_adapter.v    # V-lang REST/gRPC/GraphQL adapter
+   └── adapter/<name>_adapter.v    # zig REST/gRPC/GraphQL adapter
    ```
 5. Configure and provision the cartridge via `boj_cartridge_invoke`
 

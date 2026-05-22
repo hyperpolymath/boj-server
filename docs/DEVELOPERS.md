@@ -6,7 +6,7 @@ A cartridge is a swappable, formally verified capability module. It occupies one
 
 1. **Idris2 ABI** — Type-safe interface with `%default total` and zero `believe_me`
 2. **Zig FFI** — C-compatible native execution
-3. **V-lang Adapter** — REST + gRPC + GraphQL endpoints
+3. **zig Adapter** — REST + gRPC + GraphQL endpoints
 
 ## Creating a new cartridge
 
@@ -23,7 +23,7 @@ Pick a capability domain (what it does) and one or more protocols (how to talk t
 cartridges/your-cartridge-name/
   abi/           # Idris2 source
   ffi/           # Zig source
-  adapter/       # V-lang source
+  adapter/       # zig source
 ```
 
 ### 3. Write the Idris2 ABI
@@ -42,7 +42,7 @@ Your FFI must:
 - Include tests
 - Zero runtime dependencies
 
-### 5. Write the V-lang adapter
+### 5. Write the zig adapter
 
 Your adapter must:
 - Expose the cartridge via the protocols declared in the menu
@@ -55,12 +55,12 @@ Add your cartridge to `.machine_readable/servers/menu.a2ml` under the Ayo sectio
 
 ### 7. Pass the IsUnbreakable proof
 
-Once your Idris2 ABI type-checks clean, the Zig FFI builds, and the V-lang adapter compiles, submit a PR. The CI will verify:
+Once your Idris2 ABI type-checks clean, the Zig FFI builds, and the zig adapter compiles, submit a PR. The CI will verify:
 - Zero `believe_me` in your ABI
 - `%default total` in all Idris2 files
 - Zig builds clean
 - All tests pass
-- SPDX headers present (PMPL-1.0-or-later)
+- SPDX headers present (MPL-2.0)
 
 When merged, your cartridge status changes to `Ready` and it appears in the Ayo section of the Teranga menu.
 

@@ -1,6 +1,6 @@
 = browser-mcp
 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
-:spdx: PMPL-1.0-or-later
+:spdx: MPL-2.0
 :tier: Ayo
 :domain: Browser
 :protocols: MCP, REST
@@ -25,7 +25,7 @@ Provides MCP tools for:
 
 Inspired by the Firefox MCP at `patallm-gallery/claude-integrations/firefox-mcp/`,
 which uses a Deno server + Firefox extension via WebSocket. This cartridge
-replaces that architecture with the standard BoJ Idris2/Zig/V-lang triple
+replaces that architecture with the standard BoJ Idris2/Zig/zig triple
 and connects directly to Marionette over TCP (no extension required).
 
 == Architecture
@@ -43,7 +43,7 @@ and connects directly to Marionette over TCP (no extension required).
 | C-compatible implementation with thread-safe session pool, Marionette TCP protocol handling
 
 | Adapter
-| V-lang
+| zig
 | REST endpoint bridge to BoJ unified adapter protocol
 |===
 

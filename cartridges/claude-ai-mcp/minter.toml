@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: PMPL-1.0-or-later
+# SPDX-License-Identifier: MPL-2.0
 name = "claude-ai-mcp"
 description = "Anthropic Messages API cartridge — send messages to Claude models, count tokens, manage conversations"
 version = "0.1.0"

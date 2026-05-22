@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: PMPL-1.0-or-later
+// SPDX-License-Identifier: MPL-2.0
 // Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
 //
 // BoJ VeriSimDB Integration — backing store interface for cartridge state.
@@ -123,7 +123,7 @@ fn findEntry(key_ptr: [*]const u8, key_len: usize) ?usize {
 //   DELETE {url}/api/v1/octads/{key}    — delete an octad by key
 //
 // We shell out to curl rather than using std.http.Client because:
-//   1. The V-lang adapter already uses curl — consistent approach
+//   1. The zig adapter already uses curl — consistent approach
 //   2. curl handles TLS, redirects, retries more robustly
 //   3. Avoids Zig std.http API churn across versions
 

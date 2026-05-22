@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# SPDX-License-Identifier: PMPL-1.0-or-later
+# SPDX-License-Identifier: MPL-2.0
 # Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
 #
 # BoJ Server — Comprehensive end-to-end test suite.
 #
-# Starts the V-lang server, exercises every REST endpoint (health, menu,
+# Starts the zig server, exercises every REST endpoint (health, menu,
 # cartridge info for all 21 builtins, feedback-o-tron full cycle, order
 # ticket), tests the MCP bridge JSON-RPC protocol, then tears everything
 # down.

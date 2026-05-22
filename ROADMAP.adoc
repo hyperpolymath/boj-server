@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: PMPL-1.0-or-later
+// SPDX-License-Identifier: MPL-2.0
 = Bundle of Joy Server — Roadmap
 :toc:
 
@@ -15,7 +15,7 @@ forwarding with Options A+B wired (CredentialDecryptor → Invoker extra_env),
 X-Trust-Level enforcement live (BojRest.TrustPolicy).  173 ExUnit tests passing
 (10 properties + 163 regular, 0 failures).  All 4 fly.io seed nodes LIVE:
 boj-seed-eu (lhr), boj-seed-de (fra), boj-seed-us (iad), boj-seed-ap (syd).
-V-lang adapter migration complete (0 `.v` files).  Grade C achieved 2026-04-25.
+zig adapter migration complete (0 `.v` files).  Grade C achieved 2026-04-25.
 
 == Milestones
 
@@ -35,7 +35,7 @@ V-lang adapter migration complete (0 `.v` files).  Grade C achieved 2026-04-25.
 === v0.2.0 — Live Cartridges (Phase 2-3)
 
 * [x] Zig FFI: dynamic cartridge loader with hash verification
-* [x] V-lang triple adapter: REST (9000) + gRPC (9001) + GraphQL (9002)
+* [x] zig triple adapter: REST (9000) + gRPC (9001) + GraphQL (9002)
 * [x] First working MCP endpoint (database-mcp)
 * [x] First working LSP endpoint (database-mcp)
 * [x] Order-ticket flow end-to-end (read menu → place order → get endpoints)
@@ -74,7 +74,7 @@ V-lang adapter migration complete (0 `.v` files).  Grade C achieved 2026-04-25.
 
 === v1.0.1 — Adapter Migration Recovery (P0, In Progress)
 
-* [x] Remove remaining V-lang adapters across `cartridges/` (confirmed 0 `.v` files 2026-04-25 — cleanup completed 2026-04-12)
+* [x] Remove remaining zig adapters across `cartridges/` (confirmed 0 `.v` files 2026-04-25 — cleanup completed 2026-04-12)
 * [x] Ensure every cartridge has `cartridge.json` metadata (all 115 cartridges covered, re-verified 2026-04-30)
 * [x] Ensure every cartridge has `mod.js` tool handlers (all 115 cartridges covered, re-verified 2026-04-30)
 * [x] Re-run cartridge matrix build and update `TEST-NEEDS.md` with current evidence (build count refreshed 2026-04-30 — 111/115 cartridges have `.so`; pending: `database-mcp`, `echidna-llm-mcp`, `lang-mcp`, `orchestrator-lsp-mcp`. Test re-run deferred to next sweep.)

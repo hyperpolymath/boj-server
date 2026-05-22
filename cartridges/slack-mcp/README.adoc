@@ -1,6 +1,6 @@
 = slack-mcp
 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
-:spdx: PMPL-1.0-or-later
+:spdx: MPL-2.0
 :tier: Ayo
 :domain: Comms
 :protocols: MCP, REST
@@ -29,7 +29,7 @@ type-safe, rate-limit-aware interface.
   HTTP client stubs, and per-method rate-tier tracking
 
 | Adapter
-| V-lang
+| zig
 | REST bridge exposing all 16 Slack actions to the BoJ unified adapter
 |===
 

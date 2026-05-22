@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: PMPL-1.0-or-later
+# SPDX-License-Identifier: MPL-2.0
 # Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
 #
 # coord-messages.ncl — Envelope schema for local-coord-mcp messages (v1).
@@ -15,7 +15,7 @@
 {
   "$schema" = "https://json-schema.org/draft-07/schema#",
   "$id" = "https://boj.dev/schemas/coord-messages/v1.json",
-  spdx = "PMPL-1.0-or-later",
+  spdx = "MPL-2.0",
   copyright = "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>",
   title = "local-coord-mcp message envelope (v1)",
   version = 1,

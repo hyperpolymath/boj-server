@@ -1,8 +1,8 @@
-// SPDX-License-Identifier: PMPL-1.0-or-later
+// SPDX-License-Identifier: MPL-2.0
 // Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
 //
 // BSP-MCP Cartridge — Unified Zig adapter.
-// Replaces the banned bsp_adapter.v (V-lang removed 2026-04-10).
+// Replaces the banned bsp_adapter.v (zig removed 2026-04-10).
 //
 // Exposes the BSP session state machine from bsp_ffi.zig via three protocols:
 //   REST        port 9025  HTTP/1.1, JSON responses

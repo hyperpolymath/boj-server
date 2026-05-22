@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: PMPL-1.0-or-later
+# SPDX-License-Identifier: MPL-2.0
 #
 # Fly.io-specific build context exclusions for Containerfile.fly
 # Seed builds only need: ffi/zig/ (Stage 1), elixir/ (Stage 2), cartridges/*/cartridge.json (Stage 3)

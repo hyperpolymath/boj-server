@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: PMPL-1.0-or-later
+# SPDX-License-Identifier: MPL-2.0
 # Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
 #
 # META.a2ml — Project meta-level information
@@ -11,14 +11,14 @@ last-updated = "2026-04-25"
 [project-info]
 type = "service"
 languages = ["idris2", "zig", "elixir", "javascript", "scheme", "nickel"]
-# v (V-lang) removed: banned estate-wide 2026-04-10. Adapter layer migrated to Zig.
+# v (zig) removed: banned estate-wide 2026-04-10. Adapter layer migrated to Zig.
 # elixir: REST server (Plug/Cowboy on port 7700). javascript: Deno mod.js cartridges.
-license = "PMPL-1.0-or-later"
+license = "MPL-2.0"
 author = "Jonathan D.A. Jewell (hyperpolymath)"
 
 [architecture-decisions]
 decisions = [
-  { id = "ADR-001", title = "Three-layer stack: Idris2 ABI + Zig FFI + Zig Adapter (V-lang retired 2026-04-10)", status = "accepted", date = "2026-03-02" },
+  { id = "ADR-001", title = "Three-layer stack: Idris2 ABI + Zig FFI + Zig Adapter (zig retired 2026-04-10)", status = "accepted", date = "2026-03-02" },
   { id = "ADR-002", title = "2D matrix: protocol types (cols) x capability domains (rows)", status = "accepted", date = "2026-03-02" },
   { id = "ADR-003", title = "Cartridge metaphor — swappable, verified capability modules", status = "accepted", date = "2026-03-02" },
   { id = "ADR-004", title = "IsUnbreakable proof type — only Ready cartridges can be mounted", status = "accepted", date = "2026-03-02" },
@@ -27,7 +27,7 @@ decisions = [
   { id = "ADR-007", title = "Order-ticket protocol — AI reads menu, writes order, BoJ mounts cartridges", status = "accepted", date = "2026-03-02" },
   { id = "ADR-008", title = "Zero believe_me policy — all Idris2 code must be total and sound", status = "accepted", date = "2026-03-02" },
   { id = "ADR-009", title = "Align BoJ with unified-zig-api stack (future work)", status = "accepted", date = "2026-04-17" },
-  { id = "ADR-010", title = "Elixir REST server (Plug/Cowboy) replaces V-lang adapter; dual dispatch: boj-invoke CLI for FFI cartridges, JsWorkerPool for JS cartridges", status = "accepted", date = "2026-04-20" },
+  { id = "ADR-010", title = "Elixir REST server (Plug/Cowboy) replaces zig adapter; dual dispatch: boj-invoke CLI for FFI cartridges, JsWorkerPool for JS cartridges", status = "accepted", date = "2026-04-20" },
   { id = "ADR-011", title = "Persistent Deno worker pool (JsWorkerPool) over fork-per-call for JS dispatch — consistent-hash routing, pre-warmed workers", status = "accepted", date = "2026-04-25" },
   { id = "ADR-012", title = "http-capability-gateway sidecar in catalog mode (BOJ_CARTRIDGES_ROOT) replaces static gateway-policy.yaml", status = "accepted", date = "2026-04-25" },
   { id = "ADR-013", title = "Seed node deployment on fly.io — lean build (boj-invoke only, no cartridge .so); seed nodes serve JS path for all cartridges", status = "accepted", date = "2026-04-25" },
@@ -66,7 +66,7 @@ drift-risk-example = "single exception broadening into policy violation (e.g. Re
 effects-evidence = "benchmark execution/results and maintainer status dialogue/review"
 
 [design-rationale]
-three-layer-stack = "Idris2 proves correctness (ABI), Zig executes at zero cost (FFI), Elixir+Deno serve the HTTP surface (REST server + JS worker pool — V-lang adapter retired 2026-04-10). Each layer is independently verifiable. Long-term target: adapter tier consumes libzig_api from developer-ecosystem/zig-api/."
+three-layer-stack = "Idris2 proves correctness (ABI), Zig executes at zero cost (FFI), Elixir+Deno serve the HTTP surface (REST server + JS worker pool — zig adapter retired 2026-04-10). Each layer is independently verifiable. Long-term target: adapter tier consumes libzig_api from developer-ecosystem/zig-api/."
 seed-node-lean-build = "fly.io Depot builder limits build time to ~10 min. Compiling 111 cartridge .so files takes ~50 min. ADR-013: seed nodes build only boj-invoke (~3 min Stage 1) and serve all 111 cartridges via the JS path (mod.js). A separate full-image build triggers dedicated .so compilation for nodes that need FFI invocation."
 trust-level-design = "HTTP invoke auth is enforced via X-Trust-Level header (public/authenticated/internal). Loopback callers bypass the check. External callers invoking keyed cartridges must supply X-Trust-Level: authenticated or internal. This is Phase 9 partial — credential forwarding Option C (RGTV broker) is future work."
 matrix-model = "Every cell in the (Protocol x Domain) matrix is a cartridge. Protocols define HOW you talk to a server; domains define WHAT the server does. This separates concerns and enables independent development."

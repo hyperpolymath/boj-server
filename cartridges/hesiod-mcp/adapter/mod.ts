@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: PMPL-1.0-or-later
+// SPDX-License-Identifier: MPL-2.0
 // Hesiod DNS Cartridge — MCP Server adapter for DNS lookups
 
 import { Server } from "https://esm.sh/@modelcontextprotocol/sdk/server/index.js";

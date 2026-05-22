@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: PMPL-1.0-or-later
+# SPDX-License-Identifier: MPL-2.0
 # Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
 #
 # OpenAPI 3.1.0 specification for the Bundle of Joy (BoJ) Server REST API.
@@ -19,7 +19,7 @@ info:
     email: j.d.a.jewell@open.ac.uk
     url: https://github.com/hyperpolymath/boj-server
   license:
-    name: PMPL-1.0-or-later
+    name: MPL-2.0
     url: https://github.com/hyperpolymath/boj-server/blob/main/LICENSE
 
 servers:

@@ -1,4 +1,4 @@
-<!-- SPDX-License-Identifier: PMPL-1.0-or-later -->
+<!-- SPDX-License-Identifier: MPL-2.0 -->
 <!-- Draft: arXiv preprint, cs.SE (primary), cs.PL (secondary) -->
 <!-- Target venue: ICSE 2027 SEIP track or ASE 2027 -->
 
@@ -95,7 +95,7 @@ We close this gap by introducing a three-layer architecture:
 2. **Zig FFI layer**: implements the C-ABI runtime that enforces the `IsUnbreakable`
    invariant at the native execution boundary, with thread safety via
    `std.Thread.Mutex`.
-3. **V-lang adapter layer**: exposes the verified cartridges over REST, gRPC, and
+3. **zig adapter layer**: exposes the verified cartridges over REST, gRPC, and
    GraphQL endpoints, plus MCP stdio transport.
 
 The key contribution is the *safety gate*: the Zig layer refuses to mount any cartridge
@@ -244,7 +244,7 @@ Each cartridge is implemented as a three-layer vertical slice:
           | dlopen / direct link
           v
   +-----------------+
-  |  V-lang Adapter |  Network exposure
+  |  zig Adapter |  Network exposure
   |  (x_adapter.v)  |  REST + gRPC + GraphQL + MCP stdio
   +-----------------+
 ```
@@ -261,7 +261,7 @@ and released via `defer`. The layer enforces the `IsUnbreakable` invariant at mo
 time: `boj_catalogue_mount` returns `-1` if the cartridge's status integer is not `1`
 (Ready).
 
-The **V-lang adapter layer** exposes cartridges over network protocols. A single
+The **zig adapter layer** exposes cartridges over network protocols. A single
 adapter binary serves REST on port 7700, gRPC on port 7701, and GraphQL on port 7702.
 MCP transport is available via stdio for direct agent integration.
 
@@ -484,12 +484,12 @@ instance would have served the same capability surface in approximately 100 MB.
 |----------|-------------|------|
 | Zig | 50 | FFI execution, thread safety, native runtime |
 | Idris 2 | 26 | ABI specification, proofs, type-level safety |
-| V-lang | 19 | Network adapter (REST, gRPC, GraphQL) |
+| zig | 19 | Network adapter (REST, gRPC, GraphQL) |
 | **Total** | **95** | |
 
 The codebase contains zero Python, JavaScript, Go, or Rust. Each language is used for
 what it does best: Idris 2 for proofs and type-level reasoning, Zig for
-zero-overhead native execution with C ABI compatibility, and V-lang for ergonomic
+zero-overhead native execution with C ABI compatibility, and zig for ergonomic
 network server implementation with built-in HTTP and JSON support.
 
 ### 5.5 Comparison with the MCP Ecosystem
@@ -639,7 +639,7 @@ binary integrity to community trust, enabling a volunteer hosting model analogou
 Tor or IPFS but with stronger provenance guarantees.
 
 We make the BoJ server available as open-source software under the Palimpsest License
-(PMPL-1.0-or-later) at `https://github.com/hyperpolymath/boj-server`.
+(MPL-2.0) at `https://github.com/hyperpolymath/boj-server`.
 
 ---
 
@@ -733,7 +733,7 @@ https://github.com/hyperpolymath/panic-attacker
 Build requirements:
 - Zig >= 0.15.2
 - Idris 2 (any recent version with QTT support)
-- V-lang >= 0.5.0
+- zig >= 0.5.0
 
 ```sh
 git clone https://github.com/hyperpolymath/boj-server

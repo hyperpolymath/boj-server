@@ -1,9 +1,9 @@
--- SPDX-License-Identifier: PMPL-1.0-or-later
+-- SPDX-License-Identifier: MPL-2.0
 package codeseekerMcp
 
 authors    = "Jonathan D.A. Jewell"
 version    = 0.1.0
-license    = "PMPL-1.0-or-later"
+license    = "MPL-2.0"
 brief      = "CodeSeeker MCP cartridge — hybrid code search and knowledge graph traversal with index state machine safety"
 
 sourcedir  = "."

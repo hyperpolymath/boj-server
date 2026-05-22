@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: PMPL-1.0-or-later
+# SPDX-License-Identifier: MPL-2.0
 # BoJ Server Intentfile (Lustfile)
 # Defines the intentions and invariants for AI agents accessing the repository.
 # AI agents must comply with these intentions when interacting with the repo.
@@ -12,7 +12,7 @@ ai_agent_invariants:
     must: true
 
   - name: "Maintain Unbreakable Stack"
-    description: "AI agents must not modify the Unbreakable Stack (Idris2 ABI, Zig FFI, V-lang Triple Adapter, A2ML Manifests) unless explicitly approved by maintainers."
+    description: "AI agents must not modify the Unbreakable Stack (Idris2 ABI, Zig FFI, zig Triple Adapter, A2ML Manifests) unless explicitly approved by maintainers."
     scope: ["read", "write"]
     must: true
 

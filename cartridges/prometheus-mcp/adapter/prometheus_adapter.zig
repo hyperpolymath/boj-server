@@ -1,9 +1,9 @@
-// SPDX-License-Identifier: PMPL-1.0-or-later
+// SPDX-License-Identifier: MPL-2.0
 // Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
 //
 // prometheus-mcp/adapter/prometheus_adapter.zig -- Unified three-protocol adapter.
 //
-// Replaces the banned prometheus_adapter.v (V-lang, removed 2026-04-12).
+// Replaces the banned prometheus_adapter.v (zig, removed 2026-04-12).
 //
 // Bridges the Zig FFI (prometheus_mcp_ffi.zig) to three network protocols:
 //   REST        :9082  POST /tools/<tool>

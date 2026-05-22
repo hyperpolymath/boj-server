@@ -1,8 +1,8 @@
-// SPDX-License-Identifier: PMPL-1.0-or-later
+// SPDX-License-Identifier: MPL-2.0
 // Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
 //
 // matrix-mcp/adapter/matrix_mcp_adapter.zig -- Unified three-protocol adapter.
-// Replaces banned matrix_mcp_adapter.v (V-lang, removed 2026-04-12).
+// Replaces banned matrix_mcp_adapter.v (zig, removed 2026-04-12).
 // REST:9193 gRPC:9194 GraphQL:9195
 // Tools: matrix_authenticate, matrix_send_message, matrix_list_rooms, matrix_get_messages...
 

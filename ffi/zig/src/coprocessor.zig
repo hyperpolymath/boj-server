@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: PMPL-1.0-or-later
+// SPDX-License-Identifier: MPL-2.0
 // Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
 //
 // BoJ Coprocessor Dispatch FFI — Axiom.jl-style GPU/TPU/FPGA offload.
@@ -16,7 +16,7 @@
 //   - Resource-aware scheduling (integrates with Guardian module)
 //   - Graceful CPU fallback when no accelerator is available
 //   - Dispatch latency tracking for performance monitoring
-//   - C-ABI exports for V-lang adapter integration
+//   - C-ABI exports for zig adapter integration
 
 const std = @import("std");
 

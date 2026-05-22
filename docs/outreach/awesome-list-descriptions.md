@@ -1,4 +1,4 @@
-<!-- SPDX-License-Identifier: PMPL-1.0-or-later -->
+<!-- SPDX-License-Identifier: MPL-2.0 -->
 <!-- Pre-written descriptions for awesome list submissions -->
 <!-- Last updated: 2026-03-24 -->
 
@@ -19,14 +19,14 @@ Repository: https://github.com/punkpeye/awesome-mcp-servers (or similar)
 Unified capability catalogue exposing 53 cartridges (database, container,
 git, secrets, queues, IaC, observe, SSG, proof, fleet, nesy, agent, cloud,
 k8s, lsp, dap, bsp, feedback) through a single MCP stdio server. Formally
-verified with Idris2 dependent type proofs. Built with Zig + V-lang, zero
+verified with Idris2 dependent type proofs. Built with Zig + zig, zero
 Python/JS runtime. Community-hosted via Umoja federation with QUIC gossip
 and hash attestation.
 
 - **Repository**: [github.com/hyperpolymath/boj-server](https://github.com/hyperpolymath/boj-server)
 - **MCP setup**: `boj-server --mcp` (see [docs/GETTING-STARTED.md](https://github.com/hyperpolymath/boj-server/blob/main/docs/GETTING-STARTED.md))
 - **Protocol**: JSON-RPC 2.0 over stdio
-- **License**: PMPL-1.0-or-later
+- **License**: MPL-2.0
 ```
 
 ---
@@ -36,7 +36,7 @@ and hash attestation.
 Repository: https://github.com/awesome-selfhosted/awesome-selfhosted
 
 ```markdown
-- [BoJ Server](https://github.com/hyperpolymath/boj-server) - Federated developer tool catalogue with 18 capability cartridges, QUIC gossip protocol, and formally verified plugin architecture. `PMPL-1.0-or-later` `Zig` `Idris2` `V-lang`
+- [BoJ Server](https://github.com/hyperpolymath/boj-server) - Federated developer tool catalogue with 18 capability cartridges, QUIC gossip protocol, and formally verified plugin architecture. `MPL-2.0` `Zig` `Idris2` `zig`
 ```
 
 Category: `Software Development - IDE & Tools`
@@ -54,7 +54,7 @@ A unified MCP server exposing 18 capability domains (database, container,
 git, secrets, queues, IaC, observability, SSG, proofs, fleet, neurosymbolic,
 agent, cloud, Kubernetes, LSP, DAP, BSP, feedback) as MCP tools through a
 single stdio process. Cartridge interfaces are formally verified with Idris2
-dependent types. Built with Zig and V-lang.
+dependent types. Built with Zig and zig.
 
 | | |
 |---|---|
@@ -71,7 +71,7 @@ dependent types. Built with Zig and V-lang.
 Repository: https://github.com/C-BJ/awesome-zig (or similar)
 
 ```markdown
-- [boj-server](https://github.com/hyperpolymath/boj-server) - Federated developer tool catalogue with 18 capability cartridges. Zig handles the FFI layer (C-ABI exports, thread-safe mutexes, shared library compilation). Paired with Idris2 for formal verification and V-lang for network adapters. 219 Zig tests + 32 seam checks, zero runtime dependencies.
+- [boj-server](https://github.com/hyperpolymath/boj-server) - Federated developer tool catalogue with 18 capability cartridges. Zig handles the FFI layer (C-ABI exports, thread-safe mutexes, shared library compilation). Paired with Idris2 for formal verification and zig for network adapters. 219 Zig tests + 32 seam checks, zero runtime dependencies.
 ```
 
 ---
@@ -81,7 +81,7 @@ Repository: https://github.com/C-BJ/awesome-zig (or similar)
 Repository: https://github.com/joaomilho/awesome-idris (or similar)
 
 ```markdown
-- [boj-server](https://github.com/hyperpolymath/boj-server) - Developer tool catalogue using Idris2 dependent types for ABI definitions. The `IsUnbreakable` proof type gates cartridge activation at compile time. 18 cartridge ABI modules with `%default total`, zero `believe_me`. Zig FFI, V-lang adapter.
+- [boj-server](https://github.com/hyperpolymath/boj-server) - Developer tool catalogue using Idris2 dependent types for ABI definitions. The `IsUnbreakable` proof type gates cartridge activation at compile time. 18 cartridge ABI modules with `%default total`, zero `believe_me`. Zig FFI, zig adapter.
 ```
 
 ---

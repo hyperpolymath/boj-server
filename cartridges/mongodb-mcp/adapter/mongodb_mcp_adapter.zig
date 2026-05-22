@@ -1,8 +1,8 @@
-// SPDX-License-Identifier: PMPL-1.0-or-later
+// SPDX-License-Identifier: MPL-2.0
 // Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
 //
 // mongodb-mcp/adapter/mongodb_mcp_adapter.zig -- Unified three-protocol adapter.
-// Replaces banned mongodb_mcp_adapter.v (V-lang, removed 2026-04-12).
+// Replaces banned mongodb_mcp_adapter.v (zig, removed 2026-04-12).
 // REST:9160 gRPC:9161 GraphQL:9162
 // Tools: mongo_connect, mongo_find, mongo_insert, mongo_update...
 

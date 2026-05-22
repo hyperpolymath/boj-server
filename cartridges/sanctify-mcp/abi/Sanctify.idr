@@ -1,4 +1,4 @@
--- SPDX-License-Identifier: PMPL-1.0-or-later
+-- SPDX-License-Identifier: MPL-2.0
 -- Sanctify Cartridge ABI — PHP lint and deviation detection interface
 
 module ABI.Sanctify

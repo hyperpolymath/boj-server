@@ -1,4 +1,4 @@
--- SPDX-License-Identifier: PMPL-1.0-or-later
+-- SPDX-License-Identifier: MPL-2.0
 -- Academic Workflow Cartridge ABI — Citations, Zotero, paper review
 
 module AcademicWorkflow

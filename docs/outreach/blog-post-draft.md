@@ -1,4 +1,4 @@
-<!-- SPDX-License-Identifier: PMPL-1.0-or-later -->
+<!-- SPDX-License-Identifier: MPL-2.0 -->
 <!-- Blog post draft for dev.to / Hashnode -->
 <!-- Last updated: 2026-03-24 -->
 
@@ -191,7 +191,7 @@ What I'm looking for:
 - **Build on it** -- the extensibility system lets you add backend variants without touching core code. See `docs/EXTENSIBILITY.md`
 - **Tell me what breaks** -- feedback-mcp is literally a cartridge that collects feedback. BoJ dogfoods itself
 
-This is a community project. I make nothing from it. The license (PMPL-1.0-or-later) ensures the code stays open and provenance-tracked.
+This is a community project. I make nothing from it. The license (MPL-2.0) ensures the code stays open and provenance-tracked.
 
 I built this to learn from it, and I learn most from other people using it.
 

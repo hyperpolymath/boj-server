@@ -1,4 +1,4 @@
--- SPDX-License-Identifier: PMPL-1.0-or-later
+-- SPDX-License-Identifier: MPL-2.0
 -- Ephapax Cartridge ABI — Proof-compiler query interface
 
 module ABI.Ephapax

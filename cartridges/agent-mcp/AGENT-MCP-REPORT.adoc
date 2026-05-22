@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: PMPL-1.0-or-later
+// SPDX-License-Identifier: MPL-2.0
 // Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
 = Agent-MCP Cartridge — Technical Report
 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
@@ -27,7 +27,7 @@ The cartridge is accessible via *9 protocol transports*: REST, gRPC, GraphQL, We
         │  32 concurrent sessions, mutex-protected
         │  30+ tests, C-ABI exports
         ▼
-   V-lang Adapters (9 protocol servers)
+   zig Adapters (9 protocol servers)
         │  REST, gRPC, GraphQL, WebSocket, JSON-RPC,
         │  MQTT, tRPC, SOAP, Cap'n Proto
         ▼
@@ -38,7 +38,7 @@ The cartridge is accessible via *9 protocol transports*: REST, gRPC, GraphQL, We
 
 * The *Idris2 layer* makes invalid state transitions a compile-time error. There is no `ValidOODA Observe Act` constructor — the type system physically prevents it.
 * The *Zig layer* manages 32 concurrent agent sessions with mutex-protected state, ensuring thread safety under load.
-* The *V-lang layer* exposes session management through every protocol pattern, from request/response to pub/sub to binary RPC.
+* The *zig layer* exposes session management through every protocol pattern, from request/response to pub/sub to binary RPC.
 
 == Core Logic
 

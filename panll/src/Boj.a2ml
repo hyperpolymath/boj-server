@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: PMPL-1.0-or-later
+# SPDX-License-Identifier: MPL-2.0
 # Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
 #
 # Clade Definition: BoJ (Bundle of Joy)
@@ -15,7 +15,7 @@ kind = "bridge"
 version = "1.0.0"
 
 [clade-description]
-summary = "Unified cartridge runtime bridging all protocol domains (MCP, LSP, DAP, BSP, etc.) through Idris2 ABI -> Zig FFI -> V-lang triple adapter"
+summary = "Unified cartridge runtime bridging all protocol domains (MCP, LSP, DAP, BSP, etc.) through Idris2 ABI -> Zig FFI -> zig triple adapter"
 long = """
 The Bundle of Joy server is the protocol backbone of the hyperpolymath ecosystem.
 It replaces polystack with a single cartridge-based architecture where each domain
@@ -53,7 +53,7 @@ default-endpoint = "http://localhost:7700/api/v1"
 protocols = ["MCP", "REST", "gRPC", "GraphQL"]
 
 [clade-architecture]
-layers = ["Idris2 ABI (dependent types)", "Zig FFI (C-compatible)", "V-lang Triple Adapter (REST+gRPC+GraphQL)"]
+layers = ["Idris2 ABI (dependent types)", "Zig FFI (C-compatible)", "zig Triple Adapter (REST+gRPC+GraphQL)"]
 cartridge-count = 17
 federation = "Umoja gossip protocol"
 

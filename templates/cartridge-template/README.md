@@ -86,7 +86,7 @@ The `cartridge.json` file contains metadata about your cartridge. Here's an exam
 The `ffi/cartridge_ffi.zig` file contains the FFI implementation. Here's a basic template:
 
 ```zig
-// SPDX-License-Identifier: PMPL-1.0-or-later
+// SPDX-License-Identifier: MPL-2.0
 // Copyright (c) 2026 Your Name <your.email@example.com>
 
 const std = @import("std");
@@ -171,7 +171,7 @@ test "invoke with too-small buffer returns -3 and sets required length" {
 The `ffi/build.zig` file contains the build configuration. Here's a basic template:
 
 ```zig
-// SPDX-License-Identifier: PMPL-1.0-or-later
+// SPDX-License-Identifier: MPL-2.0
 
 const std = @import("std");
 
@@ -249,4 +249,4 @@ cd ffi && zig build
 
 ## License
 
-This cartridge is licensed under the PMPL-1.0-or-later license. See the LICENSE file for more information.
+This cartridge is licensed under the MPL-2.0 license. See the LICENSE file for more information.

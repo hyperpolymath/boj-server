@@ -1,9 +1,9 @@
-// SPDX-License-Identifier: PMPL-1.0-or-later
+// SPDX-License-Identifier: MPL-2.0
 // Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
 //
 // panic-attack-mcp/adapter/panic_attack_adapter.zig -- Unified three-protocol adapter.
 //
-// Replaces the banned panic_attack_adapter.v (V-lang, removed 2026-04-12).
+// Replaces the banned panic_attack_adapter.v (zig, removed 2026-04-12).
 //
 // REST :9106  gRPC-compat :9107  GraphQL :9108
 // panic-attacker static analysis. Scans codebases for dangerous patterns, banned constructs, proof dri

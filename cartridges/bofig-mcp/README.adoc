@@ -2,9 +2,9 @@
 :toc: preamble
 :author: Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
 :date: 2026-04-25
-:spdx: PMPL-1.0-or-later
+:spdx: MPL-2.0
 
-// SPDX-License-Identifier: PMPL-1.0-or-later
+// SPDX-License-Identifier: MPL-2.0
 
 Evidence graph query interface for investigative journalism workflows — search evidence, find connections, analyze relationships in complex networks.
 
@@ -77,4 +77,4 @@ Loopback proof pinning: `IsLoopback 5178` at compile-time.
 
 == License
 
-PMPL-1.0-or-later (MPL-2.0 legal fallback).
+MPL-2.0 (MPL-2.0 legal fallback).

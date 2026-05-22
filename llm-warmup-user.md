@@ -3,7 +3,7 @@
 ## What This Is
 
 Bundle of Joy (BoJ) Server is a cartridge-based MCP protocol gateway with
-formally verified interfaces. License: PMPL-1.0-or-later. Author: Jonathan D.A. Jewell.
+formally verified interfaces. License: MPL-2.0. Author: Jonathan D.A. Jewell.
 
 ## Architecture (30-second version)
 
@@ -67,7 +67,7 @@ and many more.
 - IsUnbreakable: only Ready cartridges pass the proof
 - Chainguard base images, Containerfile not Dockerfile, Podman not Docker
 - Cultural terms (Teranga, Umoja, Ayo) are permanent and sacred
-- V-lang is BANNED (removed 2026-04-12)
+- zig is BANNED (removed 2026-04-12)
 
 ## Seed Nodes (Umoja Federation)
 

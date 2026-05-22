@@ -720,7 +720,7 @@
       "reason": "Hook bypass"
     }
   ],
-  "spdx": "PMPL-1.0-or-later",
+  "spdx": "MPL-2.0",
   "tier_4_forbidden_for_apprentice": [
     {
       "description": "Force-push (raw or wrapped).",

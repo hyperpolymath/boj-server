@@ -1,8 +1,8 @@
-// SPDX-License-Identifier: PMPL-1.0-or-later
+// SPDX-License-Identifier: MPL-2.0
 // Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
 //
 // turso-mcp/adapter/turso_mcp_adapter.zig -- Unified three-protocol adapter.
-// Replaces banned turso_mcp_adapter.v (V-lang, removed 2026-04-12).
+// Replaces banned turso_mcp_adapter.v (zig, removed 2026-04-12).
 // REST:9178 gRPC:9179 GraphQL:9180
 // Tools: turso_connect, turso_query, turso_execute, turso_batch...
 

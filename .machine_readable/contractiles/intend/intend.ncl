@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: PMPL-1.0-or-later
+# SPDX-License-Identifier: MPL-2.0
 # intend.ncl — purpose/scope verification runner for boj-server
 #
 # Pairs with: Intentfile.a2ml (same directory)

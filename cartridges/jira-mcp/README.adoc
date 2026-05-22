@@ -1,6 +1,6 @@
 = jira-mcp
 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
-:spdx: PMPL-1.0-or-later
+:spdx: MPL-2.0
 :tier: Ayo
 :domain: Comms
 :protocols: MCP, REST
@@ -31,7 +31,7 @@ type-safe, rate-limit-aware interface using the REST API v3 at
   client stubs, configurable instance URL, and Basic auth header
 
 | Adapter
-| V-lang
+| zig
 | REST bridge exposing all 16 Jira actions to the BoJ unified adapter
 |===
 

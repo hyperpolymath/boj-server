@@ -2,9 +2,9 @@
 :toc: preamble
 :author: Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
 :date: 2026-04-25
-:spdx: PMPL-1.0-or-later
+:spdx: MPL-2.0
 
-// SPDX-License-Identifier: PMPL-1.0-or-later
+// SPDX-License-Identifier: MPL-2.0
 
 Proof-compiler query interface for formal verification workflows — analyze proofs, validate theorems, type-check expressions.
 
@@ -71,4 +71,4 @@ This cartridge serves as primary MCP interface to ephapax proof infrastructure, 
 
 == License
 
-PMPL-1.0-or-later (MPL-2.0 legal fallback).
+MPL-2.0 (MPL-2.0 legal fallback).

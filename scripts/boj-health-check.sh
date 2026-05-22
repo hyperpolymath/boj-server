@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# SPDX-License-Identifier: PMPL-1.0-or-later
+# SPDX-License-Identifier: MPL-2.0
 # boj-health-check.sh — Post-start health check for BoJ server
 # Waits up to 10 seconds for the /health endpoint to return HTTP 200.
 # Used as ExecStartPost in the systemd service.

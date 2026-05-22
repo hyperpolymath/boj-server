@@ -1,5 +1,5 @@
 {
-  "spdx_license_identifier": "PMPL-1.0-or-later",
+  "spdx_license_identifier": "MPL-2.0",
   "schema_version": "v1",
   "name_for_human": "BoJ Server",
   "name_for_model": "boj_server",

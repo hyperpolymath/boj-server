@@ -1,8 +1,8 @@
-// SPDX-License-Identifier: PMPL-1.0-or-later
+// SPDX-License-Identifier: MPL-2.0
 // OPSM-MCP Cartridge — Zig FFI implementation.
 //
 // Provides C-compatible functions for the OPSM registry state machine.
-// The V-lang adapter calls these to manage registry connections, execute
+// The zig adapter calls these to manage registry connections, execute
 // searches, and resolve dependencies.
 //
 // State machine: Disconnected -> Connected -> Querying -> Idle

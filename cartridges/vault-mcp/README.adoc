@@ -1,7 +1,7 @@
-// SPDX-License-Identifier: PMPL-1.0-or-later
+// SPDX-License-Identifier: MPL-2.0
 = vault-mcp
 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
-:spdx: PMPL-1.0-or-later
+:spdx: MPL-2.0
 :tier: Ayo
 :domain: Secrets
 :protocols: MCP, REST
@@ -96,7 +96,7 @@ The vault supports 12 identity types via the Ada CLI:
 | C-compatible implementation with thread-safe vault proxy; calls `svalinn_cli` via subprocess
 
 | Adapter
-| V-lang
+| zig
 | REST bridge to BoJ unified adapter protocol
 |===
 

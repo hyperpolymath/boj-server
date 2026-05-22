@@ -5,7 +5,7 @@
   "description": "Cross-domain LSP orchestrator — routes textDocument/* requests across all 12 poly-*-lsp servers via a single connection",
   "version": "0.1.0",
   "publisher": "hyperpolymath",
-  "license": "PMPL-1.0-or-later",
+  "license": "MPL-2.0",
   "repository": {
     "type": "git",
     "url": "https://github.com/hyperpolymath/boj-server"

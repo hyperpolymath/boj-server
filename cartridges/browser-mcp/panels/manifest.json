@@ -4,7 +4,7 @@
   "version": "0.1.0",
   "title": "Browser Automation",
   "description": "Firefox browser automation via Marionette protocol — monitor connection state, tabs, and page info.",
-  "license": "PMPL-1.0-or-later",
+  "license": "MPL-2.0",
   "author": "Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>",
   "data_sources": [
     {

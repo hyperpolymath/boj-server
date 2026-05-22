@@ -1,11 +1,11 @@
-// SPDX-License-Identifier: PMPL-1.0-or-later
+// SPDX-License-Identifier: MPL-2.0
 // Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
 //
 // dns-shield-mcp/adapter/dns_shield_adapter.zig
 //
 // Three-protocol BoJ adapter: REST (port 9226), gRPC-compat (port 9227),
 // GraphQL (port 9228).
-// Replaces the banned V-lang adapter (dns_shield_adapter.v).
+// Replaces the banned zig adapter (dns_shield_adapter.v).
 
 const std = @import("std");
 const ffi = @import("dns_shield_ffi");

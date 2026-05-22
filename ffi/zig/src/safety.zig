@@ -1,10 +1,10 @@
-// SPDX-License-Identifier: PMPL-1.0-or-later
+// SPDX-License-Identifier: MPL-2.0
 // Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
 //
 // BoJ Safety Module — Formally verified input validation via proven library patterns.
 //
 // This module provides C-ABI-exported functions for safe string operations:
-// - Shell argument sanitization (replaces V-lang sanitize_shell_arg)
+// - Shell argument sanitization (replaces zig sanitize_shell_arg)
 // - SQL parameter escaping (prevents injection)
 // - URL validation (prevents SSRF/open redirect)
 // - Path normalization (prevents traversal)
@@ -54,7 +54,7 @@ const MAX_SHELL_ARG_LEN: usize = 4096;
 /// This is a STRICT allowlist: only [a-zA-Z0-9] and [-_./:@+=,~] are permitted.
 /// No quotes, backticks, semicolons, pipes, redirections, dollar signs, or
 /// other shell metacharacters. This is intentionally more restrictive than
-/// the V-lang sanitize_shell_arg (which also allowed spaces).
+/// the zig sanitize_shell_arg (which also allowed spaces).
 ///
 /// PROVEN PROPERTY: If this returns safe, the string cannot trigger command
 /// injection in any POSIX shell when used as a single unquoted argument.

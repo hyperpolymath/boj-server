@@ -1,9 +1,9 @@
-// SPDX-License-Identifier: PMPL-1.0-or-later
+// SPDX-License-Identifier: MPL-2.0
 // Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
 //
 // proof-mcp/adapter/proof_adapter.zig -- Unified three-protocol adapter.
 //
-// Replaces the banned proof_adapter.v (V-lang, removed 2026-04-12).
+// Replaces the banned proof_adapter.v (zig, removed 2026-04-12).
 //
 // REST :9121  gRPC-compat :9122  GraphQL :9123
 // Proof verification lifecycle manager. Manages sessions across Lean, Coq, Agda, Isabelle, Idris2, Z3,

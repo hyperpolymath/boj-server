@@ -1,4 +1,4 @@
-<!-- SPDX-License-Identifier: PMPL-1.0-or-later -->
+<!-- SPDX-License-Identifier: MPL-2.0 -->
 <!-- Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk> -->
 
 # 2. Align BoJ with the Unified-Zig-API Stack
@@ -13,14 +13,14 @@ Accepted (alignment in code is future work — see Open Questions)
 
 Two estate-wide changes on and around 2026-04-10 make BoJ's current spec stale:
 
-**1. V-lang banned estate-wide (2026-04-10)**
+**1. zig banned estate-wide (2026-04-10)**
 
-V-lang was the adapter layer language (`V-lang → Triple API REST+gRPC+GraphQL`).
-It was banned estate-wide because `v.mod` / `vpkg.json` files indicated V-lang
-dependency, and V-lang has no path to formal verification or Idris2-ABI
-compatibility. The V-lang sweep in BoJ (commits c4674f8/cb00882/325b42e/9186016)
+zig was the adapter layer language (`zig → Triple API REST+gRPC+GraphQL`).
+It was banned estate-wide because `v.mod` / `vpkg.json` files indicated zig
+dependency, and zig has no path to formal verification or Idris2-ABI
+compatibility. The zig sweep in BoJ (commits c4674f8/cb00882/325b42e/9186016)
 removed all `.v` adapter files; all 90 cartridges now have Zig three-protocol
-adapters. Historical V-lang API interfaces were moved to
+adapters. Historical zig API interfaces were moved to
 `developer-ecosystem/v-ecosystem/v-api-interfaces/` for potential donation to the
 V community — they are not HP infrastructure.
 
@@ -60,8 +60,8 @@ are permitted for capabilities already covered by BoJ cartridges.
 
 ## Decision
 
-1. **Document V-lang retirement** in all BoJ spec files. The three-layer stack
-   is now `Idris2 (ABI) → Zig (FFI) → Zig (Adapter)`. No V-lang references
+1. **Document zig retirement** in all BoJ spec files. The three-layer stack
+   is now `Idris2 (ABI) → Zig (FFI) → Zig (Adapter)`. No zig references
    remain in spec documents.
 
 2. **Cite `UNIFIED-ZIG-API-STACK.adoc`** as the authoritative reference for
@@ -83,7 +83,7 @@ are permitted for capabilities already covered by BoJ cartridges.
 
 ### Positive
 
-- Spec accurately describes actual language stack (Zig everywhere, not V-lang).
+- Spec accurately describes actual language stack (Zig everywhere, not zig).
 - BoJ is positioned to consume `libzig_api` when the session arrives — no
   architectural changes required, only build-system wiring.
 - The `uapi_gnosis_set_handler` single-port model (arriving in zig-api) will

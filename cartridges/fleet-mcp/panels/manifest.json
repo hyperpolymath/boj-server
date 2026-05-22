@@ -1,6 +1,6 @@
 {
   "$schema": "https://panll.dev/schemas/panel-manifest/v1.json",
-  "spdx": "PMPL-1.0-or-later",
+  "spdx": "MPL-2.0",
   "cartridge": "fleet-mcp",
   "domain": "Bot Fleet Management",
   "version": "0.1.0",

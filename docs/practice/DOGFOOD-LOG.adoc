@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: PMPL-1.0-or-later
+// SPDX-License-Identifier: MPL-2.0
 // Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
 = BoJ Server Dogfood Log
 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
@@ -83,13 +83,13 @@ Outcome::
   following the pattern established by `airtable-mcp/README.adoc` and
   `affinescript-mcp/README.adoc`. Each new README states overview,
   authentication (where applicable), tool table with descriptions,
-  architecture layer table (ABI/Idris2, FFI/Zig, Adapter/Zig — with V-lang
+  architecture layer table (ABI/Idris2, FFI/Zig, Adapter/Zig — with zig
   predecessors sidelined), build steps, and honest status line.
 * Cartridge fleet count confirmed at 99 standard + 1 non-standard
   (`model-router-mcp`), matching the 2026-04-12 V-sweep checkpoint in
   `MEMORY.md` under `project-status.md`.
 * Adapter audit confirmed all cartridge adapters are now Zig; historical
-  V-lang adapter files survive alongside as `SIDELINED-*.v.adoc`.
+  zig adapter files survive alongside as `SIDELINED-*.v.adoc`.
 * `READINESS.md` now exposes the promotion-path blockers per component
   (previously absent) and the six-target diversity criteria for B
   (previously unspecified).

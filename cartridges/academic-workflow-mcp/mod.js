@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: PMPL-1.0-or-later
+// SPDX-License-Identifier: MPL-2.0
 export const cartridge = {
   name: "academic-workflow-mcp",
   version: "1.0.0",

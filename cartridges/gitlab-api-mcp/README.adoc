@@ -1,6 +1,6 @@
 = gitlab-api-mcp
 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
-:spdx: PMPL-1.0-or-later
+:spdx: MPL-2.0
 :tier: Ayo
 :domain: Git
 :protocols: MCP, REST, GraphQL
@@ -86,7 +86,7 @@ This calls `POST /projects/:id/remote_mirrors` under the hood.
   Private-Token auth, rate-limit tracking, configurable instance URL.
 
 | Adapter
-| V-lang
+| zig
 | REST/GraphQL bridge mapping all 20 actions to BoJ adapter protocol.
 |===
 

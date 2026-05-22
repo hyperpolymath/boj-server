@@ -1,8 +1,8 @@
-// SPDX-License-Identifier: PMPL-1.0-or-later
+// SPDX-License-Identifier: MPL-2.0
 // Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
 //
 // LSP-MCP Cartridge — Unified Zig adapter.
-// Replaces the banned lsp_adapter.v (V-lang removed 2026-04-10).
+// Replaces the banned lsp_adapter.v (zig removed 2026-04-10).
 //
 // Exposes the LSP lifecycle state machine from lsp_ffi.zig via three protocols
 // on separate threads:

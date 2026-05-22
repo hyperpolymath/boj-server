@@ -1,9 +1,9 @@
--- SPDX-License-Identifier: PMPL-1.0-or-later
+-- SPDX-License-Identifier: MPL-2.0
 package queuesmcp
 
 authors    = "Jonathan D.A. Jewell"
 version    = 0.1.0
-license    = "PMPL-1.0-or-later"
+license    = "MPL-2.0"
 brief      = "Queues MCP cartridge — connection/subscription state machine with ack-before-next enforcement"
 
 sourcedir  = "."

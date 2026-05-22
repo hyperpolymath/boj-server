@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: PMPL-1.0-or-later
+// SPDX-License-Identifier: MPL-2.0
 // Fireflag Cartridge — Extension-to-MCP mapping MCP server
 
 import { Server } from "https://esm.sh/@modelcontextprotocol/sdk/server/index.js";

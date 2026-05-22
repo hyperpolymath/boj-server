@@ -1,6 +1,6 @@
 = github-api-mcp
 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
-:spdx: PMPL-1.0-or-later
+:spdx: MPL-2.0
 :tier: Ayo
 :domain: Git
 :protocols: MCP, REST, GraphQL
@@ -9,7 +9,7 @@ Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
 
 BoJ cartridge wrapping the GitHub REST and GraphQL APIs.
 Replaces the standalone `npx @modelcontextprotocol/server-github` MCP server
-with a formally verified, type-safe cartridge following the Idris2 ABI / Zig FFI / V-lang adapter architecture.
+with a formally verified, type-safe cartridge following the Idris2 ABI / Zig FFI / zig adapter architecture.
 
 == Supported Operations (20 actions)
 
@@ -78,7 +78,7 @@ Authenticated   --[Logout]-------->  Unauthenticated
 | C-compatible implementation with thread-safe session pool, HTTP stubs, rate-limit tracking
 
 | Adapter
-| V-lang
+| zig
 | REST/GraphQL bridge to BoJ unified adapter — typed endpoints for all 20 actions
 |===
 

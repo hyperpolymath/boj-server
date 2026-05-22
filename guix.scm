@@ -1,4 +1,4 @@
-;; SPDX-License-Identifier: PMPL-1.0-or-later
+;; SPDX-License-Identifier: MPL-2.0
 ;; Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
 ;;
 ;; Guix package definition for Bundle of Joy Server
@@ -55,5 +55,5 @@
   (description "Bundle of Joy Server provides a unified, formally verified catalogue
 of developer server capabilities. AI goes to ONE place instead of hunting across
 dozens of MCP/LSP/etc servers. Uses Idris2 for formal proofs (ABI), Zig for
-zero-overhead native execution (FFI), and V-lang for triple API adapters.")
+zero-overhead native execution (FFI), and zig for triple API adapters.")
   (license (list mpl2.0)))

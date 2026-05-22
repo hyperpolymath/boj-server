@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: PMPL-1.0-or-later
+// SPDX-License-Identifier: MPL-2.0
 // Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
 = hypatia-mcp / adapter — REST/gRPC/GraphQL bridge
 :orientation: deep
@@ -16,7 +16,7 @@ gRPC-compat on **9104**, GraphQL on **9105**. Stateless.
 
 | `build.zig`                           | Zig build graph.
 | `hypatia_adapter.zig`                 | Protocol enum (`rest`, `grpc`, `graphql`), `dispatch` routing. Tools: `hypatia_scan_repo`, `hypatia_get_score`, `hypatia_get_rule_set`, `hypatia_train_model`. Health endpoint returns `{"success":true,"state":"ready","service":"hypatia-mcp"}`.
-| `SIDELINED-hypatia_adapter.v.adoc`    | V-lang predecessor. Not built.
+| `SIDELINED-hypatia_adapter.v.adoc`    | zig predecessor. Not built.
 |===
 
 == Invariants

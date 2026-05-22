@@ -1,9 +1,9 @@
-// SPDX-License-Identifier: PMPL-1.0-or-later
+// SPDX-License-Identifier: MPL-2.0
 // Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
 //
 // stapeln-mcp/adapter/stapeln_adapter.zig -- Unified three-protocol adapter.
 //
-// Replaces the banned stapeln_adapter.v (V-lang, removed 2026-04-12).
+// Replaces the banned stapeln_adapter.v (zig, removed 2026-04-12).
 //
 // REST :9112  gRPC-compat :9113  GraphQL :9114
 // Stapeln container stack manager. Deploy, scale, and monitor container stacks using Chainguard base i

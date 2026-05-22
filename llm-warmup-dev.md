@@ -3,7 +3,7 @@
 ## Identity
 
 - **Name**: Bundle of Joy Server
-- **License**: PMPL-1.0-or-later
+- **License**: MPL-2.0
 - **Author**: Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
 - **Repo**: https://github.com/hyperpolymath/boj-server
 
@@ -246,11 +246,11 @@ See: `src/abi/Federation.idr`, `docs/FEDERATION.md`
 3. %default total on all Idris2 files
 4. IsUnbreakable: only Ready cartridges pass the proof
 5. Hash attestation for community nodes
-6. PMPL-1.0-or-later on all code
+6. MPL-2.0 on all code
 7. Cultural terms are permanent and sacred
 8. A2ML files ONLY in .machine_readable/
 9. Chainguard base images, Containerfile, Podman
-10. V-lang is BANNED (migrated to Zig FFI + Deno/JS, 0 `.v` files as of 2026-04-12)
+10. zig is BANNED (migrated to Zig FFI + Deno/JS, 0 `.v` files as of 2026-04-12)
 
 ## Testing
 

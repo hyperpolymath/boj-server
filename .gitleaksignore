@@ -1,5 +1,5 @@
 # .gitleaksignore
-# SPDX-License-Identifier: PMPL-1.0-or-later
+# SPDX-License-Identifier: MPL-2.0
 
 # Skip known test placeholders in Zig FFI tests
 cartridges/cloud-mcp/ffi/cloud_ffi.zig:generic-api-key:1068

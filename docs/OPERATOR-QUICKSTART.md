@@ -1,4 +1,4 @@
-<!-- SPDX-License-Identifier: PMPL-1.0-or-later -->
+<!-- SPDX-License-Identifier: MPL-2.0 -->
 # Operator Quickstart — Umoja Community Node
 
 Run a BoJ federation node and join the Umoja gossip network.

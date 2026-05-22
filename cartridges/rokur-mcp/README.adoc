@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: PMPL-1.0-or-later
+// SPDX-License-Identifier: MPL-2.0
 = rokur-mcp
 :author: Jonathan D.A. Jewell
 :email: j.d.a.jewell@open.ac.uk
@@ -50,7 +50,7 @@ Idris2 ABI (SafeGate.idr)
     ↓ state machine proofs
 Zig FFI (rokur_mcp_ffi.zig)
     ↓ curl → Rokur :9090
-V-lang Adapter (rokur_mcp_adapter.v)
+zig Adapter (rokur_mcp_adapter.v)
     ↓ REST bridge
 BoJ MCP SSE Transport
 ----

@@ -1,10 +1,10 @@
-# SPDX-License-Identifier: PMPL-1.0-or-later
+# SPDX-License-Identifier: MPL-2.0
 # Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
 #
 # BoJ Server — OpenAPI 3.1 Specification
 #
 # Describes the REST API surface of the BoJ cartridge server (port 7700).
-# The Zig adapter (replacing the V-lang adapter) implements these routes, backed
+# The Zig adapter (replacing the zig adapter) implements these routes, backed
 # by Idris2 ABI proofs and Zig FFI execution layers.
 
 openapi: 3.1.0
@@ -36,8 +36,8 @@ info:
     - **Shield** — security-sensitive cartridges (secrets, proof verification)
     - **Ayo** — community-contributed cartridges (require review before mounting)
   license:
-    name: PMPL-1.0-or-later
-    identifier: PMPL-1.0-or-later
+    name: MPL-2.0
+    identifier: MPL-2.0
   contact:
     name: Jonathan D.A. Jewell
     email: j.d.a.jewell@open.ac.uk

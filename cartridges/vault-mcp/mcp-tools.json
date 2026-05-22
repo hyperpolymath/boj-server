@@ -1,6 +1,6 @@
 {
   "$schema": "https://spec.modelcontextprotocol.io/2024-11-05/schema/tools",
-  "spdx": "PMPL-1.0-or-later",
+  "spdx": "MPL-2.0",
   "cartridge": "vault-mcp",
   "tools": [
     {

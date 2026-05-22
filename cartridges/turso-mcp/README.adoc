@@ -1,9 +1,9 @@
-// SPDX-License-Identifier: PMPL-1.0-or-later
+// SPDX-License-Identifier: MPL-2.0
 // Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
 
 = turso-mcp
 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
-:spdx: PMPL-1.0-or-later
+:spdx: MPL-2.0
 :tier: Ayo
 :domain: Database
 :protocols: MCP, REST
@@ -36,7 +36,7 @@ GetStats, ListLocations, ListOrganizations, TransferDatabase, GetUsage.
 | C-compatible implementation with thread-safe session pool
 
 | Adapter
-| V-lang
+| zig
 | REST bridge to BoJ unified adapter protocol
 |===
 

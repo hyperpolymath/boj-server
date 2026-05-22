@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: PMPL-1.0-or-later
+// SPDX-License-Identifier: MPL-2.0
 // Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
 = verisimdb-mcp / adapter — REST/gRPC/GraphQL bridge
 :orientation: deep
@@ -16,7 +16,7 @@ gRPC-compat on **9116**, GraphQL on **9117**. Stateless.
 
 | `build.zig`                            | Zig build graph.
 | `verisimdb_adapter.zig`                | Protocol dispatch. Tools: `verisimdb_store_octad`, `verisimdb_get_octad`, `verisimdb_detect_drift`, `verisimdb_query_audit`.
-| `SIDELINED-verisimdb_adapter.v.adoc`   | V-lang predecessor. Not built.
+| `SIDELINED-verisimdb_adapter.v.adoc`   | zig predecessor. Not built.
 |===
 
 == Invariants

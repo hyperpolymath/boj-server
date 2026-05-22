@@ -1,11 +1,11 @@
-// SPDX-License-Identifier: PMPL-1.0-or-later
+// SPDX-License-Identifier: MPL-2.0
 // Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
 //
 // neo4j-mcp/adapter/neo4j_mcp_adapter.zig
 //
 // Three-protocol BoJ adapter: REST (port 9268), gRPC-compat (port 9269),
 // GraphQL (port 9270).
-// Replaces the banned V-lang adapter (neo4j_mcp_adapter.v).
+// Replaces the banned zig adapter (neo4j_mcp_adapter.v).
 
 const std = @import("std");
 const ffi = @import("neo4j_mcp_ffi");

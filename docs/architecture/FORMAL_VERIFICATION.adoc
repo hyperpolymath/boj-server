@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: PMPL-1.0-or-later
+// SPDX-License-Identifier: MPL-2.0
 = BOJ Server Mistral: Formal Verification Strategy
 :description: Formal verification approach for the complete BOJ + Stapeln + Security stack
 
@@ -19,7 +19,7 @@ This document outlines the **formal verification strategy** for BOJ Server Mistr
 | ❌ Not verified
 | Memory safety and type preservation
 
-| V-lang Triple Adapter
+| zig Triple Adapter
 | ❌ Not verified
 | Protocol translation correctness
 
@@ -59,7 +59,7 @@ This document outlines the **formal verification strategy** for BOJ Server Mistr
 
 **Actions:**
 1. Set up Lean theorem prover environment
-2. Model Idris2 → Zig → V-lang type transformations
+2. Model Idris2 → Zig → zig type transformations
 3. Verify critical invariants hold across boundaries
 
 ### Phase 3: System-Level Verification (Q4 2024)

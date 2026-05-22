@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: PMPL-1.0-or-later
+# SPDX-License-Identifier: MPL-2.0
 # adjust.ncl — accessibility invariant runner for boj-server
 #
 # Pairs with: Adjustfile.a2ml (same directory)

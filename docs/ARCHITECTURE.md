@@ -1,6 +1,6 @@
 # BoJ Server Architecture
 
-<!-- SPDX-License-Identifier: PMPL-1.0-or-later -->
+<!-- SPDX-License-Identifier: MPL-2.0 -->
 <!-- Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk> -->
 <!-- Last updated: 2026-04-25 — reflects v1.1.0 Elixir REST + Deno transitional stack -->
 
@@ -66,7 +66,7 @@ gap between Idris2's proofs and actual system calls. Cross-compilation is built-
 which matters for community nodes running on varied hardware.
 
 **Elixir/OTP** provides the HTTP surface, supervision tree, ETS-backed catalog, and
-BEAM concurrency — replacing the former V-lang adapter layer (V-lang was banned
+BEAM concurrency — replacing the former zig adapter layer (zig was banned
 estate-wide 2026-04-10; all `.v` files removed 2026-04-12, commit c4674f8).
 
 ## The ADR-0006 Cartridge ABI
@@ -310,6 +310,6 @@ and are stable until a major version bump.
 
 ## License
 
-PMPL-1.0-or-later. The license's provenance requirements (crypto signatures,
+MPL-2.0. The license's provenance requirements (crypto signatures,
 emotional lineage) align directly with the hash attestation model — the legal
 framework and the technical framework say the same thing.

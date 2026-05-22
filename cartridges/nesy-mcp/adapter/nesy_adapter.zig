@@ -1,9 +1,9 @@
-// SPDX-License-Identifier: PMPL-1.0-or-later
+// SPDX-License-Identifier: MPL-2.0
 // Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
 //
 // nesy-mcp/adapter/nesy_adapter.zig -- Unified three-protocol adapter.
 //
-// Replaces the banned nesy_adapter.v (V-lang, removed 2026-04-12).
+// Replaces the banned nesy_adapter.v (zig, removed 2026-04-12).
 //
 // REST :9118  gRPC-compat :9119  GraphQL :9120
 // Neural-symbolic (NeSy) harmonization engine. Symbolic truth always overrides neural probability.

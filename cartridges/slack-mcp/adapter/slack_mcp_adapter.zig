@@ -1,8 +1,8 @@
-// SPDX-License-Identifier: PMPL-1.0-or-later
+// SPDX-License-Identifier: MPL-2.0
 // Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
 //
 // slack-mcp/adapter/slack_mcp_adapter.zig -- Unified three-protocol adapter.
-// Replaces banned slack_mcp_adapter.v (V-lang, removed 2026-04-12).
+// Replaces banned slack_mcp_adapter.v (zig, removed 2026-04-12).
 // REST:9184 gRPC:9185 GraphQL:9186
 // Tools: slack_authenticate, slack_send_message, slack_list_channels, slack_read_thread...
 

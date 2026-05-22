@@ -1,4 +1,4 @@
-<!-- SPDX-License-Identifier: PMPL-1.0-or-later -->
+<!-- SPDX-License-Identifier: MPL-2.0 -->
 <!-- Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk> -->
 
 # BoJ Server Component Readiness Assessment
@@ -53,7 +53,7 @@ whole. See the table in §3 for per-component grades.
 | Cartridge shared libs built | 103/106 | `.machine_readable/6a2/STATE.a2ml` §quality |
 | Total tests passing | **365** (178 core FFI + 113 cartridge FFI + 40 federation + 14 coprocessor + 11 SLA + 11 community + 10 SDP + 28 readiness + 13 E2E + 12 guardian + 7 VeriSimDB + 11 multi-node + 58 MCP bridge + 17 aspect) | STATE.a2ml |
 | `believe_me` count | 4 (down from 31 — sweep complete 2026-04-12) | STATE.a2ml |
-| V-lang adapters | **Sidelined** — all cartridge adapters are now Zig, `.v` variants preserved alongside as `SIDELINED-*.v.adoc` | `cartridges/*/adapter/` |
+| zig adapters | **Sidelined** — all cartridge adapters are now Zig, `.v` variants preserved alongside as `SIDELINED-*.v.adoc` | `cartridges/*/adapter/` |
 | `glama-grade` | AAA (Security A, License A, Quality A) | STATE.a2ml |
 | Dependabot alerts | 0 | STATE.a2ml |
 | SSE transport | Active on port 7703 (fixed 2026-03-29) | STATE.a2ml |
@@ -73,7 +73,7 @@ component's state **within its home context only** unless noted.
 | Catalogue FFI (Zig)          | C     | `alpha-stable`          | Builds clean. 178 core tests pass. Deep annotation complete. Dogfooded for 4+ weeks.                | None — promoted to C.                                  | 2026-05-25    |
 | C Headers (generated)        | D     | `alpha-unstable`         | Generated, matches Idris2 encodings. Not tested via a C consumer.                                  | Real C consumer + ABI round-trip test                   | 2026-04-18    |
 | Cartridge fleet (115)         | C     | `alpha-stable`          | 111/115 shared libs built (re-measured 2026-04-30; 4 pending: `database-mcp`, `echidna-llm-mcp`, `lang-mcp`, `orchestrator-lsp-mcp`). README.adoc / FFI test counts / per-directory README counts not re-verified in this sweep — last documented values were 106/106, 113 tests, 393 READMEs. Dogfooded for 4+ weeks. | None — promoted to C; full re-measurement (READMEs, FFI tests, per-directory annotation) deferred to a separate sweep. | 2026-04-30    |
-| Zig adapter layer (per cartridge) | C | `alpha-stable`          | All adapters are Zig-only. V-lang files eliminated. Deep annotation complete. Dogfooded for 4+ weeks. | None — promoted to C.                                  | 2026-05-25    |
+| Zig adapter layer (per cartridge) | C | `alpha-stable`          | All adapters are Zig-only. zig files eliminated. Deep annotation complete. Dogfooded for 4+ weeks. | None — promoted to C.                                  | 2026-05-25    |
 | Dynamic Loader               | D     | `alpha-unstable`         | Hash verification, mount/unmount. 14 loader tests pass.                                            | Use in anger on multi-cartridge live reload             | 2026-04-18    |
 | Guardian module              | D     | `alpha-unstable`         | Resource-aware failure tolerance. 12 tests pass.                                                   | Fault-injection campaign                                | 2026-04-18    |
 | Umoja Federation             | D     | `alpha-unstable`         | Real UDP gossip with QUIC transport (QUIC-first, UDP fallback). Hash attestation. 40 federation tests + 11 multi-node tests. | Live multi-host run with adversarial peers              | 2026-04-18    |
@@ -161,7 +161,7 @@ publication must be explicitly abstract / provisional.
   failures).
 - **Cartridge README coverage 100%**: 46 overview-level READMEs + 393 deep
   per-directory READMEs.
-- **V-lang eliminated**: all V-lang files (including `SIDELINED-*.v.adoc`) have been
+- **zig eliminated**: all zig files (including `SIDELINED-*.v.adoc`) have been
   removed. All adapters are now Zig-only.
 - **DOGFOOD-LOG.adoc active**: 4+ weeks of dated evidence (2026-04-18 to
   2026-05-28) with no failures observed.

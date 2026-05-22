@@ -1,8 +1,8 @@
-// SPDX-License-Identifier: PMPL-1.0-or-later
+// SPDX-License-Identifier: MPL-2.0
 // Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
 = panic-attack-mcp
 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
-:spdx: PMPL-1.0-or-later
+:spdx: MPL-2.0
 :tier: Ayo
 :domain: Security
 :protocols: MCP, REST
@@ -32,7 +32,7 @@ Three-layer stack per the BoJ cartridge standard:
 
 | ABI    | Idris2 | Formally verified state machine with dependent-type proofs
 | FFI    | Zig    | C-ABI implementation: session pool, action metrics, thread safety
-| Adapter| Zig    | Adapter bridge to the BoJ unified adapter protocol (V-lang predecessors sidelined)
+| Adapter| Zig    | Adapter bridge to the BoJ unified adapter protocol (zig predecessors sidelined)
 |===
 
 == Building

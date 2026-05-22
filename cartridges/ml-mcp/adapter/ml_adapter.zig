@@ -1,11 +1,11 @@
-// SPDX-License-Identifier: PMPL-1.0-or-later
+// SPDX-License-Identifier: MPL-2.0
 // Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
 //
 // ml-mcp/adapter/ml_adapter.zig
 //
 // Three-protocol BoJ adapter: REST (port 9265), gRPC-compat (port 9266),
 // GraphQL (port 9267).
-// Replaces the banned V-lang adapter (ml_adapter.v).
+// Replaces the banned zig adapter (ml_adapter.v).
 
 const std = @import("std");
 const ffi = @import("ml_ffi");

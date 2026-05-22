@@ -1,8 +1,8 @@
-// SPDX-License-Identifier: PMPL-1.0-or-later
+// SPDX-License-Identifier: MPL-2.0
 // Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
 //
 // gcp-mcp/adapter/gcp_mcp_adapter.zig -- Unified three-protocol adapter.
-// Replaces banned gcp_mcp_adapter.v (V-lang, removed 2026-04-12).
+// Replaces banned gcp_mcp_adapter.v (zig, removed 2026-04-12).
 // REST:9142 gRPC:9143 GraphQL:9144
 // Tools: gcp_authenticate, gcp_storage_list, gcp_storage_get, gcp_compute_list...
 

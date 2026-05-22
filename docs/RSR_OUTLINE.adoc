@@ -57,7 +57,7 @@ Every cartridge follows the ABI/FFI universal standard:
 |C-compatible native execution, zero runtime deps
 
 |**Adapter**
-|V-lang
+|zig
 |Triple API (REST + gRPC + GraphQL) on single port
 |===
 
@@ -127,7 +127,7 @@ boj-server/
 │   └── contractiles/          # Policy enforcement (k9, dust, lust, must, trust)
 ├── .well-known/               # RFC metadata (security.txt, ai.txt, humans.txt)
 ├── .github/workflows/         # 17 mandatory + BoJ-specific
-├── LICENSE                    # PMPL-1.0-or-later
+├── LICENSE                    # MPL-2.0
 ├── EXHIBIT-A-ETHICAL-USE.txt  # Ethical use guidelines
 └── EXHIBIT-B-QUANTUM-SAFE.txt # Quantum-safe provenance
 ----
@@ -140,7 +140,7 @@ boj-server/
 * `.gitignore`
 * `Justfile`
 * `README.adoc`
-* `LICENSE` (PMPL-1.0-or-later)
+* `LICENSE` (MPL-2.0)
 * `.machine_readable/STATE.a2ml`
 * `.well-known/security.txt`
 * `.well-known/ai.txt`
@@ -151,7 +151,7 @@ boj-server/
 
 * **ABI**: Idris2 (dependent types, formal verification)
 * **FFI**: Zig (zero-cost C ABI, cross-compilation)
-* **Adapter**: V-lang (triple API, Phase 3)
+* **Adapter**: zig (triple API, Phase 3)
 * **Infrastructure**: Just, Guile Scheme (`.a2ml` files), Nickel (k9), Shell
 
 === Prohibited (enforced by CI)
@@ -195,7 +195,7 @@ All present in `.github/workflows/`:
 
 == License
 
-SPDX-License-Identifier: PMPL-1.0-or-later
+SPDX-License-Identifier: MPL-2.0
 
 == Links
 

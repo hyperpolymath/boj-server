@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: PMPL-1.0-or-later
+// SPDX-License-Identifier: MPL-2.0
 // Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
 //
 // BoJ Cartridge Loader — Dynamic loading of verified cartridge binaries.
@@ -152,7 +152,7 @@ pub fn unloadCartridge(iface: *CartridgeInterface) void {
 // ═══════════════════════════════════════════════════════════════════════
 
 /// Set the binary hash for a catalogue entry.
-/// Called by the V-lang adapter after computing or receiving the hash.
+/// Called by the zig adapter after computing or receiving the hash.
 /// hash_ptr: pointer to 64-byte hex string. hash_len must be 64.
 /// Returns 0 on success, -1 on failure.
 ///
@@ -219,7 +219,7 @@ export fn boj_loader_verify(
 //
 // Zig validates the WASM module structure (magic bytes, version, export
 // section). Actual WASM execution is delegated to a runtime (wasmtime/
-// wasmer) in the V-lang adapter layer — this FFI provides validation,
+// wasmer) in the zig adapter layer — this FFI provides validation,
 // hash verification, and registry tracking.
 
 /// WASM binary magic bytes: \0asm

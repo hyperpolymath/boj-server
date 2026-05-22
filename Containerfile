@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: PMPL-1.0-or-later
+# SPDX-License-Identifier: MPL-2.0
 # Lightweight MCP stdio bridge for inspection and local development.
 # Runs only the Node.js MCP bridge (zero npm dependencies).
 # The bridge responds to MCP initialize + tools/list with the full
@@ -21,7 +21,7 @@ LABEL org.opencontainers.image.title="Bundle of Joy Server (MCP Bridge)" \
       org.opencontainers.image.url="https://github.com/hyperpolymath/boj-server" \
       org.opencontainers.image.source="https://github.com/hyperpolymath/boj-server" \
       org.opencontainers.image.vendor="hyperpolymath" \
-      org.opencontainers.image.licenses="PMPL-1.0-or-later" \
+      org.opencontainers.image.licenses="MPL-2.0" \
       org.opencontainers.image.authors="Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>"
 
 WORKDIR /app

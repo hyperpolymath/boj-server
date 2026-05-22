@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: PMPL-1.0-or-later
+// SPDX-License-Identifier: MPL-2.0
 = BoJ OS - Lightweight Operating System for AI Agents
 :toc: preamble
 :icons: font
@@ -303,7 +303,7 @@ pkgrel=0
 pkgdesc="BoJ OS - Minimal OS for AI agents"
 url="https://boj.example.com/os"
 arch="x86_64 aarch64"
-license="PMPL-1.0-or-later"
+license="MPL-2.0"
 depends="
     busybox
     s6
@@ -1899,7 +1899,7 @@ pkgrel=0
 pkgdesc="My custom BoJ package"
 url="https://boj.example.com"
 arch="all"
-license="PMPL-1.0-or-later"
+license="MPL-2.0"
 depends="boj-base"
 
 source="$pkgname-$pkgver.tar.gz"

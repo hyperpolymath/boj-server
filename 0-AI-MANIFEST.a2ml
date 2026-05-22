@@ -1,4 +1,4 @@
-; SPDX-License-Identifier: PMPL-1.0-or-later
+; SPDX-License-Identifier: MPL-2.0
 ; SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell (hyperpolymath)
 ;
 ; 0-AI-MANIFEST.a2ml — Universal AI entry point for Bundle of Joy Server
@@ -12,7 +12,7 @@
     (full-name "Bundle of Joy Server")
     (version "0.1.0")
     (repo "https://github.com/hyperpolymath/boj-server")
-    (license "PMPL-1.0-or-later")
+    (license "MPL-2.0")
     (author "Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>"))
 
   (purpose
@@ -85,7 +85,7 @@
     (rule "Cultural respect: Teranga, Umoja, Ayo terminology is permanent")
     (rule "SCM files ONLY in .machine_readable/ — never in root")
     (rule "Container: Chainguard base, Containerfile not Dockerfile, Podman not Docker")
-    (rule "PMPL-1.0-or-later on all source files"))
+    (rule "MPL-2.0 on all source files"))
 
   ;; ===================================================================
   ;; SESSION LIFECYCLE
