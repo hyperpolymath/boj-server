@@ -161,7 +161,7 @@
       "name": "coord_receive"
     },
     {
-      "description": "Attempt to claim a task (mutex-style). If the task is unclaimed, this peer becomes the holder. If another peer holds it, the claim is denied. Idempotent if already held by caller. Task #15: optional confidence, dispatch_preference (deliberate/broadcast/auto), task_difficulty (trivial/routine/challenging/novel) — default policy broadcasts trivial+routine, deliberates on challenging+novel. Claim rejection triggers a per-client_kind rate-limit: 5 rejections / 10 min => 30s cooldown before the next attempt.",
+      "description": "Attempt to claim a task (mutex-style). If the task is unclaimed, this peer becomes the holder. If another peer holds it, the claim is denied. Idempotent if already held by caller. Task #15: optional confidence, dispatch_preference (deliberate/broadcast/auto), task_difficulty (trivial/routine/challenging/novel) — default policy broadcasts trivial+routine, deliberates on challenging+novel. Claim rejection triggers a per-client_kind rate-limit: 5 rejections / 10 min => 30s cooldown before the next attempt. Optional `paths` declares working-tree files this claim expects to touch; the bridge layer returns advisory `path_overlap` warnings when overlap is detected with other active claims. Bridge-only — backend ignores the field.",
       "inputSchema": {
         "properties": {
           "confidence": {
@@ -178,6 +178,16 @@
               "auto"
             ],
             "type": "string"
+          },
+          "paths": {
+            "description": "Optional advisory list of working-tree paths this claim expects to touch. Bridge-layer hint only — not enforced by the backend.",
+            "items": {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            },
+            "maxItems": 64,
+            "type": "array"
           },
           "task": {
             "description": "Task identifier to claim (e.g. 'audit-boj-server')",

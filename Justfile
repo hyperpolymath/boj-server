@@ -539,6 +539,12 @@ coord-claims:
 coord-claim task:
     @bash -c 'source ~/.config/coord-tui/coord-hooks.sh 2>/dev/null && coord-claim "{{task}}" || echo "Hooks not installed — run: just coord-hooks"'
 
+# Claim a task AND provision an isolated git worktree for it.
+# Creates ../<repo>-worktrees/<task> on branch agent/<peer-id>/<task>.
+# Usage: just coord-worktree refactor/dispatcher-rewrite
+coord-worktree task:
+    @bash -c 'source ~/.config/coord-tui/coord-hooks.sh 2>/dev/null && coord-worktree "{{task}}" || echo "Hooks not installed — run: just coord-hooks"'
+
 # Set your peer status message (visible to all in the TUI)
 # Usage: just coord-status "working on rebalancer strategy B"
 coord-status status:

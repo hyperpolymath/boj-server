@@ -12,6 +12,7 @@
 #   - coord-peers     — list all active peers (no TUI needed)
 #   - coord-claims    — list all active task claims
 #   - coord-claim     — claim a task from the command line
+#   - coord-worktree  — claim a task + provision an isolated git worktree
 #   - coord-status    — set your status from the command line
 #   - coord-whoami    — print your current peer ID
 
@@ -116,6 +117,74 @@ if d.get('success'):
 else:
     print(f'  ✗ {d.get(\"error\",\"unknown error\")}')
 " 2>/dev/null || echo "  ✗ Failed (adapter not running?)"
+}
+
+# Claim a task AND provision an isolated git worktree for it.
+#
+#   coord-worktree refactor/dispatcher-rewrite
+#
+# Creates ../<repo>-worktrees/<sanitised-task> on a branch named
+# agent/<peer-id>/<sanitised-task>. The current directory must be a git
+# repository — the worktree is created as a sibling directory so the
+# main checkout is untouched. If the branch already exists it is reused
+# (idempotent for resuming a claim).
+coord-worktree() {
+    local task="${1:?Usage: coord-worktree <task-name>}"
+    _coord_env
+    local peer="${BOJ_COORD_PEER_ID:-}"
+    if [ -z "$peer" ]; then
+        echo "  ✗ Not registered. Run: coord-tui --id --kind claude" >&2
+        return 1
+    fi
+    if ! git rev-parse --show-toplevel >/dev/null 2>&1; then
+        echo "  ✗ Not inside a git repository." >&2
+        return 1
+    fi
+    local toplevel; toplevel="$(git rev-parse --show-toplevel)"
+    local reponame; reponame="$(basename "$toplevel")"
+    # Sanitise task for use in path/branch: keep alnum/_-/, collapse rest.
+    local safe; safe="$(printf '%s' "$task" | tr -c 'A-Za-z0-9._/-' '-' \
+        | sed 's|/$||;s|^/||')"
+    local wt_dir="${toplevel}/../${reponame}-worktrees/${safe}"
+    local branch="agent/${peer}/${safe}"
+
+    # Claim first — if the backend says no, don't touch the working tree.
+    local tok; tok="$(_coord_token)"
+    if [ -n "$tok" ]; then
+        local claim
+        claim=$(_coord_post coord_claim_task \
+            "{\"token\":\"$tok\",\"task\":\"$task\"}" 2>/dev/null)
+        local ok
+        ok=$(echo "$claim" | python3 -c "
+import sys, json
+try:
+    d = json.load(sys.stdin)
+    print('yes' if d.get('success') else 'no')
+except Exception:
+    print('no')
+" 2>/dev/null)
+        if [ "$ok" != "yes" ]; then
+            echo "  ✗ Claim refused — not provisioning worktree." >&2
+            echo "$claim" >&2
+            return 1
+        fi
+    else
+        echo "  ! No coord token — provisioning worktree without claim." >&2
+    fi
+
+    mkdir -p "$(dirname "$wt_dir")"
+    if [ -d "$wt_dir" ]; then
+        echo "  → Worktree already exists: $wt_dir"
+    elif git -C "$toplevel" show-ref --verify --quiet "refs/heads/${branch}"; then
+        git -C "$toplevel" worktree add "$wt_dir" "$branch" >/dev/null \
+            && echo "  ✓ Worktree (existing branch): $wt_dir" \
+            || { echo "  ✗ git worktree add failed" >&2; return 1; }
+    else
+        git -C "$toplevel" worktree add -b "$branch" "$wt_dir" >/dev/null \
+            && echo "  ✓ Worktree + new branch ${branch}: $wt_dir" \
+            || { echo "  ✗ git worktree add failed" >&2; return 1; }
+    fi
+    echo "  → cd $wt_dir"
 }
 
 # Set your status: coord-status "doing the thing"

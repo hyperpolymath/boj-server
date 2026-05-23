@@ -475,12 +475,12 @@ Formally verified core in Idris2 (`cartridges/local-coord-mcp/abi/LocalCoord/`);
 
 The supported pattern for parallel work is:
 
-- **Branch-per-claim.** Each journeyman works on its own branch — by convention `agent/<peer-id>/<task-id>` — never directly on `main`. `coord-tui`'s shell helpers expose the peer id so the convention is scriptable.
-- **Optional git worktree per peer.** For physical isolation of working trees on the same checkout, journeymen can run inside a dedicated `git worktree add` directory. There is no `just coord-worktree` recipe today — peers create their own. (Planned: a `coord_claim` side-effect that emits a suggested branch name in the claim envelope; tracked as a docs-gap, not yet a cartridge feature.)
+- **Branch-per-claim + per-peer worktree.** `just coord-worktree <task-id>` claims the task and provisions an isolated `git worktree` at `../<repo>-worktrees/<task>` on branch `agent/<peer-id>/<task>`, so two journeymen on the same checkout never share a working tree. The recipe is a thin wrapper over `coord-tui`'s shell helper of the same name — both refuse to provision when the claim is refused by the backend.
+- **Advisory path-claims.** `coord_claim_task` accepts an optional `paths` array declaring the working-tree files the claim expects to touch. The bridge keeps an in-memory map of active path-claims and annotates the response with `path_overlap` warnings (segment-aware prefix match) when another active claim covers any of those paths. **Advisory by design**: warnings never block the claim — the Idris2-verified backend remains the source of truth for task ownership, and this layer is the early-warning signal that lets the holder split the task, hand off, or accept the merge cost knowingly.
 - **Master-gated integration.** `coord_approve` is the serialisation point: the master peer reviews, rebases or asks the journeyman to rebase, and merges in a defined order. Two approved branches that conflict are resolved at this step, not in the cartridge.
 - **Drift signal, not lock.** `coord_scan_suggestions` emits `drift` warn envelopes when affinities or confidence diverge — that's an *advisory* signal to re-route or split a task, not a hard lock against file overlap.
 
-What `local-coord-mcp` **does not** do today: file-range locks, automatic worktree provisioning, automatic rebase, or conflict resolution. Those are out of scope for the cartridge — the supervision model assumes a human or master peer mediates the final merge. If you need stricter isolation than branch-per-claim, partition tasks by directory before issuing them.
+What `local-coord-mcp` **does not** do today: hard file-range locks, automatic rebase, or conflict resolution. The path-overlap layer is a hint, not a mutex — two journeymen can still both proceed against overlapping files and conflict at merge. Those final steps stay with the master peer (or human integrator), in line with the supervision model. If you need stricter isolation than path-claims + worktrees, partition tasks by directory before issuing them.
 
 ## Glama AAA posture
 

@@ -685,7 +685,7 @@ function buildToolList(scope) {
 
   tools.push({
     name: "coord_claim_task",
-    description: "Attempt mutex-style ownership of a named task. Side-effectful; sets this peer as the holder and applies a watchdog TTL (apprentice 30s / journeyman 5m / master none). Returns `{holder, ttl_s}` or `{error:\"already claimed\"}`. Task difficulty and confidence feed the routing engine. Essential for preventing duplicate work in multi-agent environments.",
+    description: "Attempt mutex-style ownership of a named task. Side-effectful; sets this peer as the holder and applies a watchdog TTL (apprentice 30s / journeyman 5m / master none). Returns `{holder, ttl_s}` or `{error:\"already claimed\"}`. Task difficulty and confidence feed the routing engine. Optional `paths` declares working-tree files this claim expects to touch; the bridge returns advisory `path_overlap` warnings when any other active claim declared overlapping paths (segment-aware prefix match). The backend remains the source of truth for ownership — path warnings never block a claim. Essential for preventing duplicate work in multi-agent environments.",
     inputSchema: {
       type: "object",
       properties: {
@@ -694,6 +694,12 @@ function buildToolList(scope) {
         confidence: { type: "number", minimum: 0, maximum: 1, description: "Self-assessed fit 0.0-1.0. Feeds the overclaim detector (DD-28)." },
         dispatch_preference: { type: "string", enum: ["deliberate", "broadcast", "auto"], description: "Routing hint (DD-30). `auto` derives from `task_difficulty`." },
         task_difficulty: { type: "string", enum: ["trivial", "routine", "challenging", "novel"], description: "Difficulty label (DD-30)." },
+        paths: {
+          type: "array",
+          description: "Optional advisory list of working-tree paths this claim expects to touch (e.g. `[\"src/foo\", \"docs/bar.adoc\"]`). Bridge-layer hint only — not enforced by the backend. Overlaps with other active claims surface as `path_overlap` in the response. Cleared on `coord_report_outcome` or when the bridge-side TTL expires.",
+          items: { type: "string", minLength: 1, maxLength: 256 },
+          maxItems: 64,
+        },
       },
       required: ["token", "task"],
       additionalProperties: false,
@@ -701,11 +707,25 @@ function buildToolList(scope) {
     annotations: { title: "Claim Coord Task", readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
     outputSchema: {
       type: "object",
-      description: "Claim result, or `{error:\"already claimed\"}` when another peer holds the task.",
+      description: "Claim result, or `{error:\"already claimed\"}` when another peer holds the task. When `paths` was supplied, the response also carries `declared_paths` (normalised) and `path_overlap` (advisory warnings only).",
       properties: {
         holder: { type: "string", description: "Peer ID now holding the task." },
         ttl_s: { type: "number", description: "Watchdog TTL in seconds for this claim." },
         error: { type: "string", description: "`\"already claimed\"` on contention." },
+        declared_paths: { type: "array", items: { type: "string" }, description: "Echoed normalised paths from the input." },
+        path_overlap: {
+          type: "array",
+          description: "Other active claims whose declared paths overlap this one. Advisory — claim is granted regardless.",
+          items: {
+            type: "object",
+            properties: {
+              task: { type: "string", description: "The other claim's task-id." },
+              holder: { type: "string", description: "Peer-id of the other claim's holder." },
+              paths: { type: "array", items: { type: "string" }, description: "The other claim's full declared path list." },
+              with: { type: "array", items: { type: "string" }, description: "Paths from THIS claim that overlap the other." },
+            },
+          },
+        },
       },
       additionalProperties: true,
     },
