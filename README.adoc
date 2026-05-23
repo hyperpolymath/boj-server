@@ -60,6 +60,49 @@ Highlights:
 
 Formally verified core in Idris2 (`cartridges/local-coord-mcp/abi/LocalCoord/`); Zig FFI; Deno/Node MCP bridge with input hardening (rate limiting, prompt-injection detection with unicode-normalisation, error sanitisation).
 
+=== Parallel agents and git
+
+"Claim tasks without collision" is a *task-level* guarantee, not a
+git-level one. `coord_claim` ensures two peers never own the same
+task-id at the same time; it does not lock files, branches, or the
+working tree. If two journeymen claim *different* tasks that happen to
+touch the same file, vanilla git merge conflicts can still occur.
+
+The supported pattern for parallel work is:
+
+* *Branch-per-claim + per-peer worktree.* `just coord-worktree
+  <task-id>` claims the task and provisions an isolated
+  `git worktree` at `../<repo>-worktrees/<task>` on branch
+  `agent/<peer-id>/<task>`, so two journeymen on the same checkout
+  never share a working tree. The recipe is a thin wrapper over
+  `coord-tui`'s shell helper of the same name — both refuse to
+  provision when the claim is refused by the backend.
+* *Advisory path-claims.* `coord_claim_task` accepts an optional
+  `paths` array declaring the working-tree files the claim expects to
+  touch. The bridge keeps an in-memory map of active path-claims and
+  annotates the response with `path_overlap` warnings (segment-aware
+  prefix match) when another active claim covers any of those paths.
+  *Advisory by design*: warnings never block the claim — the Idris2-
+  verified backend remains the source of truth for task ownership, and
+  this layer is the early-warning signal that lets the holder split
+  the task, hand off, or accept the merge cost knowingly.
+* *Master-gated integration.* `coord_approve` is the serialisation
+  point: the master peer reviews, rebases or asks the journeyman to
+  rebase, and merges in a defined order. Two approved branches that
+  conflict are resolved at this step, not in the cartridge.
+* *Drift signal, not lock.* `coord_scan_suggestions` emits `drift` warn
+  envelopes when affinities or confidence diverge — that's an *advisory*
+  signal to re-route or split a task, not a hard lock against file
+  overlap.
+
+What `local-coord-mcp` *does not* do today: hard file-range locks,
+automatic rebase, or conflict resolution. The path-overlap layer is a
+hint, not a mutex — two journeymen can still both proceed against
+overlapping files and conflict at merge. Those final steps stay with
+the master peer (or human integrator), in line with the supervision
+model. If you need stricter isolation than path-claims + worktrees,
+partition tasks by directory before issuing them.
+
 === coord-tui — human interface for local-coord-mcp
 
 `coord-tui` is the companion terminal UI for `local-coord-mcp`. It lives
