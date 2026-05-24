@@ -36,6 +36,27 @@ _coord_post() {
         -d "$payload" 2>/dev/null
 }
 
+# Quiet claim — echoes the raw backend response, sets the return code
+# (0 on success, 1 otherwise). Shared by coord-claim and coord-worktree
+# so both interpret "granted" the same way.
+_coord_claim_quiet() {
+    local task="$1"
+    local tok; tok="$(_coord_token)"
+    [ -z "$tok" ] && return 2
+    local resp
+    resp=$(_coord_post coord_claim_task \
+        "{\"token\":\"$tok\",\"task\":\"$task\"}" 2>/dev/null)
+    printf '%s' "$resp"
+    printf '%s' "$resp" | python3 -c "
+import sys, json
+try:
+    d = json.load(sys.stdin)
+    sys.exit(0 if d.get('success') else 1)
+except Exception:
+    sys.exit(1)
+" 2>/dev/null
+}
+
 _coord_auto_register() {
     local kind="$1"
     # Registers silently, writes ~/.cache/coord-tui/peer.env, sets window title.
@@ -98,25 +119,27 @@ else:
 # Claim a task: coord-claim hypatia/my-task
 coord-claim() {
     local task="${1:?Usage: coord-claim <task-name>}"
-    local tok; tok="$(_coord_token)"
-    if [ -z "$tok" ]; then
-        echo "Not registered — run: coord-tui --id --kind claude" >&2; return 1
+    local resp rc
+    resp="$(_coord_claim_quiet "$task")"; rc=$?
+    if [ $rc -eq 2 ]; then
+        echo "Not registered — run: coord-tui --id --kind claude" >&2
+        return 1
     fi
-    local result
-    result=$(_coord_post coord_claim_task \
-        "{\"token\":\"$tok\",\"task\":\"$task\"}" 2>/dev/null)
-    echo "$result" | python3 -c "
-import sys, json
+    if [ -z "$resp" ]; then
+        echo "  ✗ Failed (adapter not running?)"
+        return 1
+    fi
+    printf '%s' "$resp" | TASK="$task" python3 -c "
+import sys, os, json
 d = json.load(sys.stdin)
+task = os.environ.get('TASK', '')
 if d.get('success'):
     msg = d.get('message','')
-    if msg == 'granted':
-        print(f'  ✓ Claimed: $task')
-    else:
-        print(f'  ✗ {msg}')
+    print(f'  ✓ Claimed: {task}' if msg == 'granted' else f'  ✗ {msg}')
 else:
     print(f'  ✗ {d.get(\"error\",\"unknown error\")}')
-" 2>/dev/null || echo "  ✗ Failed (adapter not running?)"
+" 2>/dev/null
+    return $rc
 }
 
 # Claim a task AND provision an isolated git worktree for it.
@@ -149,28 +172,15 @@ coord-worktree() {
     local branch="agent/${peer}/${safe}"
 
     # Claim first — if the backend says no, don't touch the working tree.
-    local tok; tok="$(_coord_token)"
-    if [ -n "$tok" ]; then
-        local claim
-        claim=$(_coord_post coord_claim_task \
-            "{\"token\":\"$tok\",\"task\":\"$task\"}" 2>/dev/null)
-        local ok
-        ok=$(echo "$claim" | python3 -c "
-import sys, json
-try:
-    d = json.load(sys.stdin)
-    print('yes' if d.get('success') else 'no')
-except Exception:
-    print('no')
-" 2>/dev/null)
-        if [ "$ok" != "yes" ]; then
-            echo "  ✗ Claim refused — not provisioning worktree." >&2
-            echo "$claim" >&2
-            return 1
-        fi
-    else
-        echo "  ! No coord token — provisioning worktree without claim." >&2
-    fi
+    local resp rc
+    resp="$(_coord_claim_quiet "$task")"; rc=$?
+    case $rc in
+        0) ;;  # granted
+        2) echo "  ! No coord token — provisioning worktree without claim." >&2 ;;
+        *) echo "  ✗ Claim refused — not provisioning worktree." >&2
+           [ -n "$resp" ] && echo "$resp" >&2
+           return 1 ;;
+    esac
 
     mkdir -p "$(dirname "$wt_dir")"
     if [ -d "$wt_dir" ]; then

@@ -220,16 +220,7 @@ async function dispatchLocalCoord(toolName, args) {
     }
   }
 
-  // Advisory path-claims are bridge-layer only — strip from the
-  // payload forwarded to the verified Zig backend so its schema stays
-  // unchanged. Backend stays the source of truth for ownership.
-  let declaredPaths;
-  let forwarded = args || {};
-  if (toolName === "coord_claim_task" && args && Array.isArray(args.paths)) {
-    declaredPaths = args.paths;
-    const { paths, ...rest } = args;
-    forwarded = rest;
-  }
+  const { forwarded, ctx } = pathClaimsBefore(toolName, args);
 
   try {
     const res = await fetch(`${LOCAL_COORD_URL}/tools/${toolName}`, {
@@ -243,7 +234,7 @@ async function dispatchLocalCoord(toolName, args) {
     } catch {
       return { success: false, error: "local-coord-mcp backend returned non-JSON" };
     }
-    return annotatePathClaims(toolName, args, data, declaredPaths);
+    return pathClaimsAfter(toolName, args, data, ctx);
   } catch (e) {
     return {
       success: false,
@@ -253,27 +244,38 @@ async function dispatchLocalCoord(toolName, args) {
   }
 }
 
-function annotatePathClaims(toolName, args, data, declaredPaths) {
+// Path-claims live entirely at the bridge layer. The verified backend
+// has no `paths` field on coord_claim_task, so we strip it before
+// forwarding and stash it for the post-response annotate step.
+function pathClaimsBefore(toolName, args) {
+  const a = args || {};
+  if (toolName === "coord_claim_task" && Array.isArray(a.paths)) {
+    const { paths, ...rest } = a;
+    return { forwarded: rest, ctx: { declaredPaths: paths } };
+  }
+  return { forwarded: a, ctx: {} };
+}
+
+function pathClaimsAfter(toolName, args, data, ctx) {
   if (!data || typeof data !== "object") return data;
   const task = args?.task;
   switch (toolName) {
     case "coord_claim_task": {
-      if (!declaredPaths || !task || data.success === false) return data;
-      const holder = data.holder || "(unknown)";
-      const ttl_s = typeof data.ttl_s === "number" ? data.ttl_s : undefined;
+      if (!ctx.declaredPaths || !task || data.success === false) return data;
       const { paths, overlaps } = pathClaims.register({
-        task, holder, paths: declaredPaths, ttl_s,
+        task,
+        holder: data.holder || "(unknown)",
+        paths: ctx.declaredPaths,
+        ttl_s: typeof data.ttl_s === "number" ? data.ttl_s : undefined,
       });
       return { ...data, declared_paths: paths, path_overlap: overlaps };
     }
-    case "coord_progress": {
+    case "coord_progress":
       if (task) pathClaims.refresh(task, data.ttl_s);
       return data;
-    }
-    case "coord_report_outcome": {
+    case "coord_report_outcome":
       if (task) pathClaims.release(task);
       return data;
-    }
     default:
       return data;
   }
