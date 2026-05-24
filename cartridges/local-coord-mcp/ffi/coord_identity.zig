@@ -433,3 +433,39 @@ test "FFI: load_known_peers on missing file returns 0" {
     try std.testing.expectEqual(@as(c_int, 0), rc);
     try std.testing.expectEqual(@as(c_int, 0), boj_coord_identity_known_peer_count());
 }
+
+// RFC 8032 §7.1 TEST 1 — the canonical ed25519 reference vector.
+// The matching test in coord-tui/src/main.rs pins the same vector,
+// so if both this test and that test pass, the Rust and Zig
+// derivations agree with the spec — and therefore with each other
+// — across the shared 32-byte seed-file format.
+//
+// SEED:   9d61b19deffd5a60ba844af492ec2cc44449c5697b326919703bac031cae7f60
+// PUBKEY: d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a
+
+test "RFC 8032 §7.1 TEST 1 — seed derives the canonical pubkey" {
+    testResetState();
+    const seed_hex = "9d61b19deffd5a60ba844af492ec2cc44449c5697b326919703bac031cae7f60";
+    const expect_hex = "d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a";
+
+    var seed: [SEED_BYTES]u8 = undefined;
+    try hexDecode(seed_hex, &seed);
+
+    const tmp_path = "/tmp/boj-coord-test-rfc8032.key";
+    fs.deleteFileAbsolute(tmp_path) catch {};
+    defer fs.deleteFileAbsolute(tmp_path) catch {};
+    try writeSeedFile(tmp_path, seed);
+
+    const path_z: [:0]const u8 = tmp_path;
+    try std.testing.expectEqual(@as(c_int, 0), boj_coord_identity_init(path_z.ptr));
+
+    var pubkey: [PUBKEY_BYTES]u8 = undefined;
+    try std.testing.expectEqual(
+        @as(c_int, @intCast(PUBKEY_BYTES)),
+        boj_coord_identity_get_pubkey(&pubkey, PUBKEY_BYTES),
+    );
+
+    var expect_bytes: [PUBKEY_BYTES]u8 = undefined;
+    try hexDecode(expect_hex, &expect_bytes);
+    try std.testing.expectEqualSlices(u8, &expect_bytes, &pubkey);
+}

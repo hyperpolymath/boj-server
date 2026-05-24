@@ -853,3 +853,92 @@ fn main() -> io::Result<()> {
     execute!(terminal.backend_mut(), LeaveAlternateScreen)?;
     Ok(())
 }
+
+// ─── Tests ────────────────────────────────────────────────────────────────────
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::path::PathBuf;
+
+    fn tmp_path(name: &str) -> PathBuf {
+        let mut p = std::env::temp_dir();
+        // Disambiguate across parallel tests in this module.
+        let nanos = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.subsec_nanos())
+            .unwrap_or(0);
+        p.push(format!("coord-tui-test-{}-{}-{}", std::process::id(), nanos, name));
+        p
+    }
+
+    fn hex_decode(s: &str) -> Vec<u8> {
+        (0..s.len()).step_by(2)
+            .map(|i| u8::from_str_radix(&s[i..i + 2], 16).unwrap())
+            .collect()
+    }
+
+    /// RFC 8032 §7.1 TEST 1 — the canonical ed25519 reference vector.
+    /// Pinning this seed → pubkey mapping proves the Rust derivation
+    /// matches the spec. The Zig adapter pins the same vector in
+    /// `coord_identity.zig`; if both match RFC 8032, they match each
+    /// other — which is the cross-implementation consistency guarantee
+    /// for the shared seed-file format.
+    const RFC8032_TEST1_SEED_HEX: &str =
+        "9d61b19deffd5a60ba844af492ec2cc44449c5697b326919703bac031cae7f60";
+    const RFC8032_TEST1_PUBKEY_HEX: &str =
+        "d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a";
+
+    #[test]
+    fn print_pubkey_matches_rfc8032_test1() {
+        let path = tmp_path("rfc8032.key");
+        let _ = std::fs::remove_file(&path);
+        std::fs::write(&path, hex_decode(RFC8032_TEST1_SEED_HEX)).unwrap();
+
+        let hex = print_pubkey(Some(path.to_str().unwrap())).unwrap();
+        assert_eq!(hex, RFC8032_TEST1_PUBKEY_HEX);
+
+        std::fs::remove_file(&path).unwrap();
+    }
+
+    #[test]
+    fn print_pubkey_roundtrip_is_deterministic() {
+        // Two reads of the same seed file produce the same pubkey.
+        let path = tmp_path("roundtrip.key");
+        let _ = std::fs::remove_file(&path);
+
+        let first = print_pubkey(Some(path.to_str().unwrap())).unwrap();
+        let second = print_pubkey(Some(path.to_str().unwrap())).unwrap();
+        assert_eq!(first, second);
+        assert_eq!(first.len(), 64);
+        assert!(first.chars().all(|c| c.is_ascii_hexdigit()));
+
+        std::fs::remove_file(&path).unwrap();
+    }
+
+    #[test]
+    fn print_pubkey_rejects_wrong_length_seed() {
+        let path = tmp_path("short.key");
+        let _ = std::fs::remove_file(&path);
+        std::fs::write(&path, b"only-five").unwrap();
+
+        let err = print_pubkey(Some(path.to_str().unwrap())).unwrap_err();
+        assert!(err.contains("expected 32"), "unexpected error: {}", err);
+
+        std::fs::remove_file(&path).unwrap();
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn fresh_seed_file_is_mode_0600() {
+        use std::os::unix::fs::PermissionsExt;
+        let path = tmp_path("perms.key");
+        let _ = std::fs::remove_file(&path);
+
+        let _ = print_pubkey(Some(path.to_str().unwrap())).unwrap();
+        let mode = std::fs::metadata(&path).unwrap().permissions().mode() & 0o777;
+        assert_eq!(mode, 0o600, "seed file mode = {:o}, expected 0600", mode);
+
+        std::fs::remove_file(&path).unwrap();
+    }
+}
