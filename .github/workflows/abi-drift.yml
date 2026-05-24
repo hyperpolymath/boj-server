@@ -43,6 +43,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          # Need at least two commits so `git diff origin/<base>...HEAD`
+          # can compute the changed-cartridge set on pull_request events.
+          # `0` = full history (cheap on this repo).
+          fetch-depth: 0
 
       - name: Install Rust toolchain (stable)
         uses: dtolnay/rust-toolchain@b3b07ba8b418998c39fb20f53e8b695cdcc8de1b # stable
@@ -165,11 +170,52 @@ jobs:
             echo 'EOF'
           } >> "$GITHUB_OUTPUT"
 
-      - name: Emit + verify each cartridge
+      # On pull_request, restrict the verify loop to cartridges that
+      # actually changed in this PR — unrelated cartridge drift is the
+      # main branch's problem, not this PR's. On push to main, scan the
+      # full allowlist so cross-cutting regressions are still caught at
+      # trunk. Empty changed-set on a PR ⇒ skip the loop (the workflow
+      # `paths:` filter shouldn't have triggered us anyway, but stay
+      # defensive).
+      - name: Restrict to cartridges changed in this PR
+        id: filter
+        if: github.event_name == 'pull_request'
         env:
+          BASE_REF: ${{ github.base_ref }}
           CARTS: ${{ steps.discover.outputs.carts }}
         run: |
           set -euo pipefail
+          git fetch --no-tags --depth=50 origin "$BASE_REF" || true
+          changed=$(git diff --name-only "origin/${BASE_REF}...HEAD" -- 'cartridges/**' \
+                    | awk -F/ '{print $2}' | sort -u)
+          {
+            echo 'carts<<EOF'
+            while IFS= read -r cart; do
+              [ -z "$cart" ] && continue
+              if printf '%s\n' "$changed" | grep -qx "$cart"; then
+                echo "$cart"
+              fi
+            done <<< "$CARTS"
+            echo 'EOF'
+          } >> "$GITHUB_OUTPUT"
+          echo "Changed cartridges intersected with allowlist:"
+          while IFS= read -r cart; do
+            [ -z "$cart" ] && continue
+            if printf '%s\n' "$changed" | grep -qx "$cart"; then
+              echo "  • $cart"
+            fi
+          done <<< "$CARTS"
+
+      - name: Emit + verify each cartridge
+        env:
+          # On pull_request: filtered set. On push/main: full allowlist.
+          CARTS: ${{ github.event_name == 'pull_request' && steps.filter.outputs.carts || steps.discover.outputs.carts }}
+        run: |
+          set -euo pipefail
+          if [ -z "$(printf '%s' "$CARTS" | tr -d '[:space:]')" ]; then
+            echo "::notice::No allowlisted cartridges changed in this PR — skipping drift verify."
+            exit 0
+          fi
           failed=""
           while IFS= read -r cart; do
             [ -z "$cart" ] && continue

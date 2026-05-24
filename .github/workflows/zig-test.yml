@@ -26,11 +26,50 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          # Needed so `git diff origin/<base>...HEAD` can identify the
+          # cartridges actually changed in this PR. Full history is cheap
+          # on this repo; cuts down on cross-cartridge false-positive
+          # gating where a PR is blocked by pre-existing breakage in
+          # unrelated cartridges (browser-mcp, orchestrator-lsp-mcp,
+          # etc.). On push/main we keep the full per-cartridge sweep.
+          fetch-depth: 0
 
       - name: Install Zig
         uses: mlugg/setup-zig@d1434d08867e3ee9daa34448df10607b98908d29 # v2
         with:
           version: 0.15.2
+
+      - name: Determine cartridges to test
+        id: scope
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          set -euo pipefail
+          all="$(ls -d cartridges/*/ffi/ 2>/dev/null | sed 's|cartridges/||;s|/ffi/||' | sort)"
+          if [ "$EVENT" = "pull_request" ]; then
+            git fetch --no-tags --depth=50 origin "$BASE_REF" || true
+            changed="$(git diff --name-only "origin/${BASE_REF}...HEAD" -- 'cartridges/**' \
+                       | awk -F/ '{print $2}' | sort -u)"
+            scope=""
+            while IFS= read -r cart; do
+              [ -z "$cart" ] && continue
+              if printf '%s\n' "$changed" | grep -qx "$cart"; then
+                scope="$scope$cart"$'\n'
+              fi
+            done <<< "$all"
+          else
+            scope="$all"
+          fi
+          {
+            echo 'carts<<EOF'
+            printf '%s' "$scope"
+            echo
+            echo 'EOF'
+          } >> "$GITHUB_OUTPUT"
+          echo "Cartridges in scope for this run:"
+          printf '  • %s\n' $(printf '%s\n' "$scope" | grep -v '^$' || true)
 
       - name: Run catalogue tests
         run: cd ffi/zig && zig build test --summary all
@@ -38,10 +77,17 @@ jobs:
       - name: Run readiness tests
         run: cd ffi/zig && zig build readiness --summary all
 
-      - name: Run cartridge FFI tests (all 73 cartridges)
+      - name: Run cartridge FFI tests
+        env:
+          CARTS: ${{ steps.scope.outputs.carts }}
         run: |
+          if [ -z "$(printf '%s' "$CARTS" | tr -d '[:space:]')" ]; then
+            echo "::notice::No cartridges changed in this PR — skipping per-cartridge FFI tests."
+            exit 0
+          fi
           failed=""
-          for cart in $(ls -d cartridges/*/ffi/ 2>/dev/null | sed 's|cartridges/||;s|/ffi/||' | sort); do
+          while IFS= read -r cart; do
+            [ -z "$cart" ] && continue
             echo "::group::Testing $cart..."
             if cd "cartridges/$cart/ffi" && zig build test --summary all 2>&1; then
               echo "  ✓ $cart passed"
@@ -51,19 +97,26 @@ jobs:
             fi
             cd "$GITHUB_WORKSPACE"
             echo "::endgroup::"
-          done
+          done <<< "$CARTS"
           if [ -n "$failed" ]; then
             echo "::error::Failed cartridges:$failed"
             exit 1
           fi
 
-      - name: Build cartridge shared libraries (all 73 cartridges)
+      - name: Build cartridge shared libraries
+        env:
+          CARTS: ${{ steps.scope.outputs.carts }}
         run: |
-          for cart in $(ls -d cartridges/*/ffi/ 2>/dev/null | sed 's|cartridges/||;s|/ffi/||' | sort); do
+          if [ -z "$(printf '%s' "$CARTS" | tr -d '[:space:]')" ]; then
+            echo "::notice::No cartridges changed in this PR — skipping per-cartridge .so build."
+            exit 0
+          fi
+          while IFS= read -r cart; do
+            [ -z "$cart" ] && continue
             echo "Building $cart .so..."
             cd "cartridges/$cart/ffi" && zig build
             cd "$GITHUB_WORKSPACE"
-          done
+          done <<< "$CARTS"
 
       - name: Build static library
         run: cd ffi/zig && zig build lib
