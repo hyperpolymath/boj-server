@@ -9,4 +9,5 @@ brief      = "Local-coord MCP cartridge — localhost multi-instance coordinatio
 sourcedir  = "."
 modules    = LocalCoord.SafeLocalCoord
            , LocalCoord.Protocol
+           , LocalCoord.Identity
 depends    = base

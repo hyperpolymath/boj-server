@@ -18,6 +18,14 @@
 const std = @import("std");
 const dur = @import("coord_durability.zig");
 
+// ADR-0016 Phase 1: pull in coord_identity so its `pub export fn`
+// symbols are part of the shared library. The module does not need to
+// be referenced directly from this file — the import side-effect is
+// to surface the FFI exports for `boj_coord_identity_*`.
+comptime {
+    _ = @import("coord_identity.zig");
+}
+
 // ═══════════════════════════════════════════════════════════════════════
 // Constants (must match SafeLocalCoord.idr)
 // ═══════════════════════════════════════════════════════════════════════
@@ -3279,11 +3287,13 @@ export fn boj_cartridge_invoke(
         in_out_len.* = 64; // hint a minimum useful size
         return shim.RC_BUFFER_TOO_SMALL;
     }
-    const tool = std.mem.span(@as([*:0]const u8, @ptrCast(tool_name)));
-    const args: []const u8 = if (json_args != null)
-        std.mem.span(@as([*:0]const u8, @ptrCast(json_args)))
-    else
-        "{}";
+    // CWE-704 fix (post-#146): std.mem.sliceTo(ptr, 0) reads the C string
+    // up to the first NUL without an `@ptrCast` and without the
+    // `std.mem.spanZ` that no longer exists in Zig 0.14+. The optional-payload
+    // capture `if (json_args != null) |ja|` was also invalid for [*c]
+    // pointers — those are null-checked with `== null`, not unwrapped.
+    const tool = std.mem.sliceTo(tool_name, 0);
+    const args: []const u8 = if (json_args == null) "{}" else std.mem.sliceTo(json_args, 0);
     const result = ci_dispatch(tool, args, out_buf[0..cap], std.heap.page_allocator);
     in_out_len.* = result.written;
     return result.rc;

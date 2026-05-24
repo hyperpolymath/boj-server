@@ -39,3 +39,22 @@ cicd_rules/banned_language_file:panll/src/modules/BojModule.res
 cicd_rules/banned_language_file:cartridges/orchestrator-lsp-mcp/panels/src/Extension.res
 cicd_rules/banned_language_file:cartridges/orchestrator-lsp-mcp/panels/src/LanguageClient.res
 cicd_rules/banned_language_file:cartridges/orchestrator-lsp-mcp/panels/src/VscodeApi.res
+
+# ─── MCP cartridge adapters — TypeScript exemption (CLAUDE.md §TS Exemptions) ─
+#
+# The "no new TypeScript" rule has 6 approved exemptions, all MCP cartridge
+# adapters that use the TypeScript-native @anthropic/sdk. The exemption is
+# documented in .claude/CLAUDE.md with full rationale, audit lineage
+# (TS-elimination audit, 2026-05-02) and an unblock condition (AffineScript
+# bindings to MCP). Mirroring it here so the Hypatia scanner stops
+# flagging them as critical "banned_language_file" findings — the
+# governance policy and the scanner exemption must agree.
+#
+# Adding new entries requires explicit user approval and an unblock
+# condition (per CLAUDE.md). The 6 files below are the closed set.
+cicd_rules/banned_language_file:cartridges/academic-workflow-mcp/adapter/mod.ts
+cicd_rules/banned_language_file:cartridges/bofig-mcp/adapter/mod.ts
+cicd_rules/banned_language_file:cartridges/ephapax-mcp/adapter/mod.ts
+cicd_rules/banned_language_file:cartridges/fireflag-mcp/adapter/mod.ts
+cicd_rules/banned_language_file:cartridges/hesiod-mcp/adapter/mod.ts
+cicd_rules/banned_language_file:cartridges/sanctify-mcp/adapter/mod.ts

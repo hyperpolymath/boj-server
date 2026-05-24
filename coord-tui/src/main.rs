@@ -54,6 +54,19 @@ struct Cli {
     /// Used by shell hooks triggered on tool launch.
     #[arg(long)]
     id: bool,
+
+    /// Print this peer's ed25519 public key as 64 hex characters and exit.
+    /// Reads (or creates on first run) the seed file at `--key-path`. Used
+    /// for manual peer-key exchange in ADR-0016 federation. The file is
+    /// the shared identity contract between coord-tui and the Zig adapter.
+    #[arg(long)]
+    print_pubkey: bool,
+
+    /// Path to the ed25519 seed file. Default: $XDG_CACHE_HOME/coord-tui/peer.key
+    /// or ~/.cache/coord-tui/peer.key. The Zig adapter uses the same path
+    /// when its `boj_coord_identity_init` is called.
+    #[arg(long, env = "BOJ_COORD_KEY_PATH")]
+    key_path: Option<String>,
 }
 
 // ─── HTTP ─────────────────────────────────────────────────────────────────────
@@ -595,6 +608,102 @@ fn centered(pct_w: u16, h: u16, r: Rect) -> Rect {
     Rect::new(x, y, w, h)
 }
 
+// ─── ed25519 identity (ADR-0016 Phase 1) ─────────────────────────────────────
+//
+// Reads (or creates on first run) the 32-byte seed file and derives the
+// ed25519 public key. The file format is the shared identity contract
+// between coord-tui and the Zig adapter — either can be the first to
+// create it; the second one will load the existing seed unchanged.
+
+fn default_key_path() -> std::path::PathBuf {
+    if let Ok(xdg) = std::env::var("XDG_CACHE_HOME") {
+        if !xdg.is_empty() {
+            return std::path::Path::new(&xdg).join("coord-tui").join("peer.key");
+        }
+    }
+    let home = std::env::var("HOME").unwrap_or_default();
+    std::path::Path::new(&home).join(".cache").join("coord-tui").join("peer.key")
+}
+
+fn read_or_create_seed(path: &std::path::Path) -> Result<[u8; 32], String> {
+    if path.exists() {
+        let bytes = std::fs::read(path)
+            .map_err(|e| format!("read seed: {}", e))?;
+        if bytes.len() != 32 {
+            return Err(format!("seed file is {} bytes, expected 32", bytes.len()));
+        }
+        let mut seed = [0u8; 32];
+        seed.copy_from_slice(&bytes);
+        return Ok(seed);
+    }
+
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent)
+            .map_err(|e| format!("create parent dir {}: {}", parent.display(), e))?;
+    }
+
+    // Generate a fresh 32-byte seed by reading /dev/urandom directly.
+    // This avoids pulling in a `rand` dep just for this one call and
+    // matches what the Zig adapter does (std.crypto.random.bytes on
+    // Linux ultimately calls getrandom(2) / /dev/urandom). The seed is
+    // a private RFC 8032 ed25519 seed; ed25519-dalek will derive the
+    // expanded secret scalar at sign time.
+    let seed = read_urandom_32()?;
+    write_seed_0600(path, &seed)?;
+    Ok(seed)
+}
+
+#[cfg(unix)]
+fn read_urandom_32() -> Result<[u8; 32], String> {
+    use std::io::Read;
+    let mut f = std::fs::File::open("/dev/urandom")
+        .map_err(|e| format!("open /dev/urandom: {}", e))?;
+    let mut seed = [0u8; 32];
+    f.read_exact(&mut seed)
+        .map_err(|e| format!("read /dev/urandom: {}", e))?;
+    Ok(seed)
+}
+
+#[cfg(not(unix))]
+fn read_urandom_32() -> Result<[u8; 32], String> {
+    Err("Phase 1 supports Unix-like platforms only (needs /dev/urandom).".into())
+}
+
+#[cfg(unix)]
+fn write_seed_0600(path: &std::path::Path, seed: &[u8; 32]) -> Result<(), String> {
+    use std::os::unix::fs::OpenOptionsExt;
+    let mut f = std::fs::OpenOptions::new()
+        .write(true).create_new(true).mode(0o600).open(path)
+        .map_err(|e| format!("create seed {}: {}", path.display(), e))?;
+    std::io::Write::write_all(&mut f, seed)
+        .map_err(|e| format!("write seed: {}", e))
+}
+
+#[cfg(not(unix))]
+fn write_seed_0600(path: &std::path::Path, seed: &[u8; 32]) -> Result<(), String> {
+    // Phase 1 supports Linux/macOS only — non-Unix platforms cannot
+    // restrict the mode at file-create time. Refuse rather than write
+    // a world-readable seed.
+    let _ = (path, seed);
+    Err("Phase 1 supports Unix-like platforms only (mode 0600 required for the seed file).".into())
+}
+
+fn print_pubkey(override_path: Option<&str>) -> Result<String, String> {
+    let path = match override_path {
+        Some(p) => std::path::PathBuf::from(p),
+        None => default_key_path(),
+    };
+    let seed = read_or_create_seed(&path)?;
+    use ed25519_dalek::SigningKey;
+    let signing = SigningKey::from_bytes(&seed);
+    let pubkey = signing.verifying_key().to_bytes();
+    let mut hex = String::with_capacity(64);
+    for b in pubkey {
+        hex.push_str(&format!("{:02x}", b));
+    }
+    Ok(hex)
+}
+
 // ─── Context detection ────────────────────────────────────────────────────────
 
 fn detect_context() -> String {
@@ -641,6 +750,19 @@ fn silent_register(url: &str, kind: &str, context: &str) {
 fn main() -> io::Result<()> {
     let cli = Cli::parse();
     let context = cli.context.unwrap_or_else(detect_context);
+
+    if cli.print_pubkey {
+        match print_pubkey(cli.key_path.as_deref()) {
+            Ok(hex) => {
+                println!("{}", hex);
+                return Ok(());
+            }
+            Err(e) => {
+                eprintln!("coord-tui --print-pubkey: {}", e);
+                std::process::exit(1);
+            }
+        }
+    }
 
     if cli.id {
         silent_register(&cli.url, &cli.kind, &context);
@@ -730,4 +852,93 @@ fn main() -> io::Result<()> {
     disable_raw_mode()?;
     execute!(terminal.backend_mut(), LeaveAlternateScreen)?;
     Ok(())
+}
+
+// ─── Tests ────────────────────────────────────────────────────────────────────
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::path::PathBuf;
+
+    fn tmp_path(name: &str) -> PathBuf {
+        let mut p = std::env::temp_dir();
+        // Disambiguate across parallel tests in this module.
+        let nanos = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.subsec_nanos())
+            .unwrap_or(0);
+        p.push(format!("coord-tui-test-{}-{}-{}", std::process::id(), nanos, name));
+        p
+    }
+
+    fn hex_decode(s: &str) -> Vec<u8> {
+        (0..s.len()).step_by(2)
+            .map(|i| u8::from_str_radix(&s[i..i + 2], 16).unwrap())
+            .collect()
+    }
+
+    /// RFC 8032 §7.1 TEST 1 — the canonical ed25519 reference vector.
+    /// Pinning this seed → pubkey mapping proves the Rust derivation
+    /// matches the spec. The Zig adapter pins the same vector in
+    /// `coord_identity.zig`; if both match RFC 8032, they match each
+    /// other — which is the cross-implementation consistency guarantee
+    /// for the shared seed-file format.
+    const RFC8032_TEST1_SEED_HEX: &str =
+        "9d61b19deffd5a60ba844af492ec2cc44449c5697b326919703bac031cae7f60";
+    const RFC8032_TEST1_PUBKEY_HEX: &str =
+        "d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a";
+
+    #[test]
+    fn print_pubkey_matches_rfc8032_test1() {
+        let path = tmp_path("rfc8032.key");
+        let _ = std::fs::remove_file(&path);
+        std::fs::write(&path, hex_decode(RFC8032_TEST1_SEED_HEX)).unwrap();
+
+        let hex = print_pubkey(Some(path.to_str().unwrap())).unwrap();
+        assert_eq!(hex, RFC8032_TEST1_PUBKEY_HEX);
+
+        std::fs::remove_file(&path).unwrap();
+    }
+
+    #[test]
+    fn print_pubkey_roundtrip_is_deterministic() {
+        // Two reads of the same seed file produce the same pubkey.
+        let path = tmp_path("roundtrip.key");
+        let _ = std::fs::remove_file(&path);
+
+        let first = print_pubkey(Some(path.to_str().unwrap())).unwrap();
+        let second = print_pubkey(Some(path.to_str().unwrap())).unwrap();
+        assert_eq!(first, second);
+        assert_eq!(first.len(), 64);
+        assert!(first.chars().all(|c| c.is_ascii_hexdigit()));
+
+        std::fs::remove_file(&path).unwrap();
+    }
+
+    #[test]
+    fn print_pubkey_rejects_wrong_length_seed() {
+        let path = tmp_path("short.key");
+        let _ = std::fs::remove_file(&path);
+        std::fs::write(&path, b"only-five").unwrap();
+
+        let err = print_pubkey(Some(path.to_str().unwrap())).unwrap_err();
+        assert!(err.contains("expected 32"), "unexpected error: {}", err);
+
+        std::fs::remove_file(&path).unwrap();
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn fresh_seed_file_is_mode_0600() {
+        use std::os::unix::fs::PermissionsExt;
+        let path = tmp_path("perms.key");
+        let _ = std::fs::remove_file(&path);
+
+        let _ = print_pubkey(Some(path.to_str().unwrap())).unwrap();
+        let mode = std::fs::metadata(&path).unwrap().permissions().mode() & 0o777;
+        assert_eq!(mode, 0o600, "seed file mode = {:o}, expected 0600", mode);
+
+        std::fs::remove_file(&path).unwrap();
+    }
 }

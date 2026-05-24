@@ -43,6 +43,10 @@ toc::[]
 | P-17 | Echo-type formalisation of audit + summary + hash chain | P-15, P-16 | Phase 3 (deferred) | Agda (echo-types repo)
 | P-18 | Tropical-semiring model of TTL + trust | P-17 | Phase 3 (deferred) | Agda (EchoTropical)
 | P-19 | Cross-site primacy ceremony | P-15…P-18 | Phase 4 (deferred) | Idris2 + Agda
+| P-20 | Ed25519 key-material well-formedness (pubkey ≡ 32B, sig ≡ 64B by construction) | — | ✅ done | Idris2 (`LocalCoord.Identity`)
+| P-21 | Identity carries forward `FederationPolicy ≡ LocalOnly` (identity ≠ federation) | P-20, P-02 | ✅ done | Idris2 (`LocalCoord.Identity.identityDoesNotEnableFederation`)
+| P-22 | Envelope signature soundness (sign-then-verify roundtrip on bytes) | P-20 | ADR-0016 Phase 5 | Idris2 (planned `LocalCoord.Federation`)
+| P-23 | mTLS peer pinning matches `known_peers.toml` pubkey | P-20, P-22 | ADR-0016 Phase 5 | Idris2 + std.crypto axiomatised
 |===
 
 Stage priorities:
