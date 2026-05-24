@@ -1,3 +1,6 @@
+<!-- SPDX-License-Identifier: MPL-2.0 -->
+<!-- Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk> -->
+
 # Backend-Assurance: `prim__strAppend`
 
 Trusted-extraction validation for the class-(J) axiom over Idris2's
