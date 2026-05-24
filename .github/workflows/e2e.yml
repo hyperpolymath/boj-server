@@ -139,3 +139,70 @@ jobs:
           name: benchmark-results
           path: ffi/zig/zig-out/bench*
           retention-days: 30
+
+  # ─── Bench Bridge: mcp-bridge JS perf (path-claims) ────────────────
+  # Separate job from `benchmarks` above because the bridge has no Zig
+  # toolchain dependency — keeps logs untangled and lets the JS bench
+  # run in parallel on its own runner. Posts a sticky PR comment so
+  # deltas across pushes are visible inline.
+  bench-bridge:
+    name: Bench — mcp-bridge (path-claims)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      # Per-job override: only this step needs to write PR comments.
+      # Workflow-level permissions stay read-all.
+      pull-requests: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Setup Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '22'
+
+      - name: Run bridge bench
+        run: node mcp-bridge/tests/path_claims_bench.js | tee bench-bridge.txt
+
+      - name: Upload bridge bench artifact
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4
+        with:
+          name: bench-bridge-results
+          path: bench-bridge.txt
+          retention-days: 30
+
+      - name: Sticky PR comment with bench numbers
+        if: github.event_name == 'pull_request'
+        # Advisory — a comment failure must never gate the bench job.
+        # Same reasoning as the hypatia-scan PR-comment step.
+        continue-on-error: true
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v7
+        with:
+          script: |
+            const fs = require('fs');
+            const MARKER = '<!-- bench-bridge:path-claims -->';
+            const output = fs.readFileSync('bench-bridge.txt', 'utf8');
+            const body = `${MARKER}\n## 🏁 path-claims bench\n\nCommit \`${context.sha.slice(0, 7)}\`\n\n<details open><summary>Numbers</summary>\n\n\`\`\`\n${output}\n\`\`\`\n</details>\n\n*Host-dependent — compare deltas across commits, not absolute values.*`;
+
+            const { owner, repo } = context.repo;
+            const issue_number = context.issue.number;
+
+            const existing = await github.paginate(
+              github.rest.issues.listComments,
+              { owner, repo, issue_number, per_page: 100 },
+            );
+            const prior = existing.find((c) => c.body && c.body.includes(MARKER));
+
+            if (prior) {
+              await github.rest.issues.updateComment({
+                owner, repo, comment_id: prior.id, body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner, repo, issue_number, body,
+              });
+            }

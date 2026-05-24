@@ -27,3 +27,14 @@ Adding to this list requires explicit user approval and an unblock condition. Au
 ### Documentation Format
 
 - All docs `.adoc` (AsciiDoc) except GitHub-required files (SECURITY.md, CONTRIBUTING.md, CODE_OF_CONDUCT.md, CHANGELOG.md).
+
+---
+
+## PR Workflow
+
+This repo squash-merges PRs. Two consequences worth knowing before pushing follow-ups:
+
+- **Don't pile follow-up commits onto a branch whose PR is in review.** When the PR is squash-merged, `main` gets a new commit with a new SHA. Any commits you pushed after the PR was opened are still on the feature branch, on top of a base that no longer matches `main`. GitHub will then mark the PR as `mergeable_state: "blocked"` and any rebase will produce ghost-conflicts — the conflicting hunks are the *same content*, but git can't tell because the SHAs differ. If you have follow-up work, open it as a new PR off the current `main`.
+- **After a squash-merge, delete the feature branch.** It contains pre-squash commits with stale SHAs; reusing it for new work re-creates the ghost-conflict problem. `git checkout main && git pull && git branch -D <branch> && git push origin --delete <branch>`.
+
+Diagnostic: if a PR shows `blocked` and `git diff origin/main HEAD` is empty, the PR's content is already on main via squash-merge — close the PR rather than trying to merge it.
