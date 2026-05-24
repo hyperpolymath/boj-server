@@ -11,11 +11,13 @@ on:
     paths:
       - 'ffi/**'
       - 'cartridges/**/ffi/**'
+      - '.github/workflows/zig-test.yml'
   pull_request:
     branches: [main]
     paths:
       - 'ffi/**'
       - 'cartridges/**/ffi/**'
+      - '.github/workflows/zig-test.yml'
 
 permissions:
   contents: read
