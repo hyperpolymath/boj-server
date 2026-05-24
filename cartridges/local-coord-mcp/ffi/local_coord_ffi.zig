@@ -18,6 +18,14 @@
 const std = @import("std");
 const dur = @import("coord_durability.zig");
 
+// ADR-0016 Phase 1: pull in coord_identity so its `pub export fn`
+// symbols are part of the shared library. The module does not need to
+// be referenced directly from this file — the import side-effect is
+// to surface the FFI exports for `boj_coord_identity_*`.
+comptime {
+    _ = @import("coord_identity.zig");
+}
+
 // ═══════════════════════════════════════════════════════════════════════
 // Constants (must match SafeLocalCoord.idr)
 // ═══════════════════════════════════════════════════════════════════════
