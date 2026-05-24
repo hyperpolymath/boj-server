@@ -3287,8 +3287,13 @@ export fn boj_cartridge_invoke(
         in_out_len.* = 64; // hint a minimum useful size
         return shim.RC_BUFFER_TOO_SMALL;
     }
-    const tool = std.mem.spanZ(tool_name);
-    const args: []const u8 = if (json_args != null) |ja| std.mem.spanZ(ja) else "{}";
+    // CWE-704 fix (post-#146): std.mem.sliceTo(ptr, 0) reads the C string
+    // up to the first NUL without an `@ptrCast` and without the
+    // `std.mem.spanZ` that no longer exists in Zig 0.14+. The optional-payload
+    // capture `if (json_args != null) |ja|` was also invalid for [*c]
+    // pointers — those are null-checked with `== null`, not unwrapped.
+    const tool = std.mem.sliceTo(tool_name, 0);
+    const args: []const u8 = if (json_args == null) "{}" else std.mem.sliceTo(json_args, 0);
     const result = ci_dispatch(tool, args, out_buf[0..cap], std.heap.page_allocator);
     in_out_len.* = result.written;
     return result.rc;

@@ -58,8 +58,14 @@ pub fn invokeArgsNull(
 /// Compare a C-NUL-terminated tool-name pointer against a Zig string
 /// literal. Caller must have already verified `tool_name` is non-null
 /// (usually via `invokeArgsNull`).
+///
+/// Implementation note (CWE-704 fix, post-#146): uses
+/// `std.mem.sliceTo(ptr, 0)` which scans the C string up to the first
+/// NUL — no `@ptrCast` and no `[*:0]` re-typing. The earlier
+/// `std.mem.spanZ` call was removed in Zig 0.14+ and would not
+/// compile under the 0.15.1 CI pin.
 pub fn toolIs(tool_name: [*c]const u8, expected: []const u8) bool {
-    const s = std.mem.spanZ(tool_name);
+    const s = std.mem.sliceTo(tool_name, 0);
     return std.mem.eql(u8, s, expected);
 }
 
