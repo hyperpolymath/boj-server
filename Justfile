@@ -354,6 +354,10 @@ bench:
     @echo "Running benchmarks..."
     cd ffi/zig && zig build bench
 
+# Run the mcp-bridge JS benches (path-claims overlap scan, leaf primitives)
+bench-bridge:
+    @node mcp-bridge/tests/path_claims_bench.js
+
 # Run end-to-end integration tests
 integration:
     @echo "Running integration tests..."
