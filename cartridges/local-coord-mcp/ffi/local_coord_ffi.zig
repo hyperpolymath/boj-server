@@ -3287,11 +3287,8 @@ export fn boj_cartridge_invoke(
         in_out_len.* = 64; // hint a minimum useful size
         return shim.RC_BUFFER_TOO_SMALL;
     }
-    const tool = std.mem.span(@as([*:0]const u8, @ptrCast(tool_name)));
-    const args: []const u8 = if (json_args != null)
-        std.mem.span(@as([*:0]const u8, @ptrCast(json_args)))
-    else
-        "{}";
+    const tool = std.mem.spanZ(tool_name);
+    const args: []const u8 = if (json_args != null) |ja| std.mem.spanZ(ja) else "{}";
     const result = ci_dispatch(tool, args, out_buf[0..cap], std.heap.page_allocator);
     in_out_len.* = result.written;
     return result.rc;

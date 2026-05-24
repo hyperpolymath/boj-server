@@ -59,7 +59,7 @@ pub fn invokeArgsNull(
 /// literal. Caller must have already verified `tool_name` is non-null
 /// (usually via `invokeArgsNull`).
 pub fn toolIs(tool_name: [*c]const u8, expected: []const u8) bool {
-    const s = std.mem.span(@as([*:0]const u8, @ptrCast(tool_name)));
+    const s = std.mem.spanZ(tool_name);
     return std.mem.eql(u8, s, expected);
 }
 
@@ -124,19 +124,19 @@ test "writeResult: empty body" {
 }
 
 test "toolIs: matches and rejects" {
-    const name: [*:0]const u8 = "foo";
-    try std.testing.expect(toolIs(@ptrCast(name), "foo"));
-    try std.testing.expect(!toolIs(@ptrCast(name), "bar"));
-    try std.testing.expect(!toolIs(@ptrCast(name), "foobar"));
-    try std.testing.expect(!toolIs(@ptrCast(name), "fo"));
+    const name: [*c]const u8 = "foo";
+    try std.testing.expect(toolIs(name, "foo"));
+    try std.testing.expect(!toolIs(name, "bar"));
+    try std.testing.expect(!toolIs(name, "foobar"));
+    try std.testing.expect(!toolIs(name, "fo"));
 }
 
 test "invokeArgsNull: detects each null slot" {
     var buf: [4]u8 = undefined;
     var len: usize = 4;
-    const name: [*:0]const u8 = "x";
-    try std.testing.expect(!invokeArgsNull(@ptrCast(name), &buf, &len));
+    const name: [*c]const u8 = "x";
+    try std.testing.expect(!invokeArgsNull(name, &buf, &len));
     try std.testing.expect(invokeArgsNull(null, &buf, &len));
-    try std.testing.expect(invokeArgsNull(@ptrCast(name), null, &len));
-    try std.testing.expect(invokeArgsNull(@ptrCast(name), &buf, null));
+    try std.testing.expect(invokeArgsNull(name, null, &len));
+    try std.testing.expect(invokeArgsNull(name, &buf, null));
 }
