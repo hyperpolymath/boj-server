@@ -7,8 +7,24 @@ Date: 2026-05-24
 
 ## Status
 
-Spike (comparing tradeoffs against ADR-0015; not yet a decision; a
-small-scope alternative to the full-fat ADR-0010)
+Accepted (2026-05-24) — chosen over ADR-0015 because it closes the
+more user-visible survey gap (Ruflo as the only comparator with a
+cross-host story) and is additive: loopback bus and Idris2-verified
+intra-host ABI stay untouched. Positioned as the v1 transport;
+ADR-0010 (DID + ML-DSA-87 + ML-KEM-1024 + federated quarantine)
+remains the v2 upgrade path.
+
+**Implementation plan:** phased rollout, each phase its own PR off
+`main` after this ADR lands.
+
+| Phase | Scope | Estimated |
+|---|---|---|
+| 1 | Identity foundation — ed25519 keypair, pubkey export, `known_peers.toml` parser, `coord-tui --print-pubkey` flag. No transport. | ~1 day |
+| 2 | Envelope sign/verify on the loopback bus (round-trip validation before any wire work). | ~1 day |
+| 3 | TLS listener on `:7746` + mTLS handshake gated by `known_peers.toml`. | ~1-2 days |
+| 4 | New `coord_add_peer` / `coord_remove_peer` / `coord_list_remote_peers` tools — bridge + cartridge.json sync. | ~0.5 day |
+| 5 | Idris2 `Federation.idr` — envelope-boundary signature soundness obligation. | ~1 day |
+| 6 | Tests — two-instance round-trip, signature tampering, replay protection. | ~0.5 day |
 
 ## Context
 

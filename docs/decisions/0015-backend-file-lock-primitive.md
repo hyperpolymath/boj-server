@@ -7,7 +7,16 @@ Date: 2026-05-24
 
 ## Status
 
-Spike (comparing tradeoffs against ADR-0016; not yet a decision)
+Deferred (2026-05-24) — ADR-0016 (cross-host federation stop-gap) was
+chosen as the next build over this one because it closes a more
+user-visible survey gap without altering the verified backend core.
+The bridge-layer advisory path-claims shipped in PR #142/#143 remain
+the current answer for in-flight conflict signalling.
+
+This ADR stays on file as the design-of-record for a backend-enforced
+lock primitive should "advisory warning is not enough" become a stated
+requirement. Reopen by flipping to "Proposed" and scheduling alongside
+the next P-0x proof-obligation cycle.
 
 ## Context
 
