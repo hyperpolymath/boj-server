@@ -132,7 +132,7 @@ RSR compliance: *met* — satisfies Grade D floor.
 === Annotation depth
 
 - Per-directory orientation docs: `docs/architecture/` (9 files), `docs/decisions/`
-  (4 ADRs + README), `docs/integration/`, `docs/specification/`, `docs/wiki/` (5 pages).
+  (4 ADRs + README), `docs/integration/`, `docs/specification/`, `docs/wikis/` (5 pages).
 - Per-cartridge README coverage: *53 of 99* (~54%). **46 cartridges lack `README`** —
   this is the biggest annotation gap.
 - Idris2 modules: inline ASCII-doc headers present on sampled files (e.g.,

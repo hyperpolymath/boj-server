@@ -12,7 +12,7 @@ grade = "C"
 
 [project-context]
 name = "Bundle of Joy Server"
-purpose = "Unified server capability catalogue. AI goes to ONE place instead of hunting across dozens of MCP servers. Distributed via community-hosted Umoja nodes with gossip protocol and hash attestation. 112 cartridges covering the full developer-tool matrix."
+purpose = "Unified server capability catalogue. AI goes to ONE place instead of hunting across dozens of MCP servers. Distributed via community-hosted Umoja nodes with gossip protocol and hash attestation. 125 cartridges covering the full developer-tool matrix."
 completion-percentage = 65
 
 [stack]
@@ -40,9 +40,9 @@ milestones = [
 ]
 
 [quality]
-cartridges-total            = 112   # all 112 have cartridge.json + mod.js as of 2026-04-25
-cartridges-with-zig-ffi     = 111   # all cartridges with ffi key + compiled .so (model-router-mcp intentionally excluded)
-cartridges-with-js-mod      = 111   # mod.js dispatch via Deno worker pool (model-router-mcp is canonical JS-only)
+cartridges-total            = 125   # all 125 have cartridge.json as of 2026-05-25
+cartridges-with-zig-ffi     = 115   # cartridges with ffi/ directory present (manifest counts; .so binaries built per-platform)
+cartridges-with-js-mod      = 113   # mod.js dispatch via Deno worker pool (model-router-mcp is canonical JS-only)
 cartridges-with-both        = 0     # no cartridge uses both paths
 exunit-tests                = 173   # 10 properties + 163 regular tests across 11 files; Phase 9 auth tests added 2026-04-25
 zig-ffi-chain-verified      = true  # boj-invoke → dlopen → libboj_health.so end-to-end tested 2026-04-25
