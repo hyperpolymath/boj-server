@@ -110,10 +110,15 @@ if ! command -v jq &>/dev/null; then
 fi
 green "  curl + jq available"
 
-# Check for node or deno (MCP bridge)
+# Check for node or deno (MCP bridge).
+# mcp-bridge/main.js requires --allow-read for nickel-validator.js (loads
+# .ncl contracts) — the shebang says so, but `deno run <file>` ignores
+# the shebang and uses only the flags passed to the CLI invocation.
+# Without --allow-read, the bridge crashes on import with NotCapable
+# and the test sees empty stdout (saw on PR #150 CI 2026-05-25).
 MCP_RUNNER=""
 if command -v deno &>/dev/null; then
-    MCP_RUNNER="deno run --allow-net --allow-env"
+    MCP_RUNNER="deno run --allow-net --allow-env --allow-read"
 elif command -v node &>/dev/null; then
     MCP_RUNNER="node"
 fi
