@@ -72,6 +72,12 @@ jobs:
         working-directory: elixir
         run: mix deps.get
 
+      - name: Compile Elixir deps
+        # Pre-compile so the in-test `mix run --no-halt` doesn't have
+        # to do it on the critical path of the 60s server-start window.
+        working-directory: elixir
+        run: mix compile
+
       - name: Build FFI libraries
         run: |
           cd ffi/zig && zig build

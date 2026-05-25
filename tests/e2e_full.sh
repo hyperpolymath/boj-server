@@ -131,14 +131,17 @@ bold "Step 1: Starting BoJ server on port $REST_PORT..."
 ( cd "$ELIXIR_DIR" && BOJ_REST_PORT="$REST_PORT" mix run --no-halt ) > "$TMPDIR_TEST/boj-e2e-full.log" 2>&1 &
 PIDS+=($!)
 
-# Wait for health check (up to 10 seconds)
-for i in $(seq 1 50); do
+# Wait for health check (up to 60 seconds — CI cold start can compile
+# Elixir deps on the critical path even when the workflow pre-runs
+# `mix deps.get` / `mix compile`; local runs typically come up in <1s).
+WAIT_ITERS=300
+for i in $(seq 1 $WAIT_ITERS); do
     if curl -sf "$BASE_URL/health" > /dev/null 2>&1; then
         green "  Server is up (waited ~$((i * 200))ms)"
         break
     fi
-    if [[ $i -eq 50 ]]; then
-        red "  ERROR: Server did not start within 10 seconds"
+    if [[ $i -eq $WAIT_ITERS ]]; then
+        red "  ERROR: Server did not start within $((WAIT_ITERS * 200 / 1000)) seconds"
         red "  Log tail:"
         tail -20 "$TMPDIR_TEST/boj-e2e-full.log" 2>/dev/null || true
         exit 1
