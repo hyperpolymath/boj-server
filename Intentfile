@@ -65,7 +65,7 @@ ai_agent_capabilities:
       - Must not scrape sensitive data.
       - Must respect rate limits.
     example_actions:
-      - "Read README.md"
+      - "Read README.adoc"
       - "View logs: `kubectl logs <pod_name>`"
       - "Query BoJ API: `curl http://localhost:4000/api/cartridges`"
 
