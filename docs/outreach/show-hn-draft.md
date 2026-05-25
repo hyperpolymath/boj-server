@@ -20,7 +20,7 @@ cd boj-server && just build && just serve
 # REST :7700 | gRPC :7701 | GraphQL :7702 | SSE :7703
 ```
 
-Quickstart: https://github.com/hyperpolymath/boj-server/blob/main/QUICKSTART-USER.adoc
+Quickstart: https://github.com/hyperpolymath/boj-server/blob/main/docs/quickstarts/USER.adoc
 
 MPL-2.0 license (MPL-2.0 legal fallback; OSI submission pending).
 

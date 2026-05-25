@@ -1389,7 +1389,7 @@ tour:
     echo "  Umoja   — unity (federation, gossip protocol)"
     echo "  Ayo     — joy (the BoJ philosophy)"
     echo ""
-    echo "Read more: docs/ARCHITECTURE.md, QUICKSTART-USER.adoc"
+    echo "Read more: docs/ARCHITECTURE.md, docs/quickstarts/USER.adoc"
 
 # Show help for common workflows, build commands, test commands, and doc links
 help-me:
@@ -1453,10 +1453,10 @@ help-me:
     echo ""
     echo "DOCUMENTATION:"
     echo "  README.adoc                      Project overview"
-    echo "  EXPLAINME.adoc                   Detailed claims and evidence"
+    echo "  docs/EXPLAINME.adoc              Detailed claims and evidence"
     echo "  docs/AI_INSTALLATION_GUIDE.adoc  AI-assisted setup guide"
     echo "  docs/ARCHITECTURE.md             Architecture overview"
-    echo "  QUICKSTART-USER.adoc             Quick start for users"
+    echo "  docs/quickstarts/USER.adoc       Quick start for users"
     echo "  .machine_readable/STATE.a2ml     Current project state"
 
 

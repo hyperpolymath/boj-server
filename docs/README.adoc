@@ -37,5 +37,5 @@ Primary documentation for Bundle of Joy Server.
 
 * `../TOPOLOGY.md` — Architecture diagram and completion dashboard
 * `../READINESS.md` — Component Readiness Grades (CRG v1.0)
-* `../ROADMAP.adoc` — Phased development roadmap
+* `status/ROADMAP.adoc` — Phased development roadmap
 * `../.machine_readable/STATE.a2ml` — Current project state
