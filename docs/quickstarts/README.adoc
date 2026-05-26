@@ -1,0 +1,52 @@
+// SPDX-License-Identifier: MPL-2.0
+// SPDX-FileCopyrightText: 2025-2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+
+= Quickstarts
+:toc: macro
+
+Audience-targeted onboarding paths for boj-server. Pick the role that
+matches what you want to do.
+
+toc::[]
+
+== Choose your path
+
+[cols="1,1,3",options="header"]
+|===
+| Role | Document | What it gets you
+
+| End user
+| link:USER.adoc[USER.adoc]
+| You want to use BoJ through an MCP client (Claude Code, Claude
+  Desktop, Gemini CLI, Cursor, Copilot, etc.) without running a local
+  backend. Covers MCP client install + offline manifest fallback.
+
+| Developer
+| link:DEV.adoc[DEV.adoc]
+| You're building a cartridge, modifying the bridge, or extending the
+  Idris2 ABI / Zig FFI layer. Covers local dev environment, test
+  matrix, ABI/FFI conventions.
+
+| Maintainer / operator
+| link:MAINTAINER.adoc[MAINTAINER.adoc]
+| You're running a BoJ node — community seed, fleet member, or
+  self-hosted instance. Covers deployment, secrets, monitoring,
+  federation, gate compliance.
+|===
+
+The three documents are deliberately separate because each audience
+needs a different first-hour path. They overlap on the basics
+(install, sanity-check) but diverge sharply after that. If you're not
+sure which to read, start with link:USER.adoc[USER.adoc] — the others
+assume you already know what BoJ does from the user's perspective.
+
+== Related references
+
+* link:../EXPLAINME.adoc[EXPLAINME.adoc] — what BoJ is and why, in
+  detail
+* link:../wikis/Home.adoc[Wiki home] — long-form guides for users,
+  developers, and operators
+* link:../architecture/README.adoc[Architecture overview] — system
+  design, layered architecture, capability matrix
+* link:../../README.adoc[Repository README] — install matrix for 9 MCP
+  clients, capability summary, Glama AAA posture

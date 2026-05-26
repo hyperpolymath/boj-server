@@ -16,7 +16,7 @@ Evaluates the Bundle of Joy Server repository against
 - Template: `rsr-template-repo/docs/governance/CRG-CRITERIA.adoc`
 - Self-declared grade (prior art):
   * `.machine_readable/6a2/STATE.a2ml` → `grade = "D-alpha"`
-  * `docs/READINESS.md` (v1.0, 2026-03-09) → `D` for 29 components, `X` for Teranga menu
+  * `docs/READINESS.adoc` (v1.0, 2026-03-09) → `D` for 29 components, `X` for Teranga menu
 - Glama third-party badge: AAA (Security A, License A, Quality A), overall D.
 
 The audit grades the repo *as-is today*, not aspirationally.
@@ -58,7 +58,7 @@ Publication requires B+. Long alpha is discipline, not shame.
 | PRESENT
 | Root
 
-| `docs/EXPLAINME.adoc`, `docs/READINESS.md`, `docs/RSR_OUTLINE.adoc`
+| `docs/EXPLAINME.adoc`, `docs/READINESS.adoc`, `docs/RSR_OUTLINE.adoc`
 | PRESENT
 | `docs/`
 
@@ -224,7 +224,7 @@ What blocks *immediate* promotion to C:
 
 1. 46 of 99 cartridges lack `README.{adoc,md}` — "deep per-file annotation"
    clause fails.
-2. `docs/READINESS.md` is on the v1.0 schema from 2026-03-09 and does not
+2. `docs/READINESS.adoc` is on the v1.0 schema from 2026-03-09 and does not
    reflect v2.0 strictness, the 4-believe_me sweep, BJ2 closure, MCP bridge
    tests, or the v-sweep cartridge count (99). A stale readiness doc is itself
    an annotation defect.
@@ -252,7 +252,7 @@ What blocks promotion to B (even after C is met):
 
 == Related Files
 
-- `docs/READINESS.md` — v1.0 component-by-component table (2026-03-09). Due for
+- `docs/READINESS.adoc` — v1.0 component-by-component table (2026-03-09). Due for
   v2.0 refresh.
 - `.machine_readable/6a2/STATE.a2ml` — authoritative self-declared state.
 - `docs/governance/CRG-LIFT-PLAN-2026-04-18.adoc` — companion plan for D->C (and

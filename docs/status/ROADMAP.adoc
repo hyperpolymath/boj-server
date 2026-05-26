@@ -111,5 +111,5 @@ Gateway sidecar (`http-capability-gateway` in front of boj-server):
 
 * **Propose a cartridge**: Open a Discussion using the "Cartridge Proposal" template
 * **Host a node**: Open a Discussion using the "Hosting" template
-* **Build a cartridge**: See `docs/DEVELOPERS.md`
+* **Build a cartridge**: See `docs/developer/README.adoc`
 * **Give feedback**: Open a Discussion or Issue

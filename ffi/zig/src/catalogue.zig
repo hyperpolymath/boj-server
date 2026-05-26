@@ -82,7 +82,7 @@ const MAX_ORDER_SIZE: usize = 16;
 /// It defaults to "universal" for cartridges that are provider-agnostic.
 /// Community extensions can specialise it (e.g. "postgresql", "podman", "aws")
 /// to target a specific backend without modifying core infrastructure.
-/// See docs/EXTENSIBILITY.md for the rationale and extension mechanism.
+/// See docs/EXTENSIBILITY.adoc for the rationale and extension mechanism.
 const CartridgeEntry = struct {
     name: [64]u8,
     name_len: usize,
@@ -195,7 +195,7 @@ pub export fn boj_catalogue_add_protocol(protocol: c_int) c_int {
 
 /// Set the backend for the last registered cartridge.
 /// Defaults to "universal" if never called.
-/// This is the third-axis extension point (see docs/EXTENSIBILITY.md).
+/// This is the third-axis extension point (see docs/EXTENSIBILITY.adoc).
 pub export fn boj_catalogue_set_backend(backend_ptr: [*]const u8, backend_len: usize) c_int {
     mutex.lock();
     defer mutex.unlock();

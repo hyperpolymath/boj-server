@@ -15,7 +15,7 @@ entry a reviewer can read, rather than by self-report in release notes or
 
 It is the authoritative source for the "active dogfooding with no known
 home-context failures" evidence that CRG v2.0 requires for D → C promotion
-(see `docs/READINESS.md` §4).
+(see `docs/READINESS.adoc` §4).
 
 == Scope
 
@@ -57,7 +57,7 @@ that explicitly references the previous one; do not rewrite history.
 === 2026-04-18 — Inaugural entry: documentation audit and CRG v2.0 alignment
 
 Component:: Documentation corpus (`cartridges/*/README.adoc`,
-            `docs/READINESS.md`, `docs/practice/DOGFOOD-LOG.adoc`).
+            `docs/READINESS.adoc`, `docs/practice/DOGFOOD-LOG.adoc`).
 
 Context:: Three-item C-grade-blocker sweep:
           (1) 46 cartridges lacking `README.adoc` were generated from their
@@ -70,7 +70,7 @@ Context:: Three-item C-grade-blocker sweep:
           architecture template. `model-router-mcp` was written by hand
           because it has no `cartridge.json` — tool list is inline in
           `src/router.js`.
-          (2) `docs/READINESS.md` was rewritten from CRG v1.0 (dated
+          (2) `docs/READINESS.adoc` was rewritten from CRG v1.0 (dated
           2026-03-09) to CRG v2.0 (dated 2026-04-18). New schema adds
           stability posture per component, promotion blockers, honest D-wide
           rating (no component cleared C under the stricter rubric), and the
@@ -179,7 +179,7 @@ Each calendar month, the current maintainer SHOULD:
 . Scan this log for entries whose `Failures` field names an unresolved
   breakage, and confirm that either the remediation landed or the breakage
   still stands (and an issue exists for it).
-. Re-check `docs/READINESS.md` grades against the last 4 weeks of this log.
+. Re-check `docs/READINESS.adoc` grades against the last 4 weeks of this log.
   A component claimed at C-or-above with no dogfood entry in the window is
   a candidate for demotion (CRG v2.0 §7.2).
 . If the log grows past ~500 lines, rotate oldest-year entries into

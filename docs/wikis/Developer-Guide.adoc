@@ -244,7 +244,7 @@ curl -X POST http://localhost:7700/community/submit \
   }'
 ----
 
-See link:../EXTENSIBILITY.md[`docs/EXTENSIBILITY.md`] for the full guide.
+See link:../EXTENSIBILITY.md[`docs/EXTENSIBILITY.adoc`] for the full guide.
 
 == Running Tests
 

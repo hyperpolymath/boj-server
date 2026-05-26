@@ -57,7 +57,7 @@ orientation, not just top-level architecture docs.
 | ~1-2 pages each. 4 new READMEs.
 
 | 1.1.c
-| Refresh `docs/READINESS.md` to v2.0 schema: current cartridge count (99),
+| Refresh `docs/READINESS.adoc` to v2.0 schema: current cartridge count (99),
 new test totals (365), closed BJ2 credential-isolation module, four
 documented axiomatic `believe_me`, MCP bridge tests, LIVE deployment state.
 Replace v1.0 grade column wording with v2.0 definitions.
@@ -116,7 +116,7 @@ A promotion commit to C must be justified by *all* of:
 1. Every cartridge has a README containing the six fields listed in 1.1.a.
 2. `cartridges/`, `.machine_readable/`, `ffi/zig/src/`, `src/abi/Boj/`
    each contain a per-directory README.
-3. `docs/READINESS.md` is v2.0-aligned and dated 2026-04-XX.
+3. `docs/READINESS.adoc` is v2.0-aligned and dated 2026-04-XX.
 4. `docs/practice/DOGFOOD-LOG.adoc` exists with at least one dated entry per
    home-dogfooded cartridge.
 5. CI `zig-test.yml` last run is green; `panic-attack assail` run clean;
@@ -193,7 +193,7 @@ v2.0 forbids publication below B. Therefore:
    matrix defined in 2.1.a.
 2. Per target: one recorded session, one issue (or confirmed nil-issue) fed
    back, one bugfix or "no-change-needed" disposition logged.
-3. `docs/READINESS.md` updated with per-cartridge B justification where claimed.
+3. `docs/READINESS.adoc` updated with per-cartridge B justification where claimed.
 4. `STATE.a2ml` updated: `grade = "B-beta"` with supporting session-history
    entries citing the 6 targets.
 
@@ -211,7 +211,7 @@ In priority order, each session-tractable:
 
 1. *Sweep 46 cartridge READMEs* (item 1.1.a). Largest single blocker to C; most
    leverage per hour.
-2. *Refresh `docs/READINESS.md` to v2.0* (items 1.1.c + 1.1.d). Needed for the
+2. *Refresh `docs/READINESS.adoc` to v2.0* (items 1.1.c + 1.1.d). Needed for the
    promotion commit itself; also corrects the stale 2026-03-09 snapshot.
 3. *Write `docs/practice/DOGFOOD-LOG.adoc`* (item 1.2.a). Substantiates the
    dogfooding claim with dated evidence, not self-report.

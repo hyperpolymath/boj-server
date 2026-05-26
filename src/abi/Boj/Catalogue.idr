@@ -91,7 +91,7 @@ Eq MenuTier where
 |||
 ||| This third axis is NOT a scope increase — it exists solely so that
 ||| external developers can extend the catalogue along a natural seam
-||| without modifying core infrastructure.  See docs/EXTENSIBILITY.md.
+||| without modifying core infrastructure.  See docs/EXTENSIBILITY.adoc.
 public export
 record Cartridge where
   constructor MkCartridge

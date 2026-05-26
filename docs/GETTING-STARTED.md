@@ -115,7 +115,7 @@ Idris2 ABI (proofs) → Zig FFI (execution) → Elixir Adapter (network)
 - **Elixir** exposes everything as REST + gRPC + GraphQL (Plug/Cowboy on the BEAM)
 
 The capability matrix is 2D (protocol × domain) with an optional third axis
-(backend/provider) for community extensions.  See `docs/EXTENSIBILITY.md`.
+(backend/provider) for community extensions.  See `docs/EXTENSIBILITY.adoc`.
 
 ## Hosting a node
 
@@ -126,7 +126,7 @@ See `container/` for:
 
 ## Extending
 
-See `docs/EXTENSIBILITY.md` and `docs/examples/extension.a2ml` for how to
+See `docs/EXTENSIBILITY.adoc` and `docs/examples/extension.a2ml` for how to
 create backend-specific cartridge extensions without modifying core code.
 
 ## Submitting feedback
@@ -195,4 +195,4 @@ present, protocol range is contiguous.  A clean run produces a
 
 ## Full API reference
 
-See `docs/API-CONTRACT.md` for the complete stable API surface.
+See `docs/API-CONTRACT.adoc` for the complete stable API surface.

@@ -304,4 +304,4 @@ HTTP status codes: `400` (bad request), `404` (not found), `409` (conflict, e.g.
 
 == Full API Reference
 
-See link:../API-CONTRACT.md[`docs/API-CONTRACT.md`] for the complete stable API surface including wire format details.
+See link:../API-CONTRACT.md[`docs/API-CONTRACT.adoc`] for the complete stable API surface including wire format details.

@@ -39,10 +39,10 @@ The server is *distributed*: community nodes volunteer compute time via the Umoj
 == Key Resources
 
 * *Repository*: https://github.com/hyperpolymath/boj-server[github.com/hyperpolymath/boj-server]
-* *API Contract*: link:../API-CONTRACT.md[`docs/API-CONTRACT.md`] -- stable REST, gRPC, and GraphQL endpoints
-* *Architecture*: link:../ARCHITECTURE.md[`docs/ARCHITECTURE.md`] -- full design document
+* *API Contract*: link:../API-CONTRACT.md[`docs/API-CONTRACT.adoc`] -- stable REST, gRPC, and GraphQL endpoints
+* *Architecture*: link:../ARCHITECTURE.md[`docs/architecture/README.adoc`] -- full design document
 * *Topology*: link:../../TOPOLOGY.md[`TOPOLOGY.md`] -- completion dashboard and system diagram
-* *Extensibility*: link:../EXTENSIBILITY.md[`docs/EXTENSIBILITY.md`] -- third-axis extension mechanism
+* *Extensibility*: link:../EXTENSIBILITY.md[`docs/EXTENSIBILITY.adoc`] -- third-axis extension mechanism
 
 == Current Status
 

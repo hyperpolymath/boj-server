@@ -44,7 +44,7 @@ The matrix is a 2D grid:
 
 The matrix is intentionally *sparse* -- not every cell needs to be filled. Currently 18 cartridges fill the most useful cells. Each cartridge occupies one or more cells (e.g., `database-mcp` fills the Database row across MCP, gRPC, and REST columns).
 
-There is also an optional *third axis* (depth) for backend/provider specialisation. Core cartridges use `backend="universal"`. Community extensions can specialise, e.g., `database-mcp-pg` for PostgreSQL-specific operations. See link:../EXTENSIBILITY.md[`docs/EXTENSIBILITY.md`].
+There is also an optional *third axis* (depth) for backend/provider specialisation. Core cartridges use `backend="universal"`. Community extensions can specialise, e.g., `database-mcp-pg` for PostgreSQL-specific operations. See link:../EXTENSIBILITY.md[`docs/EXTENSIBILITY.adoc`].
 
 == How does federation work?
 
@@ -107,7 +107,7 @@ Security layers include:
 
 |===
 
-See link:../THREAT-MODEL.md[`docs/THREAT-MODEL.md`] for the full STRIDE analysis.
+See link:../THREAT-MODEL.md[`docs/THREAT-MODEL.adoc`] for the full STRIDE analysis.
 
 == Can I use my existing tools with BoJ?
 

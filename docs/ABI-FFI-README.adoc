@@ -1,17 +1,21 @@
-# BoJ Server ABI/FFI Documentation
+// SPDX-License-Identifier: MPL-2.0
+// SPDX-FileCopyrightText: 2025-2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
 
-## Overview
+= BoJ Server ABI/FFI Documentation
 
-This library follows the **Hyperpolymath RSR Standard** for ABI and FFI design:
+== Overview
 
-- **ABI (Application Binary Interface)** defined in **Idris2** with formal proofs
-- **FFI (Foreign Function Interface)** implemented in **Zig** for C compatibility
-- **Generated C headers** bridge Idris2 ABI to Zig FFI
-- **Any language** can call through standard C ABI
+This library follows the *Hyperpolymath RSR Standard* for ABI and FFI design:
 
-## Architecture
+* *ABI (Application Binary Interface)* defined in *Idris2* with formal proofs
+* *FFI (Foreign Function Interface)* implemented in *Zig* for C compatibility
+* *Generated C headers* bridge Idris2 ABI to Zig FFI
+* *Any language* can call through standard C ABI
 
-```
+== Architecture
+
+[source]
+----
 ┌─────────────────────────────────────────────┐
 │  ABI Definitions (Idris2)                   │
 │  src/abi/                                   │
@@ -43,11 +47,12 @@ This library follows the **Hyperpolymath RSR Standard** for ABI and FFI design:
 │  Any Language via C ABI                     │
 │  - Rust, ReScript, Julia, Python, etc.     │
 └─────────────────────────────────────────────┘
-```
+----
 
-## Directory Structure
+== Directory Structure
 
-```
+[source]
+----
 boj_server/
 ├── src/
 │   ├── abi/                    # ABI definitions (Idris2)
@@ -75,15 +80,16 @@ boj_server/
     ├── rust/
     ├── rescript/
     └── julia/
-```
+----
 
-## Why Idris2 for ABI?
+== Why Idris2 for ABI?
 
-### 1. **Formal Verification**
+=== 1. *Formal Verification*
 
 Idris2's dependent types allow proving properties about the ABI at compile-time:
 
-```idris
+[source,idris]
+----
 -- Prove struct size is correct
 public export
 exampleStructSize : HasSize ExampleStruct 16
@@ -95,13 +101,14 @@ fieldAligned : Divides 8 (offsetOf ExampleStruct.field)
 -- Prove ABI is platform-compatible
 public export
 abiCompatible : Compatible (ABI 1) (ABI 2)
-```
+----
 
-### 2. **Type Safety**
+=== 2. *Type Safety*
 
 Encode invariants that C/Zig cannot express:
 
-```idris
+[source,idris]
+----
 -- Non-null pointer guaranteed at type level
 data Handle : Type where
   MkHandle : (ptr : Bits64) -> {auto 0 nonNull : So (ptr /= 0)} -> Handle
@@ -109,13 +116,14 @@ data Handle : Type where
 -- Array with length proof
 data Buffer : (n : Nat) -> Type where
   MkBuffer : Vect n Byte -> Buffer n
-```
+----
 
-### 3. **Platform Abstraction**
+=== 3. *Platform Abstraction*
 
 Platform-specific types with compile-time selection:
 
-```idris
+[source,idris]
+----
 CInt : Platform -> Type
 CInt Linux = Bits32
 CInt Windows = Bits32
@@ -123,13 +131,14 @@ CInt Windows = Bits32
 CSize : Platform -> Type
 CSize Linux = Bits64
 CSize Windows = Bits64
-```
+----
 
-### 4. **Safe Evolution**
+=== 4. *Safe Evolution*
 
 Prove that new ABI versions are backward-compatible:
 
-```idris
+[source,idris]
+----
 -- Compiler enforces compatibility
 abiUpgrade : ABI 1 -> ABI 2
 abiUpgrade old = MkABI2 {
@@ -138,71 +147,78 @@ abiUpgrade old = MkABI2 {
   -- Can add new fields
   new_features = defaults
 }
-```
+----
 
-## Why Zig for FFI?
+== Why Zig for FFI?
 
-### 1. **C ABI Compatibility**
+=== 1. *C ABI Compatibility*
 
 Zig exports C-compatible functions naturally:
 
-```zig
+[source,zig]
+----
 export fn library_function(param: i32) i32 {
     return param * 2;
 }
-```
+----
 
-### 2. **Memory Safety**
+=== 2. *Memory Safety*
 
 Compile-time safety without runtime overhead:
 
-```zig
+[source,zig]
+----
 // Null check enforced at compile time
 const handle = init() orelse return error.InitFailed;
 defer free(handle);
-```
+----
 
-### 3. **Cross-Compilation**
+=== 3. *Cross-Compilation*
 
 Built-in cross-compilation to any platform:
 
-```bash
+[source,bash]
+----
 zig build -Dtarget=x86_64-linux
 zig build -Dtarget=aarch64-macos
 zig build -Dtarget=x86_64-windows
-```
+----
 
-### 4. **Zero Dependencies**
+=== 4. *Zero Dependencies*
 
 No runtime, no libc required (unless explicitly needed):
 
-```zig
+[source,zig]
+----
 // Minimal binary size
 pub const lib = @import("std");
 // Only includes what you use
-```
+----
 
-## Building
+== Building
 
-### Build FFI Library
+=== Build FFI Library
 
-```bash
+[source,bash]
+----
 cd ffi/zig
 zig build                         # Build debug
 zig build -Doptimize=ReleaseFast  # Build optimized
 zig build test                    # Run tests
-```
+----
 
-### Generate C Header from Idris2 ABI
+=== Generate C Header from Idris2 ABI
 
-```bash
+[source,bash]
+----
 cd src/abi
 idris2 --cg c-header Types.idr -o ../../generated/abi/boj_server.h
-```
+----
 
-### Cross-Compile
+=== Cross-Compile
 
-```bash
+[source,bash]
+----
 cd ffi/zig
 
 # Linux x86_64
@@ -213,13 +229,14 @@ zig build -Dtarget=aarch64-macos
 
 # Windows x86_64
 zig build -Dtarget=x86_64-windows
-```
+----
 
-## Usage
+== Usage
 
-### From C
+=== From C
 
-```c
+[source,c]
+----
 #include "boj_server.h"
 
 int main() {
@@ -235,16 +252,18 @@ int main() {
     boj_server_free(handle);
     return 0;
 }
-```
+----
 
 Compile with:
-```bash
+[source,bash]
+----
 gcc -o example example.c -lboj_server -L./zig-out/lib
-```
+----
 
-### From Idris2
+=== From Idris2
 
-```idris
+[source,idris]
+----
 import BOJ_SERVER.ABI.Foreign
 
 main : IO ()
@@ -257,11 +276,12 @@ main = do
 
   free handle
   putStrLn "Success"
-```
+----
 
-### From Rust
+=== From Rust
 
-```rust
+[source,rust]
+----
 #[link(name = "boj_server")]
 extern "C" {
     fn boj_server_init() -> *mut std::ffi::c_void;
@@ -280,11 +300,12 @@ fn main() {
         boj_server_free(handle);
     }
 }
-```
+----
 
-### From Julia
+=== From Julia
 
-```julia
+[source,julia]
+----
 const libboj_server = "libboj_server"
 
 function init()
@@ -310,27 +331,30 @@ try
 finally
     cleanup(handle)
 end
-```
+----
 
-## Testing
+== Testing
 
-### Unit Tests (Zig)
+=== Unit Tests (Zig)
 
-```bash
+[source,bash]
+----
 cd ffi/zig
 zig build test
-```
+----
 
-### Integration Tests
+=== Integration Tests
 
-```bash
+[source,bash]
+----
 cd ffi/zig
 zig build test-integration
-```
+----
 
-### ABI Verification (Idris2)
+=== ABI Verification (Idris2)
 
-```idris
+[source,idris]
+----
 -- Compile-time verification
 %runElab verifyABI
 
@@ -340,41 +364,41 @@ main = do
   verifyLayoutsCorrect
   verifyAlignmentsCorrect
   putStrLn "ABI verification passed"
-```
+----
 
-## Contributing
+== Contributing
 
 When modifying the ABI/FFI:
 
-1. **Update ABI first** (`src/abi/*.idr`)
-   - Modify type definitions
-   - Update proofs
-   - Ensure backward compatibility
+. *Update ABI first* (`src/abi/*.idr`)
+** Modify type definitions
+** Update proofs
+** Ensure backward compatibility
 
-2. **Generate C header**
+. *Generate C header*
    ```bash
    idris2 --cg c-header src/abi/Types.idr -o generated/abi/boj_server.h
    ```
 
-3. **Update FFI implementation** (`ffi/zig/src/main.zig`)
-   - Implement new functions
-   - Match ABI types exactly
+. *Update FFI implementation* (`ffi/zig/src/main.zig`)
+** Implement new functions
+** Match ABI types exactly
 
-4. **Add tests**
-   - Unit tests in Zig
-   - Integration tests
-   - ABI verification tests
+. *Add tests*
+** Unit tests in Zig
+** Integration tests
+** ABI verification tests
 
-5. **Update documentation**
-   - Function signatures
-   - Usage examples
-   - Migration guide (if breaking changes)
+. *Update documentation*
+** Function signatures
+** Usage examples
+** Migration guide (if breaking changes)
 
-## License
+== License
 
 MPL-2.0
 
-## Unified-Zig-API Stack
+== Unified-Zig-API Stack
 
 The estate-wide standard for Zig-edge service boundaries is documented in
 `developer-ecosystem/UNIFIED-ZIG-API-STACK.adoc`. The stack provides a
@@ -384,17 +408,17 @@ BoJ is aligned with at the design level. Full code-level alignment — linking
 (see `docs/decisions/0002-align-unified-zig-api-stack.md`).
 
 Key differences from BoJ's local ABI/FFI today:
-- The unified stack uses `uapi_gnosis_*` for the HTTP server (single-port model).
+* The unified stack uses `uapi_gnosis_*` for the HTTP server (single-port model).
   BoJ currently uses per-port Zig adapters (7700/7701/7702).
-- Path safety proofs from `verification-ecosystem/proven/` are wired into the
+* Path safety proofs from `verification-ecosystem/proven/` are wired into the
   unified stack (commit 6663956); BoJ will adopt these via `libzig_api`.
-- The C header (`zig_api.h`) is auto-generated with a CI drift check (`0d6a814`).
+* The C header (`zig_api.h`) is auto-generated with a CI drift check (`0d6a814`).
   BoJ's `generated/abi/boj_server.h` follows the same pattern locally.
 
-## See Also
+== See Also
 
-- [Idris2 Documentation](https://idris2.readthedocs.io)
-- [Zig Documentation](https://ziglang.org/documentation/master/)
-- [Rhodium Standard Repositories](https://github.com/hyperpolymath/rhodium-standard-repositories)
-- [Unified-Zig-API Stack](../../developer-ecosystem/UNIFIED-ZIG-API-STACK.adoc)
-- [ADR-0002: Align BoJ with unified-zig-api stack](decisions/0002-align-unified-zig-api-stack.md)
+* https://idris2.readthedocs.io[Idris2 Documentation]
+* https://ziglang.org/documentation/master/[Zig Documentation]
+* https://github.com/hyperpolymath/rhodium-standard-repositories[Rhodium Standard Repositories]
+* link:../../developer-ecosystem/UNIFIED-ZIG-API-STACK.adoc[Unified-Zig-API Stack]
+* link:decisions/0002-align-unified-zig-api-stack.md[ADR-0002: Align BoJ with unified-zig-api stack]

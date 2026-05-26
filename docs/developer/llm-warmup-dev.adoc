@@ -253,7 +253,7 @@ Supabase, Railway, Linode, GCP, Render, Docker Hub, Hetzner, ArangoDB, Neo4j...
 
 Distributed hosting model with gossip protocol.
 Community nodes must match canonical binary hash (attestation).
-See: `src/abi/Federation.idr`, `docs/FEDERATION.md`
+See: `src/abi/Federation.idr`, `docs/FEDERATION.adoc`
 
 == Cultural Terminology (Permanent, Sacred)
 

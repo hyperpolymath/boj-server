@@ -221,8 +221,8 @@ The four canonical seed nodes are declared in `container/seed-nodes.toml`.
 
 == Further Reading
 
-- `docs/ARCHITECTURE.md` -- 2D matrix design
-- `docs/FEDERATION.md` -- Distributed hosting model
-- `docs/DEVELOPERS.md` -- Contributing cartridges
-- `docs/CULTURAL-RESPECT.md` -- Teranga/Umoja/Ayo terminology
+- `docs/architecture/README.adoc` -- 2D matrix design
+- `docs/FEDERATION.adoc` -- Distributed hosting model
+- `docs/developer/README.adoc` -- Contributing cartridges
+- `docs/CULTURAL-RESPECT.adoc` -- Teranga/Umoja/Ayo terminology
 - `0-AI-MANIFEST.a2ml` -- Machine-readable project manifest

@@ -520,7 +520,7 @@ should understand.
 5. **FFI safety gates** — The Zig FFI layer enforces memory safety invariants
    proven by the Idris2 ABI definitions
 
-For a complete threat model, see [THREAT-MODEL.md](docs/THREAT-MODEL.md) (if
+For a complete threat model, see [THREAT-MODEL.md](docs/THREAT-MODEL.adoc) (if
 available) or request one via a GitHub issue.
 
 ---
