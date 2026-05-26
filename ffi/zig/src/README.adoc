@@ -63,7 +63,7 @@ Grouped by function. Inline test counts in parentheses are authoritative
 
 | `guardian.zig` (12 tests)    | Resource monitoring, preemptive thresholds, circuit breaker. Mirrors `Boj.Guardian`.
 | `sla.zig` (11 tests)         | Per-cartridge and system-level SLA metrics.
-| `readiness.zig` (28 tests)   | Component Readiness Grade verification — runtime evidence for the CRG table in `docs/READINESS.md`.
+| `readiness.zig` (28 tests)   | Component Readiness Grade verification — runtime evidence for the CRG table in `docs/READINESS.adoc`.
 | `seams.zig` (32 tests)       | Integration-seam contract checks (panic-attack-inspired `diagnostics.rs` pattern).
 |===
 
@@ -104,7 +104,7 @@ Grouped by function. Inline test counts in parentheses are authoritative
 216 inline `test "..."` blocks across 13 files (see per-module counts
 above). `bench.zig` contributes zero tests by design — its contents are
 benchmarks. Run `zig build test` for the whole suite; it is the primary
-runtime evidence for Grade D assertions in `docs/READINESS.md`.
+runtime evidence for Grade D assertions in `docs/READINESS.adoc`.
 
 End-to-end orchestration lives in `e2e_order.zig` and is run as part of
 the same `zig build test` sweep.
@@ -120,12 +120,12 @@ the same `zig build test` sweep.
 . `federation.zig` — largest module (40 tests) and the richest
   concurrency story.
 . `readiness.zig` — the tests here are the direct runtime evidence for
-  `docs/READINESS.md`. Any grade change should be accompanied by a test
+  `docs/READINESS.adoc`. Any grade change should be accompanied by a test
   change here.
 
 == Promotion gate
 
-This trunk is graded D in `docs/READINESS.md`. Lifting to C requires:
+This trunk is graded D in `docs/READINESS.adoc`. Lifting to C requires:
 
 . Active dogfood entries in `docs/practice/DOGFOOD-LOG.adoc` showing
   these exports called in anger from a real cartridge load path (not just

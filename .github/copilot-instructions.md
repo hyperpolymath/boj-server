@@ -1,6 +1,6 @@
 <!-- SPDX-License-Identifier: MPL-2.0 -->
 <!-- Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk> -->
-<!-- Authoritative source: docs/AI-CONVENTIONS.md -->
+<!-- Authoritative source: docs/AI-CONVENTIONS.adoc -->
 
 # Copilot Instructions
 

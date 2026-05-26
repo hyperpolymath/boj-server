@@ -28,7 +28,7 @@
 
   (context-tiers
     ; Tier 0 (always load): This file + .claude/CLAUDE.md — orientation only
-    ; Tier 1 (load if working on code): README.adoc, EXPLAINME.adoc, Justfile
+    ; Tier 1 (load if working on code): README.adoc, docs/EXPLAINME.adoc, Justfile
     ; Tier 2 (load on demand): .machine_readable/*.a2ml, docs/
     ; Tier 3 (never load unless asked): tests/, generated/, CI configs
     ;

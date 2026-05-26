@@ -2,7 +2,7 @@
 # extension.a2ml — Example BoJ extension descriptor
 #
 # Copy this file, fill in the fields, and submit to a BoJ node.
-# See docs/EXTENSIBILITY.md for the full guide.
+# See docs/EXTENSIBILITY.adoc for the full guide.
 
 [extension]
 name = "database-mcp-pg"       # Cartridge name (unique across the catalogue)

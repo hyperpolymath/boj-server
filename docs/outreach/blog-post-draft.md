@@ -182,13 +182,13 @@ This isn't a product launch. This is a "come look at what I built and tell me wh
 
 Install: `npm install -g @hyperpolymath/boj-server` or `nix build github:hyperpolymath/boj-server`
 
-The repo is at [github.com/hyperpolymath/boj-server](https://github.com/hyperpolymath/boj-server). The quickstart guide is [docs/QUICKSTART.md](https://github.com/hyperpolymath/boj-server/blob/main/docs/QUICKSTART.md).
+The repo is at [github.com/hyperpolymath/boj-server](https://github.com/hyperpolymath/boj-server). The quickstart guide is [docs/quickstarts/DEV.adoc](https://github.com/hyperpolymath/boj-server/blob/main/docs/quickstarts/DEV.adoc).
 
 What I'm looking for:
 
 - **Try it locally** -- clone, build, run `curl http://localhost:7700/matrix` and tell me if the experience makes sense
 - **Host a node** -- if you have a machine that's on during the day, you can join the Umoja network. See `container/` in the repo
-- **Build on it** -- the extensibility system lets you add backend variants without touching core code. See `docs/EXTENSIBILITY.md`
+- **Build on it** -- the extensibility system lets you add backend variants without touching core code. See `docs/EXTENSIBILITY.adoc`
 - **Tell me what breaks** -- feedback-mcp is literally a cartridge that collects feedback. BoJ dogfoods itself
 
 This is a community project. I make nothing from it. The license (MPL-2.0) ensures the code stays open and provenance-tracked.

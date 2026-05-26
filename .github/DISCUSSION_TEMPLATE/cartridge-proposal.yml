@@ -6,7 +6,7 @@ body:
       value: |
         Proposing a new cartridge for the Ayo (community) menu? Tell us about it!
         Cartridges follow the stack: Idris2 ABI + Zig FFI, served by the Elixir adapter.
-        See docs/DEVELOPERS.md for the full guide.
+        See docs/developer/README.adoc for the full guide.
   - type: input
     attributes:
       label: Cartridge name

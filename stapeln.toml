@@ -22,7 +22,7 @@ runtime = "podman"
 # Architecture: Zig FFI → Idris2-verified ABI → Zig adapter binary.
 # No JavaScript/TypeScript/Node.js in the production path.
 # (The MCP bridge Containerfile at root/ is transitional until
-# typed-wasm-mcp lands — see docs/architecture/TYPED-WASM-MCP-BRIDGE.md.)
+# typed-wasm-mcp lands — see docs/architecture/TYPED-WASM-MCP-BRIDGE.adoc.)
 
 [layers.base]
 description = "Chainguard Wolfi minimal base"

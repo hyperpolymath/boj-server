@@ -1,0 +1,52 @@
+// SPDX-License-Identifier: MPL-2.0
+// SPDX-FileCopyrightText: 2025-2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+
+= Status
+
+Living-state documents — roadmap, readiness, proof obligations,
+phase-completion records. These describe where the project IS, not
+how it works.
+
+If you want to know **how** boj-server works, you want
+link:../architecture/README.adoc[../architecture/]. This directory
+answers the orthogonal question: **what's done, what's not, what's
+next**.
+
+== Contents
+
+[cols="1,3",options="header"]
+|===
+| Document | Purpose
+
+| link:ROADMAP.adoc[ROADMAP.adoc]
+| Phased development plan. Versioned per-release; current target
+  posture stated at the top.
+
+| link:FUTURE_PLANS.adoc[FUTURE_PLANS.adoc]
+| Longer-horizon directional document. Not a commitment list — a
+  thinking record of where the project is heading beyond the current
+  roadmap window.
+
+| link:../READINESS.adoc[../READINESS.adoc]
+| Component Readiness Grades (CRG v2.0) per-component assessment.
+  Lives at `docs/READINESS.adoc` rather than under `status/` because
+  55+ cartridge READMEs link to that canonical path.
+
+| link:cartridge-phase-3b-completion.adoc[cartridge-phase-3b-completion.adoc]
+| Build-out completion record for the Phase 3B cartridge wave
+  (2026-04-25). Historical artefact preserved for audit lineage.
+|===
+
+The proof-obligation tracker (`PROOF-NEEDS.md` at the repo root)
+also belongs here taxonomy-wise, but moving it would break 16
+cross-references including CI workflows, Idris proofs, and four
+Elixir test files. Listed as a known follow-up in
+link:../README.adoc[../README.adoc].
+
+== Related
+
+* link:../../CHANGELOG.md[CHANGELOG.md] — release-by-release
+  changes (GitHub-required `.md` file at repo root)
+* link:../architecture/README.adoc[Architecture overview] — what
+  the components are, not how done they are
+* link:../governance/[Governance docs] — audit + CRG criteria

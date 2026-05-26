@@ -64,5 +64,5 @@ node src/router.js  # or loaded by the BoJ runtime
 
 Alpha (CRG D). Four tools exposed over MCP stdio; classifier heuristics active;
 no formal delegation-safety proofs. Not yet dogfooded externally. See
-`docs/READINESS.md` for the project-wide grade table and
+`docs/READINESS.adoc` for the project-wide grade table and
 `docs/practice/DOGFOOD-LOG.adoc` for usage evidence.

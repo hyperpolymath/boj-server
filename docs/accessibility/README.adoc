@@ -247,7 +247,7 @@ We welcome contributions to improve accessibility. See our link:../CONTRIBUTING.
 
 == Related Documents
 
-* link:../ROADMAP.adoc[Project Roadmap] — Accessibility milestones
+* link:../status/ROADMAP.adoc[Project Roadmap] — Accessibility milestones
 * link:../../.machine_readable/contractiles/adjust/Adjustfile.a2ml[Adjustfile] — Accessibility contract
 * link:https://www.w3.org/WAI/standards-guidelines/wcag/[WCAG Guidelines] — Official standards
 * link:https://www.section508.gov/[Section 508] — U.S. federal requirements

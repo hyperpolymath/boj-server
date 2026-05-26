@@ -7,7 +7,7 @@
 
 The gated internal REST/SSE core that fronts the unified Zig ABI, on port
 **7700** by default. It is the Elixir "scalability multiplier" over the
-Idris2-logic / pure-Zig-interface stack (see `docs/ARCHITECTURE.md`,
+Idris2-logic / pure-Zig-interface stack (see `docs/architecture/README.adoc`,
 v1.1.0). It is NOT a public ingress — per ADR-0004 the only governed
 public surface is the `http-capability-gateway` (tier-2) in front of this
 core. This listener binds the trusted/internal interface and every

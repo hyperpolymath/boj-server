@@ -1,0 +1,361 @@
+// SPDX-License-Identifier: MPL-2.0
+// SPDX-FileCopyrightText: 2025-2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+
+
+= Operator Guide
+
+This guide is for people *hosting* a BoJ node, whether as a personal instance or a community node in the Umoja federation.
+
+== System Requirements
+
+[cols="1,1,1",options="header"]
+|===
+| Requirement
+| Minimum
+| Recommended
+
+| OS
+| Any Linux with Podman
+| Fedora, Debian, Ubuntu
+
+| Container runtime
+| Podman 4.0+
+| Podman 5.0+
+
+| Network
+| IPv6 connectivity
+| IPv6 + stable uptime
+
+| Memory
+| 512 MB
+| 2 GB
+
+| Disk
+| 200 MB (base image)
+| 1 GB (with all cartridges)
+
+| Ports
+| 7700 (REST)
+| 7700-7702 + 9999 (federation)
+
+|===
+
+*Docker is not supported.* BoJ uses Podman exclusively, following the Stapeln container supply chain standard with Chainguard base images.
+
+== Quick Start (Local Instance)
+
+=== Build from container image
+
+[source,bash]
+----
+# Build the container image
+podman build -t boj-server -f container/Containerfile .
+
+# Run it
+podman run -d --name boj \
+  -p 7700:7700 -p 7701:7701 -p 7702:7702 -p 9999:9999/udp \
+  boj-server
+----
+
+=== Verify it's working
+
+[source,bash]
+----
+curl http://localhost:7700/health
+# {"status":"ok"}
+
+curl http://localhost:7700/status
+# {"version":"BoJ Server v0.1.0","total_cartridges":18,...}
+----
+
+== Podman Quadlet Setup (Recommended)
+
+For production deployments, use the security-hardened Podman quadlet:
+
+[source,bash]
+----
+# Copy the quadlet unit file
+cp container/boj-community-node.container \
+  ~/.config/containers/systemd/
+
+# Reload systemd and start
+systemctl --user daemon-reload
+systemctl --user start boj-community-node
+systemctl --user enable boj-community-node
+----
+
+The quadlet unit includes:
+* Read-only root filesystem
+* Restricted seccomp profile (`container/seccomp-boj.json`)
+* No new privileges
+* Dropped capabilities
+* Resource limits
+
+== Joining the Umoja Federation
+
+The Umoja federation is a distributed network of community-hosted BoJ nodes. Joining makes your node discoverable to other nodes and allows transparent request routing.
+
+=== Prerequisites
+
+* IPv6 connectivity (no IPv4-only setups)
+* UDP port 9999 reachable (or configured via `BOJ_FEDERATION_PORT`)
+* Agreement to the Community Node Policy
+
+=== Configure your node
+
+Set these environment variables before starting:
+
+[source,bash]
+----
+# Unique node identifier (pick something descriptive)
+export BOJ_NODE_ID="my-node-eu-west"
+
+# Geographic region (helps with routing)
+export BOJ_REGION="eu-west"
+
+# Enable QUIC transport (recommended, falls back to UDP)
+export BOJ_QUIC=1
+
+# Federation port
+export BOJ_FEDERATION_PORT=9999
+----
+
+=== Connect to seed nodes
+
+Edit `container/seed-nodes.toml` or add peers via the REST API:
+
+[source,bash]
+----
+# Add a seed node
+curl -X POST http://localhost:7700/umoja/peers \
+  -H 'Content-Type: application/json' \
+  -d '{"host":"seed-eu.example.com","port":"9999"}'
+
+# Verify connection
+curl http://localhost:7700/umoja/peers
+----
+
+Once connected, the gossip protocol handles peer discovery automatically. Your node will appear in the network within minutes.
+
+=== Seed nodes (initial network)
+
+[cols="1,1,1",options="header"]
+|===
+| Region
+| Operator
+| Purpose
+
+| Europe West (UK)
+| hyperpolymath
+| Primary development
+
+| Europe Central
+| family
+| Community
+
+| Oceania (Australia)
+| family
+| Community
+
+| Americas (US)
+| family
+| Community
+
+|===
+
+=== Community Node Policy
+
+. *Run the canonical build* -- modified binaries are excluded from the network via hash attestation
+. *Don't use the network for illegal purposes*
+. *Be a good neighbour* -- report issues, don't hoard bandwidth
+. *No uptime guarantee required* -- if your computer is off, your node is off. That's fine.
+
+== Monitoring and SLA
+
+=== Health checks
+
+[source,bash]
+----
+# Basic health
+curl http://localhost:7700/health
+
+# Full status (uptime, cartridge counts, node ID)
+curl http://localhost:7700/status
+
+# SLA metrics
+curl http://localhost:7700/sla/status
+# {"total_requests":1234,"total_errors":5,"cartridges_tracked":18}
+----
+
+=== SLA tiers
+
+BoJ supports three SLA tiers for cartridge monitoring:
+
+[cols="1,1,1",options="header"]
+|===
+| Tier
+| Target
+| Use case
+
+| Community
+| Best effort
+| Personal nodes, volunteers
+
+| Standard
+| 99%
+| Small teams, development
+
+| Premium
+| 99.9%
+| Production workloads
+
+|===
+
+=== Federation health
+
+[source,bash]
+----
+# Federation node status
+curl http://localhost:7700/umoja/status
+
+# Transport mode (QUIC or UDP)
+curl http://localhost:7700/umoja/transport
+
+# Connected peers
+curl http://localhost:7700/umoja/peers
+----
+
+=== Load-aware routing
+
+The federation automatically routes requests away from overloaded nodes:
+* Each node reports a load factor (0-100%)
+* Nodes above 80% capacity are deprioritised
+* If all nodes are overloaded, local execution is preferred
+
+== Security Hardening
+
+=== Container security
+
+The provided quadlet (`boj-community-node.container`) includes:
+* *Chainguard base image* -- minimal attack surface
+* *Read-only root filesystem* -- prevents runtime modification
+* *Seccomp profile* -- restricted system calls (`seccomp-boj.json`)
+* *No new privileges* -- prevents privilege escalation
+* *Dropped capabilities* -- minimal Linux capabilities
+
+=== Network security
+
+[cols="1,1,1",options="header"]
+|===
+| Layer
+| Technology
+| Purpose
+
+| Transport encryption
+| X25519 + ChaCha20-Poly1305
+| QUIC packet encryption
+
+| DNS privacy
+| DoQ / DoH
+| Encrypted DNS resolution
+
+| DNS anonymity
+| oDNS relay
+| Oblivious DNS (optional)
+
+| Perimeter
+| Auto-SDP
+| Zero exposed ports until authenticated
+
+| Edge
+| Svalinn gateway
+| Policy enforcement
+
+| Runtime
+| Vordr
+| Monitoring, ephemeral port management
+
+|===
+
+=== Hash attestation
+
+Every BoJ binary has a SHA-256 hash. Community nodes prove their binary matches the canonical build. If a node's binary has been modified:
+* The node is *excluded from the federation* (no community traffic)
+* The node *still works locally* for personal use
+* This is non-punitive -- we don't brick your installation
+
+=== Auto-SDP (Software Defined Perimeter)
+
+Auto-SDP implements zero-trust networking:
+* No ports are exposed until a client authenticates
+* Allow-list based access control
+* Automatic banning of suspicious peers
+
+[source,bash]
+----
+# Check SDP status
+curl http://localhost:7700/sdp/status
+----
+
+== Environment Variables
+
+[cols="1,1,1",options="header"]
+|===
+| Variable
+| Default
+| Description
+
+| `BOJ_REST_PORT`
+| `7700`
+| REST adapter port
+
+| `BOJ_GRPC_PORT`
+| `7701`
+| gRPC-compat adapter port
+
+| `BOJ_GRAPHQL_PORT`
+| `7702`
+| GraphQL adapter port
+
+| `BOJ_FEDERATION_PORT`
+| `9999`
+| Umoja federation UDP/QUIC port
+
+| `BOJ_QUIC`
+| `1`
+| Enable QUIC transport (`1`=yes, `0`=UDP only)
+
+| `BOJ_NODE_ID`
+| `local-0`
+| Node identifier for federation
+
+| `BOJ_REGION`
+| `local`
+| Geographic region label
+
+| `STAPELN_URL`
+| `http://localhost:4000`
+| Stapeln API proxy URL
+
+| `VERISIMDB_URL`
+| `http://localhost:8180`
+| VeriSimDB backing store URL
+
+|===
+
+== Coprocessor Dispatch
+
+BoJ can detect and dispatch work to available hardware accelerators:
+
+[source,bash]
+----
+# Check available devices
+curl http://localhost:7700/coprocessor/status
+
+# Select best device for a cartridge
+curl -X POST http://localhost:7700/coprocessor/select \
+  -H 'Content-Type: application/json' \
+  -d '{"cartridge":"nesy-mcp"}'
+----
+
+Override device detection with environment variables: `BOJ_CUDA_DEVICES`, `BOJ_ROCM_DEVICES`, `BOJ_TPU_DEVICES`, `BOJ_FPGA_DEVICES`.

@@ -113,7 +113,7 @@ blocks across 13 files; see `ffi/zig/src/README.adoc`).
 
 == Promotion gate
 
-This trunk is graded D in `docs/READINESS.md`. Lifting to C requires:
+This trunk is graded D in `docs/READINESS.adoc`. Lifting to C requires:
 
 . Four `believe_me` sites justified and cross-referenced from
   `SafetyLemmas` docstrings (the three lemmas are already documented as

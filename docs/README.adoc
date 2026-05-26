@@ -1,41 +1,210 @@
+// SPDX-License-Identifier: MPL-2.0
+// SPDX-FileCopyrightText: 2025-2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+
 = BoJ Server Documentation
+:toc: macro
+:icons: font
 
-Primary documentation for Bundle of Joy Server.
+Canonical index for all `docs/`-tree documentation. The taxonomy
+aligns with `hyperpolymath/rsr-template-repo`: subdirectories cluster
+docs by purpose so both humans and machines can navigate by intent.
 
-== Documentation Map
+toc::[]
 
-[cols="1,3"]
+== Reading order by audience
+
+[cols="1,3",options="header"]
 |===
-|Document |Description
+| If you are… | Start with
 
-|link:ARCHITECTURE.md[ARCHITECTURE.md]
-|2D capability matrix design, three-layer stack, cartridge lifecycle
+| New to BoJ
+| The root link:../README.adoc[README] (install matrix + scope) → then
+  link:wikis/Home.adoc[wikis/Home] for sustained orientation.
 
-|link:DEVELOPERS.md[DEVELOPERS.md]
-|Contributing cartridges, building ABIs, writing FFI tests
+| Setting up an MCP client to use BoJ
+| link:quickstarts/USER.adoc[quickstarts/USER] (USER quickstart).
 
-|link:FEDERATION.md[FEDERATION.md]
-|Umoja gossip protocol, distributed node hosting, hash attestation
+| Hosting a community / federation node
+| link:quickstarts/MAINTAINER.adoc[quickstarts/MAINTAINER] (under 5
+  minutes; Podman + federation + ports).
 
-|link:CULTURAL-RESPECT.md[CULTURAL-RESPECT.md]
-|Teranga, Umoja, Ayo terminology — origin, meaning, and usage
+| Running BoJ for development
+| link:quickstarts/DEV.adoc[quickstarts/DEV] (60-second dev shell)
+  → link:quickstarts/BUILD-FROM-SOURCE.adoc[BUILD-FROM-SOURCE] (full
+  Zig + Elixir + Idris2 build).
 
-|link:QUICKSTART.md[QUICKSTART.md]
-|Get up and running in 60 seconds
+| Designing or extending architecture
+| link:architecture/README.adoc[architecture/] (2D capability matrix,
+  three-layer stack, cartridge lifecycle, plus 12 subtopic .adoc
+  files).
 
-|link:THREAT-MODEL.md[THREAT-MODEL.md]
-|Security threat model and mitigations
+| Adding a new cartridge
+| link:developer/README.adoc[developer/] (cartridge contribution
+  guide; ABI/FFI/adapter triple).
 
-|link:AI-CONVENTIONS.md[AI-CONVENTIONS.md]
-|Conventions for AI agent interaction with this project
+| Auditing the formal-verification posture
+| link:../PROOF-NEEDS.md[../PROOF-NEEDS.md] (root; high coupling
+  prevents relocation) and link:READINESS.adoc[READINESS] for the
+  CRG component matrix.
 
-|link:CITATIONS.adoc[CITATIONS.adoc]
-|Academic citations and references
+| Reviewing security or threat surface
+| link:THREAT-MODEL.adoc[THREAT-MODEL] →
+  link:../SECURITY.md[../SECURITY.md] for the disclosure policy.
 |===
 
-== Related Files
+== Directory taxonomy
 
-* `../TOPOLOGY.md` — Architecture diagram and completion dashboard
-* `../READINESS.md` — Component Readiness Grades (CRG v1.0)
-* `../ROADMAP.adoc` — Phased development roadmap
-* `../.machine_readable/STATE.a2ml` — Current project state
+[cols="1,3",options="header"]
+|===
+| Path | Contents
+
+| link:quickstarts/[`quickstarts/`]
+| Audience-targeted onboarding (USER, DEV, BUILD-FROM-SOURCE,
+  MAINTAINER) — one or two read-hours apiece.
+
+| link:wikis/[`wikis/`]
+| Long-form guides for users / developers / operators plus FAQ. The
+  read-after-quickstart layer. Wiki sources for the GitHub wiki tab.
+
+| link:architecture/[`architecture/`]
+| Architecture overview (`README.adoc`) plus 12 subtopic .adoc files
+  (BOJ_LOGIC, BOJ_OS, NeSy_SERVERS, FORMAL_VERIFICATION,
+  CARTRIDGE_MARKETPLACE, GOSSIP_PROTOCOL, HSM_INTEGRATION,
+  QUANTUM_SECURITY, SDP_ARCHITECTURE, TYPE_SAFETY,
+  TYPED-WASM-MCP-BRIDGE, ZERO_TRUST).
+
+| link:status/[`status/`]
+| Living-state — ROADMAP, FUTURE_PLANS, phase-completion records.
+  Answers "what's done / what's not / what's next".
+
+| link:developer/[`developer/`]
+| Developer contribution + LLM warmup context for AI-assisted dev.
+
+| link:governance/[`governance/`]
+| CRG audits, lift plans, software-development approach, maintenance
+  checklists.
+
+| link:decisions/[`decisions/`]
+| Architecture Decision Records (ADRs). The canonical "why we chose
+  X" trail.
+
+| link:specification/[`specification/`]
+| Normative specs for cartridges + cartridge tools.
+
+| link:integration/[`integration/`]
+| Integration runbooks (e.g. http-capability-gateway tier-2 rollout).
+
+| link:backend-assurance/[`backend-assurance/`]
+| Backend-assurance evidence for the irreducible Idris2 primitive
+  axioms (charEqSound, charEqSym, unpackLength, appendLengthSum,
+  substrLengthBound).
+
+| link:compliance/[`compliance/`]
+| Compliance documents (license, REUSE, RSR).
+
+| link:practice/[`practice/`]
+| Dogfooding logs and operational practice records.
+
+| link:proposals/[`proposals/`]
+| In-flight design proposals before they become ADRs.
+
+| link:attribution/[`attribution/`]
+| Maintainer + contributor attribution.
+
+| link:accessibility/[`accessibility/`]
+| Accessibility commitments + milestones.
+
+| link:papers/[`papers/`]
+| Academic / position papers about BoJ.
+
+| link:examples/[`examples/`]
+| Worked examples.
+
+| link:glama/[`glama/`]
+| Glama AAA posture materials.
+
+| link:outreach/[`outreach/`]
+| Public-facing drafts (blog posts, awesome-list descriptions).
+
+| link:handover/[`handover/`]
+| Cross-session handover notes.
+
+| link:maintenance/[`maintenance/`]
+| Maintenance checklists.
+|===
+
+== Standalone documents at `docs/` root
+
+[cols="1,3",options="header"]
+|===
+| File | Purpose
+
+| link:EXPLAINME.adoc[EXPLAINME.adoc]
+| Detailed claims-and-evidence walkthrough. The "what is BoJ and why
+  does it claim what it claims" doc — beyond the README's elevator
+  pitch.
+
+| link:API-CONTRACT.adoc[API-CONTRACT.adoc]
+| Stable REST + gRPC + GraphQL surface contract.
+
+| link:RSR_OUTLINE.adoc[RSR_OUTLINE.adoc]
+| Rhodium Standard Repository outline + compliance map.
+
+| link:READINESS.adoc[READINESS.adoc]
+| Component Readiness Grades (CRG v2.0) per-component matrix. Stays
+  at this path (rather than under `status/`) because 55+ cartridge
+  READMEs link here.
+
+| link:EXTENSIBILITY.adoc[EXTENSIBILITY.adoc]
+| Plugin / cartridge extension patterns.
+
+| link:FEDERATION.adoc[FEDERATION.adoc]
+| Umoja federation overview (gossip, hash attestation, distributed
+  hosting).
+
+| link:THREAT-MODEL.adoc[THREAT-MODEL.adoc]
+| Security threat model + mitigations.
+
+| link:CULTURAL-RESPECT.adoc[CULTURAL-RESPECT.adoc]
+| Teranga / Umoja / Ayo terminology — origin, meaning, usage.
+
+| link:AI-CONVENTIONS.adoc[AI-CONVENTIONS.adoc]
+| Conventions for AI-agent interaction with this project.
+
+| link:AUTH-DESIGN.adoc[AUTH-DESIGN.adoc]
+| Authentication / authorisation architecture.
+
+| link:ABI-FFI-README.adoc[ABI-FFI-README.adoc]
+| ABI / FFI binding guide.
+
+| link:CITATIONS.adoc[CITATIONS.adoc]
+| Academic citations + references.
+
+| link:TOPOLOGY-GUIDE.adoc[TOPOLOGY-GUIDE.adoc]
+| Cluster topology reference (sister to the root `TOPOLOGY.md`
+  dashboard).
+
+| link:gateway-catalog-integration.adoc[gateway-catalog-integration.adoc]
+| http-capability-gateway × catalog integration spec.
+
+| link:index.html[index.html]
+| Static site index (rendered docs landing).
+|===
+
+== Related root-level files
+
+* link:../README.adoc[`../README.adoc`] — install matrix + scope
+* link:../TOPOLOGY.md[`../TOPOLOGY.md`] — completion dashboard
+  (stays at root pending refactor of 11 cross-references)
+* link:../PROOF-NEEDS.md[`../PROOF-NEEDS.md`] — proof-obligation
+  tracker (stays at root pending refactor of 16 cross-references)
+* link:../TEST-NEEDS.md[`../TEST-NEEDS.md`] — test-coverage tracker
+  (stays at root pending refactor of 5 cross-references)
+* link:../CHANGELOG.md[`../CHANGELOG.md`] — release history
+* link:../.machine_readable/6a2/STATE.a2ml[`../.machine_readable/6a2/STATE.a2ml`]
+  — current machine-readable project state (the canonical
+  STATE/META/ECOSYSTEM/AGENTIC/NEUROSYM/PLAYBOOK 6-file layer per
+  the hyperpolymath standard)
+* link:../GEMINI.md[`../GEMINI.md`] — Gemini CLI integration context
+  (load-bearing; referenced by `gemini-extension.json` as
+  `contextFileName`)

@@ -27,6 +27,45 @@ All notable changes to Bundle of Joy Server are documented here.
 
 ## [Unreleased]
 
+### Documentation
+
+- **Repository documentation reorganised to match rsr-template-repo taxonomy.**
+  Root-level `.adoc` clutter eliminated; all docs now live under `docs/`
+  subdirectories clustered by purpose (`quickstarts/`, `wikis/`, `architecture/`,
+  `status/`, `developer/`, `governance/`, `decisions/`, `specification/`,
+  `integration/`, `backend-assurance/`, `compliance/`, `practice/`,
+  `proposals/`, `attribution/`, `accessibility/`, `papers/`, `examples/`,
+  `glama/`, `outreach/`, `handover/`, `maintenance/`). Each subdirectory has
+  its own `README.adoc` index. High-coupling root files (`PROOF-NEEDS.md`,
+  `TOPOLOGY.md`, `TEST-NEEDS.md`) stay at root pending follow-up PR to update
+  their 16/11/5 cross-references.
+
+- **`README.md` merged into `README.adoc` and dropped.** Single canonical
+  root README in AsciiDoc. Preserves the full 11-client MCP install matrix
+  (Claude Code, Claude Desktop, Gemini CLI, Copilot, Cursor, Cline, Windsurf,
+  Continue.dev, Zed, generic stdio) and collapsible cartridge tables via
+  `[%collapsible]` blocks.
+
+- **All `docs/*.md` files converted to `.adoc`** (format only; content
+  preserved). Affected files: `ARCHITECTURE.md` → `docs/architecture/README.adoc`,
+  `DEVELOPERS.md` → `docs/developer/README.adoc`, `OPERATOR-QUICKSTART.md` →
+  `docs/quickstarts/MAINTAINER.adoc`, `DEVELOPER-QUICKSTART.md` →
+  `docs/quickstarts/DEV.adoc`, and 8 others. `docs/wikis/` sources fully
+  converted and expanded (Home, User-Guide, Operator-Guide, Developer-Guide,
+  FAQ all in `.adoc`).
+
+- **`docs/README.adoc` rewritten** with reading-order-by-audience table,
+  full directory taxonomy, standalone-docs table, and rationale for the three
+  high-coupling deferred moves.
+
+- **New subdir index files**: `docs/quickstarts/README.adoc`,
+  `docs/wikis/README.adoc`, `docs/status/README.adoc` — each explains its
+  subdirectory's scope and contents.
+
+- **STATE.a2ml cartridge count corrected**: was 112, actual is 125 (verified
+  by `find cartridges -name cartridge.json | wc -l`). Session log entry added
+  documenting all 2026-05-26 work.
+
 ### Changed
 
 - **Cowboy listener now binds to `127.0.0.1` by default** (was: all

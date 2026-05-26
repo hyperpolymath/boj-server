@@ -5,7 +5,7 @@
 # cartridge tool manifest.
 #
 # TRANSITIONAL: this image will be replaced by a Zig→WASM bridge once
-# typed-wasm-mcp lands. See docs/architecture/TYPED-WASM-MCP-BRIDGE.md.
+# typed-wasm-mcp lands. See docs/architecture/TYPED-WASM-MCP-BRIDGE.adoc.
 #
 # For the full production image (Zig FFI + adapter), use:
 #   podman build -f container/Containerfile .
