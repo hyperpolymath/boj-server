@@ -59,8 +59,15 @@ const SessionSlot = struct {
 };
 
 var sessions: [MAX_SESSIONS]SessionSlot = [_]SessionSlot{.{}} ** MAX_SESSIONS;
+/// Single coarse-grained mutex over the `sessions` table. The C-ABI
+/// boundary is the concurrency boundary: every exported function takes
+/// this lock for the duration of its slot access, so callers from any
+/// thread (including the MCP bridge's tokio-style task pool) see a
+/// linearised view of session state.
+var sessions_mu: std.Thread.Mutex = .{};
 
-/// Find an inactive session slot and activate it.
+/// Find an inactive session slot and activate it. Caller must hold
+/// `sessions_mu`.
 fn alloc_slot() ?usize {
     for (&sessions, 0..) |*slot, i| {
         if (!slot.active) {
@@ -126,6 +133,8 @@ pub export fn ums_can_transition(from: c_int, to: c_int) callconv(.c) c_int {
 
 /// Create a new project. Returns slot index or -1 on failure.
 pub export fn ums_create_project(name_ptr: [*]const u8, name_len: usize) callconv(.c) c_int {
+    sessions_mu.lock();
+    defer sessions_mu.unlock();
     const idx = alloc_slot() orelse return -1;
     const slot = &sessions[idx];
     const copy_len = @min(name_len, MAX_NAME_LEN);
@@ -138,6 +147,8 @@ pub export fn ums_create_project(name_ptr: [*]const u8, name_len: usize) callcon
 
 /// Open an existing project. Returns slot index or -1 on failure.
 pub export fn ums_open_project(name_ptr: [*]const u8, name_len: usize) callconv(.c) c_int {
+    sessions_mu.lock();
+    defer sessions_mu.unlock();
     const idx = alloc_slot() orelse return -1;
     const slot = &sessions[idx];
     const copy_len = @min(name_len, MAX_NAME_LEN);
@@ -150,6 +161,8 @@ pub export fn ums_open_project(name_ptr: [*]const u8, name_len: usize) callconv(
 
 /// Delete a project. Requires idle or project_open state. Returns 0 on success.
 pub export fn ums_delete_project(slot_idx: c_int) callconv(.c) c_int {
+    sessions_mu.lock();
+    defer sessions_mu.unlock();
     if (slot_idx < 0 or slot_idx >= MAX_SESSIONS) return -1;
     const idx: usize = @intCast(slot_idx);
     const slot = &sessions[idx];
@@ -161,6 +174,8 @@ pub export fn ums_delete_project(slot_idx: c_int) callconv(.c) c_int {
 
 /// Load a level in the current project. Returns 0 on success.
 pub export fn ums_load_level(slot_idx: c_int, name_ptr: [*]const u8, name_len: usize) callconv(.c) c_int {
+    sessions_mu.lock();
+    defer sessions_mu.unlock();
     if (slot_idx < 0 or slot_idx >= MAX_SESSIONS) return -1;
     const idx: usize = @intCast(slot_idx);
     const slot = &sessions[idx];
@@ -175,6 +190,8 @@ pub export fn ums_load_level(slot_idx: c_int, name_ptr: [*]const u8, name_len: u
 
 /// Save the current level. Requires Valid state. Returns 0 on success.
 pub export fn ums_save_level(slot_idx: c_int) callconv(.c) c_int {
+    sessions_mu.lock();
+    defer sessions_mu.unlock();
     if (slot_idx < 0 or slot_idx >= MAX_SESSIONS) return -1;
     const idx: usize = @intCast(slot_idx);
     const slot = &sessions[idx];
@@ -186,6 +203,8 @@ pub export fn ums_save_level(slot_idx: c_int) callconv(.c) c_int {
 
 /// Run ABI validation on the loaded level. Returns 0 (valid) or 1 (invalid).
 pub export fn ums_validate_level_abi(slot_idx: c_int) callconv(.c) c_int {
+    sessions_mu.lock();
+    defer sessions_mu.unlock();
     if (slot_idx < 0 or slot_idx >= MAX_SESSIONS) return -1;
     const idx: usize = @intCast(slot_idx);
     const slot = &sessions[idx];
@@ -202,6 +221,8 @@ pub export fn ums_validate_level_abi(slot_idx: c_int) callconv(.c) c_int {
 
 /// List levels in the current project. Returns count or -1 on error.
 pub export fn ums_list_levels(slot_idx: c_int) callconv(.c) c_int {
+    sessions_mu.lock();
+    defer sessions_mu.unlock();
     if (slot_idx < 0 or slot_idx >= MAX_SESSIONS) return -1;
     const idx: usize = @intCast(slot_idx);
     const slot = &sessions[idx];
@@ -213,6 +234,8 @@ pub export fn ums_list_levels(slot_idx: c_int) callconv(.c) c_int {
 
 /// Export the level configuration as JSON. Returns 0 on success.
 pub export fn ums_export_level_config(slot_idx: c_int) callconv(.c) c_int {
+    sessions_mu.lock();
+    defer sessions_mu.unlock();
     if (slot_idx < 0 or slot_idx >= MAX_SESSIONS) return -1;
     const idx: usize = @intCast(slot_idx);
     const slot = &sessions[idx];
@@ -231,6 +254,8 @@ pub export fn ums_export_level_config(slot_idx: c_int) callconv(.c) c_int {
 
 /// Load available templates. Returns count or -1 on error.
 pub export fn ums_load_templates(slot_idx: c_int) callconv(.c) c_int {
+    sessions_mu.lock();
+    defer sessions_mu.unlock();
     _ = slot_idx;
     // Templates are global, no session state required.
     return 0;
@@ -238,6 +263,8 @@ pub export fn ums_load_templates(slot_idx: c_int) callconv(.c) c_int {
 
 /// Instantiate a level from a template. Returns 0 on success.
 pub export fn ums_instantiate_template(slot_idx: c_int, tmpl_ptr: [*]const u8, tmpl_len: usize, name_ptr: [*]const u8, name_len: usize) callconv(.c) c_int {
+    sessions_mu.lock();
+    defer sessions_mu.unlock();
     if (slot_idx < 0 or slot_idx >= MAX_SESSIONS) return -1;
     const idx: usize = @intCast(slot_idx);
     const slot = &sessions[idx];
@@ -256,6 +283,8 @@ pub export fn ums_instantiate_template(slot_idx: c_int, tmpl_ptr: [*]const u8, t
 
 /// Get the current session state. Returns state int or -1 if inactive.
 pub export fn ums_state(slot_idx: c_int) callconv(.c) c_int {
+    sessions_mu.lock();
+    defer sessions_mu.unlock();
     if (slot_idx < 0 or slot_idx >= MAX_SESSIONS) return -1;
     const idx: usize = @intCast(slot_idx);
     const slot = &sessions[idx];
@@ -265,6 +294,8 @@ pub export fn ums_state(slot_idx: c_int) callconv(.c) c_int {
 
 /// Read the result buffer. Returns bytes written or 0.
 pub export fn ums_read_result(slot_idx: c_int, out_ptr: [*]u8, out_cap: usize) callconv(.c) c_int {
+    sessions_mu.lock();
+    defer sessions_mu.unlock();
     if (slot_idx < 0 or slot_idx >= MAX_SESSIONS) return 0;
     const idx: usize = @intCast(slot_idx);
     const slot = &sessions[idx];
@@ -276,6 +307,8 @@ pub export fn ums_read_result(slot_idx: c_int, out_ptr: [*]u8, out_cap: usize) c
 
 /// Close a session (force to idle and deactivate).
 pub export fn ums_close(slot_idx: c_int) callconv(.c) c_int {
+    sessions_mu.lock();
+    defer sessions_mu.unlock();
     if (slot_idx < 0 or slot_idx >= MAX_SESSIONS) return -1;
     const idx: usize = @intCast(slot_idx);
     sessions[idx] = .{};
@@ -284,6 +317,8 @@ pub export fn ums_close(slot_idx: c_int) callconv(.c) c_int {
 
 /// Reset all sessions (testing/teardown).
 pub export fn ums_reset() callconv(.c) void {
+    sessions_mu.lock();
+    defer sessions_mu.unlock();
     sessions = [_]SessionSlot{.{}} ** MAX_SESSIONS;
 }
 

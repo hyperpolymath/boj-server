@@ -4,6 +4,7 @@
   "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>",
   "name": "chromadb-mcp",
   "version": "0.1.0",
+  "status": "stub",
   "description": "Chroma vector DB — embedded (local persistent) or client/server; LLM-app-focused; metadata + document storage alongside vectors.",
   "domain": "vector",
   "tier": "Teranga",

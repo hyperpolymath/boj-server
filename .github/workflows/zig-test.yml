@@ -52,7 +52,14 @@ jobs:
           all="$(ls -d cartridges/*/ffi/ 2>/dev/null | sed 's|cartridges/||;s|/ffi/||' | sort)"
           if [ "$EVENT" = "pull_request" ]; then
             git fetch --no-tags --depth=50 origin "$BASE_REF" || true
-            changed="$(git diff --name-only "origin/${BASE_REF}...HEAD" -- 'cartridges/**' \
+            # Only scope cartridges whose `ffi/` actually changed —
+            # `cartridge.json` edits (e.g. adding a status field) and
+            # `abi/` edits should not pull a cart into this FFI test
+            # job, which exists to validate Zig builds. Using
+            # `cartridges/*/ffi/**` as the pathspec ensures only
+            # ffi-relevant diffs count (also matches the workflow's
+            # own `on.paths` filter — they were inconsistent before).
+            changed="$(git diff --name-only "origin/${BASE_REF}...HEAD" -- 'cartridges/*/ffi/**' \
                        | awk -F/ '{print $2}' | sort -u)"
             scope=""
             while IFS= read -r cart; do

@@ -4,6 +4,7 @@
   "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>",
   "name": "elevenlabs-mcp",
   "version": "0.1.0",
+  "status": "stub",
   "description": "Text-to-speech via ElevenLabs API — high-quality voices, multilingual, voice cloning (premium tier), streaming output.",
   "domain": "multimodal",
   "tier": "Teranga",
