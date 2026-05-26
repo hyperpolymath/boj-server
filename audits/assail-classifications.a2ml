@@ -1,0 +1,24 @@
+;; SPDX-License-Identifier: MPL-2.0
+;; Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+
+(assail-classifications
+  (metadata
+    (version "1.0.0")
+    (project "boj-server")
+    (last-updated "2026-05-26")
+    (entries 2)
+    (status "active"))
+
+  (classification
+    (file "ffi/zig/src/federation.zig")
+    (category "UnsafeCode")
+    (classification "legitimate-ffi")
+    (audit "audits/audit-ffi-2026-05-26.md")
+    (rationale "Zig FFI bridge to boj-server's Idris2 backend (cartridge runtime, federation, etc.). Each unsafe pointer cast is at the Zig→C ABI boundary required to call into libboj-server."))
+  (classification
+    (file "ffi/zig/src/cartridge_shim.zig")
+    (category "UnsafeCode")
+    (classification "legitimate-ffi")
+    (audit "audits/audit-ffi-2026-05-26.md")
+    (rationale "Zig FFI bridge to boj-server's Idris2 backend (cartridge runtime, federation, etc.). Each unsafe pointer cast is at the Zig→C ABI boundary required to call into libboj-server."))
+)
