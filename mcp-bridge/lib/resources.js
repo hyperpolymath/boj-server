@@ -88,7 +88,7 @@ const SERVER_INFO_RESOURCE = {
   links: {
     repo: "https://github.com/hyperpolymath/boj-server",
     glama: "https://glama.ai/mcp/servers/hyperpolymath/boj-server",
-    docs: "https://github.com/hyperpolymath/boj-server/blob/main/README.md",
+    docs: "https://github.com/hyperpolymath/boj-server/blob/main/README.adoc",
   },
 };
 

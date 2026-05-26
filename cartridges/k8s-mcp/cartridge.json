@@ -6,6 +6,7 @@
   "version": "0.1.0",
   "description": "Kubernetes cluster management. Namespace-scoped operations with connection lifecycle and resource CRUD.",
   "domain": "Container Orchestration",
+  "category": "domain",
   "tier": "Ayo",
   "protocols": [
     "MCP",

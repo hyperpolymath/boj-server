@@ -6,6 +6,7 @@
   "version": "0.1.0",
   "description": "Enterprise Code Intelligence Platform. Advanced graph-based code analysis for AI-assisted software development. Transforms complex software projects into searchable knowledge graphs using Neo4j.",
   "domain": "Code Analysis",
+  "category": "domain",
   "tier": "Ayo",
   "protocols": [
     "MCP",

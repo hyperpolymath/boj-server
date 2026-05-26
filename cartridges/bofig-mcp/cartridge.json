@@ -6,6 +6,7 @@
   "version": "1.0.0",
   "description": "Bofig Cartridge \u2014 Evidence graph query tools for investigative workflows",
   "domain": "Research",
+  "category": "domain",
   "tier": "Ayo",
   "auth": {
     "method": "none"

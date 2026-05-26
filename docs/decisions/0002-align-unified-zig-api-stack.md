@@ -69,12 +69,12 @@ are permitted for capabilities already covered by BoJ cartridges.
    Full code-level alignment (linking `libzig_api.so`, calling `uapi_gnosis_*`)
    is deferred to a future session.
 
-3. **Document the Nickel manifest intent** in `docs/EXTENSIBILITY.md` without
+3. **Document the Nickel manifest intent** in `docs/EXTENSIBILITY.adoc` without
    removing the operative JSON schema. The JSON schema at
    `https://boj.dev/schemas/cartridge/v1.json` remains valid until Nickel
    migration is complete.
 
-4. **Add BoJ-only MCP policy statement** to `docs/FEDERATION.md`.
+4. **Add BoJ-only MCP policy statement** to `docs/FEDERATION.adoc`.
 
 5. **Do not claim BoJ consumes `libzig_api`** — it does not yet. Spec states
    current reality and future intent explicitly.

@@ -19,7 +19,7 @@
 #
 # Ports 7700–7703 are declared forward-compatibly (current BoJ binds
 # 7700 only; 7701/7702/7703 reserved for gRPC/GraphQL/SSE per
-# `docs/ARCHITECTURE.md`). When those bindings land, no Service edit is
+# `docs/architecture/README.adoc`). When those bindings land, no Service edit is
 # required — they are already declared here.
 #
 # Refs:

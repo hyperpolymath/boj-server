@@ -97,7 +97,7 @@
             # Documentation
             cp README.adoc $out/share/doc/boj-server/ 2>/dev/null || true
             cp CHANGELOG.md $out/share/doc/boj-server/ 2>/dev/null || true
-            cp docs/GETTING-STARTED.md $out/share/doc/boj-server/ 2>/dev/null || true
+            cp docs/quickstarts/BUILD-FROM-SOURCE.adoc $out/share/doc/boj-server/ 2>/dev/null || true
           '';
 
           meta = with pkgs.lib; {

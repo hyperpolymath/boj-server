@@ -1,0 +1,228 @@
+// SPDX-License-Identifier: MPL-2.0
+// Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath)
+= Bundle of Joy Server Quickstart
+:author: Jonathan D.A. Jewell
+:toc: macro
+:icons: font
+:source-highlighter: rouge
+
+toc::[]
+
+== What is BoJ Server?
+
+Bundle of Joy (BoJ) Server is a cartridge-based MCP protocol gateway. Each cartridge (database-mcp, fleet-mcp, nesy-mcp, etc.) is a formally verified Idris2 ABI + Zig FFI + Deno/JS adapter triple. The server exposes REST (port 7700) via Elixir/BEAM with Zig FFI for `.so` cartridges and a persistent Deno worker pool for JS cartridges. 115 cartridges cover databases, clouds, messaging, CI/CD, git forges, secrets, queues, proofs, and more.
+
+Three-class architecture: Class 1 (simple CLI), Class 2 (orchestrator with webhooks/MQTT), Class 3 (BEAM multiplier for global scale).
+
+== Prerequisites
+
+[cols="1,2,2"]
+|===
+| Tool | Minimum Version | Install
+
+| Idris2
+| >= 0.7.0
+| `asdf install idris2 latest`
+
+| Zig
+| >= 0.15
+| `asdf install zig latest`
+
+| just
+| >= 1.25
+| `cargo install just`
+
+| Rust / Cargo (optional)
+| >= 1.80
+| For `launch-scaffolder` (mint/provision/config cartridges)
+|===
+
+Verify all tools:
+
+[source,bash]
+----
+just doctor
+----
+
+== Clone and First Build
+
+[source,bash]
+----
+cd ~/Documents/hyperpolymath-repos
+git clone https://github.com/hyperpolymath/boj-server.git
+cd boj-server
+----
+
+Check dependencies:
+
+[source,bash]
+----
+just deps
+----
+
+Build all Zig FFI layers (catalogue + cartridges):
+
+[source,bash]
+----
+just build
+----
+
+== First Run
+
+Start the Elixir/BEAM server:
+
+[source,bash]
+----
+just run
+----
+
+This starts the BEAM application, auto-discovers all 115 cartridges, and launches the Deno worker pool for JS dispatch:
+
+- REST API on http://localhost:7700
+
+Check health:
+
+[source,bash]
+----
+curl http://localhost:7700/status
+----
+
+== Smoke Test
+
+Type-check the core ABI and run one FFI test:
+
+[source,bash]
+----
+just test-smoke
+----
+
+Full test suite (Elixir ExUnit — catalog, router, crypto, JS dispatch):
+
+[source,bash]
+----
+just test
+----
+
+== Verification
+
+BoJ requires zero `believe_me` in all Idris2 sources. Run the full verification suite:
+
+[source,bash]
+----
+just verify
+----
+
+This runs: typecheck -> verify-no-believe-me -> build -> test.
+
+== Show Capability Matrix
+
+[source,bash]
+----
+just matrix
+----
+
+Shows ABI/FFI/Adapter/Tests status for each cartridge.
+
+== Optional: Cloudflare Tunnel
+
+Expose your local BoJ server publicly:
+
+[source,bash]
+----
+just serve
+----
+
+Starts the server + Cloudflare Quick Tunnel (requires `cloudflared`).
+
+== Key Ports
+
+[cols="1,1,2"]
+|===
+| Port | Protocol | Notes
+
+| 7700
+| REST (HTTP)
+| Primary API, status endpoint — implemented in `elixir/lib/boj_rest/router.ex`
+
+| 7701
+| gRPC
+| Planned (binary protocol). The `Boj.Protocol` ABI enum lists `GRPC` but no `.proto` files exist and no gRPC server is wired into the BEAM application yet.
+
+| 7702
+| GraphQL
+| Planned (query interface). Not present in the `Boj.Protocol` ABI enum and no schema or Absinthe server is wired into the BEAM application yet.
+|===
+
+[NOTE]
+====
+Only the REST surface on port 7700 is currently implemented. The gRPC and
+GraphQL rows above are forward-looking; until they ship, only `7700` will
+actually accept connections.
+====
+
+== Guided Tour
+
+[source,bash]
+----
+just tour
+----
+
+== Troubleshooting
+
+[source,bash]
+----
+just doctor   # Diagnose missing tools
+just heal     # Attempt automatic repair
+----
+
+== Project Structure (Key Paths)
+
+----
+src/abi/               Idris2 ABI (Catalogue.idr, Protocol.idr, etc.)
+ffi/zig/               Zig FFI (catalogue.zig, loader.zig)
+elixir/                Elixir/BEAM REST server (Catalog, Router, JsWorkerPool)
+cartridges/            One dir per cartridge (112 total)
+  database-mcp/        Example: Idris2 ABI + Zig FFI + mod.js adapter
+container/             Stapeln container ecosystem
+tools/                 Cartridge tooling (provisioner, configurator, harness)
+.machine_readable/     State, policies, contractiles
+----
+
+== Running a Production Node (Umoja Federation)
+
+To run a community node that joins the Umoja seed network:
+
+[source,bash]
+----
+# Pull the latest image
+podman-compose -f container/compose.prod.yaml pull
+
+# Start (daemonised)
+podman-compose -f container/compose.prod.yaml up -d
+
+# Check it is live
+curl http://localhost:7700/health
+----
+
+The four continental seed nodes are pre-configured as bootstrap peers:
+
+* `boj-seed-eu.fly.dev:9999` — London (EU West)
+* `boj-seed-de.fly.dev:9999` — Frankfurt (EU Central)
+* `boj-seed-us.fly.dev:9999` — Virginia (US East)
+* `boj-seed-ap.fly.dev:9999` — Sydney (Asia-Pacific)
+
+Set `BOJ_NODE_ID` to give your node a stable identity in the gossip network.
+
+For Podman Quadlet (systemd service), copy
+`container/boj-community-node.container` to
+`~/.config/containers/systemd/` and run `systemctl --user start boj-community-node`.
+
+The four canonical seed nodes are declared in `container/seed-nodes.toml`.
+
+== Further Reading
+
+- `docs/architecture/README.adoc` -- 2D matrix design
+- `docs/FEDERATION.adoc` -- Distributed hosting model
+- `docs/developer/README.adoc` -- Contributing cartridges
+- `docs/CULTURAL-RESPECT.adoc` -- Teranga/Umoja/Ayo terminology
+- `0-AI-MANIFEST.a2ml` -- Machine-readable project manifest

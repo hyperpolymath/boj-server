@@ -1,0 +1,115 @@
+// SPDX-License-Identifier: MPL-2.0
+= Bundle of Joy Server — Roadmap
+:toc:
+
+== Vision
+
+A distributed, formally verified catalogue of developer server capabilities. AI goes to ONE place instead of hunting across dozens of MCP/LSP/etc servers. Community-hosted nodes share the load.
+
+== Current Status: v1.1.0 Active (Grade C)
+
+Core Elixir/BEAM REST layer is live: 111 cartridges with Zig FFI (`.so`) + 1 JS-only
+(model-router-mcp) auto-discovered at startup, JS dispatch via persistent Deno worker
+pool, Zig FFI path for `.so` cartridges, X25519/ChaCha20-Poly1305 credential
+forwarding with Options A+B wired (CredentialDecryptor → Invoker extra_env),
+X-Trust-Level enforcement live (BojRest.TrustPolicy).  173 ExUnit tests passing
+(10 properties + 163 regular, 0 failures).  All 4 fly.io seed nodes LIVE:
+boj-seed-eu (lhr), boj-seed-de (fra), boj-seed-us (iad), boj-seed-ap (syd).
+zig adapter migration complete (0 `.v` files).  Grade C achieved 2026-04-25.
+
+== Milestones
+
+=== v0.1.0 — Foundation (Phase 0+1) ✓
+
+* [x] Fresh repo from rsr-template-repo (17 mandatory workflows)
+* [x] Idris2 ABI: Catalogue, Protocol, Domain, Menu, Federation
+* [x] `IsUnbreakable` proof type (only Ready cartridges can mount)
+* [x] Zig FFI: catalogue mount/unmount with safety gate
+* [x] C header: `boj_catalogue.h` from Idris2 encodings
+* [x] Teranga menu (`menu.a2ml`) with three tiers
+* [x] Order-ticket protocol (`order-ticket.scm`)
+* [x] Three cartridges: database-mcp, nesy-mcp, fleet-mcp
+* [x] Cultural respect documentation (Teranga/Umoja/Ayo)
+* [x] Federation design (Umoja gossip, hash attestation)
+
+=== v0.2.0 — Live Cartridges (Phase 2-3)
+
+* [x] Zig FFI: dynamic cartridge loader with hash verification
+* [x] zig triple adapter: REST (9000) + gRPC (9001) + GraphQL (9002)
+* [x] First working MCP endpoint (database-mcp)
+* [x] First working LSP endpoint (database-mcp)
+* [x] Order-ticket flow end-to-end (read menu → place order → get endpoints)
+* [x] Stapeln container image (Chainguard base, Podman)
+
+=== v0.3.0 — Umoja Network (Phase 5)
+
+* [x] Gossip protocol implementation (IPv6, node discovery)
+* [x] Hash attestation (binary verification for community nodes)
+* [x] Seed node setup (4 fly.io nodes: boj-seed-eu.fly.dev, boj-seed-de.fly.dev, boj-seed-us.fly.dev, boj-seed-ap.fly.dev — LIVE 2026-04-25)
+* [ ] Load-aware routing (requests to healthiest node)
+* [x] Auto-SDP (Software Defined Perimeter for nodes)
+* [ ] DoQ/DoH for encrypted DNS resolution
+
+=== v0.4.0 — Community (Phase 5+)
+
+* [x] PanLL panel (BoJ matrix display, menu browser, order placement)
+* [ ] IndieWeb integration (Webmention, self-hosted node discovery)
+* [x] Community cartridge submission process (Ayo menu)
+* [x] Wiki with guides for node operators
+* [ ] Project board for cartridge development tracking
+
+=== v0.5.0 — Shield (Security)
+
+* [x] SDP cartridge (auto-SDP for community nodes)
+* [ ] DNS Shield cartridge (DoQ/DoH/oDNS)
+* [ ] Container hash state monitoring (vordr integration)
+* [ ] PMPL provenance chain verification
+
+=== v1.0.0 — Matrix Fill (Phase 6)
+
+* [x] Remaining MCP cartridges (Cloud, Container, K8s, Git, Secrets, Queues, IaC, Observe, SSG, Proof)
+* [x] LSP cartridges for key domains
+* [x] DAP cartridges where relevant
+* [x] polystack deprecation (Phase 7)
+
+=== v1.0.1 — Adapter Migration Recovery (P0, In Progress)
+
+* [x] Remove remaining zig adapters across `cartridges/` (confirmed 0 `.v` files 2026-04-25 — cleanup completed 2026-04-12)
+* [x] Ensure every cartridge has `cartridge.json` metadata (all 115 cartridges covered, re-verified 2026-04-30)
+* [x] Ensure every cartridge has `mod.js` tool handlers (all 115 cartridges covered, re-verified 2026-04-30)
+* [x] Re-run cartridge matrix build and update `TEST-NEEDS.md` with current evidence (build count refreshed 2026-04-30 — 111/115 cartridges have `.so`; pending: `database-mcp`, `echidna-llm-mcp`, `lang-mcp`, `orchestrator-lsp-mcp`. Test re-run deferred to next sweep.)
+* [x] Refresh repo documentation claims after migration closure — counts, completion text, handover docs (PR #40 + this re-measurement PR cover the canonical doc surfaces; cartridge count is now 115 across all surfaces)
+
+=== v1.1.0 — JS Dispatch + Gateway Sidecar
+
+JS cartridge dispatch (gap closed substantially since the original measurement — as of 2026-04-30, 4 of 115 cartridges still use `mod.js` not Zig `.so`: `database-mcp`, `echidna-llm-mcp`, `lang-mcp`, `orchestrator-lsp-mcp`):
+
+* [x] `BojRest.JsInvoker` — shells out to `deno run mod.js` per invocation (Phase 1: fork-per-call, ~200 ms cold-start)
+* [x] Router dispatch branch: if `cart["ffi"]` key present → `Invoker` (Zig path); else → `JsWorkerPool` (Deno pool path)
+* [x] Fix `cartridge_so_path/1` to read `cart["ffi"]["so_path"]` from the manifest instead of hardcoding the derivation
+* [x] `BojRest.JsWorkerPool` + `BojRest.JsWorker` — persistent Deno worker pool (Phase 2); consistent hash on mod path for module-cache locality; `JsInvoker` fork-per-call as fallback when pool absent
+* [ ] End-to-end test: `curl POST /cartridge/boj-health/invoke` (Zig) + `curl POST /cartridge/local-memory-mcp/invoke` (JS)
+* [x] Phase 8: 4 fly.io seed nodes deployed (lhr/fra/iad/syd), 2/2 health checks, Containerfile.fly lean build
+* [x] Phase 9 (partial): BojRest.TrustPolicy X-Trust-Level enforcement, credential forwarding Options A+B (CredentialDecryptor → Invoker extra_env)
+* [x] 173 ExUnit tests, Grade C achieved (10 properties + 163 regular, 0 failures)
+
+Gateway sidecar (`http-capability-gateway` in front of boj-server):
+
+* [x] Add `gateway-policy.yaml` (done — `container/gateway-policy.yaml`) to dev compose as optional sidecar
+* [x] Implement `PolicyLoader.load_from_boj_catalog/1` in `http-capability-gateway` — reads `BOJ_CARTRIDGES_ROOT/*/cartridge.json` at boot, infers per-cartridge invoke exposure from `auth.method` (`none` → `public`, others → `authenticated`). Zero manual policy maintenance thereafter. See `docs/gateway-catalog-integration.adoc`.
+* [x] Update `compose.dev.yaml` with gateway sidecar entry (port 7800 → boj-rest:7700)
+* [x] Retire static `gateway-policy.yaml` — catalog mode live 2026-04-25; file kept as reference only
+
+== Future Directions
+
+* **oDNS relay**: Distributed Oblivious DNS as a network service (research problem)
+* **Aerie integration**: Dynamic threat response via BoJ cartridges
+* **Cross-network federation**: BoJ nodes discovering other federated networks
+* **Mobile nodes**: Tauri/Dioxus-based node management app
+
+== How to Contribute
+
+* **Propose a cartridge**: Open a Discussion using the "Cartridge Proposal" template
+* **Host a node**: Open a Discussion using the "Hosting" template
+* **Build a cartridge**: See `docs/developer/README.adoc`
+* **Give feedback**: Open a Discussion or Issue

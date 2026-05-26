@@ -6,6 +6,7 @@
   "version": "0.2.0",
   "description": "Obsidian vault cartridge -- note search, content retrieval, backlink navigation, tag browsing, graph analysis, dataview queries, frontmatter extraction, daily notes, template listing, and vault statistics via the Obsidian Local REST API",
   "domain": "Knowledge",
+  "category": "domain",
   "tier": "Ayo",
   "protocols": [
     "MCP",

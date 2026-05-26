@@ -16,7 +16,7 @@
 
 [Unit]
 Description=BoJ REST server (Elixir/Cowboy, port 7700)
-Documentation=file://$BOJ_ROOT/QUICKSTART-USER.adoc
+Documentation=file://$BOJ_ROOT/docs/quickstarts/USER.adoc
 After=network.target local-coord-mcp.service
 Wants=local-coord-mcp.service
 

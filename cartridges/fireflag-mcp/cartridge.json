@@ -6,6 +6,7 @@
   "version": "1.0.0",
   "description": "Fireflag Cartridge \u2014 Extension-to-MCP mapping and discovery tools",
   "domain": "Developer Tools",
+  "category": "domain",
   "tier": "Ayo",
   "auth": {
     "method": "none"

@@ -45,7 +45,7 @@ check-core-invariants:
 
 check-strong-invariants:
 	@echo "Checking strong invariants..."
-	@test -f docs/QUICKSTART.md && echo "✓ Documentation exists." || echo "⚠ Documentation missing."
+	@test -f docs/quickstarts/DEV.adoc && echo "✓ Documentation exists." || echo "⚠ Documentation missing."
 	@test -d examples && echo "✓ Example cartridges exist." || echo "⚠ Examples missing."
 	@echo "✓ Strong invariants verified."
 

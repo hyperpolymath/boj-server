@@ -5,6 +5,6 @@
   "license": "MPL-2.0",
   "exports": "./mcp-bridge/main.js",
   "publish": {
-    "include": ["mcp-bridge/", "LICENSE", "README.md"]
+    "include": ["mcp-bridge/", "LICENSE", "README.adoc"]
   }
 }

@@ -6,6 +6,7 @@
   "version": "0.1.0",
   "description": "Neon serverless Postgres gateway. Branch management, query execution, and connection pooling for Neon projects.",
   "domain": "Database",
+  "category": "domain",
   "tier": "Ayo",
   "protocols": [
     "MCP",

@@ -24,7 +24,7 @@ Python/JS runtime. Community-hosted via Umoja federation with QUIC gossip
 and hash attestation.
 
 - **Repository**: [github.com/hyperpolymath/boj-server](https://github.com/hyperpolymath/boj-server)
-- **MCP setup**: `boj-server --mcp` (see [docs/GETTING-STARTED.md](https://github.com/hyperpolymath/boj-server/blob/main/docs/GETTING-STARTED.md))
+- **MCP setup**: `boj-server --mcp` (see [docs/quickstarts/BUILD-FROM-SOURCE.adoc](https://github.com/hyperpolymath/boj-server/blob/main/docs/quickstarts/BUILD-FROM-SOURCE.adoc))
 - **Protocol**: JSON-RPC 2.0 over stdio
 - **License**: MPL-2.0
 ```

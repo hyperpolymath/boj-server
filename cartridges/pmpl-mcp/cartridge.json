@@ -6,6 +6,7 @@
   "version": "0.1.0",
   "description": "PMPL licence chain verification and artefact hashing",
   "domain": "legal",
+  "category": "domain",
   "tier": "Ayo",
   "protocols": [
     "MCP",

@@ -299,7 +299,7 @@
 @section(id="ayo", label="The Ayo Selection"):
 
 # No community cartridges yet — the door is open.
-# See docs/DEVELOPERS.md for how to contribute a cartridge.
+# See docs/developer/README.adoc for how to contribute a cartridge.
 
 # ═══════════════════════════════════════════════════════════════════════════
 # Umoja Network (Community Nodes)

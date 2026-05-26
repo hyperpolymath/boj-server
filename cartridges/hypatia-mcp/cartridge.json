@@ -6,6 +6,7 @@
   "version": "0.1.0",
   "description": "Hypatia neurosymbolic CI/CD intelligence. Scans repos for security, quality, and compliance issues using symbolic rules + neural pattern detection.",
   "domain": "CI/CD Intelligence",
+  "category": "domain",
   "tier": "Ayo",
   "protocols": [
     "MCP",

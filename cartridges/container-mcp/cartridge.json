@@ -6,6 +6,7 @@
   "version": "0.1.0",
   "description": "Container lifecycle manager. Build, create, start, stop, and remove containers via Podman/Docker with state machine enforcement.",
   "domain": "Container Orchestration",
+  "category": "domain",
   "tier": "Ayo",
   "protocols": [
     "MCP",

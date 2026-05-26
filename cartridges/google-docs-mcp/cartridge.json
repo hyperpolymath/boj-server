@@ -6,6 +6,7 @@
   "version": "0.2.0",
   "description": "Google Docs cartridge -- document retrieval, content reading, text search, heading extraction, comment listing, suggestion browsing, revision history, named range access, document creation, and text insertion via the Google Docs API v1",
   "domain": "Productivity",
+  "category": "domain",
   "tier": "Ayo",
   "protocols": [
     "MCP",

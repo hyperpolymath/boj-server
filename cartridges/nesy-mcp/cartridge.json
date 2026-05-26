@@ -6,6 +6,7 @@
   "version": "0.1.0",
   "description": "Neural-symbolic (NeSy) harmonization engine. Symbolic truth always overrides neural probability.",
   "domain": "AI/NeSy",
+  "category": "cross-cutting",
   "tier": "Ayo",
   "protocols": [
     "MCP",

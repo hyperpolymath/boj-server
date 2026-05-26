@@ -6,6 +6,7 @@
   "version": "0.2.0",
   "description": "Render REST API v1 cartridge -- services, deploys, env groups, custom domains, jobs, suspend/resume, and bandwidth monitoring",
   "domain": "Cloud",
+  "category": "domain",
   "tier": "Ayo",
   "protocols": [
     "MCP",

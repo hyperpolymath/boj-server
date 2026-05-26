@@ -6,6 +6,7 @@
   "version": "0.1.0",
   "description": "Notion workspace pages, databases, and blocks",
   "domain": "productivity",
+  "category": "domain",
   "tier": "Ayo",
   "protocols": [
     "MCP",

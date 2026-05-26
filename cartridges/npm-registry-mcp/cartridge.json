@@ -6,6 +6,7 @@
   "version": "0.2.0",
   "description": "npm registry cartridge -- package search, metadata retrieval, version listing, download stats, dependency analysis, maintainer lookup, and audit advisory queries via the npm registry API",
   "domain": "Registry",
+  "category": "domain",
   "tier": "Ayo",
   "protocols": [
     "MCP",

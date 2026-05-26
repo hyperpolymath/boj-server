@@ -52,4 +52,4 @@ about the real scanner because the real scanner is not here.
 == Promotion gate
 
 Replace the hardcoded returns with calls into the live Hypatia scanner,
-then update `docs/READINESS.md` for this component.
+then update `docs/READINESS.adoc` for this component.

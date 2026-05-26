@@ -6,6 +6,7 @@
   "version": "0.1.0",
   "description": "Vordr container integrity monitor. BLAKE3 hashing to detect tampering and drift in container images.",
   "domain": "Security",
+  "category": "domain",
   "tier": "Ayo",
   "protocols": [
     "MCP",

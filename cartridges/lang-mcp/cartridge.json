@@ -7,6 +7,7 @@
   "status": "ffi_only",
   "description": "Multi-language session manager for the nextgen-languages family: Eclexia, AffineScript, BetLang, Ephapax, MyLang, WokeLang, Anvomidav, Phronesis, Error-lang, Julia-the-Viper, Me-dialect, Oblibeny. Tracks per-language sessions, delegates type-checking and evaluation to each language's CLI tool, and provides a unified interface across all dialects.",
   "domain": "Languages",
+  "category": "domain",
   "tier": "Ayo",
   "protocols": [
     "MCP",

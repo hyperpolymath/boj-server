@@ -6,6 +6,7 @@
   "version": "0.1.0",
   "description": "Feedback collection and sentiment analysis",
   "domain": "community",
+  "category": "domain",
   "tier": "Ayo",
   "protocols": [
     "MCP",

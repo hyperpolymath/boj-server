@@ -7,6 +7,7 @@
   "status": "ffi_only",
   "description": "Anthropic Messages API cartridge -- send messages to Claude models, count tokens, manage multi-turn conversations",
   "domain": "AI",
+  "category": "cross-cutting",
   "tier": "Ayo",
   "protocols": [
     "MCP",
@@ -72,7 +73,7 @@
           },
           "temperature": {
             "type": "number",
-            "description": "Sampling temperature 0.0–1.0 (default 1.0 = standard).",
+            "description": "Sampling temperature 0.0\u20131.0 (default 1.0 = standard).",
             "default": 1.0
           }
         },

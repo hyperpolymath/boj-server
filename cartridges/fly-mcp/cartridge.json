@@ -6,6 +6,7 @@
   "version": "0.1.0",
   "description": "Fly.io Machines API v1 cartridge -- app, machine, volume, secret, region, IP, and certificate management",
   "domain": "Cloud",
+  "category": "domain",
   "tier": "Ayo",
   "protocols": [
     "MCP",

@@ -6,6 +6,7 @@
   "version": "0.2.0",
   "description": "opam registry cartridge -- OCaml package search, metadata retrieval, version listing, dependency analysis, reverse dependency lookup, maintainer listing, and repository browsing via the opam.ocaml.org API",
   "domain": "Registry",
+  "category": "domain",
   "tier": "Ayo",
   "protocols": [
     "MCP",

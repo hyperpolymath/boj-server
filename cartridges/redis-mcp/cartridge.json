@@ -6,6 +6,7 @@
   "version": "0.1.0",
   "description": "Redis gateway. Key-value operations, sorted sets, pub/sub, streams, and Lua scripting via session slots.",
   "domain": "Database",
+  "category": "domain",
   "tier": "Ayo",
   "protocols": [
     "MCP",

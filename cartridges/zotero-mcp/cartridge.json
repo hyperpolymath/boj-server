@@ -6,6 +6,7 @@
   "version": "0.2.0",
   "description": "Zotero reference manager cartridge -- library search, item retrieval, collection browsing, tag management, attachment access, citation export, note extraction, saved search execution, group library access, and bibliography generation via the Zotero Web API v3",
   "domain": "Research",
+  "category": "domain",
   "tier": "Ayo",
   "protocols": [
     "MCP",

@@ -6,6 +6,7 @@
   "version": "0.1.0",
   "description": "Railway GraphQL API v2 cartridge -- project, service, deployment, environment variable, domain, log, and metrics management",
   "domain": "Cloud",
+  "category": "domain",
   "tier": "Ayo",
   "protocols": [
     "MCP",

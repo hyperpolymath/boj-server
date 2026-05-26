@@ -6,6 +6,7 @@
   "version": "0.2.0",
   "description": "Hex.pm registry cartridge -- Elixir/Erlang package search, metadata retrieval, version listing, download stats, dependency analysis, owner listing, retirement status, and API key management via the Hex API",
   "domain": "Registry",
+  "category": "domain",
   "tier": "Ayo",
   "protocols": [
     "MCP",

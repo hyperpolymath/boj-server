@@ -6,6 +6,7 @@
   "version": "0.1.0",
   "description": "Universal database gateway. Connects to PostgreSQL, SQLite, VeriSimDB, QuandleDB, MongoDB, and other backends with unified query interface.",
   "domain": "Database",
+  "category": "domain",
   "tier": "Ayo",
   "protocols": [
     "MCP",

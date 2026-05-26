@@ -364,7 +364,7 @@ When using boj-server, we recommend:
 |---------|---------|
 | **Security issues** | [Report via GitHub](https://github.com/hyperpolymath/boj-server/security/advisories/new) or j.d.a.jewell@open.ac.uk |
 | **General questions** | [GitHub Discussions](https://github.com/hyperpolymath/boj-server/discussions) |
-| **Other enquiries** | See [README](README.md) for contact information |
+| **Other enquiries** | See [README](../README.adoc) for contact information |
 
 ---
 

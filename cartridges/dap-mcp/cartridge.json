@@ -6,6 +6,7 @@
   "version": "0.1.0",
   "description": "Generic Debug Adapter Protocol (DAP) gateway. Spawns any DAP adapter as a persistent subprocess and exposes debug lifecycle operations (initialize, launch/attach, breakpoints, stepping, stack inspection, variable evaluation) as MCP tools.",
   "domain": "Language Tools",
+  "category": "cross-cutting",
   "tier": "Ayo",
   "protocols": [
     "MCP",

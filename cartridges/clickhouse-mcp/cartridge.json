@@ -6,6 +6,7 @@
   "version": "0.1.0",
   "description": "ClickHouse analytics database gateway. Columnar queries, bulk inserts, and real-time analytics via session management.",
   "domain": "Database",
+  "category": "domain",
   "tier": "Ayo",
   "protocols": [
     "MCP",

@@ -1,0 +1,307 @@
+// SPDX-License-Identifier: MPL-2.0
+// SPDX-FileCopyrightText: 2025-2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+
+
+= User Guide
+
+This guide is for people *using* a running BoJ server, either via the REST API or as an MCP server for AI tools.
+
+== Quick Start (REST API)
+
+[source,bash]
+----
+# Health check
+curl http://localhost:7700/health
+# {"status":"ok"}
+
+# See server status
+curl http://localhost:7700/status
+
+# Browse the Teranga menu (what's available)
+curl http://localhost:7700/menu
+
+# View the full capability matrix
+curl http://localhost:7700/matrix
+----
+
+=== Mount and invoke a cartridge
+
+[source,bash]
+----
+# Mount the database cartridge
+curl -X POST http://localhost:7700/cartridges/database-mcp/load
+
+# Invoke a tool
+curl -X POST http://localhost:7700/cartridges/database-mcp/invoke \
+  -H 'Content-Type: application/json' \
+  -d '{"tool":"list_octads","args":""}'
+
+# Unmount when done
+curl -X POST http://localhost:7700/cartridges/database-mcp/unload
+----
+
+=== Place an order (Order-Ticket Protocol)
+
+[source,bash]
+----
+curl -X POST http://localhost:7700/order \
+  -H 'Content-Type: application/json' \
+  -d '{"cartridges":["database-mcp","observe-mcp"]}'
+----
+
+== MCP Mode (for AI Tools)
+
+BoJ speaks MCP natively via JSON-RPC 2.0 over stdio. All 18 cartridges are exposed as MCP tools.
+
+=== Claude Desktop / Claude Code
+
+Add to your `claude_desktop_config.json`:
+
+[source,json]
+----
+{
+  "mcpServers": {
+    "boj": {
+      "command": "/path/to/boj-server",
+      "args": ["--mcp"],
+      "env": {
+        "LD_LIBRARY_PATH": "/path/to/ffi/zig/zig-out/lib:/path/to/cartridges/container-mcp/ffi/zig-out/lib:/path/to/cartridges/feedback-mcp/ffi/zig-out/lib"
+      }
+    }
+  }
+}
+----
+
+Replace `/path/to/` with the actual path to your BoJ installation.
+
+=== Other MCP clients
+
+Any MCP-compatible client can consume BoJ. Start the server in MCP mode:
+
+[source,bash]
+----
+LD_LIBRARY_PATH=ffi/zig/zig-out/lib \
+  bash -c 'cd elixir && mix run --no-halt -- --mcp'
+----
+
+The server reads JSON-RPC 2.0 from stdin and writes responses to stdout.
+
+== Ports
+
+[cols="1,1,1",options="header"]
+|===
+| Protocol
+| Default Port
+| Environment Variable
+
+| REST
+| 7700
+| `BOJ_REST_PORT`
+
+| gRPC-compat
+| 7701
+| `BOJ_GRPC_PORT`
+
+| GraphQL
+| 7702
+| `BOJ_GRAPHQL_PORT`
+
+| Federation (UDP/QUIC)
+| 9999
+| `BOJ_FEDERATION_PORT`
+
+|===
+
+== Available Cartridges (18)
+
+=== Core Infrastructure (Teranga Tier)
+
+[cols="1,1,1",options="header"]
+|===
+| Cartridge
+| Domain
+| Description
+
+| `database-mcp`
+| Database
+| Database operations, VeriSimDB octad CRUD, VQL queries, drift detection
+
+| `container-mcp`
+| Container
+| Container lifecycle management via Stapeln supply chain
+
+| `cloud-mcp`
+| Cloud
+| Cloud provider operations (universal abstraction)
+
+| `k8s-mcp`
+| Kubernetes
+| Kubernetes cluster and workload management
+
+| `git-mcp`
+| Git/VCS
+| Version control operations across forges
+
+| `secrets-mcp`
+| Secrets
+| Secret storage, rotation, and access control
+
+| `queues-mcp`
+| Queues
+| Message queue and event stream operations
+
+| `iac-mcp`
+| IaC
+| Infrastructure-as-code provisioning and state management
+
+| `observe-mcp`
+| Observability
+| Metrics, logs, traces, and alerting
+
+| `ssg-mcp`
+| SSG
+| Static site generation (Zola/ddraig builds end-to-end)
+
+| `proof-mcp`
+| Proof
+| Formal verification tooling and proof management
+
+| `fleet-mcp`
+| Fleet
+| Multi-node orchestration and gitbot-fleet coordination
+
+| `nesy-mcp`
+| NeSy
+| Neurosymbolic AI operations and hybrid reasoning
+
+| `agent-mcp`
+| Agent
+| AI agent coordination and multi-agent workflows
+
+|===
+
+=== Protocol Cartridges
+
+[cols="1,1,1",options="header"]
+|===
+| Cartridge
+| Domain
+| Description
+
+| `lsp-mcp`
+| LSP
+| Language Server Protocol bridge -- editor integrations
+
+| `dap-mcp`
+| DAP
+| Debug Adapter Protocol bridge -- debugger integrations
+
+| `bsp-mcp`
+| BSP
+| Build Server Protocol bridge -- build tool integrations
+
+|===
+
+=== Feedback
+
+[cols="1,1,1",options="header"]
+|===
+| Cartridge
+| Domain
+| Description
+
+| `feedback-mcp`
+| Feedback
+| User feedback channels, sentiment tracking, summaries
+
+|===
+
+== Common Workflows
+
+=== Inspect what's available
+
+[source,bash]
+----
+# Full menu with all three tiers (Teranga, Shield, Ayo)
+curl http://localhost:7700/menu
+
+# Just core cartridges
+curl http://localhost:7700/menu/teranga
+
+# Community cartridges
+curl http://localhost:7700/menu/ayo
+----
+
+=== Check a specific cartridge
+
+[source,bash]
+----
+curl http://localhost:7700/cartridge/database-mcp
+----
+
+=== Submit feedback
+
+[source,bash]
+----
+# Mount the feedback cartridge
+curl -X POST http://localhost:7700/cartridges/feedback-mcp/load
+
+# Open a channel
+curl -X POST http://localhost:7700/cartridges/feedback-mcp/invoke \
+  -H 'Content-Type: application/json' \
+  -d '{"tool":"open_channel","args":"{\"channel\":\"api\"}"}'
+
+# Submit feedback
+curl -X POST http://localhost:7700/cartridges/feedback-mcp/invoke \
+  -H 'Content-Type: application/json' \
+  -d '{"tool":"submit","args":"{\"slot\":\"0\",\"sentiment\":\"positive\"}"}'
+
+# View summary
+curl -X POST http://localhost:7700/cartridges/feedback-mcp/invoke \
+  -H 'Content-Type: application/json' \
+  -d '{"tool":"summary","args":""}'
+----
+
+=== Check federation status
+
+[source,bash]
+----
+# See this node's federation status
+curl http://localhost:7700/umoja/status
+
+# List connected peers
+curl http://localhost:7700/umoja/peers
+----
+
+=== Use gRPC-compat endpoints
+
+[source,bash]
+----
+# Same operations via gRPC-style paths (JSON-over-HTTP on port 7701)
+curl http://localhost:7701/boj.Catalogue/List
+curl http://localhost:7701/boj.Menu/Full
+----
+
+=== Use GraphQL
+
+[source,bash]
+----
+curl -X POST http://localhost:7702/graphql \
+  -H 'Content-Type: application/json' \
+  -d '{"query":"{ status { version totalCartridges } }"}'
+----
+
+== Error Handling
+
+All errors return JSON with an `error` field:
+
+[source,json]
+----
+{"error": "cartridge not found: unknown-mcp"}
+----
+
+HTTP status codes: `400` (bad request), `404` (not found), `409` (conflict, e.g., already mounted), `503` (service unavailable).
+
+== Full API Reference
+
+See link:../API-CONTRACT.md[`docs/API-CONTRACT.adoc`] for the complete stable API surface including wire format details.

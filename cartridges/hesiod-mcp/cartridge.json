@@ -6,6 +6,7 @@
   "version": "1.0.0",
   "description": "DNS lookup cartridge \u2014 query DNS records via MCP tools",
   "domain": "Infrastructure",
+  "category": "domain",
   "tier": "Ayo",
   "auth": {
     "method": "none"

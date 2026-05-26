@@ -6,6 +6,7 @@
   "version": "0.1.0",
   "description": "Telegram Bot API gateway. Send messages, manage chats, handle inline queries, and read updates.",
   "domain": "Communications",
+  "category": "domain",
   "tier": "Ayo",
   "protocols": [
     "MCP",

@@ -6,6 +6,7 @@
   "version": "0.2.0",
   "description": "PyPI registry cartridge -- Python package search, metadata retrieval, version listing, download stats, dependency analysis, maintainer lookup, classifier browsing, and vulnerability advisory queries via the PyPI JSON API and Warehouse API",
   "domain": "Registry",
+  "category": "domain",
   "tier": "Ayo",
   "protocols": [
     "MCP",

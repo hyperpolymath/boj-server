@@ -6,6 +6,7 @@
   "version": "0.2.0",
   "description": "Hackage registry cartridge -- Haskell package search, metadata retrieval, version listing, download stats, dependency analysis, reverse dependency lookup, maintainer listing, deprecated status, and cabal file retrieval via the Hackage API",
   "domain": "Registry",
+  "category": "domain",
   "tier": "Ayo",
   "protocols": [
     "MCP",
