@@ -6,6 +6,7 @@
   "version": "0.1.0",
   "description": "Supabase gateway. PostgreSQL queries, Auth user management, Storage file operations, and Edge Functions.",
   "domain": "Database",
+  "category": "domain",
   "tier": "Ayo",
   "protocols": [
     "MCP",

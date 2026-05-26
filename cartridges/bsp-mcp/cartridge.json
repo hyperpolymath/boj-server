@@ -6,6 +6,7 @@
   "version": "0.1.0",
   "description": "Generic Build Server Protocol (BSP 2.x) gateway. Spawns any BSP server as a persistent subprocess and exposes build lifecycle operations (initialize, targets, compile, test, run, clean, diagnostics) as MCP tools.",
   "domain": "Language Tools",
+  "category": "cross-cutting",
   "tier": "Ayo",
   "protocols": [
     "MCP",

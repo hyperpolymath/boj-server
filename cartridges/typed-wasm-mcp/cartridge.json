@@ -6,6 +6,7 @@
   "version": "0.2.0",
   "description": "AffineScript typed-wasm gateway. Compiles .affine source to Wasm with the typed-wasm Level 7/10 ownership contract, runs the intra-module verifier, and runs the cross-module boundary verifier between two compiled modules.",
   "domain": "Compiler",
+  "category": "domain",
   "tier": "Ayo",
   "protocols": [
     "MCP",

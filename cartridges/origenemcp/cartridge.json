@@ -6,6 +6,7 @@
   "version": "0.1.0",
   "description": "Biomedical MCP Server Platform. Integrates 600+ tools and databases (ChEMBL, PubChem, FDA, OpenTargets, NCBI, UniProt, PDB, Ensembl, UCSC, KEGG, STRING, TCGA, Monarch, ClinicalTrials) for multi-dimensional biomedical information retrieval.",
   "domain": "Bioinformatics",
+  "category": "domain",
   "tier": "Ayo",
   "protocols": [
     "MCP",

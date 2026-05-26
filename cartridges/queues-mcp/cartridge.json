@@ -6,6 +6,7 @@
   "version": "0.1.0",
   "description": "Message queue bridge (Redis Streams, RabbitMQ, NATS)",
   "domain": "messaging",
+  "category": "domain",
   "tier": "Ayo",
   "protocols": [
     "MCP",

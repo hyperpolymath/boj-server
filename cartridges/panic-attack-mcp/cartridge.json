@@ -6,6 +6,7 @@
   "version": "0.1.0",
   "description": "panic-attacker static analysis. Scans codebases for dangerous patterns, banned constructs, proof drift, and OWASP-class vulnerabilities across 49 languages.",
   "domain": "Security",
+  "category": "domain",
   "tier": "Ayo",
   "protocols": [
     "MCP",

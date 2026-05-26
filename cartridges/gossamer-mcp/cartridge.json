@@ -6,6 +6,7 @@
   "version": "0.1.0",
   "description": "Gossamer webview window manager. Creates and manages native desktop windows with panel loading and JavaScript evaluation.",
   "domain": "Desktop/UI",
+  "category": "template",
   "tier": "Ayo",
   "protocols": [
     "MCP",

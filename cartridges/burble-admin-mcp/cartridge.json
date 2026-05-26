@@ -6,6 +6,7 @@
   "version": "0.1.0",
   "description": "Burble WebRTC server administration",
   "domain": "communications",
+  "category": "domain",
   "tier": "Ayo",
   "protocols": [
     "MCP",

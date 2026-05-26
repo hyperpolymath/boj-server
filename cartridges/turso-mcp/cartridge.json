@@ -6,6 +6,7 @@
   "version": "0.1.0",
   "description": "Turso libSQL gateway. Edge SQLite databases with multi-database support and embedded replica sync.",
   "domain": "Database",
+  "category": "domain",
   "tier": "Ayo",
   "protocols": [
     "MCP",

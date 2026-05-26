@@ -6,6 +6,7 @@
   "version": "0.1.0",
   "description": "Grafana monitoring cartridge -- dashboard CRUD, panel queries, alert rule management, annotation creation, datasource listing, folder browsing, org info, snapshot management, health checks, and search via the Grafana HTTP API",
   "domain": "Monitoring",
+  "category": "domain",
   "tier": "Ayo",
   "protocols": [
     "MCP",

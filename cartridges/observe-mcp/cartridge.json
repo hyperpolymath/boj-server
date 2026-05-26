@@ -4,8 +4,9 @@
   "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>",
   "name": "observe-mcp",
   "version": "0.1.0",
-  "description": "Unified observability — metrics, logs, traces (Prometheus, Grafana, Loki, Jaeger)",
+  "description": "Unified observability \u2014 metrics, logs, traces (Prometheus, Grafana, Loki, Jaeger)",
   "domain": "observability",
+  "category": "domain",
   "tier": "Ayo",
   "protocols": [
     "MCP",

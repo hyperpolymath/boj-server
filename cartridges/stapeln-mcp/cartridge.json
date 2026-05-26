@@ -6,6 +6,7 @@
   "version": "0.1.0",
   "description": "Stapeln container stack manager. Deploy, scale, and monitor container stacks using Chainguard base images.",
   "domain": "Container Orchestration",
+  "category": "domain",
   "tier": "Ayo",
   "protocols": [
     "MCP",

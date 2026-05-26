@@ -6,6 +6,7 @@
   "version": "0.1.0",
   "description": "Claude Agents Power MCP Server. Intelligent management of specialized AI agents for development teams. Analyze projects, recommend agents, and deploy 100+ professional roles.",
   "domain": "Agent Orchestration",
+  "category": "cross-cutting",
   "tier": "Ayo",
   "protocols": [
     "MCP",

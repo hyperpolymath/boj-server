@@ -6,6 +6,7 @@
   "version": "0.2.0",
   "description": "Todoist task manager cartridge -- task search, project listing, task creation, task completion, label management, comment retrieval, section browsing, filter queries, activity log access, and productivity stats via the Todoist REST API v2",
   "domain": "Productivity",
+  "category": "domain",
   "tier": "Ayo",
   "protocols": [
     "MCP",

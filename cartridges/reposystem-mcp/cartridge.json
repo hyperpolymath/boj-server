@@ -6,6 +6,7 @@
   "version": "0.1.0",
   "description": "Reposystem repository management. Lists managed repos, checks health, syncs mirrors, and runs RSR compliance audits.",
   "domain": "Repository Management",
+  "category": "domain",
   "tier": "Ayo",
   "protocols": [
     "MCP",

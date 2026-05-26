@@ -6,6 +6,7 @@
   "version": "0.1.0",
   "description": "VeriSimDB verified simulation database. Stores octadic records with formal drift detection and full audit trail.",
   "domain": "Database",
+  "category": "domain",
   "tier": "Ayo",
   "protocols": [
     "MCP",

@@ -6,6 +6,7 @@
   "version": "0.1.0",
   "description": "Multi-cloud provider session manager (AWS/GCP/Azure/DO/Vercel)",
   "domain": "cloud",
+  "category": "domain",
   "tier": "Ayo",
   "protocols": [
     "MCP",

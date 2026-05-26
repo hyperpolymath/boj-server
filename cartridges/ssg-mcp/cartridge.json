@@ -6,6 +6,7 @@
   "version": "0.1.0",
   "description": "Static site generator (Hugo, Zola, Astro, Casket)",
   "domain": "web",
+  "category": "domain",
   "tier": "Ayo",
   "protocols": [
     "MCP",

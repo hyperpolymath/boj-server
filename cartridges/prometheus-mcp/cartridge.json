@@ -6,6 +6,7 @@
   "version": "0.1.0",
   "description": "Prometheus monitoring cartridge -- instant and range queries (PromQL), target discovery, alert rule listing, label/value browsing, metric metadata, series listing, and runtime/build info via the Prometheus HTTP API v1",
   "domain": "Monitoring",
+  "category": "domain",
   "tier": "Ayo",
   "protocols": [
     "MCP",

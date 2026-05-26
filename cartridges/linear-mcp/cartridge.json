@@ -6,6 +6,7 @@
   "version": "0.1.0",
   "description": "Linear issue tracking and project management",
   "domain": "project-management",
+  "category": "domain",
   "tier": "Ayo",
   "protocols": [
     "MCP",

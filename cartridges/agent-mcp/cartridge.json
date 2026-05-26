@@ -6,6 +6,7 @@
   "version": "0.1.0",
   "description": "OODA loop agent session enforcer",
   "domain": "ai",
+  "category": "cross-cutting",
   "tier": "Ayo",
   "protocols": [
     "MCP",

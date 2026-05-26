@@ -6,6 +6,7 @@
   "version": "0.1.0",
   "description": "Vault CLI credential broker (execute, list, verify, rotate)",
   "domain": "security",
+  "category": "domain",
   "tier": "Ayo",
   "protocols": [
     "MCP",

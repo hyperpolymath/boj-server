@@ -6,6 +6,7 @@
   "version": "0.2.0",
   "description": "crates.io registry cartridge -- Rust crate search, metadata retrieval, version listing, download stats, dependency analysis, owner management, category browsing, and reverse dependency lookup via the crates.io API",
   "domain": "Registry",
+  "category": "domain",
   "tier": "Ayo",
   "protocols": [
     "MCP",

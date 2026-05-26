@@ -6,6 +6,7 @@
   "version": "0.1.0",
   "description": "DuckDB in-process analytics gateway. SQL queries over Parquet, CSV, JSON, and Arrow files with export support.",
   "domain": "Database",
+  "category": "domain",
   "tier": "Ayo",
   "protocols": [
     "MCP",

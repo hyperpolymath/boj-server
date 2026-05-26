@@ -6,6 +6,7 @@
   "version": "0.2.0",
   "description": "Linode/Akamai cloud infrastructure cartridge -- instances, volumes, domains, NodeBalancers, StackScripts, images, regions, firewalls, and account management",
   "domain": "Cloud",
+  "category": "domain",
   "tier": "Ayo",
   "protocols": [
     "MCP",

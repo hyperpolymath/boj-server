@@ -6,6 +6,7 @@
   "version": "0.1.0",
   "description": "Vext message verification and attestation chain. Verifies signed messages, checks attestation chains, and appends verified payloads.",
   "domain": "Security",
+  "category": "domain",
   "tier": "Ayo",
   "protocols": [
     "MCP",

@@ -6,6 +6,7 @@
   "version": "0.1.0",
   "description": "Academic paper search (Semantic Scholar, OpenAlex)",
   "domain": "research",
+  "category": "domain",
   "tier": "Ayo",
   "protocols": [
     "MCP",

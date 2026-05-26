@@ -6,6 +6,7 @@
   "version": "0.1.0",
   "description": "Buildkite CI/CD cartridge -- pipeline listing, build management, job inspection, artifact retrieval, agent listing, annotation creation, build triggering, log retrieval, environment listing, and build cancellation via the Buildkite REST API",
   "domain": "CI/CD",
+  "category": "domain",
   "tier": "Ayo",
   "protocols": [
     "MCP",

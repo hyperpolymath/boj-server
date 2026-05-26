@@ -6,6 +6,7 @@
   "version": "0.1.0",
   "description": "Multi-provider communications (Gmail, Google Calendar)",
   "domain": "communications",
+  "category": "domain",
   "tier": "Ayo",
   "protocols": [
     "MCP",

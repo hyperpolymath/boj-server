@@ -4,8 +4,9 @@
   "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>",
   "name": "rokur-mcp",
   "version": "0.1.0",
-  "description": "Rokur — Svalinn secrets GUI authorisation layer",
+  "description": "Rokur \u2014 Svalinn secrets GUI authorisation layer",
   "domain": "security",
+  "category": "domain",
   "tier": "Ayo",
   "protocols": [
     "MCP",

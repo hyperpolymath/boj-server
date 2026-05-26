@@ -6,6 +6,7 @@
   "version": "0.2.0",
   "description": "Google Sheets cartridge -- spreadsheet metadata retrieval, cell range reading, sheet listing, named range access, cell value writing, row appending, sheet creation, formula evaluation, conditional format listing, and pivot table access via the Google Sheets API v4",
   "domain": "Productivity",
+  "category": "domain",
   "tier": "Ayo",
   "protocols": [
     "MCP",

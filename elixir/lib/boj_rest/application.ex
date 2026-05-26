@@ -27,7 +27,20 @@ defmodule BojRest.Application do
   def start(_type, _args) do
     port = Application.get_env(:boj_rest, :port, 7700)
     bind_ip = parse_bind_ip(Application.get_env(:boj_rest, :bind_ip, "127.0.0.1"))
-    cartridges_root = Application.get_env(:boj_rest, :cartridges_root)
+    # Resolve cartridges root via fallback chain:
+    # Application env (:boj_rest, :cartridges_root)
+    #   → BOJ_CARTRIDGES_PATH environment variable
+    #   → default "./cartridges" (preserves historical bundled-cartridges behaviour).
+    #
+    # Operators wanting on-demand fetch from hyperpolymath/boj-server-cartridges set
+    # BOJ_CARTRIDGES_PATH to their local cache (e.g. "~/.boj/cartridges") and arrange
+    # for tray to populate that path. See standards ADR-002 and the
+    # boj-server-cartridges README for the full extraction story.
+    cartridges_root =
+      case Application.get_env(:boj_rest, :cartridges_root) do
+        nil -> System.get_env("BOJ_CARTRIDGES_PATH") || "./cartridges"
+        v -> v
+      end
 
     data_dir = Application.get_env(:boj_rest, :data_dir, "/data")
 
