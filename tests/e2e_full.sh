@@ -110,10 +110,15 @@ if ! command -v jq &>/dev/null; then
 fi
 green "  curl + jq available"
 
-# Check for node or deno (MCP bridge)
+# Check for node or deno (MCP bridge).
+# mcp-bridge/main.js requires --allow-read for nickel-validator.js (loads
+# .ncl contracts) — the shebang says so, but `deno run <file>` ignores
+# the shebang and uses only the flags passed to the CLI invocation.
+# Without --allow-read, the bridge crashes on import with NotCapable
+# and the test sees empty stdout (saw on PR #150 CI 2026-05-25).
 MCP_RUNNER=""
 if command -v deno &>/dev/null; then
-    MCP_RUNNER="deno run --allow-net --allow-env"
+    MCP_RUNNER="deno run --allow-net --allow-env --allow-read"
 elif command -v node &>/dev/null; then
     MCP_RUNNER="node"
 fi
@@ -131,14 +136,17 @@ bold "Step 1: Starting BoJ server on port $REST_PORT..."
 ( cd "$ELIXIR_DIR" && BOJ_REST_PORT="$REST_PORT" mix run --no-halt ) > "$TMPDIR_TEST/boj-e2e-full.log" 2>&1 &
 PIDS+=($!)
 
-# Wait for health check (up to 10 seconds)
-for i in $(seq 1 50); do
+# Wait for health check (up to 60 seconds — CI cold start can compile
+# Elixir deps on the critical path even when the workflow pre-runs
+# `mix deps.get` / `mix compile`; local runs typically come up in <1s).
+WAIT_ITERS=300
+for i in $(seq 1 $WAIT_ITERS); do
     if curl -sf "$BASE_URL/health" > /dev/null 2>&1; then
         green "  Server is up (waited ~$((i * 200))ms)"
         break
     fi
-    if [[ $i -eq 50 ]]; then
-        red "  ERROR: Server did not start within 10 seconds"
+    if [[ $i -eq $WAIT_ITERS ]]; then
+        red "  ERROR: Server did not start within $((WAIT_ITERS * 200 / 1000)) seconds"
         red "  Log tail:"
         tail -20 "$TMPDIR_TEST/boj-e2e-full.log" 2>/dev/null || true
         exit 1

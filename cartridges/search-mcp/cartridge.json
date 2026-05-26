@@ -4,6 +4,7 @@
   "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>",
   "name": "search-mcp",
   "version": "0.1.0",
+  "status": "stub",
   "description": "Web search across multiple providers (Tavily, Brave, Exa, Perplexity) behind one cartridge.",
   "domain": "research",
   "tier": "Teranga",

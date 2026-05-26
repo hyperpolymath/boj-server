@@ -4,6 +4,7 @@
   "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>",
   "name": "ffmpeg-mcp",
   "version": "0.1.0",
+  "status": "stub",
   "description": "Local FFmpeg gateway — probe metadata, transcode formats, extract audio, extract frames, concatenate, trim. Glue between whisper / replicate / browser screenshots. Local-only — requires host ffmpeg binary; not Worker-compatible.",
   "domain": "multimodal",
   "tier": "Teranga",

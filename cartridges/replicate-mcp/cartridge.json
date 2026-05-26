@@ -4,6 +4,7 @@
   "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>",
   "name": "replicate-mcp",
   "version": "0.1.0",
+  "status": "stub",
   "description": "Replicate hosted ML models — image generation (Stable Diffusion, FLUX), video (Veo, Kling), upscaling, vision (LLaVA), audio (MusicGen). Async prediction model with polling.",
   "domain": "multimodal",
   "tier": "Teranga",

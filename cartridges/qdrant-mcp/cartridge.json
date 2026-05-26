@@ -4,6 +4,7 @@
   "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>",
   "name": "qdrant-mcp",
   "version": "0.1.0",
+  "status": "stub",
   "description": "Qdrant vector DB — Rust-native; payloads + filtering; sparse + dense vectors; self-host or Qdrant Cloud.",
   "domain": "vector",
   "tier": "Teranga",

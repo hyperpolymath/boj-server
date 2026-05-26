@@ -4,6 +4,7 @@
   "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>",
   "name": "weaviate-mcp",
   "version": "0.1.0",
+  "status": "stub",
   "description": "Weaviate vector DB — hybrid (vector + BM25 + filter) search, schema-driven classes, modular vectorisers; self-host or cloud.",
   "domain": "vector",
   "tier": "Teranga",
