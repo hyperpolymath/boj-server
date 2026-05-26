@@ -1,23 +1,40 @@
-<!-- SPDX-License-Identifier: MPL-2.0 -->
-# BoJ Server — Getting Started
+// SPDX-License-Identifier: MPL-2.0
+// SPDX-FileCopyrightText: 2025-2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
 
-## Prerequisites
+= BoJ Server — Getting Started
 
-| Tool | Version | Purpose |
-|------|---------|---------|
-| [Zig](https://ziglang.org/download/) | 0.15+ | FFI compilation |
-| [Elixir](https://elixir-lang.org/) | 1.15+ | REST/gRPC/GraphQL adapter |
-| GCC | any recent | Linking |
+== Prerequisites
+
+[cols="1,1,1",options="header"]
+|===
+| Tool
+| Version
+| Purpose
+
+| https://ziglang.org/download/[Zig]
+| 0.15+
+| FFI compilation
+
+| https://elixir-lang.org/[Elixir]
+| 1.15+
+| REST/gRPC/GraphQL adapter
+
+| GCC
+| any recent
+| Linking
+
+|===
 
 Optional:
-- [Idris2](https://www.idris-lang.org/) — only needed to modify ABI definitions
-- [just](https://just.systems/) — task runner (convenience, not required)
+* https://www.idris-lang.org/[Idris2] — only needed to modify ABI definitions
+* https://just.systems/[just] — task runner (convenience, not required)
 
-## Quick Start
+== Quick Start
 
-### 1. Clone and build
+=== 1. Clone and build
 
-```bash
+[source,bash]
+----
 git clone https://github.com/hyperpolymath/boj-server.git
 cd boj-server
 
@@ -33,24 +50,26 @@ done
 cd elixir
 mix deps.get && mix compile
 cd ..
-```
+----
 
-### 2. Run
+=== 2. Run
 
-```bash
+[source,bash]
+----
 cd elixir
 export LD_LIBRARY_PATH=../ffi/zig/zig-out/lib:../cartridges/container-mcp/ffi/zig-out/lib:../cartridges/feedback-mcp/ffi/zig-out/lib
 mix run --no-halt
-```
+----
 
 The server starts on three ports:
-- **REST**: http://localhost:7700
-- **gRPC-compat**: http://localhost:7701
-- **GraphQL**: http://localhost:7702
+* *REST*: http://localhost:7700
+* *gRPC-compat*: http://localhost:7701
+* *GraphQL*: http://localhost:7702
 
-### 3. Verify
+=== 3. Verify
 
-```bash
+[source,bash]
+----
 # Health check
 curl http://localhost:7700/health
 # → {"status":"ok"}
@@ -64,11 +83,12 @@ curl http://localhost:7700/matrix
 
 # Teranga menu (what's available)
 curl http://localhost:7700/menu
-```
+----
 
-### 4. Use a cartridge
+=== 4. Use a cartridge
 
-```bash
+[source,bash]
+----
 # Mount a cartridge
 curl -X POST http://localhost:7700/cartridges/feedback-mcp/load
 
@@ -76,11 +96,12 @@ curl -X POST http://localhost:7700/cartridges/feedback-mcp/load
 curl http://localhost:7700/cartridges/feedback-mcp/invoke \
   -X POST -H 'Content-Type: application/json' \
   -d '{"tool":"status","args":""}'
-```
+----
 
-## Run tests
+== Run tests
 
-```bash
+[source,bash]
+----
 # All Zig FFI tests (307 tests)
 cd ffi/zig && zig build test
 
@@ -89,51 +110,76 @@ zig build catalogue    # Catalogue tests only
 zig build federation   # Umoja federation tests
 zig build guardian     # Guardian resource-awareness tests
 zig build bench        # Benchmarks
-```
+----
 
-## Configure
+== Configure
 
 All ports are configurable via environment variables:
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `BOJ_REST_PORT` | `7700` | REST adapter port |
-| `BOJ_GRPC_PORT` | `7701` | gRPC-compat adapter port |
-| `BOJ_GRAPHQL_PORT` | `7702` | GraphQL adapter port |
-| `BOJ_FEDERATION_PORT` | `9999` | Umoja federation UDP/QUIC port |
-| `BOJ_QUIC` | `1` | Enable QUIC transport (0 = UDP only) |
-| `BOJ_NODE_ID` | `local-0` | Node identifier for federation |
+[cols="1,1,1",options="header"]
+|===
+| Variable
+| Default
+| Description
 
-## Architecture
+| `BOJ_REST_PORT`
+| `7700`
+| REST adapter port
 
-```
+| `BOJ_GRPC_PORT`
+| `7701`
+| gRPC-compat adapter port
+
+| `BOJ_GRAPHQL_PORT`
+| `7702`
+| GraphQL adapter port
+
+| `BOJ_FEDERATION_PORT`
+| `9999`
+| Umoja federation UDP/QUIC port
+
+| `BOJ_QUIC`
+| `1`
+| Enable QUIC transport (0 = UDP only)
+
+| `BOJ_NODE_ID`
+| `local-0`
+| Node identifier for federation
+
+|===
+
+== Architecture
+
+[source]
+----
 Idris2 ABI (proofs) → Zig FFI (execution) → Elixir Adapter (network)
-```
+----
 
-- **Idris2** defines types with dependent-type proofs (IsUnbreakable safety gate)
-- **Zig** implements C-ABI exports (mount/unmount, federation, feedback, etc.)
-- **Elixir** exposes everything as REST + gRPC + GraphQL (Plug/Cowboy on the BEAM)
+* *Idris2* defines types with dependent-type proofs (IsUnbreakable safety gate)
+* *Zig* implements C-ABI exports (mount/unmount, federation, feedback, etc.)
+* *Elixir* exposes everything as REST + gRPC + GraphQL (Plug/Cowboy on the BEAM)
 
 The capability matrix is 2D (protocol × domain) with an optional third axis
 (backend/provider) for community extensions.  See `docs/EXTENSIBILITY.adoc`.
 
-## Hosting a node
+== Hosting a node
 
 See `container/` for:
-- `boj-community-node.container` — Podman quadlet (security-hardened)
-- `seccomp-boj.json` — Restricted seccomp profile
-- `seed-nodes.toml` — Seed node configuration
+* `boj-community-node.container` — Podman quadlet (security-hardened)
+* `seccomp-boj.json` — Restricted seccomp profile
+* `seed-nodes.toml` — Seed node configuration
 
-## Extending
+== Extending
 
 See `docs/EXTENSIBILITY.adoc` and `docs/examples/extension.a2ml` for how to
 create backend-specific cartridge extensions without modifying core code.
 
-## Submitting feedback
+== Submitting feedback
 
 BoJ dogfoods its own feedback cartridge.  After mounting `feedback-mcp`:
 
-```bash
+[source,bash]
+----
 # Open a feedback channel
 curl http://localhost:7700/cartridges/feedback-mcp/invoke \
   -X POST -H 'Content-Type: application/json' \
@@ -148,21 +194,23 @@ curl http://localhost:7700/cartridges/feedback-mcp/invoke \
 curl http://localhost:7700/cartridges/feedback-mcp/invoke \
   -X POST -H 'Content-Type: application/json' \
   -d '{"tool":"summary","args":""}'
-```
+----
 
-## MCP mode (for AI tools)
+== MCP mode (for AI tools)
 
 BoJ speaks MCP natively.  Run with `--mcp` to get a JSON-RPC 2.0
 stdio server that AI tools like Claude Code, Cursor, etc. can consume:
 
-```bash
+[source,bash]
+----
 # Start in MCP mode (no HTTP server, stdin/stdout only)
 LD_LIBRARY_PATH=../../ffi/zig/zig-out/lib:../../cartridges/container-mcp/ffi/zig-out/lib:../../cartridges/feedback-mcp/ffi/zig-out/lib \
   ./boj-server --mcp
-```
+----
 
 Add to `claude_desktop_config.json`:
-```json
+[source,json]
+----
 {
   "mcpServers": {
     "boj": {
@@ -174,18 +222,19 @@ Add to `claude_desktop_config.json`:
     }
   }
 }
-```
+----
 
 All 18 cartridges are exposed as MCP tools (e.g. `database-mcp/status`,
 `feedback-mcp/submit`, etc.).
 
-## Seam checks
+== Seam checks
 
 BoJ includes panic-attack–style integration contract validation:
 
-```bash
+[source,bash]
+----
 cd ffi/zig && zig build seams
-```
+----
 
 This validates all FFI boundaries: enum encodings match Idris2 ABI,
 mount safety gate rejects non-ready cartridges, hash attestation is
@@ -193,6 +242,6 @@ lossless, backend axis defaults correctly, JSON contract fields are
 present, protocol range is contiguous.  A clean run produces a
 "silent signature" — all 13 checks pass with nothing to report.
 
-## Full API reference
+== Full API reference
 
 See `docs/API-CONTRACT.adoc` for the complete stable API surface.

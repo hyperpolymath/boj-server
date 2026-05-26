@@ -1,39 +1,79 @@
-= Boj Server — Developer Quickstart
-:toc: preamble
+// SPDX-License-Identifier: MPL-2.0
+// SPDX-FileCopyrightText: 2025-2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
 
-Clone, build, test, contribute.
+= Quickstart
+
+Get up and running in 60 seconds.
 
 == Prerequisites
 
-* Git 2.40+
-* just (command runner)
-* See `just doctor` output for language-specific requirements
+* https://git-scm.com/[Git] 2.40+
+* https://www.idris-lang.org/[Idris2] 0.8.0 (ABI layer)
+* https://ziglang.org/[Zig] 0.15.2 (FFI layer)
+* https://github.com/casey/just[just] 1.40+ (command runner)
 
-== Setup
+Or use the development environment:
 
 [source,bash]
 ----
-git clone https://github.com/hyperpolymath/boj-server
+guix shell -D -f guix.scm    # Guix (primary)
+nix develop                    # Nix (fallback)
+----
+
+== Clone and Setup
+
+[source,bash]
+----
+git clone https://github.com/hyperpolymath/boj-server.git
 cd boj-server
-just doctor    # verify toolchain
-just heal      # auto-install missing tools
+just deps       # Verify toolchain
 ----
 
-== Development Workflow
+== Build and Test
 
 [source,bash]
 ----
-just tour      # understand the codebase
-just help-me   # see available commands
+just build      # Build all Zig FFI layers
+just test       # Run all FFI test suites
+just typecheck  # Type-check all Idris2 ABI files
+just verify     # Full verification (zero believe_me + typecheck + tests)
 ----
 
-== Before Committing
+== Project Structure
 
-[source,bash]
+[source]
 ----
-just assail    # run panic-attacker security scan
+src/abi/           # Idris2 ABI — formal proofs (Catalogue, Protocol, Domain, Menu, Federation)
+ffi/zig/           # Zig FFI — catalogue operations (mount/unmount)
+generated/abi/     # C headers generated from Idris2
+cartridges/        # Matrix cells — one dir per (Protocol x Domain) pair
+  database-mcp/    # MCP x Database (abi/ + ffi/)
+  fleet-mcp/       # MCP x Fleet (abi/ + ffi/)
+  nesy-mcp/        # MCP x NeSy (abi/ + ffi/)
+  agent-mcp/       # MCP x Agent (abi/ + ffi/)
+elixir/            # REST server backend (REST+gRPC+GraphQL, Plug/Cowboy)
+container/         # Stapeln container ecosystem
+docs/              # Architecture, federation, developer guides
+.machine_readable/ # State files, menu, policies, contractiles
 ----
 
-== Contributing
+== What Next?
 
-See link:CONTRIBUTING.md[CONTRIBUTING.md] for guidelines.
+* Read link:ARCHITECTURE.md[ARCHITECTURE.md] for the 2D matrix design
+* Read link:DEVELOPERS.md[DEVELOPERS.md] to contribute a cartridge
+* Run `just --list` to see all available commands
+* Read link:../CONTRIBUTING.md[CONTRIBUTING.md] for the full contribution guide
+
+== Troubleshooting
+
+If `just deps` fails, ensure your toolchain versions match `.tool-versions`:
+
+[source]
+----
+idris2 0.8.0
+zig    0.15.2
+just   1.40.0
+----
+
+Open a https://github.com/hyperpolymath/boj-server/discussions[Discussion]
+if you get stuck.

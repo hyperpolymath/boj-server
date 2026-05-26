@@ -149,7 +149,7 @@ protocols (MCP stdio, HTTP), (iv) at least 2 cartridge domains beyond the
 
 | 2.1.b
 | Build an onboarding path for external dogfooders. Currently
-`docs/OPERATOR-QUICKSTART.md` and the Homebrew / Nix / npm / JSR packages exist;
+`docs/quickstarts/MAINTAINER.adoc` and the Homebrew / Nix / npm / JSR packages exist;
 add a `docs/outreach/DOGFOOD-ONBOARD.adoc` that walks a stranger through 15
 minutes to first `/menu` response, with feedback-capture URL.
 | S

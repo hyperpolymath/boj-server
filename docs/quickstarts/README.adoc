@@ -21,20 +21,26 @@ toc::[]
   Desktop, Gemini CLI, Cursor, Copilot, etc.) without running a local
   backend. Covers MCP client install + offline manifest fallback.
 
-| Developer
+| Developer (running BoJ)
 | link:DEV.adoc[DEV.adoc]
-| You're building a cartridge, modifying the bridge, or extending the
-  Idris2 ABI / Zig FFI layer. Covers local dev environment, test
-  matrix, ABI/FFI conventions.
+| You want a running BoJ instance for development in 60 seconds.
+  Covers prereqs, clone, dev shell (Guix/Nix), and the smoke
+  test.
+
+| Developer (building from source)
+| link:BUILD-FROM-SOURCE.adoc[BUILD-FROM-SOURCE.adoc]
+| You want to build the Zig FFI + Elixir REST + Idris2 ABI from
+  scratch. Covers prereqs in detail, the build stages, test matrix,
+  and ABI/FFI conventions.
 
 | Maintainer / operator
 | link:MAINTAINER.adoc[MAINTAINER.adoc]
-| You're running a BoJ node — community seed, fleet member, or
-  self-hosted instance. Covers deployment, secrets, monitoring,
-  federation, gate compliance.
+| You're running a BoJ Umoja community node — federation gossip,
+  Podman setup, port policy, ports 7700/7701/7702, monitoring, gate
+  compliance. Setup time under 5 minutes.
 |===
 
-The three documents are deliberately separate because each audience
+The four documents are deliberately separate because each audience
 needs a different first-hour path. They overlap on the basics
 (install, sanity-check) but diverge sharply after that. If you're not
 sure which to read, start with link:USER.adoc[USER.adoc] — the others
