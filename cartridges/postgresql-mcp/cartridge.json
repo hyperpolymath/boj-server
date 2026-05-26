@@ -6,6 +6,7 @@
   "version": "0.1.0",
   "description": "PostgreSQL gateway with full transaction support, connection pooling, and query lifecycle management.",
   "domain": "Database",
+  "category": "domain",
   "tier": "Ayo",
   "protocols": [
     "MCP",

@@ -6,6 +6,7 @@
   "version": "0.1.0",
   "description": "Unified notification platform. Send notifications via Email, SMS, WhatsApp, Slack, Telegram, Discord, Teams, Firebase Push, Webhooks, WebSocket, Google Chat, Twitter/X, LinkedIn, Notion, Twitch, YouTube, Instagram, SendGrid, TikTok Shop, Facebook, AWS SNS, Mailgun, PagerDuty, Kick.",
   "domain": "Communication",
+  "category": "domain",
   "tier": "Ayo",
   "protocols": [
     "MCP",

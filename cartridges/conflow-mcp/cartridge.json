@@ -6,6 +6,7 @@
   "version": "0.1.0",
   "description": "Conflow configuration management",
   "domain": "configuration",
+  "category": "domain",
   "tier": "Ayo",
   "protocols": [
     "MCP",

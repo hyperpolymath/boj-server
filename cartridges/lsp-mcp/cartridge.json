@@ -6,6 +6,7 @@
   "version": "0.1.0",
   "description": "Generic Language Server Protocol (LSP 3.17) gateway. Spawns any LSP server as a persistent subprocess, manages the JSON-RPC 2.0 over stdio session, and exposes text document operations (open, change, hover, completion, goto-definition, references, diagnostics, formatting) as MCP tools.",
   "domain": "Language Tools",
+  "category": "domain",
   "tier": "Ayo",
   "protocols": [
     "MCP",
@@ -33,7 +34,7 @@
           },
           "preset": {
             "type": "string",
-            "description": "Permanent pinned toolchain preset from presets.json (e.g. 'rust' → the canonical rust-analyzer at /dev/tools). Use this instead of re-specifying the command/path every session. One of `command` or `preset` is required; an explicit `command` overrides the preset."
+            "description": "Permanent pinned toolchain preset from presets.json (e.g. 'rust' \u2192 the canonical rust-analyzer at /dev/tools). Use this instead of re-specifying the command/path every session. One of `command` or `preset` is required; an explicit `command` overrides the preset."
           },
           "args": {
             "type": "array",
@@ -301,7 +302,7 @@
           },
           "uri": {
             "type": "string",
-            "description": "Document URI (optional — omit for all documents)"
+            "description": "Document URI (optional \u2014 omit for all documents)"
           }
         },
         "required": [

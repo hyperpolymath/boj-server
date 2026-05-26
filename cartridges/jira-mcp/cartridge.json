@@ -6,6 +6,7 @@
   "version": "0.1.0",
   "description": "Jira project management and issue tracking",
   "domain": "project-management",
+  "category": "domain",
   "tier": "Ayo",
   "protocols": [
     "MCP",

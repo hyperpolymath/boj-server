@@ -6,6 +6,7 @@
   "version": "0.1.0",
   "description": "Multi-forge git operations (GitHub, GitLab, Gitea, Bitbucket)",
   "domain": "development",
+  "category": "domain",
   "tier": "Ayo",
   "protocols": [
     "MCP",

@@ -6,6 +6,7 @@
   "version": "0.1.0",
   "description": "Intelligent model router for Claude Code. Classifies tasks and recommends opus/sonnet/haiku, plans delegation from a higher tier to a cheaper executor, reviews delegated output, and estimates relative token cost savings.",
   "domain": "AI",
+  "category": "cross-cutting",
   "tier": "Ayo",
   "protocols": [
     "MCP"

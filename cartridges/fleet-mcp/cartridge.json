@@ -6,6 +6,7 @@
   "version": "0.1.0",
   "description": "gitbot-fleet gate compliance tracker",
   "domain": "ci",
+  "category": "cross-cutting",
   "tier": "Ayo",
   "protocols": [
     "MCP",

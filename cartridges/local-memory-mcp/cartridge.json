@@ -6,6 +6,7 @@
   "version": "0.1.0",
   "description": "Persistent local memory for Claude, Cursor & Codex. 13 tools. No cloud. No API keys. Stores learnings, decisions, people, projects in a single SQLite file on your machine.",
   "domain": "Knowledge & Memory",
+  "category": "domain",
   "tier": "Ayo",
   "protocols": [
     "MCP",

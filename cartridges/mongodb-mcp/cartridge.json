@@ -6,6 +6,7 @@
   "version": "0.1.0",
   "description": "MongoDB gateway with collection-level CRUD, aggregation pipeline support, and session management.",
   "domain": "Database",
+  "category": "domain",
   "tier": "Ayo",
   "protocols": [
     "MCP",

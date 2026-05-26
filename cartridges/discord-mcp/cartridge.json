@@ -6,6 +6,7 @@
   "version": "0.1.0",
   "description": "Discord bot gateway. Send messages, read channel history, manage guilds, and react to messages.",
   "domain": "Communications",
+  "category": "domain",
   "tier": "Ayo",
   "protocols": [
     "MCP",

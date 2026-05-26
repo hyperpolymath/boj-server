@@ -6,6 +6,7 @@
   "version": "0.1.0",
   "description": "Odds-and-Sods Package Manager (OPSM) gateway. Routes package search, install, dependency resolution (PubGrub), and registry management across 103 registry adapters (npm, cargo, hex, pypi, affinescript, rattlescript, eclexia, guix, nix, and more). State machine enforces valid registry slot lifecycle via Zig FFI.",
   "domain": "Package Management",
+  "category": "domain",
   "tier": "Ayo",
   "protocols": [
     "MCP",

@@ -6,6 +6,7 @@
   "version": "0.1.0",
   "description": "Machine learning inference (HuggingFace and others)",
   "domain": "ai",
+  "category": "cross-cutting",
   "tier": "Ayo",
   "protocols": [
     "MCP",

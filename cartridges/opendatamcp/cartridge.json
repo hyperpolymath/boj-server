@@ -6,6 +6,7 @@
   "version": "0.1.0",
   "description": "Open Data Model Context Protocol. Access public datasets from your LLM application. Publish and distribute your Open Data via MCP servers.",
   "domain": "Open Data",
+  "category": "domain",
   "tier": "Ayo",
   "protocols": [
     "MCP",

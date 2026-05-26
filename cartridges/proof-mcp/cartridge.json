@@ -6,6 +6,7 @@
   "version": "0.1.0",
   "description": "Proof verification lifecycle manager. Manages sessions across Lean, Coq, Agda, Isabelle, Idris2, Z3, CVC5. State machine: idle -> loading -> verifying -> verified/failed.",
   "domain": "Formal Verification",
+  "category": "domain",
   "tier": "Ayo",
   "protocols": [
     "MCP",

@@ -6,6 +6,7 @@
   "version": "0.2.0",
   "description": "DigitalOcean cloud infrastructure cartridge -- droplets, volumes, domains, SSH keys, snapshots, databases, Kubernetes, firewalls, load balancers, and account management",
   "domain": "Cloud",
+  "category": "domain",
   "tier": "Ayo",
   "protocols": [
     "MCP",

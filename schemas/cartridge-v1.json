@@ -1,44 +1,57 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://boj.dev/schemas/cartridge/v1.json",
-  "title": "BoJ Cartridge Manifest",
-  "description": "Schema for BoJ Server cartridge manifests",
+  "$id": "https://hyperpolymath.dev/standards/cartridges/cartridge-v1.json",
+  "title": "BoJ Cartridge Manifest (canonical)",
+  "description": "Canonical schema for BoJ cartridge manifests. Mirrors the schema previously held in boj-server/schemas/cartridge-v1.json, expanded to admit the full BoJ server-role taxonomy (MCP, LSP, DAP, BSP, Debug, Format, Lint, Build, NeSy, Agentic, Fleet) per panll/src/abi/cartridge-schema.json v0.3.0. SPDX-License-Identifier: MPL-2.0.",
   "type": "object",
   "properties": {
     "$schema": {
       "type": "string",
-      "format": "uri"
+      "format": "uri",
+      "description": "Schema URL. Canonical form: https://hyperpolymath.dev/standards/cartridges/cartridge-v1.json"
     },
     "spdx": {
-      "type": "string"
+      "type": "string",
+      "description": "SPDX license identifier (e.g. MPL-2.0)"
     },
     "copyright": {
       "type": "string"
     },
     "name": {
       "type": "string",
-      "pattern": "^[a-z0-9-]+-mcp$"
+      "description": "Lowercase kebab-case cartridge name with role suffix. The suffix indicates the server role this cartridge implements.",
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*-(mcp|lsp|dap|bsp|debug|format|lint|build|nesy|agentic|fleet)$"
     },
     "version": {
       "type": "string",
-      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+(-[a-z0-9.-]+)?$",
+      "description": "Semantic version. Pre-release suffix permitted."
     },
     "description": {
       "type": "string"
     },
     "domain": {
-      "type": "string"
+      "type": "string",
+      "description": "Functional domain (e.g. cloud, database, git, k8s, observability, proof-verification, ssg, orchestration). For cross-cutting cartridges, use cross-cutting."
+    },
+    "category": {
+      "type": "string",
+      "enum": ["domain", "cross-cutting", "template"],
+      "description": "Taxonomy category. Domain cartridges live under cartridges/domains/<domain>/. Cross-cutting under cartridges/cross-cutting/. Templates under cartridges/templates/."
     },
     "tier": {
       "type": "string",
-      "enum": ["Teranga", "Shield", "Ayo"]
+      "enum": ["Teranga", "Shield", "Ayo"],
+      "description": "Trust tier. Teranga = core/always-available. Shield = security-critical/elevated-trust. Ayo = community-contributed."
     },
     "protocols": {
       "type": "array",
+      "description": "Server protocols this cartridge speaks. A cartridge may expose more than one protocol if its role naturally spans them (e.g. MCP+REST). The role suffix in 'name' indicates the PRIMARY protocol.",
       "items": {
         "type": "string",
-        "enum": ["MCP", "REST", "GraphQL", "gRPC"]
-      }
+        "enum": ["MCP", "LSP", "DAP", "BSP", "REST", "GraphQL", "gRPC", "NeSy", "Agentic", "Fleet", "Format", "Lint", "Build", "Debug"]
+      },
+      "minItems": 1
     },
     "auth": {
       "type": "object",
@@ -60,7 +73,8 @@
       "type": "object",
       "properties": {
         "base_url": {
-          "type": "string"
+          "type": "string",
+          "description": "Loopback URL the cartridge backend listens on. Form: local://<cartridge-name> for the canonical loopback scheme, or http://127.0.0.1:<port> for explicit-port form."
         },
         "content_type": {
           "type": "string"
@@ -68,46 +82,57 @@
       },
       "required": ["base_url", "content_type"]
     },
+    "ports": {
+      "type": "object",
+      "description": "Port permissions for the cartridge runtime.",
+      "properties": {
+        "allowed": {
+          "type": "array",
+          "items": { "type": "integer", "minimum": 1, "maximum": 65535 }
+        },
+        "denied": {
+          "type": "array",
+          "items": { "type": "integer", "minimum": 1, "maximum": 65535 }
+        }
+      },
+      "required": ["allowed", "denied"]
+    },
     "tools": {
       "type": "array",
+      "description": "Tool surface exposed to the host (MCP-style; LSP/DAP/BSP cartridges may declare their protocol-native operations here too, with inputSchema describing the expected payload).",
       "items": {
         "type": "object",
         "properties": {
-          "name": {
-            "type": "string"
-          },
-          "description": {
-            "type": "string"
-          },
-          "inputSchema": {
-            "type": "object"
-          }
+          "name": { "type": "string" },
+          "description": { "type": "string" },
+          "inputSchema": { "type": "object" }
         },
         "required": ["name", "description", "inputSchema"]
       }
     },
-    "ports": {
+    "states": {
+      "type": "array",
+      "description": "Optional state-machine states a cartridge backend transitions through (per panll v0.3.0). E.g. observe/orient/decide/act/halted for an Agentic cartridge.",
+      "items": { "type": "string" }
+    },
+    "source": {
       "type": "object",
-      "description": "Port permissions for the cartridge",
+      "description": "Where this cartridge is fetched from when not bundled locally.",
       "properties": {
-        "allowed": {
-          "type": "array",
-          "items": {
-            "type": "integer",
-            "minimum": 1,
-            "maximum": 65535
-          }
+        "registry": {
+          "type": "string",
+          "description": "Registry identifier. Canonical default: hyperpolymath/boj-server-cartridges"
         },
-        "denied": {
-          "type": "array",
-          "items": {
-            "type": "integer",
-            "minimum": 1,
-            "maximum": 65535
-          }
+        "path": {
+          "type": "string",
+          "description": "Path within the registry, e.g. cartridges/domains/cloud/mcp.cartridge"
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$",
+          "description": "Optional content hash for verification of fetched cartridge artifact."
         }
-      },
-      "required": ["allowed", "denied"]
+      }
     }
   },
   "required": [
@@ -118,6 +143,7 @@
     "version",
     "description",
     "domain",
+    "category",
     "tier",
     "protocols",
     "auth",

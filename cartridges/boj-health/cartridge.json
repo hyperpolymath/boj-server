@@ -5,10 +5,13 @@
   "name": "boj-health",
   "version": "0.1.0",
   "status": "ffi_only",
-  "description": "BoJ server self-health cartridge — status, ping, and uptime queries. Self-contained Zig FFI (.so) reference implementation: no external services required.",
+  "description": "BoJ server self-health cartridge \u2014 status, ping, and uptime queries. Self-contained Zig FFI (.so) reference implementation: no external services required.",
   "domain": "infrastructure",
+  "category": "cross-cutting",
   "tier": "Ayo",
-  "protocols": ["MCP"],
+  "protocols": [
+    "MCP"
+  ],
   "auth": {
     "method": "none",
     "env_var": null,
@@ -21,7 +24,13 @@
   "ffi": {
     "so_path": "ffi/zig-out/lib/libboj_health.so",
     "abi_version": "ADR-0006",
-    "symbols": ["boj_cartridge_init", "boj_cartridge_deinit", "boj_cartridge_name", "boj_cartridge_version", "boj_cartridge_invoke"]
+    "symbols": [
+      "boj_cartridge_init",
+      "boj_cartridge_deinit",
+      "boj_cartridge_name",
+      "boj_cartridge_version",
+      "boj_cartridge_invoke"
+    ]
   },
   "tools": [
     {
@@ -34,7 +43,7 @@
     },
     {
       "name": "boj_health_ping",
-      "description": "Ping the BoJ health cartridge — always returns pong",
+      "description": "Ping the BoJ health cartridge \u2014 always returns pong",
       "inputSchema": {
         "type": "object",
         "properties": {}

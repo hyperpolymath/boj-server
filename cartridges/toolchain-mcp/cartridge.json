@@ -7,6 +7,7 @@
   "status": "ffi_only",
   "description": "Toolchain orchestrator. Mints, provisions, and configures language toolchains composed from lsp-mcp, dap-mcp, lang-mcp, and bsp-mcp. Integrates with PanLL panels via Groove and supports collaborative Burble sessions for pair-debugging and pair-programming workflows.",
   "domain": "Language Tools",
+  "category": "domain",
   "tier": "Ayo",
   "protocols": [
     "MCP",
@@ -24,7 +25,7 @@
   "tools": [
     {
       "name": "toolchain_mint",
-      "description": "Mint a new toolchain configuration for a language workspace. Discovers available servers (LSP/DAP/BSP/lang) and returns a toolchain ID. Does not start any servers — call toolchain_provision to do that.",
+      "description": "Mint a new toolchain configuration for a language workspace. Discovers available servers (LSP/DAP/BSP/lang) and returns a toolchain ID. Does not start any servers \u2014 call toolchain_provision to do that.",
       "inputSchema": {
         "type": "object",
         "properties": {
@@ -148,7 +149,7 @@
           },
           "panel_id": {
             "type": "string",
-            "description": "Target PanLL panel ID (optional — omit to broadcast)"
+            "description": "Target PanLL panel ID (optional \u2014 omit to broadcast)"
           }
         },
         "required": [

@@ -6,6 +6,7 @@
   "version": "1.0.0",
   "description": "Academic workflow \u2014 Zotero integration, citations, paper review",
   "domain": "Research",
+  "category": "domain",
   "tier": "Ayo",
   "auth": {
     "method": "none"

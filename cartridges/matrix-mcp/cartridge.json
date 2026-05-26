@@ -6,6 +6,7 @@
   "version": "0.1.0",
   "description": "Matrix homeserver gateway. Send messages, join/leave rooms, read room history, and manage membership.",
   "domain": "Communications",
+  "category": "domain",
   "tier": "Ayo",
   "protocols": [
     "MCP",

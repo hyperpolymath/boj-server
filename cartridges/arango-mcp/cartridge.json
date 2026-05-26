@@ -6,6 +6,7 @@
   "version": "0.1.0",
   "description": "ArangoDB multi-model database gateway. AQL queries, document operations, graph traversals, and collection management.",
   "domain": "Database",
+  "category": "domain",
   "tier": "Ayo",
   "protocols": [
     "MCP",

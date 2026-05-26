@@ -6,6 +6,7 @@
   "version": "0.1.0",
   "description": "Kategoria type-theory learning system. Classifies type-theory constructs and evaluates learner challenge responses.",
   "domain": "Education",
+  "category": "domain",
   "tier": "Ayo",
   "protocols": [
     "MCP",

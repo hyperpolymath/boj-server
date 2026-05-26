@@ -6,6 +6,7 @@
   "version": "0.1.0",
   "description": "Sentry error tracking cartridge -- issue listing, event retrieval, project browsing, release management, DSN lookup, team listing, tag search, error resolution, breadcrumb inspection, and performance transaction queries via the Sentry API",
   "domain": "Monitoring",
+  "category": "domain",
   "tier": "Ayo",
   "protocols": [
     "MCP",

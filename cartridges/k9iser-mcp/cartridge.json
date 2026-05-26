@@ -6,6 +6,7 @@
   "version": "0.1.0",
   "description": "Wrap configs into self-validating K9 contracts (k9iser generate/validate/apply)",
   "domain": "config",
+  "category": "domain",
   "tier": "Ayo",
   "protocols": [
     "MCP",

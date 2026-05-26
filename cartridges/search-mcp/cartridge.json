@@ -7,6 +7,7 @@
   "status": "stub",
   "description": "Web search across multiple providers (Tavily, Brave, Exa, Perplexity) behind one cartridge.",
   "domain": "research",
+  "category": "domain",
   "tier": "Teranga",
   "protocols": [
     "MCP",
@@ -30,7 +31,12 @@
         "properties": {
           "provider": {
             "type": "string",
-            "enum": ["tavily", "brave", "exa", "perplexity"],
+            "enum": [
+              "tavily",
+              "brave",
+              "exa",
+              "perplexity"
+            ],
             "description": "Provider to authenticate."
           },
           "api_key": {
@@ -38,7 +44,10 @@
             "description": "API key from the provider's dashboard."
           }
         },
-        "required": ["provider", "api_key"]
+        "required": [
+          "provider",
+          "api_key"
+        ]
       }
     },
     {
@@ -49,7 +58,12 @@
         "properties": {
           "provider": {
             "type": "string",
-            "enum": ["tavily", "brave", "exa", "perplexity"],
+            "enum": [
+              "tavily",
+              "brave",
+              "exa",
+              "perplexity"
+            ],
             "description": "Which provider to query. Each has different strengths: tavily = LLM-optimised summaries; brave = privacy-first index; exa = neural search over high-quality content; perplexity = Q&A-style answers with citations."
           },
           "query": {
@@ -65,21 +79,34 @@
           },
           "include_domains": {
             "type": "array",
-            "items": { "type": "string" },
+            "items": {
+              "type": "string"
+            },
             "description": "Optional allow-list of domains."
           },
           "exclude_domains": {
             "type": "array",
-            "items": { "type": "string" },
+            "items": {
+              "type": "string"
+            },
             "description": "Optional deny-list of domains."
           },
           "freshness": {
             "type": "string",
-            "enum": ["day", "week", "month", "year", "any"],
+            "enum": [
+              "day",
+              "week",
+              "month",
+              "year",
+              "any"
+            ],
             "description": "Recency filter (provider-best-effort; not all providers honour all values)."
           }
         },
-        "required": ["provider", "query"]
+        "required": [
+          "provider",
+          "query"
+        ]
       }
     },
     {
@@ -90,7 +117,10 @@
         "properties": {
           "provider": {
             "type": "string",
-            "enum": ["perplexity", "tavily"],
+            "enum": [
+              "perplexity",
+              "tavily"
+            ],
             "description": "Only providers that support answer-mode (perplexity, tavily)."
           },
           "question": {
@@ -103,7 +133,10 @@
             "description": "Provider-specific model identifier. Optional; defaults to provider's standard model."
           }
         },
-        "required": ["provider", "question"]
+        "required": [
+          "provider",
+          "question"
+        ]
       }
     },
     {
@@ -114,18 +147,27 @@
         "properties": {
           "provider": {
             "type": "string",
-            "enum": ["tavily", "exa"],
+            "enum": [
+              "tavily",
+              "exa"
+            ],
             "description": "Only providers that support extraction (tavily, exa)."
           },
           "urls": {
             "type": "array",
-            "items": { "type": "string", "format": "uri" },
+            "items": {
+              "type": "string",
+              "format": "uri"
+            },
             "minItems": 1,
             "maxItems": 20,
             "description": "URLs to extract content from."
           }
         },
-        "required": ["provider", "urls"]
+        "required": [
+          "provider",
+          "urls"
+        ]
       }
     }
   ]

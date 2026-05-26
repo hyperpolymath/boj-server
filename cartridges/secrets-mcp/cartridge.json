@@ -6,6 +6,7 @@
   "version": "0.1.0",
   "description": "Secrets management (Vault, SOPS, env-vault)",
   "domain": "security",
+  "category": "domain",
   "tier": "Ayo",
   "protocols": [
     "MCP",

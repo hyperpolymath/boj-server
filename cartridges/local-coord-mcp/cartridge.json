@@ -16,8 +16,9 @@
     "port": 7745
   },
   "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>",
-  "description": "Localhost multi-instance coordination — peer discovery, message passing, and task claiming for parallel AI sessions on the same machine",
+  "description": "Localhost multi-instance coordination \u2014 peer discovery, message passing, and task claiming for parallel AI sessions on the same machine",
   "domain": "ai",
+  "category": "cross-cutting",
   "federation": "none",
   "name": "local-coord-mcp",
   "protocols": [
@@ -28,7 +29,7 @@
   "tier": "Ayo",
   "tools": [
     {
-      "description": "Register this instance as a coordination peer. Returns a peer ID and a session token for all subsequent calls. Optional `context` (alphanumeric + hyphen/underscore, max 32 bytes) disambiguates multiple windows of the same client_kind. Optional `declared_affinities` is an array of tag names the peer self-reports as strengths — feeds the reassignment engine (Task #14). Optional `variant` is a free-form model identifier (Task #33). Optional `capabilities` advertises class / tier / prover_strengths for cold-start routing (Task #34).",
+      "description": "Register this instance as a coordination peer. Returns a peer ID and a session token for all subsequent calls. Optional `context` (alphanumeric + hyphen/underscore, max 32 bytes) disambiguates multiple windows of the same client_kind. Optional `declared_affinities` is an array of tag names the peer self-reports as strengths \u2014 feeds the reassignment engine (Task #14). Optional `variant` is a free-form model identifier (Task #33). Optional `capabilities` advertises class / tier / prover_strengths for cold-start routing (Task #34).",
       "inputSchema": {
         "properties": {
           "capabilities": {
@@ -81,7 +82,7 @@
             "type": "array"
           },
           "role": {
-            "description": "Optional requested role (DD-32). master is ALWAYS rejected here — promote via coord_promote_to_master. Default: claude->journeyman, others->apprentice. Old aliases (executor, supervised) accepted for one release.",
+            "description": "Optional requested role (DD-32). master is ALWAYS rejected here \u2014 promote via coord_promote_to_master. Default: claude->journeyman, others->apprentice. Old aliases (executor, supervised) accepted for one release.",
             "enum": [
               "journeyman",
               "apprentice",
@@ -161,7 +162,7 @@
       "name": "coord_receive"
     },
     {
-      "description": "Attempt to claim a task (mutex-style). If the task is unclaimed, this peer becomes the holder. If another peer holds it, the claim is denied. Idempotent if already held by caller. Task #15: optional confidence, dispatch_preference (deliberate/broadcast/auto), task_difficulty (trivial/routine/challenging/novel) — default policy broadcasts trivial+routine, deliberates on challenging+novel. Claim rejection triggers a per-client_kind rate-limit: 5 rejections / 10 min => 30s cooldown before the next attempt. Optional `paths` declares working-tree files this claim expects to touch; the bridge layer returns advisory `path_overlap` warnings when overlap is detected with other active claims. Bridge-only — backend ignores the field.",
+      "description": "Attempt to claim a task (mutex-style). If the task is unclaimed, this peer becomes the holder. If another peer holds it, the claim is denied. Idempotent if already held by caller. Task #15: optional confidence, dispatch_preference (deliberate/broadcast/auto), task_difficulty (trivial/routine/challenging/novel) \u2014 default policy broadcasts trivial+routine, deliberates on challenging+novel. Claim rejection triggers a per-client_kind rate-limit: 5 rejections / 10 min => 30s cooldown before the next attempt. Optional `paths` declares working-tree files this claim expects to touch; the bridge layer returns advisory `path_overlap` warnings when overlap is detected with other active claims. Bridge-only \u2014 backend ignores the field.",
       "inputSchema": {
         "properties": {
           "confidence": {
@@ -180,7 +181,7 @@
             "type": "string"
           },
           "paths": {
-            "description": "Optional advisory list of working-tree paths this claim expects to touch. Bridge-layer hint only — not enforced by the backend.",
+            "description": "Optional advisory list of working-tree paths this claim expects to touch. Bridge-layer hint only \u2014 not enforced by the backend.",
             "items": {
               "maxLength": 256,
               "minLength": 1,
@@ -329,7 +330,7 @@
       "name": "coord_review_entry"
     },
     {
-      "description": "Approve a quarantined message — delivers to target and removes from queue. Master role only.",
+      "description": "Approve a quarantined message \u2014 delivers to target and removes from queue. Master role only.",
       "inputSchema": {
         "properties": {
           "request_id": {
@@ -350,7 +351,7 @@
       "name": "coord_approve"
     },
     {
-      "description": "Reject a quarantined message with a reason — removes from queue without delivery. Master role only. Reason logged for audit.",
+      "description": "Reject a quarantined message with a reason \u2014 removes from queue without delivery. Master role only. Reason logged for audit.",
       "inputSchema": {
         "properties": {
           "reason": {
@@ -465,7 +466,7 @@
       "name": "coord_set_declared_affinities"
     },
     {
-      "description": "Run the reassignment-suggestion scanner (Task #14). Scans track-record aggregates vs declared_affinities; enqueues candidate envelopes in the quarantine for master review. Rules: overclaim (high avg_confidence + low effective_affinity), promote (high effective_affinity on undeclared tag), remove (low effective_affinity with >=5 attempts). Master reviews via coord_review / approves via coord_approve / rejects via coord_reject — never auto-modifies.",
+      "description": "Run the reassignment-suggestion scanner (Task #14). Scans track-record aggregates vs declared_affinities; enqueues candidate envelopes in the quarantine for master review. Rules: overclaim (high avg_confidence + low effective_affinity), promote (high effective_affinity on undeclared tag), remove (low effective_affinity with >=5 attempts). Master reviews via coord_review / approves via coord_approve / rejects via coord_reject \u2014 never auto-modifies.",
       "inputSchema": {
         "properties": {
           "token": {
@@ -481,7 +482,7 @@
       "name": "coord_scan_suggestions"
     },
     {
-      "description": "Live master handoff (Task #35). Outgoing master passes the role to a named successor without a process restart. Secret-gated by BOJ_MASTER_TOKEN (BOJ_SUPERVISOR_TOKEN fallback). Target must be journeyman or already master — apprentices rejected. Audit-logged so replay reconstructs the transfer.",
+      "description": "Live master handoff (Task #35). Outgoing master passes the role to a named successor without a process restart. Secret-gated by BOJ_MASTER_TOKEN (BOJ_SUPERVISOR_TOKEN fallback). Target must be journeyman or already master \u2014 apprentices rejected. Audit-logged so replay reconstructs the transfer.",
       "inputSchema": {
         "properties": {
           "new_peer_id": {
@@ -589,7 +590,7 @@
       "inputSchema": {
         "properties": {
           "token": {
-            "description": "Session token from coord_register — any active peer may poll.",
+            "description": "Session token from coord_register \u2014 any active peer may poll.",
             "type": "string"
           }
         },
@@ -601,7 +602,7 @@
       "name": "coord_health"
     },
     {
-      "description": "Heartbeat for a held claim — resets the watchdog TTL (DD-20). Apprentice TTL is 30 s, journeyman 5 min, master no watchdog. Long-running work should ping this periodically so the server doesn't auto-release the claim.",
+      "description": "Heartbeat for a held claim \u2014 resets the watchdog TTL (DD-20). Apprentice TTL is 30 s, journeyman 5 min, master no watchdog. Long-running work should ping this periodically so the server doesn't auto-release the claim.",
       "inputSchema": {
         "properties": {
           "task": {
@@ -622,11 +623,11 @@
       "name": "coord_progress"
     },
     {
-      "description": "Explicit watchdog sweep — release any claim whose holder has missed its role-based TTL. The sweep also runs implicitly at the top of every coord_claim_task, so this tool is only needed by ops wanting an external tick.",
+      "description": "Explicit watchdog sweep \u2014 release any claim whose holder has missed its role-based TTL. The sweep also runs implicitly at the top of every coord_claim_task, so this tool is only needed by ops wanting an external tick.",
       "inputSchema": {
         "properties": {
           "token": {
-            "description": "Session token from coord_register — any active peer may invoke.",
+            "description": "Session token from coord_register \u2014 any active peer may invoke.",
             "type": "string"
           }
         },

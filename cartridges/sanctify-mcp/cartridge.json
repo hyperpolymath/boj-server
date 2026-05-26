@@ -6,6 +6,7 @@
   "version": "1.0.0",
   "description": "Sanctify Cartridge \u2014 PHP lint and deviation detection tools",
   "domain": "Code Quality",
+  "category": "domain",
   "tier": "Ayo",
   "auth": {
     "method": "none"

@@ -6,6 +6,7 @@
   "version": "0.2.0",
   "description": "Docker Hub container registry cartridge -- image search, repository management, tag listing, manifest inspection, namespace browsing, and pull rate limit tracking with JWT auth",
   "domain": "Container",
+  "category": "domain",
   "tier": "Ayo",
   "protocols": [
     "MCP",

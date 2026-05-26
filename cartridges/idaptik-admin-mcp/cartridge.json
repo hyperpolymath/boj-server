@@ -6,6 +6,7 @@
   "version": "0.1.0",
   "description": "IDApTIK game server administration",
   "domain": "gaming",
+  "category": "domain",
   "tier": "Ayo",
   "protocols": [
     "MCP",

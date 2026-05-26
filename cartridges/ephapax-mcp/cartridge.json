@@ -6,6 +6,7 @@
   "version": "1.0.0",
   "description": "Ephapax Cartridge \u2014 Proof-compiler query tools for formal verification workflows",
   "domain": "Formal Verification",
+  "category": "domain",
   "tier": "Ayo",
   "auth": {
     "method": "none"

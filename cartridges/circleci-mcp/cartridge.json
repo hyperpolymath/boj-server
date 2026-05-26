@@ -6,6 +6,7 @@
   "version": "0.1.0",
   "description": "CircleCI CI/CD cartridge -- pipeline listing, workflow management, job inspection, artifact retrieval, project listing, environment variable browsing, pipeline triggering, job cancellation, and insight queries via the CircleCI API v2",
   "domain": "CI/CD",
+  "category": "domain",
   "tier": "Ayo",
   "protocols": [
     "MCP",

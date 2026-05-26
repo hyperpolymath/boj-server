@@ -6,6 +6,7 @@
   "version": "0.1.0",
   "description": "CodeSeeker hybrid code search and graph RAG",
   "domain": "development",
+  "category": "domain",
   "tier": "Ayo",
   "protocols": [
     "MCP",
