@@ -1,5 +1,15 @@
 # PROOF-NEEDS.md — boj-server
 
+> **See also**: [`docs/proof-debt.md`](docs/proof-debt.md) is the
+> schema-conformant per-repo index under the estate
+> [Trusted-Base Reduction Policy](https://github.com/hyperpolymath/standards/blob/main/docs/TRUSTED-BASE-REDUCTION-POLICY.adoc)
+> (standards#203, enforcement standards#211). PROOF-NEEDS.md is the
+> *strategic-goals* narrative — full audit table, classification
+> rationale, and external-validation pointers. `docs/proof-debt.md` is
+> the *machine-checked* index that `scripts/check-trusted-base.sh`
+> greps. Keep both in sync when the marker count in
+> `src/abi/Boj/SafetyLemmas.idr` changes.
+
 ## Current State (Updated 2026-05-18)
 
 - **src/abi/Boj/**: 16 Idris2 ABI files
