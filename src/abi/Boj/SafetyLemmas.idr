@@ -6,12 +6,15 @@
 ||| proofs in SafeHTTP, SafeCORS, SafeWebSocket, SafePromptInjection,
 ||| SafeAPIKey, and Safety modules.
 |||
-||| Five axiomatic believe_me primitives are declared here. Each is
-||| class (J) — genuinely unavoidable in Idris2 0.8.0 because `Char`
-||| and `String` are opaque primitive types whose operations are
+||| Five AXIOM-tagged believe_me primitives are declared here (per the
+||| estate trusted-base reduction policy — hyperpolymath/standards#203).
+||| Each is class (J) — genuinely unavoidable in Idris2 0.8.0 because
+||| `Char` and `String` are opaque primitive types whose operations are
 ||| foreign functions with no constructors and no in-language induction
-||| principle. They are documented as principled assumptions, not
-||| unproven debt; see PROOF-NEEDS.md for the per-site audit.
+||| principle. They are documented as principled disposition-§(c)
+||| NECESSARY-AXIOM assumptions, not unproven debt; see
+||| `docs/proof-debt.md` (schema-conformant index) and `PROOF-NEEDS.md`
+||| (audit narrative) for the per-site disposition.
 |||
 |||   charEqSound       — soundness of prim__eqChar (c1 == c2 = True → c1 = c2)
 |||   charEqSym         — symmetry of prim__eqChar (x == y = y == x)
@@ -54,14 +57,19 @@ notTrueNotTrue : not True = True -> Void
 notTrueNotTrue Refl impossible
 
 ||| Primitive char equality soundness: c1 == c2 = True implies c1 = c2.
-||| Axiomatic: correctness of Idris2's prim__eqChar backend primitive.
+||| AXIOM: charEqSound; class-(J) — correctness of Idris2's prim__eqChar
+||| backend primitive. `Char` is an opaque primitive; no in-language
+||| induction principle exists in Idris2 0.8.0. See docs/proof-debt.md §(c)
+||| and docs/backend-assurance/prim__eqChar.md for external validation.
 %unsafe
 export
 charEqSound : (c1, c2 : Char) -> c1 == c2 = True -> c1 = c2
 charEqSound _ _ _ = believe_me ()
 
 ||| Helper: symmetry of Char equality.
-||| Axiomatic: symmetry of prim__eqChar on the BEAM/Chez backend.
+||| AXIOM: charEqSym; class-(J) — symmetry of prim__eqChar on the BEAM/Chez
+||| backend. Same root cause as charEqSound. See docs/proof-debt.md §(c)
+||| and docs/backend-assurance/prim__eqChar.md.
 %unsafe
 export
 charEqSym : (x, y : Char) -> (x == y) = (y == x)
@@ -212,22 +220,30 @@ allNeqImpliesNotElem {target} {xs = x :: xs'} prf with (x == target) proof xEq
 --------------------------------------------------------------------------------
 
 ||| `unpack s` has the same length as `s`.
-||| Axiomatic: prim__strToCharList preserves length (backend primitive guarantee).
+||| AXIOM: unpackLength; class-(J) — prim__strToCharList preserves length
+||| (backend primitive guarantee). `String` is opaque with no induction
+||| principle. See docs/proof-debt.md §(c) and
+||| docs/backend-assurance/prim__strToCharList.md for external validation.
 %unsafe
 export
 unpackLength : (s : String) -> length (unpack s) = length s
 unpackLength _ = believe_me ()
 
 ||| String concatenation length equals the sum of both argument lengths.
-||| Axiomatic: prim__strAppend is a backend primitive not reducible at the
-||| Idris2 type level. Established by semantics of all supported backends.
+||| AXIOM: appendLengthSum; class-(J) — prim__strAppend is a backend
+||| primitive not reducible at the Idris2 type level. Established by
+||| semantics of all supported backends. See docs/proof-debt.md §(c) and
+||| docs/backend-assurance/prim__strAppend.md for external validation.
 %unsafe
 export
 appendLengthSum : (s, t : String) -> length (s ++ t) = length s + length t
 appendLengthSum _ _ = believe_me ()
 
 ||| Substring of a string has length at most the requested count.
-||| Axiomatic: prim__strSubstr semantics — result is never longer than `len`.
+||| AXIOM: substrLengthBound; class-(J) — prim__strSubstr semantics: result
+||| is never longer than `len`. Backend primitive guarantee with no in-
+||| language proof. See docs/proof-debt.md §(c) and
+||| docs/backend-assurance/prim__strSubstr.md for external validation.
 %unsafe
 export
 substrLengthBound : (s : String) -> (start, len : Nat) -> LTE (length (substr start len s)) len
