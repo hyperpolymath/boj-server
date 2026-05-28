@@ -81,7 +81,7 @@ These cannot be inferred from the code/contract; the owner must fill them before
 
 - [ ] Gateway Containerfile built and signed as a `.ctp` bundle via cerro-torre (plan §E1).
 - [ ] `container/gateway-deploy.k9.ncl` exists in the gateway repo (plan §E1).
-- [ ] Gateway policy file in place: `config/gateway-policy-boj-example.yaml`, covering all BoJ surface routes (`/.well-known/boj-node-pubkey`, `/health`, `/menu`, `/cartridges`, `/cartridge/:name`, `/cartridge/:name/invoke`, plus any added since contract v1.0 — re-verify against `BojRest.Router` at rollout time).
+- [x] Gateway policy file in place: `config/gateway-policy-boj-example.yaml`, covering all BoJ surface routes (`/.well-known/boj-node-pubkey`, `/health`, `/menu`, `/cartridges`, `/cartridge/:name`, `/cartridge/:name/invoke`, `/cartridge/:name/sse`, plus any added since contract v1.0). Re-verified 2026-05-28 against `BojRest.Router`; the `POST /cartridge/:name/sse` route (router.ex line 130, wired since the SSE landing — ADR-0013 §6, STATE entry 2026-05-18) was the only drift since contract v1.0 and is now governed by the `cartridge-sse-post` rule alongside `cartridge-invoke-post`. The live policy file (`config/gateway-policy-boj.yaml`, per the example header) is still to be promoted from this example before §3.1.
 - [ ] Gateway has been smoke-tested in isolation with the policy, returning expected allow/deny on each route.
 
 ---
