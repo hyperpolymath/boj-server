@@ -23,6 +23,14 @@
 # declared in openapi.yaml but not yet wired in router.ex are governed anyway
 # (contract §8) so they are not silently exposed when implemented.
 #
+# Re-verified 2026-05-28 against `BojRest.Router` for HCG tier-2 rollout
+# (Phase E §1.5 prereq, standards#100). Recorded drift since contract v1.0:
+# the wired `POST /cartridge/:name/sse` route (router.ex line 130, ADR-0013
+# §6, STATE entry 2026-05-18) was absent from the example policy. Added below
+# as `cartridge-sse-post` alongside `cartridge-invoke-post`. The unrelated
+# top-level `/sse` GET rule (declared-not-yet-wired, openapi.yaml only) is
+# left in place — different path, different verb, different surface.
+#
 # ---------------------------------------------------------------------------
 # DEFAULT-DENY NOTE (must be confirmed in the Phase A manual verification)
 # ---------------------------------------------------------------------------
@@ -119,6 +127,22 @@ governance:
       narrative: "Tool dispatch into a cartridge. Credentialed: BojRest.Router
         check_trust/3 requires internal/authenticated for cartridges whose
         auth.method is not `none`."
+
+    - path: "^/cartridge/[A-Za-z0-9_.-]+/sse$"
+      verbs: [POST]
+      exposure: "authenticated"
+      name: "cartridge-sse-post"
+      narrative: "Tool dispatch into a cartridge over Server-Sent Events
+        (text/event-stream: open → result|error → done; ADR-0013 §6, router.ex
+        line 130). Same `BojRest.Router.check_trust/3` gate as
+        cartridge-invoke-post, same per-cartridge auth.method requirement —
+        just a streaming response envelope around one dispatch. The handler
+        is bounded (single tool invocation framed by open/done), not
+        long-lived, so the proxy-timeout / circuit-breaker risk flagged on
+        sse-get is narrower here: bracketed by tool latency, not by stream
+        duration. Phase D benchmarks should still cover this path before the
+        live policy promotes it (Phase E §1.5 surface-drift verification,
+        standards#100)."
 
     - path: "/graphql"
       verbs: [POST]
