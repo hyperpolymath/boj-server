@@ -1,0 +1,23 @@
+# Cartridge schema pin
+
+This file records the canonical-schema pin for `schemas/cartridge-v1.json`.
+
+Pin source:  https://github.com/hyperpolymath/standards (PR #200, merged 2026-05-26)
+Pin commit:  7c2b815
+Pin path:    cartridges/cartridge-v1.json
+Pin SHA-256: 033e2fa8cbee5338fbdd73dfd86ac2a3ca76536af31d0ac4a8184f38a6718997
+Pin bytes:   5613
+
+Local mirror verified byte-identical to standards@7c2b815:cartridges/cartridge-v1.json
+on 2026-05-30. See `SCHEMA-MIRROR.md` for the pinning ceremony rationale.
+
+To re-verify:
+
+    git -C ../standards show 7c2b815:cartridges/cartridge-v1.json | sha256sum
+    sha256sum schemas/cartridge-v1.json
+
+Both must print 033e2fa8cbee5338fbdd73dfd86ac2a3ca76536af31d0ac4a8184f38a6718997.
+
+When `standards` advances `cartridges/cartridge-v1.json` (v1.x minor or v2),
+update both this file and `cartridge-v1.json` (or add `cartridge-v2.json`) in a
+single PR. Do not advance the mirror without advancing this pin.
