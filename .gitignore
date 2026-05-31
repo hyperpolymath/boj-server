@@ -160,3 +160,7 @@ generated/tlaiser/
 generated/wokelangiser/
 generated/alloyiser/
 generated/abi/
+
+# Superpowers docs and artefacts (local only)
+docs/superpowers/
+.superpowers/
