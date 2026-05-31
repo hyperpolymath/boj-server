@@ -32,6 +32,8 @@ jobs:
         include:
           - language: javascript-typescript
             build-mode: none
+          - language: cpp
+            build-mode: none
 
     steps:
       - name: Checkout
