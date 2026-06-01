@@ -27,6 +27,19 @@ All notable changes to Bundle of Joy Server are documented here.
 
 ## [Unreleased]
 
+### Added
+
+- **`k8s/networkpolicy.yaml`** — defence-in-depth `NetworkPolicy` restricting
+  BoJ pod ingress to pods labelled `app: http-capability-gateway`. Stacks on
+  top of the ClusterIP Service (#131) and Cowboy/Zig loopback binds (#130/#132):
+  three independent layers must be violated before BoJ's back-side surface is
+  reachable from anywhere other than HCG. Optional — Phase E acceptance does
+  not require it; CNI plugins without NetworkPolicy enforcement (e.g.
+  flannel without VXLAN) silently treat it as a no-op. Override pattern
+  documented in the manifest header for non-HCG-fronted deployments. Closes
+  #135. Refs [`hyperpolymath/standards#100`](https://github.com/hyperpolymath/standards/issues/100),
+  [`#91`](https://github.com/hyperpolymath/standards/issues/91).
+
 ### Documentation
 
 - **Repository documentation reorganised to match rsr-template-repo taxonomy.**

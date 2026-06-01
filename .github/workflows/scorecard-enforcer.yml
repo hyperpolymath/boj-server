@@ -1,5 +1,30 @@
 # SPDX-License-Identifier: MPL-2.0
-# Prevention workflow - runs OpenSSF Scorecard and fails on low scores
+# Copyright (c) 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+#
+# Prevention workflow - runs OpenSSF Scorecard and fails on low scores.
+#
+# Split into TWO jobs to satisfy the OSSF Scorecard webapp's workflow
+# restriction:
+#     "scorecard job must only have steps with `uses`"
+# (https://github.com/ossf/scorecard-action#workflow-restrictions).
+#
+# When the publishing job contains a `run:` step, the webapp rejects
+# the signed-result POST with HTTP 400 "workflow verification failed".
+# That regression had this workflow `failure`-state ever since
+# `publish_results: true` was added — the score *was* computed, but
+# the webapp publish step failed and propagated to job-level failure.
+#
+# Job 1 (`scorecard`): uses-only steps. Computes the score, publishes
+# signed results to the OSSF webapp, uploads SARIF to GitHub code
+# scanning, and saves results.sarif as an artifact for Job 2.
+#
+# Job 2 (`enforce-min-score`): downloads the artifact and runs the
+# minimum-score gate. May contain `run:` steps freely — it does not
+# call scorecard-action.
+#
+# Sister fix landed in hyperpolymath/ephapax#264 (2026-06-01); this
+# PR mirrors it so the two repos stay in sync.
+
 name: OpenSSF Scorecard Enforcer
 
 on:
@@ -43,14 +68,30 @@ jobs:
         with:
           sarif_file: results.sarif
 
+      - name: Upload results artifact for min-score gate
+        uses: actions/upload-artifact@4cec3d8aa04e39d1a68397de0c4cd6fb9dce8ec1 # v4.6.1
+        with:
+          name: scorecard-results
+          path: results.sarif
+          retention-days: 7
+
+  enforce-min-score:
+    needs: scorecard
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download results artifact
+        uses: actions/download-artifact@cc203385981b70ca67e1cc392babf9cc229d5806 # v4.1.9
+        with:
+          name: scorecard-results
+
       - name: Check minimum score
         run: |
-          # Parse score from results
+          # Parse score from SARIF results.
           SCORE=$(jq -r '.runs[0].tool.driver.properties.score // 0' results.sarif 2>/dev/null || echo "0")
 
           echo "OpenSSF Scorecard Score: $SCORE"
 
-          # Minimum acceptable score (0-10 scale)
+          # Minimum acceptable score (0-10 scale).
           MIN_SCORE=5
 
           if [ "$(echo "$SCORE < $MIN_SCORE" | bc -l)" = "1" ]; then

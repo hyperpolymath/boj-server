@@ -54,24 +54,32 @@ jobs:
         with:
           toolchain: stable
 
+      # Pin to a specific iseriser commit so the cache key changes when
+      # we bump it. Floating `--branch main` + a prefix-matching
+      # `restore-keys` (`iseriser-${{ runner.os }}-`) was sticky: once a
+      # binary was cached for a given OS, the install step's
+      # `command -v iseriser` short-circuit skipped re-build, and #111's
+      # GADT-skip fix (iseriser#20, merged 2026-05-20) never reached CI.
+      # Bumping ISERISER_REV invalidates the cache and forces a rebuild.
       - name: Cache cargo bin (iseriser install)
         uses: actions/cache@d4323d4df104b026a6aa633fdb11d772146be0bf # v4.2.2
+        env:
+          ISERISER_REV: 741a3b63e7619b6e9cfe7f91b04d7ccfb130b1ca
         with:
           path: |
             ~/.cargo/bin/iseriser
             ~/.cargo/registry
             ~/.cargo/git
-          key: iseriser-${{ runner.os }}-${{ github.sha }}
-          restore-keys: |
-            iseriser-${{ runner.os }}-
+          key: iseriser-${{ runner.os }}-${{ env.ISERISER_REV }}
 
       - name: Install iseriser
+        env:
+          ISERISER_REV: 741a3b63e7619b6e9cfe7f91b04d7ccfb130b1ca
         run: |
           set -euo pipefail
-          if ! command -v iseriser >/dev/null 2>&1; then
-            cargo install --git https://github.com/hyperpolymath/iseriser --branch main --locked
-          fi
-          iseriser --version || true
+          cargo install --git https://github.com/hyperpolymath/iseriser \
+            --rev "$ISERISER_REV" --locked --force
+          iseriser --version
 
       - name: Resolve cartridge allowlist
         id: discover

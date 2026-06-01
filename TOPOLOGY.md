@@ -1,7 +1,9 @@
 # SPDX-License-Identifier: MPL-2.0
+# Copyright (c) 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+#
 # TOPOLOGY.md — BoJ Server Component Matrix
 #
-# Updated 2026-04-30. 115 cartridges across 6 tiers (111 with `.so` built, 4 pending).
+# Updated 2026-06-01. 125 cartridges (per `find cartridges -name cartridge.json | wc -l`).
 
 ## Ports
 
@@ -13,7 +15,14 @@
 | 7703 | SSE (Server-Sent Events) | Running |
 | 7745 | local-coord-mcp (loopback only) | Running |
 
-## Cartridge Matrix (112 total)
+## Cartridge Matrix (125 total)
+
+<!-- 125 = `find cartridges -name cartridge.json | wc -l` on origin/main.
+     The per-tier tables below currently inventory 102 of those 125
+     (Tiers 1–6 = 56 + Hyperpolymath Ecosystem = 27 + Infrastructure &
+     Utility = 19). The 23-cartridge inventory deficit is tracked
+     separately; the source-of-truth count is the cartridges/ directory
+     itself (mirrored in `.machine_readable/STATE.a2ml`). -->
 
 ### Tier 1 — High-Value APIs (11)
 | Cartridge | Domain |
@@ -126,7 +135,7 @@
 | panic-attack-mcp | Security scanning |
 | proof-mcp | Formal verification |
 
-### Infrastructure & Utility (10)
+### Infrastructure & Utility (19)
 | Cartridge | Domain |
 |-----------|--------|
 | queues-mcp | Message queues |
