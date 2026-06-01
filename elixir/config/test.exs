@@ -7,4 +7,5 @@ import Config
 config :boj_rest, start_server: false
 
 config :boj_rest,
-  cartridges_root: Path.expand("../../cartridges", __DIR__)
+  cartridges_root:
+    System.get_env("BOJ_CARTRIDGES_PATH") || Path.expand("../../cartridges", __DIR__)

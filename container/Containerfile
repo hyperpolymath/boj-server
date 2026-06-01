@@ -16,15 +16,30 @@
 # Stage 1: Zig FFI Builder
 # ============================================================================
 
+# Cartridge source is fetched on demand from the canonical registry rather than
+# bundled in this repo. Override the ref/repo at build time if needed:
+#   podman build --build-arg BOJ_CARTRIDGES_REF=v1.2.3 ...
+ARG BOJ_CARTRIDGES_REF=main
+ARG BOJ_CARTRIDGES_REPO=https://github.com/hyperpolymath/boj-server-cartridges.git
+
 FROM cgr.dev/chainguard/wolfi-base:latest AS zig-builder
 
-RUN apk add --no-cache zig build-base
+RUN apk add --no-cache zig build-base git bash
 
 WORKDIR /build
 
-# Copy Zig source and cartridge FFI sources
+# Copy Zig source
 COPY ffi/zig/ ffi/zig/
-COPY cartridges/ cartridges/
+
+# Fetch the cartridge tree from the registry into /build/cartridges, flattened to
+# <name>/ (the layout the build loops below and the runtime Catalog both expect).
+ARG BOJ_CARTRIDGES_REF
+ARG BOJ_CARTRIDGES_REPO
+COPY scripts/fetch-cartridges.sh /tmp/fetch-cartridges.sh
+RUN BOJ_CARTRIDGES_REF="$BOJ_CARTRIDGES_REF" \
+    BOJ_CARTRIDGES_REPO="$BOJ_CARTRIDGES_REPO" \
+    BOJ_CARTRIDGES_PATH=/build/cartridges \
+    bash /tmp/fetch-cartridges.sh
 
 # Build boj-invoke CLI (x86_64-linux-gnu target so it uses DlDynLib/real dlopen)
 RUN cd ffi/zig && zig build invoke -Doptimize=ReleaseFast
@@ -104,9 +119,11 @@ RUN for cart_dir in /tmp/cartridges-src/*/; do \
     done && \
     rm -rf /tmp/cartridges-src
 
-# Copy cartridge metadata (cartridge.json files — loaded by Catalog GenServer)
+# Copy cartridge metadata (cartridge.json files — loaded by Catalog GenServer).
+# Sourced from the fetched tree in the zig-builder stage, not the build context,
+# so the image build no longer depends on a bundled cartridges/ directory.
 RUN mkdir -p /app-cartridges-meta
-COPY cartridges/ /tmp/carts-meta/
+COPY --from=zig-builder /build/cartridges/ /tmp/carts-meta/
 RUN for cart_dir in /tmp/carts-meta/*/; do \
       cart="$(basename "$cart_dir")" && \
       if [ -f "${cart_dir}cartridge.json" ]; then \

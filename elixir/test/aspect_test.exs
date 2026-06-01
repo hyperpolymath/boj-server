@@ -8,7 +8,7 @@ defmodule BojRest.AspectTest do
   import Plug.Test
   import Plug.Conn
 
-  @cartridges_root Path.expand("../../cartridges", __DIR__)
+  @cartridges_root System.get_env("BOJ_CARTRIDGES_PATH") || Path.expand("../../cartridges", __DIR__)
   @opts BojRest.Router.init([])
 
   setup_all do

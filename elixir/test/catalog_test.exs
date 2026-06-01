@@ -3,7 +3,7 @@
 defmodule BojRest.CatalogTest do
   use ExUnit.Case, async: false
 
-  @cartridges_root Path.expand("../../cartridges", __DIR__)
+  @cartridges_root System.get_env("BOJ_CARTRIDGES_PATH") || Path.expand("../../cartridges", __DIR__)
 
   setup_all do
     case Process.whereis(BojRest.Catalog) do
@@ -83,8 +83,9 @@ defmodule BojRest.CatalogTest do
   end
 
   test "auth method is always a known value" do
-    known = ["none", "api-key", "api_key_header", "bearer", "bearer_token",
-             "oauth", "oauth2", "session-token", "basic"]
+    known = ["none", "api-key", "api_key", "api_key_header", "api_token",
+             "bearer", "bearer_token", "oauth", "oauth2", "session-token",
+             "basic", "mtls", "custom", "optional_bearer", "optional_api_key"]
     BojRest.Catalog.list()
     |> Enum.each(fn cart ->
       method = get_in(cart, ["auth", "method"])

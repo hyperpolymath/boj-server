@@ -4,7 +4,7 @@ defmodule BojRest.CatalogPropertiesTest do
   use ExUnit.Case, async: false
   use ExUnitProperties
 
-  @cartridges_root Path.expand("../../cartridges", __DIR__)
+  @cartridges_root System.get_env("BOJ_CARTRIDGES_PATH") || Path.expand("../../cartridges", __DIR__)
 
   setup_all do
     case Process.whereis(BojRest.Catalog) do
@@ -66,7 +66,7 @@ defmodule BojRest.CatalogPropertiesTest do
   end
 
   property "auth method is always a known value for all cartridges" do
-    known = ~w[none api-key api_key_header bearer bearer_token oauth oauth2 session-token basic]
+    known = ~w[none api-key api_key api_key_header api_token bearer bearer_token oauth oauth2 session-token basic mtls custom optional_bearer optional_api_key]
     carts = BojRest.Catalog.list()
     check all cart <- StreamData.member_of(carts) do
       method = get_in(cart, ["auth", "method"])
