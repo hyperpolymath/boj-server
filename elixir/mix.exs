@@ -32,6 +32,10 @@ defmodule BojRest.MixProject do
     [
       {:plug_cowboy, "~> 2.7"},
       {:jason, "~> 1.4"},
+      # JSON Schema validation for cartridge manifests. Used by BojRest.Catalog
+      # to validate each cartridge.json against the SHA-pinned schema mirror at
+      # schemas/cartridge-v1.json before loading. Closes boj-server#183.
+      {:ex_json_schema, "~> 0.10"},
       {:stream_data, "~> 1.1", only: [:test]},
       {:benchee, "~> 1.3", only: [:dev]}
     ]

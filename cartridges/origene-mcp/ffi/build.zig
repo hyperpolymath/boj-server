@@ -7,8 +7,8 @@ pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
 
-    const ffi_mod = b.addModule("origenemcp", .{
-        .root_source_file = b.path("origenemcp_ffi.zig"),
+    const ffi_mod = b.addModule("origene_mcp", .{
+        .root_source_file = b.path("origene_mcp_ffi.zig"),
         .target = target,
         .optimize = optimize,
     });

@@ -4,7 +4,7 @@
   "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>",
   "name": "gitlab-api-mcp",
   "version": "0.1.0",
-  "description": "GitLab REST API \u2014 projects, issues, MRs",
+  "description": "GitLab REST API — projects, issues, MRs",
   "domain": "development",
   "category": "domain",
   "tier": "Ayo",

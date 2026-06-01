@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MPL-2.0
 // Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
 //
-// boj-health cartridge — ADR-0006 five-symbol Zig FFI implementation.
+// boj-health-mcp cartridge — ADR-0006 five-symbol Zig FFI implementation.
 //
 // Reference implementation: no external services, no env vars required.
 // Demonstrates the full Idris2 ABI → Zig FFI → boj-invoke → Elixir chain.
@@ -36,7 +36,7 @@ var init_done: bool = false;
 // ─── Five-symbol ADR-0006 ABI ────────────────────────────────────────────────
 
 export fn boj_cartridge_name() callconv(.c) [*:0]const u8 {
-    return "boj-health";
+    return "boj-health-mcp";
 }
 
 export fn boj_cartridge_version() callconv(.c) [*:0]const u8 {

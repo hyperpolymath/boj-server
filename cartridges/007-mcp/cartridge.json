@@ -33,7 +33,7 @@
     "graceful_degrade": true
   },
   "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>",
-  "description": "007 agent meta-language cartridge \u2014 exposes the full oo7 CLI surface (parse/run/trace/build/test/lint/verify/contractile verbs/canonical-proof-suite/groove/self-assess) plus on-enter and on-exit lifecycle hooks that register the session as a coord peer, load the 6a2 methodology pack (STATE, META, ECOSYSTEM, AGENTIC, NEUROSYM, PLAYBOOK), and perform drift checks on exit.",
+  "description": "007 agent meta-language cartridge — exposes the full oo7 CLI surface (parse/run/trace/build/test/lint/verify/contractile verbs/canonical-proof-suite/groove/self-assess) plus on-enter and on-exit lifecycle hooks that register the session as a coord peer, load the 6a2 methodology pack (STATE, META, ECOSYSTEM, AGENTIC, NEUROSYM, PLAYBOOK), and perform drift checks on exit.",
   "domain": "dezig",
   "category": "domain",
   "federation": "none",
@@ -59,7 +59,7 @@
   "tier": "Ayo",
   "tools": [
     {
-      "description": "Lifecycle hook \u2014 invoke when entering the 007-lang context. Registers this session as a coord peer (graceful degrade if local-coord-mcp is down), loads the 6a2 methodology pack (STATE, META, ECOSYSTEM, AGENTIC, NEUROSYM, PLAYBOOK), runs the memory auto-lift using repo-derived tags, and returns a structured A2ML payload with peer_id, session_token, methodology digests, and memory hits. Idempotent: calling twice returns the same peer_id/token.",
+      "description": "Lifecycle hook — invoke when entering the 007-lang context. Registers this session as a coord peer (graceful degrade if local-coord-mcp is down), loads the 6a2 methodology pack (STATE, META, ECOSYSTEM, AGENTIC, NEUROSYM, PLAYBOOK), runs the memory auto-lift using repo-derived tags, and returns a structured A2ML payload with peer_id, session_token, methodology digests, and memory hits. Idempotent: calling twice returns the same peer_id/token.",
       "inputSchema": {
         "properties": {
           "session_hint": {
@@ -73,7 +73,7 @@
       "name": "oo7_on_enter"
     },
     {
-      "description": "Lifecycle hook \u2014 invoke before leaving the 007-lang context. Updates STATE.a2ml's last-session fields, runs a drift check (open claims? uncommitted contractile edits? stale 6a2 files?), releases any coord task claims held by this peer, and deregisters from local-coord-mcp. Returns A2ML summary with drift findings. Safe to call even if on_enter was never invoked.",
+      "description": "Lifecycle hook — invoke before leaving the 007-lang context. Updates STATE.a2ml's last-session fields, runs a drift check (open claims? uncommitted contractile edits? stale 6a2 files?), releases any coord task claims held by this peer, and deregisters from local-coord-mcp. Returns A2ML summary with drift findings. Safe to call even if on_enter was never invoked.",
       "inputSchema": {
         "properties": {
           "reason": {
@@ -557,7 +557,7 @@
       "name": "oo7_dust_status_local"
     },
     {
-      "description": "Revert all source changes to last commit. DESTRUCTIVE \u2014 the adapter rejects this tool unless the caller holds a Tier-3 master approval. Wraps `just dust-source-rollback`.",
+      "description": "Revert all source changes to last commit. DESTRUCTIVE — the adapter rejects this tool unless the caller holds a Tier-3 master approval. Wraps `just dust-source-rollback`.",
       "inputSchema": {
         "properties": {},
         "required": [],
@@ -566,7 +566,7 @@
       "name": "oo7_dust_source_rollback"
     },
     {
-      "description": "Verify OpenSSF Best Practices prerequisites \u2014 fails if required files are missing. Wraps `just verify`.",
+      "description": "Verify OpenSSF Best Practices prerequisites — fails if required files are missing. Wraps `just verify`.",
       "inputSchema": {
         "properties": {},
         "required": [],
@@ -575,7 +575,7 @@
       "name": "oo7_verify"
     },
     {
-      "description": "Verify the Harvard architecture invariant \u2014 data expressions must not contain control flow. Wraps `just verify-harvard`.",
+      "description": "Verify the Harvard architecture invariant — data expressions must not contain control flow. Wraps `just verify-harvard`.",
       "inputSchema": {
         "properties": {},
         "required": [],

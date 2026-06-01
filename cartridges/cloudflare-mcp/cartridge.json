@@ -13,7 +13,8 @@
     "REST"
   ],
   "auth": {
-    "method": "bearer_token",
+    "method": "api-key",
+    "notes_method": "bearer_token",
     "env_var": "CF_API_TOKEN",
     "credential_source": "vault-mcp"
   },
@@ -221,7 +222,7 @@
     },
     {
       "name": "cf_patch_dns_record",
-      "description": "Partially update a DNS record \u2014 change only the specified fields (e.g. toggle proxied without changing content)",
+      "description": "Partially update a DNS record — change only the specified fields (e.g. toggle proxied without changing content)",
       "inputSchema": {
         "type": "object",
         "properties": {

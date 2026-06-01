@@ -5,167 +5,20 @@
   "name": "chromadb-mcp",
   "version": "0.1.0",
   "status": "stub",
-  "description": "Chroma vector DB \u2014 embedded (local persistent) or client/server; LLM-app-focused; metadata + document storage alongside vectors.",
+  "description": "Chroma vector DB — embedded (local persistent) or client/server; LLM-app-focused; metadata + document storage alongside vectors.",
   "domain": "vector",
   "category": "domain",
   "tier": "Teranga",
-  "protocols": [
-    "MCP",
-    "REST"
-  ],
-  "auth": {
-    "method": "optional_bearer",
-    "env_var": "CHROMA_AUTH_TOKEN",
-    "credential_source": "Optional \u2014 embedded mode has no auth; client/server may use bearer token."
-  },
-  "api": {
-    "base_url": "local://chromadb-mcp",
-    "content_type": "application/json"
-  },
+  "protocols": ["MCP", "REST"],
+  "auth": { "method": "api-key", "notes_method": "optional_bearer", "env_var": "CHROMA_AUTH_TOKEN", "credential_source": "Optional — embedded mode has no auth; client/server may use bearer token." },
+  "api": { "base_url": "local://chromadb-mcp", "content_type": "application/json" },
   "tools": [
-    {
-      "name": "vector_authenticate",
-      "description": "Store Chroma endpoint URL (or 'embedded' for in-process) + optional bearer.",
-      "inputSchema": {
-        "type": "object",
-        "properties": {
-          "endpoint": {
-            "type": "string"
-          },
-          "auth_token": {
-            "type": "string"
-          },
-          "embedding_function": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "endpoint"
-        ]
-      }
-    },
-    {
-      "name": "vector_list_collections",
-      "description": "List collections.",
-      "inputSchema": {
-        "type": "object",
-        "properties": {}
-      }
-    },
-    {
-      "name": "vector_create_collection",
-      "description": "Create a collection with optional embedding function + metadata.",
-      "inputSchema": {
-        "type": "object",
-        "properties": {
-          "name": {
-            "type": "string"
-          },
-          "metadata": {
-            "type": "object"
-          },
-          "embedding_function": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "name"
-        ]
-      }
-    },
-    {
-      "name": "vector_delete_collection",
-      "description": "Delete a collection.",
-      "inputSchema": {
-        "type": "object",
-        "properties": {
-          "name": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "name"
-        ]
-      }
-    },
-    {
-      "name": "vector_upsert",
-      "description": "Add documents + vectors + metadata. Chroma computes embeddings if not provided.",
-      "inputSchema": {
-        "type": "object",
-        "properties": {
-          "collection": {
-            "type": "string"
-          },
-          "ids": {
-            "type": "array"
-          },
-          "documents": {
-            "type": "array"
-          },
-          "embeddings": {
-            "type": "array"
-          },
-          "metadatas": {
-            "type": "array"
-          }
-        },
-        "required": [
-          "collection",
-          "ids"
-        ]
-      }
-    },
-    {
-      "name": "vector_query",
-      "description": "Query by text or embedding with where-filter + document-content filter.",
-      "inputSchema": {
-        "type": "object",
-        "properties": {
-          "collection": {
-            "type": "string"
-          },
-          "query_texts": {
-            "type": "array"
-          },
-          "query_embeddings": {
-            "type": "array"
-          },
-          "n_results": {
-            "type": "integer"
-          },
-          "where": {
-            "type": "object"
-          },
-          "where_document": {
-            "type": "object"
-          }
-        },
-        "required": [
-          "collection"
-        ]
-      }
-    },
-    {
-      "name": "vector_delete",
-      "description": "Delete documents by id or where-filter.",
-      "inputSchema": {
-        "type": "object",
-        "properties": {
-          "collection": {
-            "type": "string"
-          },
-          "ids": {
-            "type": "array"
-          },
-          "where": {
-            "type": "object"
-          }
-        },
-        "required": [
-          "collection"
-        ]
-      }
-    }
+    { "name": "vector_authenticate", "description": "Store Chroma endpoint URL (or 'embedded' for in-process) + optional bearer.", "inputSchema": { "type": "object", "properties": { "endpoint": { "type": "string" }, "auth_token": { "type": "string" }, "embedding_function": { "type": "string" } }, "required": ["endpoint"] } },
+    { "name": "vector_list_collections", "description": "List collections.", "inputSchema": { "type": "object", "properties": {} } },
+    { "name": "vector_create_collection", "description": "Create a collection with optional embedding function + metadata.", "inputSchema": { "type": "object", "properties": { "name": { "type": "string" }, "metadata": { "type": "object" }, "embedding_function": { "type": "string" } }, "required": ["name"] } },
+    { "name": "vector_delete_collection", "description": "Delete a collection.", "inputSchema": { "type": "object", "properties": { "name": { "type": "string" } }, "required": ["name"] } },
+    { "name": "vector_upsert", "description": "Add documents + vectors + metadata. Chroma computes embeddings if not provided.", "inputSchema": { "type": "object", "properties": { "collection": { "type": "string" }, "ids": { "type": "array" }, "documents": { "type": "array" }, "embeddings": { "type": "array" }, "metadatas": { "type": "array" } }, "required": ["collection", "ids"] } },
+    { "name": "vector_query", "description": "Query by text or embedding with where-filter + document-content filter.", "inputSchema": { "type": "object", "properties": { "collection": { "type": "string" }, "query_texts": { "type": "array" }, "query_embeddings": { "type": "array" }, "n_results": { "type": "integer" }, "where": { "type": "object" }, "where_document": { "type": "object" } }, "required": ["collection"] } },
+    { "name": "vector_delete", "description": "Delete documents by id or where-filter.", "inputSchema": { "type": "object", "properties": { "collection": { "type": "string" }, "ids": { "type": "array" }, "where": { "type": "object" } }, "required": ["collection"] } }
   ]
 }

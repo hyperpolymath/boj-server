@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MPL-2.0
 // Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath)
-= opendatamcp / ffi — Zig FFI layer
+= opendata-mcp / ffi — Zig FFI layer
 :orientation: deep
 
 == Purpose
@@ -14,7 +14,7 @@ Zig implementation of the connection state machine from .
 | File | Role
 
 | build.zig          | Zig build graph.
-| opendatamcp_ffi.zig   | FFI implementation.
+| opendata-mcp_ffi.zig   | FFI implementation.
 |=== 
 
 == Invariants
@@ -25,9 +25,9 @@ Zig implementation of the connection state machine from .
 
 == Test/proof surface
 
-Inline  blocks in opendatamcp_ffi.zig. Run with .
+Inline  blocks in opendata-mcp_ffi.zig. Run with .
 
 == Read-first
 
-. opendatamcp_ffi.zig — FFI exports and guards.
+. opendata-mcp_ffi.zig — FFI exports and guards.
 

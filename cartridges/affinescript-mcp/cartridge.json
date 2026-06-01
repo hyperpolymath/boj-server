@@ -196,7 +196,7 @@
     },
     {
       "name": "affinescript_hover",
-      "description": "Return type and symbol information for the symbol at a cursor position in AffineScript source code. Runs the full pipeline (parse \u2192 resolve \u2192 typecheck) and returns JSON hover info.",
+      "description": "Return type and symbol information for the symbol at a cursor position in AffineScript source code. Runs the full pipeline (parse → resolve → typecheck) and returns JSON hover info.",
       "inputSchema": {
         "type": "object",
         "properties": {

@@ -1,0 +1,33 @@
+// SPDX-License-Identifier: MPL-2.0
+// Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath)
+= opendata-mcp / abi — Idris2 ABI layer
+:orientation: deep
+
+== Purpose
+
+Encodes the opendata-mcp connection state machine and the MCP tool catalogue.
+
+== Files
+
+[cols="1,4"]
+|=== 
+| File | Role
+
+| opendata-mcp.ipkg                          | Idris2 package descriptor.
+| opendata-mcp/Safeopendata-mcp.idr               | State machine and tool definitions.
+|=== 
+
+== Invariants
+
+*  at module top.
+* Zero .
+
+== Test/proof surface
+
+Type-check only — 
+  Error loading file "opendata-mcp.ipkg": File Not Found.
+
+== Read-first
+
+. Safeopendata-mcp.idr — state machine and tool definitions.
+

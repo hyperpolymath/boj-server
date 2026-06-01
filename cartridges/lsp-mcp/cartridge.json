@@ -34,7 +34,7 @@
           },
           "preset": {
             "type": "string",
-            "description": "Permanent pinned toolchain preset from presets.json (e.g. 'rust' \u2192 the canonical rust-analyzer at /dev/tools). Use this instead of re-specifying the command/path every session. One of `command` or `preset` is required; an explicit `command` overrides the preset."
+            "description": "Permanent pinned toolchain preset from presets.json (e.g. 'rust' → the canonical rust-analyzer at /dev/tools). Use this instead of re-specifying the command/path every session. One of `command` or `preset` is required; an explicit `command` overrides the preset."
           },
           "args": {
             "type": "array",
@@ -302,7 +302,7 @@
           },
           "uri": {
             "type": "string",
-            "description": "Document URI (optional \u2014 omit for all documents)"
+            "description": "Document URI (optional — omit for all documents)"
           }
         },
         "required": [

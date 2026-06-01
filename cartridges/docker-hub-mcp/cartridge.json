@@ -13,7 +13,8 @@
     "REST"
   ],
   "auth": {
-    "method": "bearer",
+    "method": "api-key",
+    "notes_method": "bearer",
     "token_type": "jwt",
     "login_endpoint": "POST /v2/users/login",
     "env_var": "DOCKER_HUB_TOKEN",

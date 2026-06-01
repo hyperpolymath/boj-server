@@ -4,47 +4,80 @@
   "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>",
   "name": "academic-workflow-mcp",
   "version": "1.0.0",
-  "description": "Academic workflow \u2014 Zotero integration, citations, paper review",
+  "description": "Academic workflow — Zotero integration, citations, paper review",
   "domain": "Research",
   "category": "domain",
   "tier": "Ayo",
+  "protocols": [
+    "MCP"
+  ],
   "auth": {
-    "method": "none"
+    "method": "none",
+    "env_var": null,
+    "credential_source": null
   },
-  "author": "Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>",
-  "license": "MPL-2.0",
+  "api": {
+    "base_url": "local://academic-workflow-mcp",
+    "content_type": "application/json"
+  },
   "tools": [
     {
       "id": "search_zotero",
       "name": "Search Zotero",
-      "description": "Search papers and collections in Zotero library"
+      "description": "Search papers and collections in Zotero library",
+      "inputSchema": {
+        "type": "object",
+        "properties": {}
+      }
     },
     {
       "id": "get_paper_metadata",
       "name": "Get Paper Metadata",
-      "description": "Fetch title, authors, DOI, year, abstract from Zotero"
+      "description": "Fetch title, authors, DOI, year, abstract from Zotero",
+      "inputSchema": {
+        "type": "object",
+        "properties": {}
+      }
     },
     {
       "id": "generate_citation",
       "name": "Generate Citation",
-      "description": "Export citation in BibTeX/CSL/RIS/EndNote format"
+      "description": "Export citation in BibTeX/CSL/RIS/EndNote format",
+      "inputSchema": {
+        "type": "object",
+        "properties": {}
+      }
     },
     {
       "id": "extract_bibkeys",
       "name": "Extract BibTeX Keys",
-      "description": "Find citation keys in text"
+      "description": "Find citation keys in text",
+      "inputSchema": {
+        "type": "object",
+        "properties": {}
+      }
     },
     {
       "id": "export_collection",
       "name": "Export Collection",
-      "description": "Export entire collection as BibTeX"
+      "description": "Export entire collection as BibTeX",
+      "inputSchema": {
+        "type": "object",
+        "properties": {}
+      }
     },
     {
       "id": "add_review_note",
       "name": "Add Review Note",
-      "description": "Annotate papers with review comments"
+      "description": "Annotate papers with review comments",
+      "inputSchema": {
+        "type": "object",
+        "properties": {}
+      }
     }
   ],
+  "author": "Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>",
+  "license": "MPL-2.0",
   "abi": {
     "interface": "abi/AcademicWorkflow.idr",
     "loopback_proof": "IsLoopback 5174"

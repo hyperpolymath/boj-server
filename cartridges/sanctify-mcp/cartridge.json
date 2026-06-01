@@ -4,42 +4,71 @@
   "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath)",
   "name": "sanctify-mcp",
   "version": "1.0.0",
-  "description": "Sanctify Cartridge \u2014 PHP lint and deviation detection tools",
+  "description": "Sanctify Cartridge — PHP lint and deviation detection tools",
   "domain": "Code Quality",
   "category": "domain",
   "tier": "Ayo",
+  "protocols": [
+    "MCP"
+  ],
   "auth": {
-    "method": "none"
+    "method": "none",
+    "env_var": null,
+    "credential_source": null
   },
-  "author": "Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>",
-  "license": "MPL-2.0",
+  "api": {
+    "base_url": "local://sanctify-mcp",
+    "content_type": "application/json"
+  },
   "tools": [
     {
       "id": "lint_file",
       "name": "Lint File",
-      "description": "Lint PHP file for syntax and style issues"
+      "description": "Lint PHP file for syntax and style issues",
+      "inputSchema": {
+        "type": "object",
+        "properties": {}
+      }
     },
     {
       "id": "detect_deviations",
       "name": "Detect Deviations",
-      "description": "Detect deviations from PHP best practices (naming, style, security)"
+      "description": "Detect deviations from PHP best practices (naming, style, security)",
+      "inputSchema": {
+        "type": "object",
+        "properties": {}
+      }
     },
     {
       "id": "analyze_file",
       "name": "Analyze File",
-      "description": "Comprehensive analysis of PHP file (syntax, style, deviations)"
+      "description": "Comprehensive analysis of PHP file (syntax, style, deviations)",
+      "inputSchema": {
+        "type": "object",
+        "properties": {}
+      }
     },
     {
       "id": "check_snippet",
       "name": "Check Snippet",
-      "description": "Check a PHP code snippet for lint issues"
+      "description": "Check a PHP code snippet for lint issues",
+      "inputSchema": {
+        "type": "object",
+        "properties": {}
+      }
     },
     {
       "id": "validate_syntax",
       "name": "Validate Syntax",
-      "description": "Validate PHP syntax (without execution)"
+      "description": "Validate PHP syntax (without execution)",
+      "inputSchema": {
+        "type": "object",
+        "properties": {}
+      }
     }
   ],
+  "author": "Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>",
+  "license": "MPL-2.0",
   "abi": {
     "interface": "abi/Sanctify.idr",
     "loopback_proof": "IsLoopback 5176"

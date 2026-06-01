@@ -7,8 +7,8 @@ pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
 
-    const ffi_mod = b.addModule("opendatamcp", .{
-        .root_source_file = b.path("opendatamcp_ffi.zig"),
+    const ffi_mod = b.addModule("opendata_mcp", .{
+        .root_source_file = b.path("opendata_mcp_ffi.zig"),
         .target = target,
         .optimize = optimize,
     });
