@@ -6,10 +6,10 @@
 
 (assail-classifications
   (metadata
-    (version "1.0.0")
+    (version "1.1.0")
     (project "boj-server")
-    (last-updated "2026-05-26")
-    (entries 119)
+    (last-updated "2026-06-01")
+    (entries 126)
     (status "active"))
 
   (classification
@@ -726,4 +726,66 @@
     (classification "legitimate-ffi")
     (audit "audits/audit-ffi-2026-05-26.md §2")
     (rationale "Zig FFI bridge to boj-server backend (cartridge runtime, federation). Each unsafe pointer cast is at the Zig→C ABI boundary required to call into libboj-server."))
+
+  ;; ─────────────────────────────────────────────────────────────────
+  ;; Track C — 7 findings from the 2026-05-26 panic-attack estate
+  ;; sweep (#155 / panic-attack#32). All 7 triaged 2026-06-01 — none
+  ;; require code changes. Each entry below records *why*, so a
+  ;; future sweep on the same line does not require re-investigation.
+  ;; ─────────────────────────────────────────────────────────────────
+
+  (classification
+    (file "cartridges/rokur-mcp/tests/integration_test.sh")
+    (line 33)
+    (category "CommandInjection")
+    (classification "legitimate-deno-eval")
+    (audit "boj-server#155 (2026-06-01)")
+    (rationale "`deno eval` is Deno's --eval flag (in-runtime JS evaluation, sandboxed by Deno's permission system), not POSIX-shell `eval`. The string is a fixed literal that reads a project-local mcp-tools.json file. Pattern-only match by panic-attack's CommandInjection rule; no shell-string interpolation of untrusted input."))
+
+  (classification
+    (file "cartridges/vault-mcp/tests/integration_test.sh")
+    (line 34)
+    (category "CommandInjection")
+    (classification "legitimate-deno-eval")
+    (audit "boj-server#155 (2026-06-01)")
+    (rationale "Identical pattern to cartridges/rokur-mcp/tests/integration_test.sh:33 — `deno eval` is Deno's --eval flag, not POSIX `eval`. Fixed literal, project-local file. False-positive pattern match."))
+
+  (classification
+    (file "mcp-bridge/lib/security.js")
+    (line 49)
+    (category "DynamicCodeExecution")
+    (classification "legitimate-pattern-string")
+    (audit "boj-server#155 (2026-06-01)")
+    (rationale "security.js IS the danger-pattern detector. `\"eval(\"` is a needle in its haystack list, not an actual eval() call site. Inline comment on the same line already flags this as a tool false-positive."))
+
+  (classification
+    (file "mcp-bridge/main.d.ts")
+    (line 8)
+    (category "ExcessivePermissions")
+    (classification "legitimate-doc-comment")
+    (audit "boj-server#155 (2026-06-01)")
+    (rationale "`.d.ts` declaration file. The `-A` mention is inside a `//` documentation comment describing how end-users invoke the bridge (`deno run -A mcp-bridge/main.js`). Not a permission grant; not executable; comment is for human readers."))
+
+  (classification
+    (file "tests/aspect_security_test.zig")
+    (line 125)
+    (category "HardcodedSecret")
+    (classification "legitimate-test-fixture")
+    (audit "boj-server#155 (2026-06-01)")
+    (rationale "Anti-leak ASPECT test. The placeholder `ghp_xxxxxxxxxxxxxxxxxxxx` is the *needle* the test then asserts MUST NOT appear in response bodies / error detail. Removing it would defeat the test's purpose. Already carries an inline `hypatia-ignore: test-only placeholder, not a real token` annotation; line 132's `my_super_secret_password` is the same pattern."))
+
+  (classification
+    (file "flake.nix")
+    (category "SupplyChain")
+    (classification "legitimate-flake-lock-pinned")
+    (audit "boj-server#155 (2026-06-01)")
+    (rationale "Sibling `flake.lock` IS present at repo root and pins each input by `narHash` and `rev`. The panic-attack SupplyChain rule checks for in-file pinning (narHash/rev attrs in flake.nix itself) but does not detect the lockfile, which is the canonical Nix flakes pinning mechanism. Dependabot also bumps the lock weekly (e.g. PR #170 nixpkgs 4100e83 → e9a7635)."))
+
+  (classification
+    (file "tray/src/server.rs")
+    (line 130)
+    (category "UnboundedAllocation")
+    (classification "legitimate-user-config-file")
+    (audit "boj-server#155 (2026-06-01)")
+    (rationale "`std::fs::read_to_string(&path)` where path is `~/.config/boj-node/prefs.json` (`prefs_path()`, line 121). Owned by the local user, not attacker-controlled. The on-disk file is whatever the user's own settings dialog wrote. If a user wants to OOM their own tray process by manually writing a multi-GB prefs.json, that is a local-trust-boundary choice, not a remote attack surface."))
 )
