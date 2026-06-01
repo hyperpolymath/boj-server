@@ -2,7 +2,7 @@
   "$schema": "https://boj.dev/schemas/cartridge/v1.json",
   "spdx": "MPL-2.0",
   "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath)",
-  "name": "opendatamcp",
+  "name": "opendata-mcp",
   "version": "0.1.0",
   "description": "Open Data Model Context Protocol. Access public datasets from your LLM application. Publish and distribute your Open Data via MCP servers.",
   "domain": "Open Data",

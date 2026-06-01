@@ -13,7 +13,8 @@
     "REST"
   ],
   "auth": {
-    "method": "bearer_token",
+    "method": "api-key",
+    "notes_method": "bearer_token",
     "env_var": "HEX_API_KEY",
     "credential_source": "vault-mcp"
   },

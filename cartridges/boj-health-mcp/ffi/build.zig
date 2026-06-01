@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MPL-2.0
 // Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
 //
-// boj-health cartridge FFI build — produces libboj_health.so
+// boj-health-mcp cartridge FFI build — produces libboj_health.so
 //
 // link_libc = true: boj-invoke targets x86_64-linux-gnu (glibc) and uses
 // DlDynLib (real dlopen). A glibc-linked .so is therefore fully compatible —

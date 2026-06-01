@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MPL-2.0
 // Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
-= origenemcp
+= origene-mcp
 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
 :spdx: MPL-2.0
 :tier: Ayo
@@ -17,11 +17,11 @@ Biomedical MCP Server Platform. Integrates 600+ tools and databases (ChEMBL, Pub
 |=== 
 | Tool | Description
 
-| `origenemcp_get_gene_info` | Get general information about a gene (e.g., TP53) from UniProt.
-| `origenemcp_search_compound` | Search for a compound in ChEMBL or PubChem.
-| `origenemcp_get_disease_info` | Get information about a disease from OpenTargets or Monarch.
-| `origenemcp_search_clinical_trials` | Search for clinical trials related to a disease or compound.
-| `origenemcp_get_protein_structure` | Get protein structure from PDB.
+| `origene-mcp_get_gene_info` | Get general information about a gene (e.g., TP53) from UniProt.
+| `origene-mcp_search_compound` | Search for a compound in ChEMBL or PubChem.
+| `origene-mcp_get_disease_info` | Get information about a disease from OpenTargets or Monarch.
+| `origene-mcp_search_clinical_trials` | Search for clinical trials related to a disease or compound.
+| `origene-mcp_get_protein_structure` | Get protein structure from PDB.
 |=== 
 
 == Architecture
@@ -53,7 +53,7 @@ cd adapter && zig build
 == Status
 
 Alpha (CRG D). Cartridge metadata declared in `cartridge.json`; 5 tool(s) exposed.
-Not yet dogfooded externally. See `docs/READINESS.adoc` at repo root for the
+Not yet dogfooded externally. See `docs/READINESS.md` at repo root for the
 project-wide grade table and `docs/practice/DOGFOOD-LOG.adoc` for usage evidence.
 
 == Ports

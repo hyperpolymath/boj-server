@@ -4,7 +4,7 @@
   "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>",
   "name": "dns-shield-mcp",
   "version": "0.1.0",
-  "description": "DNS security shield \u2014 DoQ, DoH, DNSSEC, CAA",
+  "description": "DNS security shield — DoQ, DoH, DNSSEC, CAA",
   "domain": "security",
   "category": "domain",
   "tier": "Ayo",

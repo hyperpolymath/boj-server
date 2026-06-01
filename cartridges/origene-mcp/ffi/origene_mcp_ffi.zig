@@ -6,7 +6,7 @@
 const std = @import("std");
 const shim = @import("cartridge_shim.zig");
 
-const CARTRIDGE_NAME_PTR: [*:0]const u8 = "origenemcp";
+const CARTRIDGE_NAME_PTR: [*:0]const u8 = "origene-mcp";
 const CARTRIDGE_VERSION_PTR: [*:0]const u8 = "0.1.0";
 
 export fn boj_cartridge_init() callconv(.c) c_int {
@@ -47,8 +47,8 @@ export fn boj_cartridge_invoke(
     return shim.writeResult(out_buf, in_out_len, body);
 }
 
-test "boj_cartridge_name returns origenemcp" {
-    try std.testing.expectEqualStrings("origenemcp", std.mem.span(boj_cartridge_name()));
+test "boj_cartridge_name returns origene-mcp" {
+    try std.testing.expectEqualStrings("origene-mcp", std.mem.span(boj_cartridge_name()));
 }
 
 test "boj_cartridge_init returns 0" {

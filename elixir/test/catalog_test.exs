@@ -59,9 +59,9 @@ defmodule BojRest.CatalogTest do
     assert :not_found = BojRest.Catalog.get("__definitely_not_a_real_cartridge__")
   end
 
-  test "get/1 returns {:ok, cart} for boj-health" do
-    assert {:ok, cart} = BojRest.Catalog.get("boj-health")
-    assert cart["name"] == "boj-health"
+  test "get/1 returns {:ok, cart} for boj-health-mcp" do
+    assert {:ok, cart} = BojRest.Catalog.get("boj-health-mcp")
+    assert cart["name"] == "boj-health-mcp"
     assert Map.has_key?(cart, "ffi")
   end
 
@@ -82,15 +82,17 @@ defmodule BojRest.CatalogTest do
     end)
   end
 
-  test "auth method is always a known value" do
-    known = ["none", "api-key", "api_key", "api_key_header", "api_token",
-             "bearer", "bearer_token", "oauth", "oauth2", "session-token",
-             "basic", "mtls", "custom", "optional_bearer", "optional_api_key"]
+  test "auth method matches canonical schema enum (post-strict)" do
+    # Schema enum is ["none", "api-key", "oauth2", "vault"] — the strict gate
+    # since 2026-06-01 enforces this at load time. Any non-canonical legacy
+    # value would have been rejected by the catalog and never reached us.
+    canonical = ["none", "api-key", "oauth2", "vault"]
+
     BojRest.Catalog.list()
     |> Enum.each(fn cart ->
       method = get_in(cart, ["auth", "method"])
-      assert method in known,
-             "#{cart["name"]} has unknown auth.method: #{method}"
+      assert method in canonical,
+             "#{cart["name"]} has non-canonical auth.method: #{inspect(method)} — should be in #{inspect(canonical)}"
     end)
   end
 
@@ -125,10 +127,10 @@ defmodule BojRest.CatalogTest do
     end)
   end
 
-  test "boj-health has loopback configuration" do
-    {:ok, cart} = BojRest.Catalog.get("boj-health")
+  test "boj-health-mcp has loopback configuration" do
+    {:ok, cart} = BojRest.Catalog.get("boj-health-mcp")
     assert Map.has_key?(cart, "loopback") or Map.has_key?(cart, "ffi"),
-           "boj-health missing both loopback and ffi config"
+           "boj-health-mcp missing both loopback and ffi config"
   end
 
   test "catalog not found for empty string" do
@@ -206,4 +208,47 @@ defmodule BojRest.CatalogTest do
              "cartridge has blank name: #{inspect(name)}"
     end)
   end
+
+  # ── strict-mode validation (boj-server#183) ────────────────────────────────
+
+  test "every loaded cartridge has the required schema fields" do
+    # Strict mode rejects anything missing a top-level required field; if a
+    # cartridge made it into the catalog, it has $schema, spdx, copyright,
+    # name, version, description, domain, category, tier, protocols, auth, api, tools.
+    required = ~w($schema spdx copyright name version description domain category tier protocols auth api tools)
+
+    BojRest.Catalog.list()
+    |> Enum.each(fn cart ->
+      Enum.each(required, fn key ->
+        assert Map.has_key?(cart, key),
+               "#{cart["name"]} missing required field '#{key}' — strict validation should have rejected it"
+      end)
+    end)
+  end
+
+  test "schema mirror SHA-256 matches PINNED-SHA" do
+    schema_path = Path.expand("../../schemas/cartridge-v1.json", __DIR__)
+    pin_path = Path.expand("../../schemas/PINNED-SHA", __DIR__)
+
+    {:ok, schema_bytes} = File.read(schema_path)
+    actual_sha = :crypto.hash(:sha256, schema_bytes) |> Base.encode16(case: :lower)
+
+    {:ok, pin_text} = File.read(pin_path)
+
+    pinned_sha =
+      pin_text
+      |> String.split("\n")
+      |> Enum.find_value(fn line ->
+        case Regex.run(~r/Pin SHA-256:\s*([a-f0-9]{64})/, line) do
+          [_, hash] -> hash
+          _ -> nil
+        end
+      end)
+
+    assert pinned_sha != nil, "PINNED-SHA missing 'Pin SHA-256:' line"
+
+    assert actual_sha == pinned_sha,
+           "schema mirror drift: actual #{actual_sha} vs pinned #{pinned_sha}; update schemas/PINNED-SHA after an intentional bump"
+  end
 end
+

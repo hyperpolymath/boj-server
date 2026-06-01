@@ -1,8 +1,8 @@
-Mozilla Public License Version 2.0
+SPDX-License-Identifier: MPL-2.0
+SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
 
-This academic-workflow-mcp cartridge is licensed under the Mozilla Public
-License, Version 2.0 as the legal fallback. The preferred license is
-MPL-2.0.
+Academic Workflow Cartridge
 
-See SPDX-License-Identifier headers in source files.
-For MPL-2.0 text: https://opensource.org/licenses/MPL-2.0
+This software is licensed under the Mozilla Public License 2.0 (MPL-2.0).
+For the full licence text see the repository root LICENSE file, or
+https://www.mozilla.org/en-US/MPL/2.0/.

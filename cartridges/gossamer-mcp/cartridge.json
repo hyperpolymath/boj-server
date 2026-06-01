@@ -1,5 +1,5 @@
 {
-  "$schema": "https://boj.dev/schemas/cartridge/v1.json",
+  "$schema": "https://hyperpolymath.dev/standards/cartridges/cartridge-v1.json",
   "spdx": "MPL-2.0",
   "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath)",
   "name": "gossamer-mcp",

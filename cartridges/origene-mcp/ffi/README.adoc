@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MPL-2.0
 // Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath)
-= origenemcp / ffi — Zig FFI layer
+= origene-mcp / ffi — Zig FFI layer
 :orientation: deep
 
 == Purpose
@@ -14,7 +14,7 @@ Zig implementation of the connection state machine from .
 | File | Role
 
 | build.zig          | Zig build graph.
-| origenemcp_ffi.zig   | FFI implementation.
+| origene-mcp_ffi.zig   | FFI implementation.
 |=== 
 
 == Invariants
@@ -25,9 +25,9 @@ Zig implementation of the connection state machine from .
 
 == Test/proof surface
 
-Inline  blocks in origenemcp_ffi.zig. Run with .
+Inline  blocks in origene-mcp_ffi.zig. Run with .
 
 == Read-first
 
-. origenemcp_ffi.zig — FFI exports and guards.
+. origene-mcp_ffi.zig — FFI exports and guards.
 

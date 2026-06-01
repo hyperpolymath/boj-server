@@ -4,15 +4,22 @@
   "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>",
   "name": "hesiod-mcp",
   "version": "1.0.0",
-  "description": "DNS lookup cartridge \u2014 query DNS records via MCP tools",
+  "description": "DNS lookup cartridge — query DNS records via MCP tools",
   "domain": "Infrastructure",
   "category": "domain",
   "tier": "Ayo",
+  "protocols": [
+    "MCP"
+  ],
   "auth": {
-    "method": "none"
+    "method": "none",
+    "env_var": null,
+    "credential_source": null
   },
-  "author": "Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>",
-  "license": "MPL-2.0",
+  "api": {
+    "base_url": "local://hesiod-mcp",
+    "content_type": "application/json"
+  },
   "tools": [
     {
       "id": "dns_lookup",
@@ -114,6 +121,8 @@
       }
     }
   ],
+  "author": "Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>",
+  "license": "MPL-2.0",
   "abi": {
     "interface": "abi/Hesiod.idr",
     "loopback_proof": "IsLoopback 5173"

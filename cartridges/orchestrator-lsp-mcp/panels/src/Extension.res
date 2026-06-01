@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MPL-2.0
 // Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+// hypatia:ignore cicd_rules/banned_language_file -- VSCode extension panel; AffineScript targets wasm and has no vscode/LSP-client bindings to host a JS editor extension (cf. panels/package.json documented npm exception). Unblock: AffineScript VSCode/LSP-client bindings.
 //
 // Extension.res — BoJ Orchestrator LSP — VSCode extension entry point.
 //

@@ -4,47 +4,80 @@
   "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath)",
   "name": "bofig-mcp",
   "version": "1.0.0",
-  "description": "Bofig Cartridge \u2014 Evidence graph query tools for investigative workflows",
+  "description": "Bofig Cartridge — Evidence graph query tools for investigative workflows",
   "domain": "Research",
   "category": "domain",
   "tier": "Ayo",
+  "protocols": [
+    "MCP"
+  ],
   "auth": {
-    "method": "none"
+    "method": "none",
+    "env_var": null,
+    "credential_source": null
   },
-  "author": "Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>",
-  "license": "MPL-2.0",
+  "api": {
+    "base_url": "local://bofig-mcp",
+    "content_type": "application/json"
+  },
   "tools": [
     {
       "id": "query_evidence",
       "name": "Query Evidence",
-      "description": "Query evidence by ID from the graph database"
+      "description": "Query evidence by ID from the graph database",
+      "inputSchema": {
+        "type": "object",
+        "properties": {}
+      }
     },
     {
       "id": "search_evidence",
       "name": "Search Evidence",
-      "description": "Search evidence by keyword (title, description, source)"
+      "description": "Search evidence by keyword (title, description, source)",
+      "inputSchema": {
+        "type": "object",
+        "properties": {}
+      }
     },
     {
       "id": "get_connections",
       "name": "Get Connections",
-      "description": "Get all connections/relationships for an entity in the graph"
+      "description": "Get all connections/relationships for an entity in the graph",
+      "inputSchema": {
+        "type": "object",
+        "properties": {}
+      }
     },
     {
       "id": "find_path",
       "name": "Find Path",
-      "description": "Find shortest path between two entities in the evidence graph"
+      "description": "Find shortest path between two entities in the evidence graph",
+      "inputSchema": {
+        "type": "object",
+        "properties": {}
+      }
     },
     {
       "id": "execute_query",
       "name": "Execute Query",
-      "description": "Execute a custom graph query"
+      "description": "Execute a custom graph query",
+      "inputSchema": {
+        "type": "object",
+        "properties": {}
+      }
     },
     {
       "id": "get_graph_stats",
       "name": "Get Graph Stats",
-      "description": "Get overall statistics about the evidence graph"
+      "description": "Get overall statistics about the evidence graph",
+      "inputSchema": {
+        "type": "object",
+        "properties": {}
+      }
     }
   ],
+  "author": "Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>",
+  "license": "MPL-2.0",
   "abi": {
     "interface": "abi/Bofig.idr",
     "loopback_proof": "IsLoopback 5178"

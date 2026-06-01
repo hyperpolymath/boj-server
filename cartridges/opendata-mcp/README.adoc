@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MPL-2.0
 // Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
-= opendatamcp
+= opendata-mcp
 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
 :spdx: MPL-2.0
 :tier: Ayo
@@ -17,11 +17,11 @@ Open Data Model Context Protocol. Access public datasets from your LLM applicati
 |=== 
 | Tool | Description
 
-| `opendatamcp_query_dataset` | Query a public dataset (e.g., Switzerland SBB train disruptions).
-| `opendatamcp_list_datasets` | List available public datasets.
-| `opendatamcp_get_dataset_info` | Get metadata about a specific dataset.
-| `opendatamcp_publish_dataset` | Publish a new Open Data dataset (for contributors).
-| `opendatamcp_search_datasets` | Search for datasets by keywords.
+| `opendata-mcp_query_dataset` | Query a public dataset (e.g., Switzerland SBB train disruptions).
+| `opendata-mcp_list_datasets` | List available public datasets.
+| `opendata-mcp_get_dataset_info` | Get metadata about a specific dataset.
+| `opendata-mcp_publish_dataset` | Publish a new Open Data dataset (for contributors).
+| `opendata-mcp_search_datasets` | Search for datasets by keywords.
 |=== 
 
 == Architecture
@@ -53,7 +53,7 @@ cd adapter && zig build
 == Status
 
 Alpha (CRG D). Cartridge metadata declared in `cartridge.json`; 5 tool(s) exposed.
-Not yet dogfooded externally. See `docs/READINESS.adoc` at repo root for the
+Not yet dogfooded externally. See `docs/READINESS.md` at repo root for the
 project-wide grade table and `docs/practice/DOGFOOD-LOG.adoc` for usage evidence.
 
 == Ports

@@ -31,7 +31,7 @@ import Data.List
 public export
 data BotGate
   = Rhodibot      -- Identity & structure (RSR compliance, file layout)
-  | Echidnabot    -- Formal verification (believe_me, Admitted, sorry)
+  | Echidnabot    -- Formal verification gate (totality/soundness escapes)
   | Sustainabot   -- Eco/economic efficiency (dependency health, bloat)
   | Panicbot      -- Static security audit (OWASP, secrets, CVEs)
   | Glambot       -- Presentation (docs, README, TOPOLOGY, formatting)

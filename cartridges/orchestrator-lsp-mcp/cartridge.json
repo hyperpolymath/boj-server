@@ -4,6 +4,7 @@
   "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>",
   "name": "orchestrator-lsp-mcp",
   "version": "0.1.0",
+  "status": "ffi_only",
   "status": "ready",
   "description": "Cross-domain LSP orchestrator. Routes LSP requests across all 12 poly-*-lsp servers (cloud, container, iac, k8s, db, queue, secret, git, ssg, proof, observability, browser) via a single GenLSP supervisor. Inspired by poly-orchestrator-lsp (polystack, archived). Wraps the 12 domain servers into one unified textDocument interface with domain-routing based on workspace root and file type.",
   "domain": "LSP",
@@ -24,9 +25,9 @@
     "content_type": "application/json"
   },
   "design_notes": [
-    "Supervisor tree: LSPServer + LSPClientPool (\u00d712) + ExecutionRegistry + ExecutionSupervisor",
+    "Supervisor tree: LSPServer + LSPClientPool (×12) + ExecutionRegistry + ExecutionSupervisor",
     "Stack parser reads .machine_readable/integrations/*.a2ml to discover active poly-*-lsp endpoints",
-    "Planner routes each LSP request to the correct domain server(s) \u2014 cross-domain queries fan-out",
+    "Planner routes each LSP request to the correct domain server(s) — cross-domain queries fan-out",
     "VeriSimDB client tracks orchestration session history and capability advertisement",
     "VSCode extension (ReScript, not TypeScript) exposes this as a single multi-domain language server"
   ],
@@ -43,15 +44,11 @@
           },
           "domains": {
             "type": "array",
-            "items": {
-              "type": "string"
-            },
+            "items": { "type": "string" },
             "description": "Domain LSP servers to activate (e.g. ['git', 'k8s', 'db']). Empty = all."
           }
         },
-        "required": [
-          "workspace_root"
-        ]
+        "required": ["workspace_root"]
       }
     },
     {
@@ -73,11 +70,7 @@
             "description": "LSP method parameters (JSON)"
           }
         },
-        "required": [
-          "session_id",
-          "method",
-          "params"
-        ]
+        "required": ["session_id", "method", "params"]
       }
     },
     {
@@ -91,9 +84,7 @@
             "description": "Session ID to stop"
           }
         },
-        "required": [
-          "session_id"
-        ]
+        "required": ["session_id"]
       }
     },
     {
@@ -107,9 +98,7 @@
             "description": "Session ID"
           }
         },
-        "required": [
-          "session_id"
-        ]
+        "required": ["session_id"]
       }
     }
   ],
@@ -125,5 +114,5 @@
     ],
     "note": "Zig FFI stub delegates to Elixir GenLSP application via port protocol"
   },
-  "upstream_reference": "polystack/poly-orchestrator-lsp (archived 2026) \u2014 design reference only, not copied"
+  "upstream_reference": "polystack/poly-orchestrator-lsp (archived 2026) — design reference only, not copied"
 }

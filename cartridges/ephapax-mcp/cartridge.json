@@ -4,42 +4,71 @@
   "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath)",
   "name": "ephapax-mcp",
   "version": "1.0.0",
-  "description": "Ephapax Cartridge \u2014 Proof-compiler query tools for formal verification workflows",
+  "description": "Ephapax Cartridge — Proof-compiler query tools for formal verification workflows",
   "domain": "Formal Verification",
   "category": "domain",
   "tier": "Ayo",
+  "protocols": [
+    "MCP"
+  ],
   "auth": {
-    "method": "none"
+    "method": "none",
+    "env_var": null,
+    "credential_source": null
   },
-  "author": "Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>",
-  "license": "MPL-2.0",
+  "api": {
+    "base_url": "local://ephapax-mcp",
+    "content_type": "application/json"
+  },
   "tools": [
     {
       "id": "query_proof",
       "name": "Query Proof",
-      "description": "Query proof metadata by theorem name (status, complexity, dependencies)"
+      "description": "Query proof metadata by theorem name (status, complexity, dependencies)",
+      "inputSchema": {
+        "type": "object",
+        "properties": {}
+      }
     },
     {
       "id": "list_proven_theorems",
       "name": "List Proven Theorems",
-      "description": "List all proven theorems in a module"
+      "description": "List all proven theorems in a module",
+      "inputSchema": {
+        "type": "object",
+        "properties": {}
+      }
     },
     {
       "id": "type_check_expression",
       "name": "Type Check Expression",
-      "description": "Type-check an expression against the proof-compiler type system"
+      "description": "Type-check an expression against the proof-compiler type system",
+      "inputSchema": {
+        "type": "object",
+        "properties": {}
+      }
     },
     {
       "id": "analyze_proof",
       "name": "Analyze Proof",
-      "description": "Analyze proof complexity, size, and dependency tree"
+      "description": "Analyze proof complexity, size, and dependency tree",
+      "inputSchema": {
+        "type": "object",
+        "properties": {}
+      }
     },
     {
       "id": "validate_theorem",
       "name": "Validate Theorem",
-      "description": "Validate that a theorem's proof is closed (Qed, not Admitted)"
+      "description": "Validate that a theorem's proof is closed (Qed, not Admitted)",
+      "inputSchema": {
+        "type": "object",
+        "properties": {}
+      }
     }
   ],
+  "author": "Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>",
+  "license": "MPL-2.0",
   "abi": {
     "interface": "abi/Ephapax.idr",
     "loopback_proof": "IsLoopback 5175"

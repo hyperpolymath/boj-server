@@ -13,7 +13,8 @@
     "REST"
   ],
   "auth": {
-    "method": "bearer_token",
+    "method": "api-key",
+    "notes_method": "bearer_token",
     "env_var": "AIRTABLE_API_KEY",
     "credential_source": "vault-mcp"
   },
@@ -150,7 +151,7 @@
     },
     {
       "name": "airtable_update_record",
-      "description": "Update an existing record's field values (PATCH \u2014 only specified fields are updated)",
+      "description": "Update an existing record's field values (PATCH — only specified fields are updated)",
       "inputSchema": {
         "type": "object",
         "properties": {

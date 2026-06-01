@@ -14,7 +14,8 @@
     "REST"
   ],
   "auth": {
-    "method": "api_key_header",
+    "method": "api-key",
+    "notes_method": "api_key_header",
     "header": "x-api-key",
     "env_var": "ANTHROPIC_API_KEY",
     "credential_source": "vault-mcp"
@@ -73,7 +74,7 @@
           },
           "temperature": {
             "type": "number",
-            "description": "Sampling temperature 0.0\u20131.0 (default 1.0 = standard).",
+            "description": "Sampling temperature 0.0–1.0 (default 1.0 = standard).",
             "default": 1.0
           }
         },

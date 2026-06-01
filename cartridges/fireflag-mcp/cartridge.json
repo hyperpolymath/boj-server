@@ -4,42 +4,71 @@
   "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath)",
   "name": "fireflag-mcp",
   "version": "1.0.0",
-  "description": "Fireflag Cartridge \u2014 Extension-to-MCP mapping and discovery tools",
+  "description": "Fireflag Cartridge — Extension-to-MCP mapping and discovery tools",
   "domain": "Developer Tools",
   "category": "domain",
   "tier": "Ayo",
+  "protocols": [
+    "MCP"
+  ],
   "auth": {
-    "method": "none"
+    "method": "none",
+    "env_var": null,
+    "credential_source": null
   },
-  "author": "Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>",
-  "license": "MPL-2.0",
+  "api": {
+    "base_url": "local://fireflag-mcp",
+    "content_type": "application/json"
+  },
   "tools": [
     {
       "id": "map_extension",
       "name": "Map Extension",
-      "description": "Map an extension directory to available MCP tools"
+      "description": "Map an extension directory to available MCP tools",
+      "inputSchema": {
+        "type": "object",
+        "properties": {}
+      }
     },
     {
       "id": "list_mapped_extensions",
       "name": "List Mapped Extensions",
-      "description": "List all mapped extensions with their MCP capabilities"
+      "description": "List all mapped extensions with their MCP capabilities",
+      "inputSchema": {
+        "type": "object",
+        "properties": {}
+      }
     },
     {
       "id": "get_extension_tools",
       "name": "Get Extension Tools",
-      "description": "Get available MCP tools for a specific extension"
+      "description": "Get available MCP tools for a specific extension",
+      "inputSchema": {
+        "type": "object",
+        "properties": {}
+      }
     },
     {
       "id": "validate_extension",
       "name": "Validate Extension",
-      "description": "Validate extension configuration and structure"
+      "description": "Validate extension configuration and structure",
+      "inputSchema": {
+        "type": "object",
+        "properties": {}
+      }
     },
     {
       "id": "discover_extensions",
       "name": "Discover Extensions",
-      "description": "Discover extensions in a directory and map their capabilities"
+      "description": "Discover extensions in a directory and map their capabilities",
+      "inputSchema": {
+        "type": "object",
+        "properties": {}
+      }
     }
   ],
+  "author": "Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>",
+  "license": "MPL-2.0",
   "abi": {
     "interface": "abi/Fireflag.idr",
     "loopback_proof": "IsLoopback 5177"

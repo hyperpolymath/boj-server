@@ -13,7 +13,8 @@
     "GraphQL"
   ],
   "auth": {
-    "method": "bearer_token",
+    "method": "api-key",
+    "notes_method": "bearer_token",
     "env_var": "RAILWAY_TOKEN",
     "credential_source": "vault-mcp"
   },

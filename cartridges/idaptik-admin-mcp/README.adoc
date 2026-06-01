@@ -60,5 +60,5 @@ cd adapter && zig build
 == Status
 
 Alpha (CRG D). Cartridge metadata declared in `cartridge.json`; 10 tool(s) exposed.
-Not yet dogfooded externally. See `docs/READINESS.adoc` at repo root for the
+Not yet dogfooded externally. See `docs/READINESS.md` at repo root for the
 project-wide grade table and `docs/practice/DOGFOOD-LOG.adoc` for usage evidence.

@@ -45,6 +45,31 @@ if [ ! -d "$SRC" ]; then
     exit 1
 fi
 
+# Strict-validate the registry before adopting its manifests. The registry's
+# own CI gate already enforces this against main, but defense-in-depth means
+# we never copy known-bad manifests into a host cache.
+#
+# Skip if the registry doesn't ship the Deno validator (older snapshots).
+# Skip if Deno isn't installed on the host — the catalog will validate at
+# load time regardless.
+VALIDATOR="$WORK/registry/tools/validate-cartridges"
+if [ -d "$VALIDATOR" ] && command -v deno >/dev/null 2>&1; then
+    echo "Strict-validating registry manifests against bundled schema..."
+    if ! (cd "$VALIDATOR" && deno task strict >/dev/null 2>&1); then
+        echo "error: registry failed strict schema validation; refusing to populate cache" >&2
+        echo "  re-run with verbose output:" >&2
+        echo "    cd $VALIDATOR && deno task audit-verbose" >&2
+        exit 1
+    fi
+    echo "  registry strict-valid"
+else
+    if [ ! -d "$VALIDATOR" ]; then
+        echo "note: registry has no tools/validate-cartridges — skipping strict pre-validation"
+    else
+        echo "note: deno not installed — skipping strict pre-validation; catalog will validate at load"
+    fi
+fi
+
 # Stage the flattened tree beside the target, then swap it in, so a concurrent
 # reader never observes a half-populated cache.
 STAGE="$(mktemp -d "${TARGET%/}.stage.XXXXXX" 2>/dev/null || mktemp -d)"
@@ -66,8 +91,31 @@ done < <(find "$SRC" -type f -name cartridge.json | sort)
 
 echo "Flattened $count cartridges"
 
+# Also copy the registry's pinned schema mirror beside the cache. The Elixir
+# catalog (BojRest.Catalog) defaults to looking for the schema at
+# <root>/../schemas/cartridge-v1.json, so placing it as a sibling of the
+# flattened cartridges directory makes the cache self-contained.
+SCHEMA_SRC="$WORK/registry/schemas"
+if [ -d "$SCHEMA_SRC" ]; then
+    SCHEMA_STAGE="$STAGE.schemas"
+    rm -rf "$SCHEMA_STAGE"
+    cp -r "$SCHEMA_SRC" "$SCHEMA_STAGE"
+fi
+
 # Atomic-ish swap: move the old cache aside, move the new one in, drop the old.
+# When schemas are present, swap them as a sibling of TARGET so the layout is
+#   <parent>/cartridges/        (renamed from $STAGE)
+#   <parent>/schemas/           (renamed from $STAGE.schemas)
 mkdir -p "$(dirname "$TARGET")"
+if [ -n "${SCHEMA_STAGE:-}" ]; then
+    SCHEMA_TARGET="$(dirname "$TARGET")/schemas"
+    if [ -e "$SCHEMA_TARGET" ]; then
+        rm -rf "$SCHEMA_TARGET"
+    fi
+    mv "$SCHEMA_STAGE" "$SCHEMA_TARGET"
+    echo "Schema mirror staged at $SCHEMA_TARGET"
+fi
+
 if [ -e "$TARGET" ]; then
     OLD="$(mktemp -d "${TARGET%/}.old.XXXXXX" 2>/dev/null || mktemp -d)"
     rm -rf "$OLD"

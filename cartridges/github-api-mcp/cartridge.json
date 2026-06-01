@@ -4,7 +4,7 @@
   "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>",
   "name": "github-api-mcp",
   "version": "0.1.0",
-  "description": "GitHub REST API \u2014 repos, issues, PRs, search",
+  "description": "GitHub REST API — repos, issues, PRs, search",
   "domain": "development",
   "category": "domain",
   "tier": "Ayo",
