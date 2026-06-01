@@ -84,6 +84,53 @@ Each is a candidate "what could we prove that we currently just assume?"
 
 ---
 
+## 2.5 Echo-types — cross-cutting type-theoretic foundation
+
+**Owner directive 2026-06-01**: every proof wave below must first check `hyperpolymath/echo-types` for a reusable definition or lemma. If relevant, the wave consumes echo-types via a SHA-pinned import. If absent, the wave **extends echo-types first**, proves the extension there, and then consumes downstream. Cross-document: every consumer cites the echo-types module + commit; the echo-types module's `EXPLAINME.adoc` lists boj-server as a downstream consumer once the first wave imports it.
+
+### Why echo-types is the right foundation
+
+`echo-types` is the estate's constructive Agda formalisation of *proof-relevant lossy computation* — `--safe --without-K`, 0 postulates. Its core abstractions map directly onto boj-server's proof obligations:
+
+| boj-server invariant | echo-types primitive |
+|---|---|
+| Cartridge dispatch — distinct cartridges cannot collide on a message type | `EchoResidueTaxonomy` *indexed* residue form (proof-relevant distinguishability of dispatch keys) |
+| Multi-protocol composition — outputs of `Cᵢ` parse under input schema of `Cᵢ₊₁` | `EchoImageFactorizationProp` (epi-mono earn-back: the residue of the projection bears the witness that the next stage's precondition is satisfied) |
+| Credential isolation (BJ2) — a Teranga capability cannot leak across cartridges | Linear / affine bridge + `EchoSecurity` application module |
+| Audit log integrity (`local-coord-mcp`, MFA-001 to MFA-006) | `EchoProvenance` application module (hash-chain as echo: the digest is the residue that constrains the preimage) |
+| Cost / budget proofs (Glama scoring, panel cost-meters) | Tropical bridge + `EchoResidueTaxonomy` *cost* residue form |
+| Effect / capability tracking across L4–L8 boundaries | Graded modality bridge (loss-graded reindexing per `docs/retractions.adoc` R-2026-05-18) |
+| Class-J axiom witnesses (5 in `SafetyLemmas.idr`) | `EchoResidueTaxonomy` *generic Σ-cert* residue form |
+| Federated coord (ADR-0010) role-projection | Choreographic bridge |
+| Adversary-knowledge bounds | Epistemic bridge |
+
+The drift = echo + tropical cost composition (per VeriSimDB foundation pack) is the single most natural fit for boj-server's anchor theorem.
+
+### Status of echo-types at 2026-06-01
+
+Per `echo-types/EXPLAINME.adoc` and `.machine_readable/6a2/STATE.a2ml`:
+
+- Core echo / fiber theorems present (`echo-intro`, `map-over`, `map-over-id`, `map-over-comp`, `map-square`).
+- Bridges complete: linear, graded, tropical, choreographic, epistemic, CNO, Janus, Dyadic, Ordinal, Indexed, Relational, Categorical, Scope.
+- Eight residue forms in `EchoResidueTaxonomy` (trivial, identity, generic Σ-cert, linear-affine, indexed, cost, search, epistemic).
+- Investigation EI-2 (integration-recipe distinctness) terminated negatively via PATH B — **do not reopen**; treat as a settled negative result.
+- Ordinal/Buchholz track: 11 of 13 per-constructor rank-mono cases closed; Slice-3 headline closed via Route A in PR #142/#143.
+
+This means W1 and W2 of boj-server's proof roadmap can be expressed *today* in echo-types vocabulary without extension. W3-W6 likely require small extensions — to be identified per wave as the work begins.
+
+### Extension policy
+
+When a wave needs a definition not in echo-types:
+
+1. File the gap as an echo-types issue (`hyperpolymath/echo-types`), referencing the boj-server wave + theorem name.
+2. Land the extension in echo-types first (small, focused PR; passes `--safe --without-K`; no new postulates).
+3. SHA-pin the echo-types import in the boj-server proof PR.
+4. Echo-types `EXPLAINME.adoc` "Applied prototype hook" or downstream-consumers section lists boj-server.
+
+This keeps echo-types as the proof-foundation single-source-of-truth and prevents duplicate type definitions drifting across the estate.
+
+---
+
 ## 3. Competitive context — what the rest of the field claims
 
 ### The baseline
@@ -128,31 +175,37 @@ Agent D's plan, condensed. Each wave estimate is solo-with-Joshua at ~6-8 weeks 
 - `local-coord-mcp` closes P-04/P-05/P-06/P-07 (record format, CRC truncation, replay-equivalence, quarantine state machine) — 6 days, infrastructure already present.
 - `007-mcp` policy-apply type-safety — ~1 day.
 - One domain cartridge (e.g., `dap-mcp` or `bsp-mcp`) protocol dispatch uniqueness lemma — ~1 day.
+- **Echo-types import**: `EchoResidueTaxonomy` *indexed* residue form (dispatch keys); `EchoProvenance` for replay-equivalence as hash-chain echo. **No extension expected** — both present at echo-types HEAD.
 
 ### W2 — Invocation protocol soundness + multi-protocol composition (Weeks 5-12, ~8 days)
 - `CartridgeDispatch.invokeSound` (direct-invoke preserves type) — 2 days.
 - **`MultiProtocol.invokeChainSoundness`** ← the anchor theorem (see §5) — 3 days.
 - `sseFrameIntegrity` — 1 day.
 - Aligns with typed-wasm Phase 2 (L2 access-site carrier, ADR-0003 accepted 2026-05-30) as a case-study consumer.
+- **Echo-types import**: `EchoImageFactorizationProp` (the anchor theorem statement *is* an epi-mono earn-back across cartridge boundaries); graded modality bridge for invocation-effect tracking. **No extension expected** — Tier 2 EchoImageFactorizationProp landed 2026-05-28.
 
 ### W3 — Capability containment + vault isolation (Weeks 13-18, ~5 days)
 - `VaultIsolation` upgrade to dynamic isolation (cartridges added post-init) — 2 days.
 - `CapabilityContainment.borrowCap` (capability temporary-borrow, not store-or-re-export) — 2 days.
 - `CredentialFlow.credentialCannotEscape` — 1 day.
+- **Echo-types import**: linear/affine bridge + `EchoSecurity` application module. **Likely extension**: capability *borrow-and-return* may need a new linear-affine variant in echo-types — file as echo-types issue, land extension first.
 
 ### W4 — End-to-end safety case (Weeks 19-24, ~10 days)
 - `SafetyCase.e2eInferenceSound` — the umbrella theorem composing W1-W3 lemmas — 5 days bookkeeping.
 - `CompositionLemma.multiCartridgeChain` — chain induction — 2 days.
 - `AdversarialModel` — negative lemmas (can't forge IDs, can't bypass isolation, can't corrupt dispatch) — 1 day.
+- **Echo-types import**: tropical bridge (cost composition under chain), `EchoProvenance` (audit trail across the chain), epistemic bridge (adversary knowledge bound). **Possible extension**: composition lemma for chained echo factorizations — likely covered by `map-over-comp` but may need a chain-specific lemma; file as echo-types issue if so.
 
 ### W5 — Backend-assurance expansion (Weeks 25-28, ~4 days)
 - Audit + externally validate any new class-J axioms introduced by new cartridges — 2 days.
 - **Harness mechanisation** — formalise the discipline itself in Coq or Agda: "a class-J axiom is valid iff (trusted-extraction doc + property test + BEAM evidence)" — 2 days.
+- **Echo-types import**: `EchoResidueTaxonomy` *generic Σ-cert* residue form — class-J axioms are precisely Σ-cert residues with external-evidence witnesses. **Extension expected**: a new residue form "*externally-validated*" or a refinement of generic Σ-cert with a backend-assurance side-condition. File as echo-types issue first.
 
 ### W6 — Publication + standoff (Weeks 29+, ~2 days/cartridge)
 - Technical report on the W4 e2e proof.
 - Ready 3-5 proof-bearing cartridges for production.
 - Establish proof-maintenance policy (within 2 weeks of any proof-bearing PR, a `docs/proof-summary.md` follow-up must cite which theorems cover which invariants).
+- **Echo-types cross-document**: by W6 each of W1-W5's downstream consumers should be listed in echo-types `EXPLAINME.adoc` under a new "downstream consumers" section. Publication framing: "boj-server is the first capability-gateway *consumer* of the echo-types foundation; echo-types is its proof bedrock."
 
 ### Top-3 quick wins (1.5-2 total days — front-load before W1)
 
@@ -203,6 +256,12 @@ Solo + Joshua at 6-8 weeks proof per quarter ≈ 30 weeks of proof work over 18 
 ### D4 — proof-debt tracking discipline
 boj-server's `PROOF-NEEDS.md` and `docs/proof-debt.md` are already exemplary (Agent A says: estate reference for the Trusted-Base Reduction Policy). Question: do you want a **per-cartridge** `proof-summary.md` requirement (W6 policy), or just per-repo? Per-cartridge gives much higher resolution but is high-overhead.
 
+### D5 — echo-types extension governance
+Per the §2.5 owner directive, when a wave needs an echo-types extension, the workflow is: file as echo-types issue → land extension there first → SHA-pin in downstream boj-server PR → cross-link in `EXPLAINME.adoc`. Open sub-questions:
+- **Repo of record for boj-server-specific instances** — when an `EchoResidueTaxonomy` instance is *only* boj-server-relevant (e.g. a "cartridge-tier-validated" instance), does it live in echo-types (estate-wide) or boj-server (local)? Recommend echo-types for any instance with a re-usable shape, boj-server for one-off.
+- **Pace** — echo-types extension PRs must pass `--safe --without-K` and add no postulates. This is strict; W3 + W5 extensions may need 1-2 extra days each.
+- **Reciprocal documentation** — at what cadence does echo-types' `EXPLAINME.adoc` get refreshed with the downstream-consumers list? Recommend at each wave-completion checkpoint.
+
 ---
 
 ## 7. Open questions
@@ -234,5 +293,6 @@ The catalogue document (PR #179) proposed a 5-phase rollout (tooling → backfil
 - 4 Explore subagents fanned out 2026-06-01 ~13:30Z; all returned within ~12 minutes (existing state), ~6 minutes (trust chain), ~13 minutes (competitor baseline), ~6 minutes (roadmap).
 - Owner-direct verification corrected Agent C's claim about `launch-scaffolder` being the cartridge minter's replacement (it is not — it's a desktop launcher generator). The minter is retired with no replacement, deepening the Q2 stub-rewrite scope from 3 tools to 4.
 - Subagent transcripts at `/tmp/claude-1000/-home-hyperpolymath-developer-repos/.../tasks/`.
+- **2026-06-01 amendment**: section 2.5 (echo-types foundation), per-wave echo-types module mapping in section 4, and section 6 D5 (echo-types extension governance) added per owner directive: "in the proofs you do, you need to check the echo-types repo and make sure this is part of the proofing for the repo, if not, establish the extension to what is there and work down that path proving as you go, then cross document". Echo-types module references sourced from `echo-types/EXPLAINME.adoc` at 2026-06-01 HEAD.
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
