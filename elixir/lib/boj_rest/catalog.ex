@@ -74,7 +74,15 @@ defmodule BojRest.Catalog do
       {:ok, bytes} ->
         case Jason.decode(bytes) do
           {:ok, schema} ->
-            ExJsonSchema.Schema.resolve(schema)
+            # The canonical schema declares draft 2020-12; ex_json_schema only
+            # supports drafts 4/6/7. The schema's actual constructs (type,
+            # enum, pattern, required, properties, items, minItems) are all
+            # draft-4-compatible, so we rewrite `$schema` in-memory to a
+            # supported version before resolving. The on-disk file is
+            # unchanged so the PINNED-SHA mirror check still works.
+            schema
+            |> Map.put("$schema", "http://json-schema.org/draft-07/schema#")
+            |> ExJsonSchema.Schema.resolve()
 
           {:error, err} ->
             raise "BoJ catalog: schema mirror #{path} is not valid JSON: #{inspect(err)}"
