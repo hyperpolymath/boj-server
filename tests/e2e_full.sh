@@ -4,10 +4,14 @@
 #
 # BoJ Server — Comprehensive end-to-end test suite.
 #
-# Starts the zig server, exercises every REST endpoint (health, menu,
-# cartridge info for all 21 builtins, feedback-o-tron full cycle, order
-# ticket), tests the MCP bridge JSON-RPC protocol, then tears everything
-# down.
+# Starts the Elixir backend, exercises every REST endpoint (health, menu,
+# cartridge info for all 21 builtins, feedback-o-tron full cycle via the
+# unified /cartridge/:name/invoke dispatcher), tests the MCP bridge
+# JSON-RPC protocol, then tears everything down.
+#
+# Order-ticket flow is NOT exercised here — it is covered at the Zig FFI
+# layer by tests/order_ticket_e2e.sh. There is no `/order` HTTP endpoint
+# on the Elixir router (see boj-server#151).
 #
 # Usage:
 #   bash tests/e2e_full.sh
@@ -213,69 +217,61 @@ echo ""
 # ═══════════════════════════════════════════════════════════════════════
 # Step 6: Feedback-o-tron full cycle
 # ═══════════════════════════════════════════════════════════════════════
+# Cartridges auto-load via BojRest.Catalog at server boot — there is no
+# explicit /load route. All tool dispatches go through the unified
+# POST /cartridge/:name/invoke endpoint (singular `cartridge`).
 bold "Step 6: Feedback-o-tron full cycle"
 
-# 6a: Load feedback-mcp cartridge
-load_result=$(curl -sf -X POST "$BASE_URL/cartridges/feedback-mcp/load" 2>/dev/null || echo "{}")
-check "feedback-mcp load" '"status"' "$load_result"
-
-# 6b: Register (open_channel)
-reg_result=$(curl -sf -X POST "$BASE_URL/cartridges/feedback-mcp/invoke" \
+# 6a: Register (open_channel)
+reg_result=$(curl -sf -X POST "$BASE_URL/cartridge/feedback-mcp/invoke" \
     -H "Content-Type: application/json" \
     -d '{"tool":"open_channel","args":"{\"channel\":\"api\"}"}' 2>/dev/null || echo "{}")
 check "feedback register (open_channel)" '"slot"' "$reg_result"
 FEEDBACK_SLOT=$(echo "$reg_result" | jq -r '.slot // "0"' 2>/dev/null || echo "0")
 
-# 6c: Submit feedback (positive)
-submit_result=$(curl -sf -X POST "$BASE_URL/cartridges/feedback-mcp/invoke" \
+# 6b: Submit feedback (positive)
+submit_result=$(curl -sf -X POST "$BASE_URL/cartridge/feedback-mcp/invoke" \
     -H "Content-Type: application/json" \
     -d "{\"tool\":\"submit\",\"args\":\"{\\\"slot\\\":\\\"${FEEDBACK_SLOT}\\\",\\\"sentiment\\\":\\\"positive\\\"}\"}" \
     2>/dev/null || echo "{}")
 check "feedback submit (positive)" '"recorded"' "$submit_result"
 
-# 6d: Submit feedback (negative)
-submit_neg=$(curl -sf -X POST "$BASE_URL/cartridges/feedback-mcp/invoke" \
+# 6c: Submit feedback (negative)
+submit_neg=$(curl -sf -X POST "$BASE_URL/cartridge/feedback-mcp/invoke" \
     -H "Content-Type: application/json" \
     -d "{\"tool\":\"submit\",\"args\":\"{\\\"slot\\\":\\\"${FEEDBACK_SLOT}\\\",\\\"sentiment\\\":\\\"negative\\\"}\"}" \
     2>/dev/null || echo "{}")
 check "feedback submit (negative)" '"recorded"' "$submit_neg"
 
-# 6e: Summary
-summary_result=$(curl -sf -X POST "$BASE_URL/cartridges/feedback-mcp/invoke" \
+# 6d: Summary
+summary_result=$(curl -sf -X POST "$BASE_URL/cartridge/feedback-mcp/invoke" \
     -H "Content-Type: application/json" \
     -d '{"tool":"summary","args":"{}"}' 2>/dev/null || echo "{}")
 check "feedback summary" '"total_feedback"' "$summary_result"
 
-# 6f: Export
-export_result=$(curl -sf -X POST "$BASE_URL/cartridges/feedback-mcp/invoke" \
+# 6e: Export
+export_result=$(curl -sf -X POST "$BASE_URL/cartridge/feedback-mcp/invoke" \
     -H "Content-Type: application/json" \
     -d '{"tool":"export_feedback","args":"{}"}' 2>/dev/null || echo "{}")
 check "feedback export" '"export_feedback"' "$export_result"
 
-# 6g: Status check
-status_result=$(curl -sf -X POST "$BASE_URL/cartridges/feedback-mcp/invoke" \
+# 6f: Status check
+status_result=$(curl -sf -X POST "$BASE_URL/cartridge/feedback-mcp/invoke" \
     -H "Content-Type: application/json" \
     -d '{"tool":"status","args":"{}"}' 2>/dev/null || echo "{}")
 check "feedback status" '"feedback-o-tron"' "$status_result"
 
-# 6h: Deregister — close the channel
+# 6g: Deregister — close the channel
 # Note: deregister is done via the FFI fb_deregister; we test through
 # the list_channels tool which should still work after channel close
-list_result=$(curl -sf -X POST "$BASE_URL/cartridges/feedback-mcp/invoke" \
+list_result=$(curl -sf -X POST "$BASE_URL/cartridge/feedback-mcp/invoke" \
     -H "Content-Type: application/json" \
     -d '{"tool":"list_channels","args":"{}"}' 2>/dev/null || echo "{}")
 check "feedback list_channels" '"available"' "$list_result"
 echo ""
 
-# ═══════════════════════════════════════════════════════════════════════
-# Step 7: Order ticket flow
-# ═══════════════════════════════════════════════════════════════════════
-bold "Step 7: Order ticket"
-order_result=$(curl -sf -X POST "$BASE_URL/order" \
-    -H "Content-Type: application/json" \
-    -d '{"cartridges":["database-mcp","git-mcp"]}' 2>/dev/null || echo "{}")
-check "order ticket returns result" '"order"' "$order_result"
-echo ""
+# Step 7 (order-ticket flow) lives in tests/order_ticket_e2e.sh against
+# the Zig FFI catalogue — the Elixir router has no /order route. See #151.
 
 # ═══════════════════════════════════════════════════════════════════════
 # Step 8: MCP Bridge (JSON-RPC over stdio)
@@ -317,14 +313,17 @@ bold "Step 9: Negative / boundary tests"
 bad_cart=$(curl -sf -o /dev/null -w '%{http_code}' "$BASE_URL/cartridge/nonexistent-mcp" 2>/dev/null || echo "000")
 check "non-existent cartridge returns 404" "404" "$bad_cart"
 
-# Invalid order
-bad_order=$(curl -sf -o /dev/null -w '%{http_code}' -X POST "$BASE_URL/order" \
+# Invoke against non-existent cartridge — exercises the 404 branch in
+# the unified dispatcher (Step 7's old "invalid order returns error"
+# previously tested an analogous negative case against /order, which
+# doesn't exist; this is the equivalent at the cartridge layer).
+bad_dispatch=$(curl -sf -o /dev/null -w '%{http_code}' -X POST "$BASE_URL/cartridge/does-not-exist/invoke" \
     -H "Content-Type: application/json" \
-    -d '{"cartridges":["does-not-exist"]}' 2>/dev/null || echo "000")
-check "invalid order returns error code" "1" "$([ "$bad_order" != "200" ] && echo 1 || echo 0)"
+    -d '{"tool":"noop","args":"{}"}' 2>/dev/null || echo "000")
+check "invoke against unknown cartridge returns 404" "404" "$bad_dispatch"
 
 # Malformed JSON to invoke
-bad_invoke=$(curl -sf -o /dev/null -w '%{http_code}' -X POST "$BASE_URL/cartridges/feedback-mcp/invoke" \
+bad_invoke=$(curl -sf -o /dev/null -w '%{http_code}' -X POST "$BASE_URL/cartridge/feedback-mcp/invoke" \
     -H "Content-Type: application/json" \
     -d 'not-json' 2>/dev/null || echo "000")
 check "malformed JSON invoke returns error" "1" "$([ "$bad_invoke" != "200" ] && echo 1 || echo 0)"
