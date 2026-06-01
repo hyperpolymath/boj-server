@@ -1,14 +1,32 @@
 # SPDX-License-Identifier: MPL-2.0
+# Copyright (c) 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+#
+# Aligned with the documented caller pattern in
+# hyperpolymath/standards .github/workflows/scorecard-reusable.yml.
+# Previously this workflow was startup_failure-on-every-run because it
+# diverged from the reusable's documented caller shape:
+#   - missing `concurrency:` group (re-pushes piled up superseded runs)
+#   - `branch_protection_rule:` trigger (unused; complicates startup)
+#   - `secrets: inherit` against a reusable with no `secrets:` block
+#   - `permissions: read-all` instead of explicit `contents: read`
+# Pattern now matches the reusable's header example verbatim. Sister
+# fix landed in hyperpolymath/ephapax#264 (2026-06-01); this PR mirrors
+# it so the two repos stay in sync.
 name: Scorecards supply-chain security
 
 on:
-  branch_protection_rule:
-  schedule:
-    - cron: '23 4 * * 1'
   push:
     branches: [main]
+  schedule:
+    - cron: '23 4 * * 1'
+  workflow_dispatch:
 
-permissions: read-all
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
 
 jobs:
   analysis:
@@ -16,4 +34,3 @@ jobs:
       security-events: write
       id-token: write
     uses: hyperpolymath/standards/.github/workflows/scorecard-reusable.yml@e0caf11508a3989574713c78f5f444f2ce5e33ef
-    secrets: inherit
