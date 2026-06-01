@@ -1,0 +1,88 @@
+# SPDX-License-Identifier: MPL-2.0
+# Copyright (c) 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+#
+# BoJ NetworkPolicy — pod-network ingress restricted to HCG (tier-2).
+#
+# Defence-in-depth layer on top of the ClusterIP Service (k8s/service.yaml)
+# and the Cowboy/Zig loopback binds (BOJ_BIND_IP / APP_HOST). All three
+# layers must be violated before BoJ's back-side surface is reachable from
+# anywhere other than the HCG pod. Per ADR-0004 §1 and the Phase E rollout
+# runbook (`docs/integration/hcg-tier2-rollout-runbook.md`) tier-2
+# placement contract.
+#
+# Threat models this layer covers (which ClusterIP alone does not):
+#
+#   1. Compromised neighbour pod. Any pod in the cluster can today
+#      address BoJ via ClusterIP. This policy restricts ingress to pods
+#      labelled `app: http-capability-gateway`, so a compromised pod
+#      elsewhere cannot pivot.
+#   2. Operator misconfiguration. If a future kustomize/helm overlay
+#      re-introduces `type: NodePort` or `type: LoadBalancer`, this
+#      manifest still blocks external ingress at the pod-network layer.
+#   3. ADR-0004 §1 invariant 4 (not externally routable) reinforced —
+#      three independent layers (loopback bind, ClusterIP, NetworkPolicy)
+#      must all be violated for the invariant to be reachable.
+#
+# CNI requirement: enforced only by CNI plugins that implement
+# NetworkPolicy (Calico, Cilium, Weave-NetPol with `--vxlan`, etc.).
+# Flannel without VXLAN, or any CNI that doesn't ship a NetworkPolicy
+# controller, makes this manifest silently a no-op. Verify with
+# `kubectl get crd | grep networkpolicies` or your CNI's docs before
+# relying on this layer.
+#
+# Override pattern: legacy/standalone deployments that don't front BoJ
+# with HCG should either skip applying this manifest or override the
+# ingress source via a kustomize/helm overlay rather than editing this
+# canonical file. Example overlay (kustomize):
+#
+#   - op: replace
+#     path: /spec/ingress/0/from/0/podSelector/matchLabels/app
+#     value: my-custom-gateway
+#
+# Health-probe caveat: `kubelet` health probes originate from the node
+# IP rather than a pod, and are not selected by `podSelector`. Most CNI
+# implementations exempt kubelet probes implicitly; verify in staging
+# before production rollout. If your CNI does not, add an `ipBlock`
+# rule for the node CIDR range.
+#
+# Refs:
+#   - #135 (filing — defence-in-depth follow-up to Phase E)
+#   - hyperpolymath/standards#100 (Phase E parent)
+#   - hyperpolymath/standards#91  (ADR-0004 epic)
+#   - docs/decisions/0004-adopt-http-capability-gateway.md
+#   - docs/integration/hcg-tier2-rollout-runbook.md
+#   - #130 (Cowboy loopback bind), #131 (Service ClusterIP),
+#     #132 (Zig adapter APP_HOST) — the three loopback layers this extends
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: boj-server-ingress
+  labels:
+    app: boj-server
+  annotations:
+    hyperpolymath.dev/layer: "defence-in-depth"
+    hyperpolymath.dev/peers: "http-capability-gateway (tier-2)"
+spec:
+  podSelector:
+    matchLabels:
+      app: boj-server
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: http-capability-gateway
+      ports:
+        - protocol: TCP
+          port: 7700  # REST (current)
+        # Forward-compatible reserves — gRPC/GraphQL/SSE bind to these
+        # ports once the protocol adapters land. Pre-declared so future
+        # protocol rollouts need no NetworkPolicy edit.
+        - protocol: TCP
+          port: 7701  # gRPC (reserved)
+        - protocol: TCP
+          port: 7702  # GraphQL (reserved)
+        - protocol: TCP
+          port: 7703  # SSE (reserved)
