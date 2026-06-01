@@ -30,6 +30,13 @@ jobs:
         with:
           version: 0.15.2
 
+      - name: Fetch cartridges
+        # Cartridge source lives in the canonical registry, not this repo. Fetch
+        # it into a flat <name>/ cache and point the build loops below at it.
+        run: |
+          BOJ_CARTRIDGES_PATH="$RUNNER_TEMP/cartridges" bash scripts/fetch-cartridges.sh
+          echo "CARTS_ROOT=$RUNNER_TEMP/cartridges" >> "$GITHUB_ENV"
+
       - name: Build core FFI libraries
         run: cd ffi/zig && zig build -Doptimize=ReleaseSafe
 
@@ -37,7 +44,7 @@ jobs:
         run: |
           for cart in database-mcp fleet-mcp nesy-mcp agent-mcp cloud-mcp container-mcp k8s-mcp git-mcp secrets-mcp queues-mcp iac-mcp observe-mcp ssg-mcp proof-mcp lsp-mcp dap-mcp bsp-mcp feedback-mcp; do
             echo "Building $cart .so..."
-            cd "cartridges/$cart/ffi" && zig build -Doptimize=ReleaseSafe
+            cd "$CARTS_ROOT/$cart/ffi" && zig build -Doptimize=ReleaseSafe
             cd "$GITHUB_WORKSPACE"
           done
 
@@ -47,9 +54,9 @@ jobs:
           # Core static libraries and benchmark binary
           cp ffi/zig/zig-out/lib/*.a release-artifacts/core/
           cp ffi/zig/zig-out/bin/boj_bench release-artifacts/core/ 2>/dev/null || true
-          # Cartridge shared libraries
+          # Cartridge shared libraries (built from the fetched cache)
           for cart in database-mcp fleet-mcp nesy-mcp agent-mcp cloud-mcp container-mcp k8s-mcp git-mcp secrets-mcp queues-mcp iac-mcp observe-mcp ssg-mcp proof-mcp lsp-mcp dap-mcp bsp-mcp feedback-mcp; do
-            cp "cartridges/$cart/ffi/zig-out/lib/"*.so "release-artifacts/cartridges/" 2>/dev/null || true
+            cp "$CARTS_ROOT/$cart/ffi/zig-out/lib/"*.so "release-artifacts/cartridges/" 2>/dev/null || true
           done
 
       - name: Create release tarball

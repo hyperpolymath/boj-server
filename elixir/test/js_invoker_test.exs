@@ -3,7 +3,7 @@
 defmodule BojRest.JsInvokerTest do
   use ExUnit.Case, async: false
 
-  @cartridges_root Path.expand("../../cartridges", __DIR__)
+  @cartridges_root System.get_env("BOJ_CARTRIDGES_PATH") || Path.expand("../../cartridges", __DIR__)
 
   # ── deno discovery ──────────────────────────────────────────────────────────
 
