@@ -46,7 +46,7 @@ record BindAddress where
   constructor MkBindAddress
   host     : String
   port     : Int
-  proof    : IsLoopback
+  witness  : IsLoopback
 
 ||| The one and only production bind — 127.0.0.1:1066.
 ||| Port 1066 chosen in design-log decision-log 2026-04-20.
@@ -68,7 +68,7 @@ oo7_mcp_bind_port = cartridgeBind.port
 ||| Lets the adapter sanity-check that the proof travelled across FFI.
 export
 oo7_mcp_bind_family : Int
-oo7_mcp_bind_family = case cartridgeBind.proof of
+oo7_mcp_bind_family = case cartridgeBind.witness of
   Ipv4Loopback => 4
   Ipv6Loopback => 6
 
