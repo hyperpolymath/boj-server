@@ -26,6 +26,8 @@ modules    = Boj.Protocol
            , Boj.SafeAPIKey
            , Boj.CredentialIsolation
            , Boj.SafeWebSocket
+           , Boj.CartridgeDispatch
+           , Boj.APIContractCoverage
 
 depends    = base
            , contrib

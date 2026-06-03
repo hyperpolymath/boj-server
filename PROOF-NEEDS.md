@@ -10,9 +10,45 @@
 > greps. Keep both in sync when the marker count in
 > `src/abi/Boj/SafetyLemmas.idr` changes.
 
-## Current State (Updated 2026-05-18)
+## Build Verification (2026-06-03)
 
-- **src/abi/Boj/**: 16 Idris2 ABI files
+The full core ABI package now type-checks under the pinned toolchain
+(**Idris2 0.8.0**, Chez backend) — `cd src/abi && idris2 --typecheck boj.ipkg`
+builds all **17** modules clean. A re-verification on this date found six
+modules that the package build had never actually exercised (the `just
+typecheck` recipe used an invalid `--check --package boj boj.ipkg`
+invocation, and `CartridgeDispatch`/`APIContractCoverage` were absent from
+`boj.ipkg`). The fixes were purely in the proofs' construction — **theorem
+statements and the axiom budget are unchanged**:
+
+- `CartridgeDispatch` — `with`-clause syntax (0.8.0 needs the full LHS or
+  `_ |`); `dispatch` factored through a reducible helper so refused-
+  completeness is provable; conjunction/`Uninhabited` lemmas replace the
+  earlier `absurd` shortcuts.
+- `SafePromptInjection`, `SafeCORS` — `with`-abstraction rewrites the goal
+  to `True = True`, so the residual obligations are `Refl`.
+- `SafeHTTP` — missing `Data.List.Elem`/`Data.Maybe` imports, `IsJust`→
+  `isJust`, `all`→`allRec` (to match the `SafetyLemmas` lemmas), and
+  explicit `{xs, ys}` binders (auto-generalised implicits are erased).
+- `SafeWebSocket` — `FrameSizeSafe` is now `FrameSizeSafeUpTo maxFrameSize`
+  over a new bound-parameterised family. Baking the 16 MiB `maxFrameSize`
+  literal directly into a constructor's `LTE` index forced it into a unary
+  Nat and exhausted the elaborator; keeping the bound symbolic in the
+  constructor (and applying it in a synonym) fixes this with no loss of
+  strength.
+- `APIContractCoverage` — `representativeCatalogue` in a signature was being
+  auto-bound as a fresh implicit (shadowing the global); fully qualified.
+- `SafetyLemmas` — added the constructive lemma `allTake` (used by the
+  header/delimiter `take` proofs). No new axioms.
+
+`just verify-no-believe-me` was also reconciled: it had enforced *zero*
+`believe_me`, which contradicts the sanctioned 5-axiom trusted base; it now
+permits exactly the 5 `%unsafe` class-(J) axioms in `SafetyLemmas.idr` and
+fails on anything else (or on axiom-count drift).
+
+## Current State (Updated 2026-06-03)
+
+- **src/abi/Boj/**: 17 Idris2 ABI files
 - **Dangerous patterns**: **5** `believe_me` invocations, **all** in
   `src/abi/Boj/SafetyLemmas.idr`, **all** classified `(J)` genuinely
   unavoidable (see audit table below). `logSafeBounded` (SafeAPIKey.idr)

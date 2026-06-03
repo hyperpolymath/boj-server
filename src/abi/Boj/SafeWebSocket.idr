@@ -121,34 +121,49 @@ public export
 maxControlFrameSize : Nat
 maxControlFrameSize = 125
 
+||| A frame whose payload length `n` is bounded by an arbitrary `bound`.
+|||
+||| The bound is a *parameter*, deliberately not a baked-in literal: keeping it
+||| symbolic in the constructor's `LTE n bound` index stops the elaborator from
+||| forcing the 16 MiB `maxFrameSize` into unary form at data-declaration time
+||| (which exhausts memory in Idris2 0.8.0). The concrete data- and control-frame
+||| predicates are recovered as nullary type synonyms below — `maxFrameSize` then
+||| appears only in an *application* position, which the elaborator handles lazily.
 public export
-data FrameSizeSafe : Nat -> Type where
-  MkFrameSizeSafe : (n : Nat) ->
-                    {auto prf : LTE n Boj.SafeWebSocket.maxFrameSize} ->
-                    FrameSizeSafe n
+data FrameSizeSafeUpTo : (bound : Nat) -> Nat -> Type where
+  MkSizeSafe : (n : Nat) ->
+               {auto prf : LTE n bound} ->
+               FrameSizeSafeUpTo bound n
 
+||| A data frame is size-safe when its length is within `maxFrameSize`.
 public export
-data ControlFrameSizeSafe : Nat -> Type where
-  MkControlFrameSizeSafe : (n : Nat) ->
-                           {auto prf : LTE n Boj.SafeWebSocket.maxControlFrameSize} ->
-                           ControlFrameSizeSafe n
+FrameSizeSafe : Nat -> Type
+FrameSizeSafe = FrameSizeSafeUpTo Boj.SafeWebSocket.maxFrameSize
 
-export
-controlImpliesFrameSafe : ControlFrameSizeSafe n -> FrameSizeSafe n
+||| A control frame is size-safe when its length is within `maxControlFrameSize`.
+public export
+ControlFrameSizeSafe : Nat -> Type
+ControlFrameSizeSafe = FrameSizeSafeUpTo Boj.SafeWebSocket.maxControlFrameSize
+
 ||| maxControlFrameSize (125) ≤ maxFrameSize (16 777 216).
 maxControlLeqMaxFrame : LTE Boj.SafeWebSocket.maxControlFrameSize Boj.SafeWebSocket.maxFrameSize
-maxControlLeqMaxFrame = fromLteTrue 125 16777216 Refl
+maxControlLeqMaxFrame = lteReflectsLTE 125 16777216 Refl
 
-controlImpliesFrameSafe (MkControlFrameSizeSafe n {prf}) =
-  MkFrameSizeSafe n {prf = transitive prf maxControlLeqMaxFrame}
+||| Control-frame size-safety implies data-frame size-safety: a payload within
+||| the 125-byte control limit is a fortiori within the data-frame limit. Proved
+||| by transitivity of `LTE` (bound weakening), not by re-checking the literal.
+export
+controlImpliesFrameSafe : ControlFrameSizeSafe n -> FrameSizeSafe n
+controlImpliesFrameSafe (MkSizeSafe n {prf}) =
+  MkSizeSafe n {prf = transitive prf maxControlLeqMaxFrame}
 
 export
 emptyFrameSafe : FrameSizeSafe 0
-emptyFrameSafe = MkFrameSizeSafe 0 {prf = LTEZero}
+emptyFrameSafe = MkSizeSafe 0 {prf = LTEZero}
 
 export
 emptyControlFrameSafe : ControlFrameSizeSafe 0
-emptyControlFrameSafe = MkControlFrameSizeSafe 0 {prf = LTEZero}
+emptyControlFrameSafe = MkSizeSafe 0 {prf = LTEZero}
 
 --------------------------------------------------------------------------------
 -- Origin Validation
@@ -221,17 +236,17 @@ parseRoundtrips MessageTooBig   = Refl
 parseRoundtrips InternalError   = Refl
 
 ||| Every RFC 6455 close code lies in the range [1000, 1011].
-||| Proofs constructed via fromLteTrue on the closed-form values.
+||| Proofs constructed via lteReflectsLTE on the closed-form values.
 export
 closeCodeInRange : (c : WSCloseCode) -> (LTE 1000 (closeCodeToNat c), LTE (closeCodeToNat c) 1011)
-closeCodeInRange NormalClosure   = (fromLteTrue 1000 1000 Refl, fromLteTrue 1000 1011 Refl)
-closeCodeInRange GoingAway       = (fromLteTrue 1000 1001 Refl, fromLteTrue 1001 1011 Refl)
-closeCodeInRange ProtocolError   = (fromLteTrue 1000 1002 Refl, fromLteTrue 1002 1011 Refl)
-closeCodeInRange UnsupportedData = (fromLteTrue 1000 1003 Refl, fromLteTrue 1003 1011 Refl)
-closeCodeInRange InvalidPayload  = (fromLteTrue 1000 1007 Refl, fromLteTrue 1007 1011 Refl)
-closeCodeInRange PolicyViolation = (fromLteTrue 1000 1008 Refl, fromLteTrue 1008 1011 Refl)
-closeCodeInRange MessageTooBig   = (fromLteTrue 1000 1009 Refl, fromLteTrue 1009 1011 Refl)
-closeCodeInRange InternalError   = (fromLteTrue 1000 1011 Refl, fromLteTrue 1011 1011 Refl)
+closeCodeInRange NormalClosure   = (lteReflectsLTE 1000 1000 Refl, lteReflectsLTE 1000 1011 Refl)
+closeCodeInRange GoingAway       = (lteReflectsLTE 1000 1001 Refl, lteReflectsLTE 1001 1011 Refl)
+closeCodeInRange ProtocolError   = (lteReflectsLTE 1000 1002 Refl, lteReflectsLTE 1002 1011 Refl)
+closeCodeInRange UnsupportedData = (lteReflectsLTE 1000 1003 Refl, lteReflectsLTE 1003 1011 Refl)
+closeCodeInRange InvalidPayload  = (lteReflectsLTE 1000 1007 Refl, lteReflectsLTE 1007 1011 Refl)
+closeCodeInRange PolicyViolation = (lteReflectsLTE 1000 1008 Refl, lteReflectsLTE 1008 1011 Refl)
+closeCodeInRange MessageTooBig   = (lteReflectsLTE 1000 1009 Refl, lteReflectsLTE 1009 1011 Refl)
+closeCodeInRange InternalError   = (lteReflectsLTE 1000 1011 Refl, lteReflectsLTE 1011 1011 Refl)
 
 --------------------------------------------------------------------------------
 -- Message Ordering
@@ -247,12 +262,12 @@ data InOrder : WSSequence -> WSSequence -> Type where
   MkInOrder : {auto prf : LT a.seqNum b.seqNum} -> InOrder a b
 
 export
-inOrderTrans : InOrder a b -> InOrder b c -> InOrder a c
+inOrderTrans : {a, b, c : WSSequence} -> InOrder a b -> InOrder b c -> InOrder a c
 inOrderTrans (MkInOrder {prf = ab}) (MkInOrder {prf = bc}) =
   MkInOrder {prf = transitive (lteSuccRight ab) bc}
 
 export
-inOrderIrreflexive : Not (InOrder a a)
+inOrderIrreflexive : {a : WSSequence} -> Not (InOrder a a)
 inOrderIrreflexive (MkInOrder {prf}) = absurd (succNotLTEpred a.seqNum prf)
   where
     succNotLTEpred : (n : Nat) -> LTE (S n) n -> Void

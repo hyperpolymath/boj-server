@@ -141,8 +141,10 @@ decideCredentialSafe p with (p.allowCredentials) proof credPrf
   decideCredentialSafe p | True with (elem Boj.SafeCORS.wildcardOrigin p.allowedOrigins) proof elemPrf
     decideCredentialSafe p | True | False =
       Left (NoWildcard p {prf = falseImpliesNotTrue _ elemPrf})
+    -- Both `with` scrutinees were rewritten to `True` in the goal, leaving the
+    -- pair of reflexive obligations `(True = True, True = True)`.
     decideCredentialSafe p | True | True =
-      Right (credPrf, elemPrf)
+      Right (Refl, Refl)
 
 export
 consOriginsValid : OriginValid o -> AllOriginsValid os -> AllOriginsValid (o :: os)
@@ -154,7 +156,7 @@ zeroMaxAgeReasonable = MkReasonableMaxAge 0 {prf = LTEZero}
 
 export
 oneHourMaxAgeReasonable : ReasonableMaxAge 3600
-oneHourMaxAgeReasonable = MkReasonableMaxAge 3600 {prf = fromLteTrue 3600 86400 Refl}
+oneHourMaxAgeReasonable = MkReasonableMaxAge 3600 {prf = lteReflectsLTE 3600 86400 Refl}
 
 --------------------------------------------------------------------------------
 -- Default Policies

@@ -49,7 +49,9 @@ decidePromptSafe : (s : String) ->
                           (containsInjectionPattern s = True)
 decidePromptSafe s with (containsInjectionPattern s) proof prf
   decidePromptSafe s | False = Left (MkPromptSafe s {prf = prf})
-  decidePromptSafe s | True = Right prf
+  -- `with` rewrote `containsInjectionPattern s` to `True` in the goal, so the
+  -- residual obligation is `True = True`.
+  decidePromptSafe s | True = Right Refl
 
 --------------------------------------------------------------------------------
 -- Role Boundary Safety
@@ -81,7 +83,8 @@ decideRoleBoundarySafe : (s : String) ->
                                 (isRoleBoundary s = True)
 decideRoleBoundarySafe s with (isRoleBoundary s) proof prf
   decideRoleBoundarySafe s | False = Left (MkRoleBoundarySafe s {prf = prf})
-  decideRoleBoundarySafe s | True = Right prf
+  -- `with` rewrote `isRoleBoundary s` to `True` in the goal.
+  decideRoleBoundarySafe s | True = Right Refl
 
 --------------------------------------------------------------------------------
 -- Delimiter Escape Safety
