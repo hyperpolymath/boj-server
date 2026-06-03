@@ -33,6 +33,45 @@ import Boj.Catalogue
 %default total
 
 -- ═══════════════════════════════════════════════════════════════════════════
+-- Boolean & Status Lemmas
+--
+-- `lookupCell` guards each cell with the conjunction
+--   `domain c == d && elem p (protocols c) && status c == Ready`.
+-- These lemmas let the dispatch invariants below extract each conjunct from a
+-- proof that the whole guard evaluated to True, without any axioms.
+-- ═══════════════════════════════════════════════════════════════════════════
+
+||| From `a && b = True`, the left conjunct is True.
+andTrueLeft : (a : Bool) -> (b : Bool) -> (a && b) = True -> a = True
+andTrueLeft True  _ _   = Refl
+andTrueLeft False _ prf = absurd prf
+
+||| From `a && b = True`, the right conjunct is True.
+andTrueRight : (a : Bool) -> (b : Bool) -> (a && b) = True -> b = True
+andTrueRight True  _ prf = prf
+andTrueRight False _ prf = absurd prf
+
+||| Soundness of `==` against `Ready` for CartridgeStatus: the only status
+||| that compares equal to `Ready` is `Ready` itself.
+statusEqSoundReady : (s : CartridgeStatus) -> (s == Ready) = True -> s = Ready
+statusEqSoundReady Ready       _   = Refl
+statusEqSoundReady Development prf = absurd prf
+statusEqSoundReady Deprecated  prf = absurd prf
+statusEqSoundReady Faulty      prf = absurd prf
+
+-- Constructor disjointness for the `CartridgeStatus` lifecycle. `Ready` is a
+-- distinct constructor from every other state, so the corresponding equalities
+-- are uninhabited — proved by the absent `Refl` case, with no axioms.
+Uninhabited (Ready = Development) where
+  uninhabited Refl impossible
+
+Uninhabited (Ready = Deprecated) where
+  uninhabited Refl impossible
+
+Uninhabited (Ready = Faulty) where
+  uninhabited Refl impossible
+
+-- ═══════════════════════════════════════════════════════════════════════════
 -- Request and Dispatch Result Types
 -- ═══════════════════════════════════════════════════════════════════════════
 
@@ -66,12 +105,20 @@ data DispatchResult : DispatchRequest -> Type where
 -- Protocol Membership Lemmas
 -- ═══════════════════════════════════════════════════════════════════════════
 
+||| Once the `foldl` accumulator of `elem` is True it stays True, regardless
+||| of the remaining list. `elem` is left-folded with `||`, so reducing
+||| `elem p (p :: ps)` exposes exactly this shape after `p == p` is known.
+orFoldlAccTrue : (q : ProtocolType -> Bool) -> (xs : List ProtocolType)
+              -> foldl (\acc, e => acc || q e) True xs = True
+orFoldlAccTrue q []        = Refl
+orFoldlAccTrue q (y :: ys) = orFoldlAccTrue q ys
+
 ||| If a protocol is the head of the list, elem returns True.
 protocolElemHead : (p : ProtocolType) -> (ps : List ProtocolType)
                 -> p `elem` (p :: ps) = True
 protocolElemHead p ps with (p == p) proof eq
-  | True  = Refl
-  | False = absurd (elemSame p)
+  protocolElemHead p ps | True  = orFoldlAccTrue (p ==) ps
+  protocolElemHead p ps | False = absurd (trans (sym eq) (elemSame p))
   where
     -- p == p = True for our Eq ProtocolType instance (all 9 cases reflexive)
     elemSame : (q : ProtocolType) -> q == q = True
@@ -112,10 +159,12 @@ protocolMatchInvariant :
   -> lookupCell p d cs = Just c
   -> p `elem` protocols c = True
 protocolMatchInvariant p d [] c eq = absurd eq
-protocolMatchInvariant p d (x :: xs) c eq with (domain x == d && elem p (protocols x) && status x == Ready)
-  protocolMatchInvariant p d (x :: xs) x Refl | True with (elem p (protocols x)) proof ep
-    protocolMatchInvariant p d (x :: xs) x Refl | True | True = Refl
-    protocolMatchInvariant p d (x :: xs) x Refl | True | False = absurd ep
+protocolMatchInvariant p d (x :: xs) c eq with (domain x == d && elem p (protocols x) && status x == Ready) proof cond
+  -- Guard held: `lookupCell` returned `Just x`, so `eq : Just x = Just c`
+  -- forces `c = x`; the protocol conjunct is the left of the inner `&&`.
+  protocolMatchInvariant p d (x :: xs) x Refl | True =
+    andTrueLeft _ _ (andTrueRight _ _ cond)
+  -- Guard failed: recurse on the tail with the same lookup proof.
   protocolMatchInvariant p d (x :: xs) c eq | False =
     protocolMatchInvariant p d xs c eq
 
@@ -135,11 +184,11 @@ readinessGuard :
   -> status c = Ready
 readinessGuard p d [] c eq = absurd eq
 readinessGuard p d (x :: xs) c eq with (domain x == d && elem p (protocols x) && status x == Ready) proof cond
-  readinessGuard p d (x :: xs) x Refl | True with (status x) proof st
-    readinessGuard p d (x :: xs) x Refl | True | Ready      = Refl
-    readinessGuard p d (x :: xs) x Refl | True | Development = absurd cond
-    readinessGuard p d (x :: xs) x Refl | True | Deprecated  = absurd cond
-    readinessGuard p d (x :: xs) x Refl | True | Faulty      = absurd cond
+  -- Guard held: `status x == Ready` is the right conjunct of the inner `&&`;
+  -- `statusEqSoundReady` turns the boolean test into the propositional equality.
+  readinessGuard p d (x :: xs) x Refl | True =
+    statusEqSoundReady (status x) (andTrueRight _ _ (andTrueRight _ _ cond))
+  -- Guard failed: recurse on the tail with the same lookup proof.
   readinessGuard p d (x :: xs) c eq | False =
     readinessGuard p d xs c eq
 
@@ -172,15 +221,26 @@ lookupImpliesUnbreakable p d cs c eq =
 ||| The type of the result guarantees (at compile time) that:
 |||   - A Routed cartridge supports the requested protocol.
 |||   - A Routed cartridge is in Ready status.
+||| Dispatch given the catalogue-lookup result *and* the proof that it is
+||| that result. Factoring this out of `dispatch` keeps the definition
+||| definitionally reducible on the lookup value — the refused-completeness
+||| theorem below relies on that, which a `with`-block definition would not
+||| provide.
+dispatchOn : (req : DispatchRequest) -> (cs : List Cartridge)
+          -> (m : Maybe Cartridge)
+          -> (lookupCell (reqProtocol req) (reqDomain req) cs = m)
+          -> DispatchResult req
+dispatchOn req cs Nothing  _   = Refused req
+dispatchOn req cs (Just c) prf =
+    Routed c
+      (lookupImpliesUnbreakable (reqProtocol req) (reqDomain req) cs c prf)
+      req
+      (protocolMatchInvariant (reqProtocol req) (reqDomain req) cs c prf)
+
 export
 dispatch : (req : DispatchRequest) -> (cs : List Cartridge) -> DispatchResult req
-dispatch req cs with (lookupCell (reqProtocol req) (reqDomain req) cs) proof lk
-  | Nothing = Refused req
-  | Just c  =
-      Routed c
-        (lookupImpliesUnbreakable (reqProtocol req) (reqDomain req) cs c lk)
-        req
-        (protocolMatchInvariant (reqProtocol req) (reqDomain req) cs c lk)
+dispatch req cs =
+  dispatchOn req cs (lookupCell (reqProtocol req) (reqDomain req) cs) Refl
 
 -- ═══════════════════════════════════════════════════════════════════════════
 -- Disjointness Theorem
@@ -231,8 +291,15 @@ refusedIfNoMatch :
   -> (cs  : List Cartridge)
   -> lookupCell (reqProtocol req) (reqDomain req) cs = Nothing
   -> dispatch req cs = Refused req
-refusedIfNoMatch req cs noMatch with (dispatch req cs)
-  | Refused _ = Refl
-  | Routed c _ _ _ with (lookupCell (reqProtocol req) (reqDomain req) cs) proof lk
-    | Nothing = absurd lk
-    | Just _  = absurd noMatch
+refusedIfNoMatch req cs noMatch =
+    lemma (lookupCell (reqProtocol req) (reqDomain req) cs) Refl noMatch
+  where
+    -- `dispatch req cs` is definitionally `dispatchOn req cs (lookupCell …) Refl`,
+    -- so proving the goal for an arbitrary lookup result `m` (with its defining
+    -- proof) and then instantiating at the real lookup value discharges it.
+    lemma : (m : Maybe Cartridge)
+         -> (prf : lookupCell (reqProtocol req) (reqDomain req) cs = m)
+         -> m = Nothing
+         -> dispatchOn req cs m prf = Refused req
+    lemma Nothing  _ _   = Refl
+    lemma (Just c) _ eqN = absurd eqN

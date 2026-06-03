@@ -118,6 +118,17 @@ allAppendBoth {p} {xs = x :: xs'} pX pY with (p x) proof eq
   allAppendBoth {p} {xs = x :: xs'} pX pY | True = allAppendBoth {xs = xs'} pX pY
   allAppendBoth {p} {xs = x :: xs'} pX pY | False = absurd pX
 
+||| `allRec p` is preserved by `take`: a prefix of a list all of whose
+||| elements satisfy `p` also has all elements satisfying `p`.
+export
+allTake : {p : a -> Bool} -> {n : Nat} -> {xs : List a} ->
+          allRec p xs = True -> allRec p (take n xs) = True
+allTake {n = Z}            _   = Refl
+allTake {n = S k} {xs = []} _  = Refl
+allTake {n = S k} {xs = x :: xs'} prf with (p x) proof eq
+  allTake {n = S k} {xs = x :: xs'} prf | True  = allTake {n = k} {xs = xs'} prf
+  allTake {n = S k} {xs = x :: xs'} prf | False = absurd prf
+
 ||| If `allRec p xs` holds, then for any predicate q that is implied by p,
 ||| `allRec q xs` holds.
 export

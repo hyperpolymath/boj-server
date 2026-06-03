@@ -129,7 +129,7 @@ CartridgeHasProtocol c = NonEmpty (protocols c)
 ||| non-empty concrete values.
 export
 repCatalogueProtocolCompliance :
-  (c : Cartridge) -> Elem c representativeCatalogue -> CartridgeHasProtocol c
+  (c : Cartridge) -> Elem c Boj.APIContractCoverage.representativeCatalogue -> CartridgeHasProtocol c
 repCatalogueProtocolCompliance _ Here                                                              = IsNonEmpty
 repCatalogueProtocolCompliance _ (There Here)                                                      = IsNonEmpty
 repCatalogueProtocolCompliance _ (There (There Here))                                              = IsNonEmpty
@@ -204,7 +204,7 @@ export bj3_proto_Fleet   : ProtocolHasCartridge Fleet   ; bj3_proto_Fleet   = (f
 public export
 record BJ3Compliance where
   constructor MkBJ3Compliance
-  protocolCompliance : (c : Cartridge) -> Elem c representativeCatalogue -> CartridgeHasProtocol c
+  protocolCompliance : (c : Cartridge) -> Elem c Boj.APIContractCoverage.representativeCatalogue -> CartridgeHasProtocol c
   domainCoverage     : (d : CapabilityDomain) ->
                        Not (d = Dap) -> Not (d = Bsp) -> Not (d = CodeIntel) ->
                        DomainHasReadyCartridge d

@@ -16,6 +16,8 @@
 module Boj.SafeHTTP
 
 import Data.List
+import Data.List.Elem
+import Data.Maybe
 import Data.Nat
 import Data.String
 import Boj.SafetyLemmas
@@ -57,7 +59,7 @@ parseMethod _         = Nothing
 public export
 data ValidMethod : String -> Type where
   MkValidMethod : (s : String) ->
-                  {auto prf : IsJust (parseMethod s) = True} ->
+                  {auto prf : isJust (parseMethod s) = True} ->
                   ValidMethod s
 
 --------------------------------------------------------------------------------
@@ -75,14 +77,14 @@ isHeaderUnsafe c = c == '\r' || c == '\n' || c == '\0'
 public export
 data HeaderCharsafe : List Char -> Type where
   MkHeaderCharsafe : (cs : List Char) ->
-                     {auto prf : all (\c => not (isHeaderUnsafe c)) cs = True} ->
+                     {auto prf : allRec (\c => not (isHeaderUnsafe c)) cs = True} ->
                      HeaderCharsafe cs
 
 ||| Predicate: a header value (as String) contains no CRLF injection characters.
 public export
 data HeaderSafe : String -> Type where
   MkHeaderSafe : (s : String) ->
-                 {auto prf : all (\c => not (isHeaderUnsafe c)) (unpack s) = True} ->
+                 {auto prf : allRec (\c => not (isHeaderUnsafe c)) (unpack s) = True} ->
                  HeaderSafe s
 
 ||| Theorem: the empty string is header-safe.
@@ -97,29 +99,29 @@ nilIsHeaderCharsafe = MkHeaderCharsafe []
 
 ||| Theorem: header char safety implies no carriage returns in the list.
 ||| Proof: '\r' makes isHeaderUnsafe True, so not (isHeaderUnsafe '\r') = False.
-|||         But all (\c => not (isHeaderUnsafe c)) cs = True means every char passes.
+|||         But allRec (\c => not (isHeaderUnsafe c)) cs = True means every char passes.
 |||         Therefore '\r' cannot be an element.
 export
 headerCharsafeNoCR : HeaderCharsafe cs -> Not (Elem '\r' cs)
 headerCharsafeNoCR (MkHeaderCharsafe cs {prf}) elemPrf =
-  let charFails : not (isHeaderUnsafe '\r') = True
-      charFails = allTrueElem {p = \c => not (isHeaderUnsafe c)} prf elemPrf
+  let charFails : (not (isHeaderUnsafe '\r') = True)
+      charFails = allTrueElem prf elemPrf
   in absurd charFails
 
 ||| Theorem: header char safety implies no line feeds in the list.
 export
 headerCharsafeNoLF : HeaderCharsafe cs -> Not (Elem '\n' cs)
 headerCharsafeNoLF (MkHeaderCharsafe cs {prf}) elemPrf =
-  let charFails : not (isHeaderUnsafe '\n') = True
-      charFails = allTrueElem {p = \c => not (isHeaderUnsafe c)} prf elemPrf
+  let charFails : (not (isHeaderUnsafe '\n') = True)
+      charFails = allTrueElem prf elemPrf
   in absurd charFails
 
 ||| Theorem: header char safety implies no null bytes in the list.
 export
 headerCharsafeNoNull : HeaderCharsafe cs -> Not (Elem '\0' cs)
 headerCharsafeNoNull (MkHeaderCharsafe cs {prf}) elemPrf =
-  let charFails : not (isHeaderUnsafe '\0') = True
-      charFails = allTrueElem {p = \c => not (isHeaderUnsafe c)} prf elemPrf
+  let charFails : (not (isHeaderUnsafe '\0') = True)
+      charFails = allTrueElem prf elemPrf
   in absurd charFails
 
 ||| Theorem: concatenating two header-char-safe lists produces a safe list.
@@ -138,15 +140,15 @@ takeHeaderCharsafe (MkHeaderCharsafe cs {prf}) n =
 
 ||| Theorem: header char safety is preserved under splitting left.
 export
-splitLeftHeaderCharsafe : HeaderCharsafe (xs ++ ys) -> HeaderCharsafe xs
-splitLeftHeaderCharsafe (MkHeaderCharsafe _ {prf}) =
-  MkHeaderCharsafe xs {prf = allAppendLeft prf}
+splitLeftHeaderCharsafe : {xs, ys : List Char} -> HeaderCharsafe (xs ++ ys) -> HeaderCharsafe xs
+splitLeftHeaderCharsafe {xs} {ys} (MkHeaderCharsafe _ {prf}) =
+  MkHeaderCharsafe xs {prf = allAppendLeft {xs} {ys} prf}
 
 ||| Theorem: header char safety is preserved under splitting right.
 export
-splitRightHeaderCharsafe : HeaderCharsafe (xs ++ ys) -> HeaderCharsafe ys
-splitRightHeaderCharsafe (MkHeaderCharsafe _ {prf}) =
-  MkHeaderCharsafe ys {prf = allAppendRight prf}
+splitRightHeaderCharsafe : {xs, ys : List Char} -> HeaderCharsafe (xs ++ ys) -> HeaderCharsafe ys
+splitRightHeaderCharsafe {xs} {ys} (MkHeaderCharsafe _ {prf}) =
+  MkHeaderCharsafe ys {prf = allAppendRight {xs} {ys} prf}
 
 --------------------------------------------------------------------------------
 -- Status Code Safety
@@ -182,12 +184,14 @@ classifyStatus code =
 ||| Theorem: status code 200 is valid.
 export
 status200Valid : ValidStatus 200
-status200Valid = MkValidStatus 200
+status200Valid = MkValidStatus 200 {lower = lteReflectsLTE 100 200 Refl}
+                                   {upper = lteReflectsLTE 200 599 Refl}
 
 ||| Theorem: status code 404 is valid.
 export
 status404Valid : ValidStatus 404
-status404Valid = MkValidStatus 404
+status404Valid = MkValidStatus 404 {lower = lteReflectsLTE 100 404 Refl}
+                                   {upper = lteReflectsLTE 404 599 Refl}
 
 --------------------------------------------------------------------------------
 -- Host Header Safety (works on List Char for provability)
@@ -204,7 +208,7 @@ public export
 data HostCharsafe : List Char -> Type where
   MkHostCharsafe : (cs : List Char) ->
                    {auto nonEmpty : NonEmpty cs} ->
-                   {auto prf : all isHostChar cs = True} ->
+                   {auto prf : allRec Boj.SafeHTTP.isHostChar cs = True} ->
                    HostCharsafe cs
 
 ||| Predicate: a host value (as String) contains only valid hostname characters.
@@ -212,17 +216,17 @@ public export
 data HostSafe : String -> Type where
   MkHostSafe : (s : String) ->
                {auto nonEmpty : NonEmpty (unpack s)} ->
-               {auto prf : all isHostChar (unpack s) = True} ->
+               {auto prf : allRec Boj.SafeHTTP.isHostChar (unpack s) = True} ->
                HostSafe s
 
 ||| Theorem: host char safety implies no spaces.
 ||| Proof: ' ' is not alphanumeric, not '-', '.', ':', '[', or ']',
-|||         so isHostChar ' ' = False. But all isHostChar cs = True
+|||         so isHostChar ' ' = False. But allRec Boj.SafeHTTP.isHostChar cs = True
 |||         means every char passes. Therefore ' ' cannot be in cs.
 export
 hostCharsafeNoSpace : HostCharsafe cs -> Not (Elem ' ' cs)
 hostCharsafeNoSpace (MkHostCharsafe cs {prf}) elemPrf =
-  let charFails : isHostChar ' ' = True
+  let charFails : (isHostChar ' ' = True)
       charFails = allTrueElem prf elemPrf
   in absurd charFails
 
@@ -230,7 +234,7 @@ hostCharsafeNoSpace (MkHostCharsafe cs {prf}) elemPrf =
 export
 hostCharsafeNoNewline : HostCharsafe cs -> Not (Elem '\n' cs)
 hostCharsafeNoNewline (MkHostCharsafe cs {prf}) elemPrf =
-  let charFails : isHostChar '\n' = True
+  let charFails : (isHostChar '\n' = True)
       charFails = allTrueElem prf elemPrf
   in absurd charFails
 
@@ -238,7 +242,7 @@ hostCharsafeNoNewline (MkHostCharsafe cs {prf}) elemPrf =
 export
 hostCharsafeNoCR : HostCharsafe cs -> Not (Elem '\r' cs)
 hostCharsafeNoCR (MkHostCharsafe cs {prf}) elemPrf =
-  let charFails : isHostChar '\r' = True
+  let charFails : (isHostChar '\r' = True)
       charFails = allTrueElem prf elemPrf
   in absurd charFails
 
@@ -269,7 +273,7 @@ parseSafeContentType s =
 public export
 data ValidContentType : String -> Type where
   MkValidContentType : (s : String) ->
-                       {auto prf : IsJust (parseSafeContentType s) = True} ->
+                       {auto prf : isJust (parseSafeContentType s) = True} ->
                        ValidContentType s
 
 --------------------------------------------------------------------------------
