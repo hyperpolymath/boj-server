@@ -21,6 +21,7 @@ jobs:
   fuzz-zig:
     name: Zig FFI Fuzz Tests
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     permissions:
       contents: read
     steps:
@@ -48,6 +49,7 @@ jobs:
   fuzz-mcp-bridge:
     name: MCP Bridge Input Fuzz
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     permissions:
       contents: read
     steps:

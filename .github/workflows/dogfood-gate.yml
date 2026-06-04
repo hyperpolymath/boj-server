@@ -12,6 +12,14 @@ on:
   push:
     branches: [main, master]
 
+# Estate guardrail: cancel superseded runs so re-pushes / rebased PR
+# updates do not pile up queued runs against the shared account-wide
+# Actions concurrency pool. Applied only to read-only check workflows
+# (no publish/mutation), so cancelling a superseded run is always safe.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
@@ -22,6 +30,7 @@ jobs:
   a2ml-validate:
     name: Validate A2ML manifests
     runs-on: ubuntu-latest
+    timeout-minutes: 5
 
     steps:
       - name: Checkout repository
@@ -66,6 +75,7 @@ jobs:
   k9-validate:
     name: Validate K9 contracts
     runs-on: ubuntu-latest
+    timeout-minutes: 5
 
     steps:
       - name: Checkout repository
@@ -115,6 +125,7 @@ jobs:
   empty-lint:
     name: Empty-linter (invisible characters)
     runs-on: ubuntu-latest
+    timeout-minutes: 15
 
     steps:
       - name: Checkout repository
@@ -179,6 +190,7 @@ jobs:
   groove-check:
     name: Groove manifest check
     runs-on: ubuntu-latest
+    timeout-minutes: 5
 
     steps:
       - name: Checkout repository
@@ -237,6 +249,7 @@ jobs:
   eclexiaiser-validate:
     name: Validate eclexiaiser manifest
     runs-on: ubuntu-latest
+    timeout-minutes: 5
 
     steps:
       - name: Checkout repository
@@ -284,6 +297,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: [a2ml-validate, k9-validate, empty-lint, groove-check, eclexiaiser-validate]
     if: always()
+    timeout-minutes: 5
 
     steps:
       - name: Checkout repository
