@@ -222,64 +222,43 @@ echo ""
 # POST /cartridge/:name/invoke endpoint (singular `cartridge`).
 bold "Step 6: Feedback-o-tron full cycle"
 
-# feedback-o-tron's cartridge FFI (cartridges/feedback-mcp/ffi/feedback_ffi.zig,
-# boj_cartridge_invoke) is a self-described "Grade D Alpha" stub: it answers only
-# feedback_register_channel/start_collecting/submit/get_stats with a stub body and
-# returns RC_UNKNOWN_TOOL for everything else. The full open_channel/submit/
-# summary/export/status/list_channels cycle below is not yet implemented, so we
-# record it as skipped rather than assert a feature that does not exist. Set
-# FEEDBACK_OTRON=1 once the FFI (or a native Elixir handler) implements the cycle.
-if [ "${FEEDBACK_OTRON:-0}" != "1" ]; then
-  yellow "  SKIP: feedback-o-tron full cycle — cartridge FFI is a Grade-D-Alpha stub (not yet implemented)"
-  SKIP=$((SKIP + 7))
-else
-# 6a: Register (open_channel)
+# All dispatches go through the unified POST /cartridge/:name/invoke endpoint.
+# The feedback-mcp FFI (feedback_ffi.zig boj_cartridge_invoke) backs the
+# cartridge.json tools with the live channel state machine; arguments are passed
+# as a JSON object under "arguments" (the field BojRest forwards to the FFI).
+
+# 6a: Register an api_endpoint channel (FeedbackChannel.api_endpoint = 2)
 reg_result=$(curl -sf -X POST "$BASE_URL/cartridge/feedback-mcp/invoke" \
     -H "Content-Type: application/json" \
-    -d '{"tool":"open_channel","args":"{\"channel\":\"api\"}"}' 2>/dev/null || echo "{}")
-check "feedback register (open_channel)" '"slot"' "$reg_result"
-FEEDBACK_SLOT=$(echo "$reg_result" | jq -r '.slot // "0"' 2>/dev/null || echo "0")
+    -d '{"tool":"feedback_register_channel","arguments":{"channel":2}}' 2>/dev/null || echo "{}")
+check "feedback register channel" '"slot"' "$reg_result"
+FEEDBACK_SLOT=$(echo "$reg_result" | jq -r '.slot // 0' 2>/dev/null || echo 0)
 
-# 6b: Submit feedback (positive)
-submit_result=$(curl -sf -X POST "$BASE_URL/cartridge/feedback-mcp/invoke" \
+# 6b: Start collecting on the slot
+collect_result=$(curl -sf -X POST "$BASE_URL/cartridge/feedback-mcp/invoke" \
     -H "Content-Type: application/json" \
-    -d "{\"tool\":\"submit\",\"args\":\"{\\\"slot\\\":\\\"${FEEDBACK_SLOT}\\\",\\\"sentiment\\\":\\\"positive\\\"}\"}" \
-    2>/dev/null || echo "{}")
-check "feedback submit (positive)" '"recorded"' "$submit_result"
+    -d "{\"tool\":\"feedback_start_collecting\",\"arguments\":{\"slot\":${FEEDBACK_SLOT}}}" 2>/dev/null || echo "{}")
+check "feedback start collecting" '"collecting":true' "$collect_result"
 
-# 6c: Submit feedback (negative)
+# 6c: Submit positive (sentiment: positive = 1)
+submit_pos=$(curl -sf -X POST "$BASE_URL/cartridge/feedback-mcp/invoke" \
+    -H "Content-Type: application/json" \
+    -d "{\"tool\":\"feedback_submit\",\"arguments\":{\"slot\":${FEEDBACK_SLOT},\"sentiment\":1}}" 2>/dev/null || echo "{}")
+check "feedback submit (positive)" '"recorded":true' "$submit_pos"
+
+# 6d: Submit negative (sentiment: negative = -1)
 submit_neg=$(curl -sf -X POST "$BASE_URL/cartridge/feedback-mcp/invoke" \
     -H "Content-Type: application/json" \
-    -d "{\"tool\":\"submit\",\"args\":\"{\\\"slot\\\":\\\"${FEEDBACK_SLOT}\\\",\\\"sentiment\\\":\\\"negative\\\"}\"}" \
-    2>/dev/null || echo "{}")
-check "feedback submit (negative)" '"recorded"' "$submit_neg"
+    -d "{\"tool\":\"feedback_submit\",\"arguments\":{\"slot\":${FEEDBACK_SLOT},\"sentiment\":-1}}" 2>/dev/null || echo "{}")
+check "feedback submit (negative)" '"recorded":true' "$submit_neg"
 
-# 6d: Summary
-summary_result=$(curl -sf -X POST "$BASE_URL/cartridge/feedback-mcp/invoke" \
+# 6e: Stats — expect the two submissions to be counted
+stats_result=$(curl -sf -X POST "$BASE_URL/cartridge/feedback-mcp/invoke" \
     -H "Content-Type: application/json" \
-    -d '{"tool":"summary","args":"{}"}' 2>/dev/null || echo "{}")
-check "feedback summary" '"total_feedback"' "$summary_result"
-
-# 6e: Export
-export_result=$(curl -sf -X POST "$BASE_URL/cartridge/feedback-mcp/invoke" \
-    -H "Content-Type: application/json" \
-    -d '{"tool":"export_feedback","args":"{}"}' 2>/dev/null || echo "{}")
-check "feedback export" '"export_feedback"' "$export_result"
-
-# 6f: Status check
-status_result=$(curl -sf -X POST "$BASE_URL/cartridge/feedback-mcp/invoke" \
-    -H "Content-Type: application/json" \
-    -d '{"tool":"status","args":"{}"}' 2>/dev/null || echo "{}")
-check "feedback status" '"feedback-o-tron"' "$status_result"
-
-# 6g: Deregister — close the channel
-# Note: deregister is done via the FFI fb_deregister; we test through
-# the list_channels tool which should still work after channel close
-list_result=$(curl -sf -X POST "$BASE_URL/cartridge/feedback-mcp/invoke" \
-    -H "Content-Type: application/json" \
-    -d '{"tool":"list_channels","args":"{}"}' 2>/dev/null || echo "{}")
-check "feedback list_channels" '"available"' "$list_result"
-fi
+    -d "{\"tool\":\"feedback_get_stats\",\"arguments\":{\"slot\":${FEEDBACK_SLOT}}}" 2>/dev/null || echo "{}")
+check "feedback get_stats" '"total_feedback"' "$stats_result"
+fb_total=$(echo "$stats_result" | jq -r '.total_feedback // 0' 2>/dev/null || echo 0)
+check "feedback recorded 2 submissions" "1" "$([ "$fb_total" -ge 2 ] && echo 1 || echo 0)"
 echo ""
 
 # Step 7 (order-ticket flow) lives in tests/order_ticket_e2e.sh against
