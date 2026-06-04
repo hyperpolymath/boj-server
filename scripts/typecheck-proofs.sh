@@ -14,7 +14,7 @@
 #
 # Exit non-zero if anything fails to type-check.
 set -uo pipefail
-cd "$(dirname "$0")/.."
+cd "$(dirname "$0")/.." || exit 1
 
 fail=0
 pass=0
@@ -44,7 +44,7 @@ check_ipkg src/abi boj.ipkg
 echo "==> Cartridge ABIs"
 for d in cartridges/*/abi; do
     [ -d "$d" ] || continue
-    ipkg=$(ls "$d"/*.ipkg 2>/dev/null | head -1)
+    ipkg=$(find "$d" -maxdepth 1 -name '*.ipkg' | head -1)
     if [ -n "$ipkg" ]; then
         check_ipkg "$d" "$(basename "$ipkg")"
     else
