@@ -1,7 +1,7 @@
 -- SPDX-License-Identifier: MPL-2.0
 -- Fireflag Cartridge ABI — Extension-to-MCP mapping interface
 
-module ABI.Fireflag
+module Fireflag
 
 %language ElabReflection
 
@@ -63,10 +63,12 @@ interface Fireflag.Mapper where
   -- Discover extensions in directory
   discoverExtensions : String -> IO (List ExtensionMetadata)
 
-  -- Loopback proof: cartridge runs on localhost only
-  IsLoopback : (port : Nat) -> Type
-  IsLoopback 5177 = ()
 
+||| Loopback proof: cartridge binds on localhost only.
 public export
-Loopback.proof : IsLoopback 5177
-Loopback.proof = ()
+data IsLoopback : (port : Nat) -> Type where
+  LoopbackProof : IsLoopback 5177
+
+export
+loopbackInvariant : IsLoopback 5177
+loopbackInvariant = LoopbackProof

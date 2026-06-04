@@ -42,8 +42,8 @@ record ApplyResult where
   constructor MkApplyResult
   applied : Nat
   skipped : Nat
-  total   : Nat
-  sumPrf  : applied + skipped = total
+  totalCount   : Nat
+  sumPrf  : applied + skipped = totalCount
 
 ||| Proof: a valid config with no errors has empty error list.
 export

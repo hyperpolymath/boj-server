@@ -6,6 +6,7 @@
 module Hypatia.Protocol
 
 import Data.Nat
+import Data.List
 
 ||| Hypatia operation codes.
 public export
@@ -48,5 +49,5 @@ zeroIsValidScore = LTEZero
 
 ||| Proof: score bound is transitive — if s <= 100 and 100 <= n, then s <= n.
 export
-scoreBoundTransitive : LTE s 100 -> LTE 100 n -> LTE s n
-scoreBoundTransitive p q = lteTransitive p q
+scoreBoundTransitive : {s, n : Nat} -> LTE s 100 -> LTE 100 n -> LTE s n
+scoreBoundTransitive p q = transitive p q

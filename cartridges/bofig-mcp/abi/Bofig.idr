@@ -1,7 +1,7 @@
 -- SPDX-License-Identifier: MPL-2.0
 -- Bofig Cartridge ABI — Evidence graph query interface
 
-module ABI.Bofig
+module Bofig
 
 %language ElabReflection
 
@@ -75,10 +75,12 @@ interface Bofig.Graph where
   -- Get graph statistics
   getGraphStats : IO (Nat, Nat)  -- (nodes, edges)
 
-  -- Loopback proof: cartridge runs on localhost only
-  IsLoopback : (port : Nat) -> Type
-  IsLoopback 5178 = ()
 
+||| Loopback proof: cartridge binds on localhost only.
 public export
-Loopback.proof : IsLoopback 5178
-Loopback.proof = ()
+data IsLoopback : (port : Nat) -> Type where
+  LoopbackProof : IsLoopback 5178
+
+export
+loopbackInvariant : IsLoopback 5178
+loopbackInvariant = LoopbackProof

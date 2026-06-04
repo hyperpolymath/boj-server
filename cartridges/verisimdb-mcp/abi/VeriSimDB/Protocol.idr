@@ -43,7 +43,7 @@ record StoredOctad where
 ||| Proof: an Octad always has exactly 8 elements.
 export
 octadLength : (o : Octad) -> length o = 8
-octadLength _ = Refl
+octadLength o = lengthCorrect o
 
 ||| Proof: audit query time range is non-negative.
 export

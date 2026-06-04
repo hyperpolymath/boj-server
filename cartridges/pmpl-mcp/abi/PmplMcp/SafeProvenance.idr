@@ -12,6 +12,7 @@
 ||| This implements the Palimpsest License (PMPL) requirement that
 ||| derivative works maintain a verifiable chain back to the original.
 module PmplMcp.SafeProvenance
+import Data.Nat
 
 %default total
 

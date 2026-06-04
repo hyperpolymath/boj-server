@@ -1,7 +1,7 @@
 -- SPDX-License-Identifier: MPL-2.0
 -- Ephapax Cartridge ABI — Proof-compiler query interface
 
-module ABI.Ephapax
+module Ephapax
 
 %language ElabReflection
 
@@ -31,7 +31,7 @@ record QueryResult where
   constructor MkQueryResult
   success : Bool
   message : String
-  data : String
+  payload : String
 
 -- Type-checking result
 public export
@@ -56,10 +56,12 @@ interface Ephapax.Compiler where
   -- Analyze proof complexity and dependencies
   analyzeProof : String -> IO QueryResult
 
-  -- Check if cartridge port is loopback-only (compile-time proof)
-  IsLoopback : (port : Nat) -> Type
-  IsLoopback 5175 = ()
 
+||| Loopback proof: cartridge binds on localhost only.
 public export
-Loopback.proof : IsLoopback 5175
-Loopback.proof = ()
+data IsLoopback : (port : Nat) -> Type where
+  LoopbackProof : IsLoopback 5175
+
+export
+loopbackInvariant : IsLoopback 5175
+loopbackInvariant = LoopbackProof

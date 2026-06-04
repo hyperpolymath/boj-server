@@ -6,6 +6,7 @@
 module PanicAttack.Protocol
 
 import Data.Nat
+import Data.List
 
 ||| Scanner operation codes.
 public export
@@ -37,8 +38,8 @@ public export
 record ScanResult where
   constructor MkScanResult
   findings : List Finding
-  total    : Nat
-  countPrf : total = length findings
+  totalCount    : Nat
+  countPrf : totalCount = length findings
 
 ||| Severity has a total ordering — Critical is always >= Info.
 public export

@@ -1,7 +1,7 @@
 -- SPDX-License-Identifier: MPL-2.0
 -- Sanctify Cartridge ABI — PHP lint and deviation detection interface
 
-module ABI.Sanctify
+module Sanctify
 
 %language ElabReflection
 
@@ -59,10 +59,12 @@ interface Sanctify.Linter where
   -- Check a code snippet for issues
   checkSnippet : String -> IO (List LintIssue)
 
-  -- Loopback proof: cartridge runs on localhost only
-  IsLoopback : (port : Nat) -> Type
-  IsLoopback 5176 = ()
 
+||| Loopback proof: cartridge binds on localhost only.
 public export
-Loopback.proof : IsLoopback 5176
-Loopback.proof = ()
+data IsLoopback : (port : Nat) -> Type where
+  LoopbackProof : IsLoopback 5176
+
+export
+loopbackInvariant : IsLoopback 5176
+loopbackInvariant = LoopbackProof

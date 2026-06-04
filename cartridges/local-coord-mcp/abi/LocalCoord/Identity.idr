@@ -171,8 +171,13 @@ maxKnownPeers = 64
 export
 identityDoesNotEnableFederation
   :  (_ : PeerIdentity)
-  -> IsFederated coordFederationPolicy
+  -> IsFederated LocalOnly
   -> Void
+-- `coordFederationPolicy` is definitionally `LocalOnly` (see SafeLocalCoord),
+-- so this obligation is exactly that `IsFederated LocalOnly` is uninhabited —
+-- discharged directly by `localOnlyNotFederated`. Stating the bound as the
+-- constructor (rather than the nullary CAF) keeps the unifier from stalling on
+-- an unreduced top-level name.
 identityDoesNotEnableFederation _ x = localOnlyNotFederated x
 
 -- ═══════════════════════════════════════════════════════════════════════════

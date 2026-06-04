@@ -4,8 +4,9 @@
 module Hesiod
 
 ||| DNS record type enumeration (proof-indexed)
-public data DNSRecordType =
-  | A              -- IPv4 address
+public export
+data DNSRecordType
+  = A              -- IPv4 address
   | AAAA           -- IPv6 address
   | CNAME          -- Canonical name
   | MX             -- Mail exchange
@@ -15,7 +16,8 @@ public data DNSRecordType =
   | SRV            -- Service record
 
 ||| Proof that a record type is queryable
-public data Queryable : DNSRecordType -> Type where
+public export
+data Queryable : DNSRecordType -> Type where
   QueryableA : Queryable A
   QueryableAAAA : Queryable AAAA
   QueryableCNAME : Queryable CNAME
@@ -26,7 +28,8 @@ public data Queryable : DNSRecordType -> Type where
   QueryableSRV : Queryable SRV
 
 ||| DNS response record
-public record DNSRecord where
+public export
+record DNSRecord where
   constructor MkDNSRecord
   name : String
   type : DNSRecordType
@@ -34,7 +37,8 @@ public record DNSRecord where
   value : String
 
 ||| Lookup result type (success or failure)
-public data LookupResult : Type where
+public export
+data LookupResult : Type where
   Success : (records : List DNSRecord) -> LookupResult
   NotFound : (hostname : String) -> LookupResult
   NetworkError : (message : String) -> LookupResult
@@ -42,7 +46,8 @@ public data LookupResult : Type where
 
 ||| Type-safe DNS lookup interface
 ||| Proof ensures only valid record types are queried
-public interface Hesiod.Lookup (m : Type -> Type) where
+public export
+interface Lookup (m : Type -> Type) where
   ||| Query DNS records for a hostname
   ||| @hostname The domain to query
   ||| @rectype The record type to look up
@@ -59,7 +64,8 @@ public interface Hesiod.Lookup (m : Type -> Type) where
                Queryable rectype -> m (List LookupResult)
 
 ||| Loopback proof: hesiod-mcp only runs on localhost:5173
-public data IsLoopback : (port : Nat) -> Type where
+public export
+data IsLoopback : (port : Nat) -> Type where
   LoopbackProof : IsLoopback 5173
 
 export

@@ -124,7 +124,7 @@ record Session where
   sessionId : String
   provider  : MlProvider
   state     : SessionState
-  namespace : String
+  namespaceName : String
 
 ||| Proof that a session is authenticated (ready for operations).
 public export
