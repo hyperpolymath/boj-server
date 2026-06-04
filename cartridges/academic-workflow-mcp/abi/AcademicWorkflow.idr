@@ -4,7 +4,8 @@
 module AcademicWorkflow
 
 ||| Paper metadata
-public record Paper where
+public export
+record Paper where
   constructor MkPaper
   title : String
   authors : List String
@@ -13,35 +14,40 @@ public record Paper where
   abstract : String
 
 ||| Citation format
-public data CitationFormat =
-  | BibTeX
+public export
+data CitationFormat
+  = BibTeX
   | CSL
   | RIS
   | EndNote
 
 ||| Proof that a citation format is supported
-public data Supported : CitationFormat -> Type where
+public export
+data Supported : CitationFormat -> Type where
   SupportedBibTeX : Supported BibTeX
   SupportedCSL : Supported CSL
   SupportedRIS : Supported RIS
   SupportedEndNote : Supported EndNote
 
 ||| Review annotation
-public record ReviewNote where
+public export
+record ReviewNote where
   constructor MkReviewNote
   page : Nat
   text : String
   category : String  -- "typo", "unclear", "question", "suggestion"
 
 ||| Zotero collection reference
-public record ZoteroCollection where
+public export
+record ZoteroCollection where
   constructor MkZoteroCollection
   id : String
   name : String
   itemCount : Nat
 
 ||| Academic workflow operations
-public interface AcademicWorkflow.Workflow (m : Type -> Type) where
+public export
+interface Workflow (m : Type -> Type) where
   ||| Search Zotero collections
   searchZotero : (query : String) -> m (List ZoteroCollection)
 
@@ -63,7 +69,8 @@ public interface AcademicWorkflow.Workflow (m : Type -> Type) where
   exportCollection : (collectionId : String) -> m String
 
 ||| Loopback proof: academic-mcp runs on 127.0.0.1:5174
-public data IsLoopback : (port : Nat) -> Type where
+public export
+data IsLoopback : (port : Nat) -> Type where
   LoopbackProof : IsLoopback 5174
 
 export

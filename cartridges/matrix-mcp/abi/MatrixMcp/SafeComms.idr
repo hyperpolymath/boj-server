@@ -170,7 +170,7 @@ actionRequiresConnected _ = True
 public export
 data TxnIdConfig : Type where
   MkTxnIdConfig :
-    (prefix  : String) ->
+    (txnPrefix  : String) ->
     (counter : Nat) ->
     TxnIdConfig
 
@@ -182,7 +182,7 @@ defaultTxnIdConfig = MkTxnIdConfig "boj" 0
 ||| Increment the transaction ID counter, returning the new config.
 export
 nextTxnId : TxnIdConfig -> TxnIdConfig
-nextTxnId (MkTxnIdConfig prefix counter) = MkTxnIdConfig prefix (S counter)
+nextTxnId (MkTxnIdConfig txnPrefix counter) = MkTxnIdConfig txnPrefix (S counter)
 
 -- ---------------------------------------------------------------------------
 -- Auth model

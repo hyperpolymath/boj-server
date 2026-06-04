@@ -6,6 +6,7 @@
 module Stapeln.Protocol
 
 import Data.Nat
+import Data.List
 
 ||| Stapeln operation codes.
 public export

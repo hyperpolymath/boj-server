@@ -93,14 +93,14 @@ coordPort = 7745
 public export
 data ValidPort : Nat -> Type where
   MkValidPort : (p : Nat)
-             -> {auto lo : LTE 1024 p}
-             -> {auto hi : LTE p 65535}
+             -> LTE 1024 p
+             -> LTE p 65535
              -> ValidPort p
 
 ||| Proof that 7745 is a valid non-privileged port.
 export
 coordPortValid : ValidPort 7745
-coordPortValid = MkValidPort 7745
+coordPortValid = MkValidPort 7745 (lteReflectsLTE 1024 7745 Refl) (lteReflectsLTE 7745 65535 Refl)
 
 -- ═══════════════════════════════════════════════════════════════════════════
 -- Bind Configuration — ties address + port together

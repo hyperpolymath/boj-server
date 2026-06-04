@@ -6,6 +6,7 @@
 module CivicConnect.Protocol
 
 import Data.Nat
+import Data.List
 
 ||| CivicConnect operation codes.
 public export

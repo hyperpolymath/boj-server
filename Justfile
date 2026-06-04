@@ -398,15 +398,8 @@ lint: verify-no-believe-me typecheck
 # `--check --package boj boj.ipkg` form is invalid — `--check` is for .idr
 # files and `--package` looks up an *installed* package, so it never ran).
 typecheck:
-    @echo "Type-checking core ABI (17 modules)..."
-    cd src/abi && idris2 --typecheck boj.ipkg
-    @echo "Type-checking cartridge ABIs..."
-    cd cartridges/fleet-mcp/abi && idris2 --typecheck fleet-mcp.ipkg
-    cd cartridges/nesy-mcp/abi && idris2 --typecheck nesy-mcp.ipkg
-    cd cartridges/database-mcp/abi && idris2 --typecheck database-mcp.ipkg
-    cd cartridges/agent-mcp/abi && idris2 --typecheck agent-mcp.ipkg
-    cd cartridges/feedback-mcp/abi && idris2 --typecheck feedback-mcp.ipkg
-    @echo "All ABI files type-check!"
+    @echo "Type-checking core ABI + every cartridge ABI (pinned Idris2)..."
+    bash scripts/typecheck-proofs.sh
 
 # Verify the trusted base: no unsound constructs beyond the sanctioned axioms.
 #
@@ -417,26 +410,7 @@ typecheck:
 # This recipe fails on any believe_me/assert_* outside that module, and also
 # fails if the audited axiom count drifts from 5 (keep the docs in sync).
 verify-no-believe-me:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    AXIOM_FILE="src/abi/Boj/SafetyLemmas.idr"
-    echo "Scanning for unsound constructs outside the sanctioned axiom module..."
-    FOUND=$(grep -rn 'believe_me\|assert_total\|assert_smaller' --include='*.idr' src/ cartridges/ 2>/dev/null \
-        | grep -v -- '--.*believe_me' | grep -v '|||.*believe_me' \
-        | grep -v -- '--.*Admitted' | grep -v '|||.*Admitted' \
-        | grep -v "^${AXIOM_FILE}:" || true)
-    if [ -n "$FOUND" ]; then
-        echo "CRITICAL: Found undocumented unsound constructs:"
-        echo "$FOUND"
-        exit 1
-    fi
-    AXIOM_COUNT=$(grep -c 'believe_me ()' "$AXIOM_FILE" 2>/dev/null || true)
-    if [ "$AXIOM_COUNT" != "5" ]; then
-        echo "CRITICAL: expected exactly 5 sanctioned class-(J) axioms in $AXIOM_FILE, found $AXIOM_COUNT."
-        echo "If this change is intentional, update PROOF-NEEDS.md and docs/proof-debt.md to match."
-        exit 1
-    fi
-    echo "OK: no undocumented unsound constructs; $AXIOM_COUNT sanctioned class-(J) axioms (all in SafetyLemmas.idr)."
+    bash scripts/check-trusted-base.sh
 
 # Full verification suite: type-check + zero believe_me + build + test
 verify: typecheck verify-no-believe-me build test

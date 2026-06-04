@@ -29,7 +29,7 @@ data Operation
 
 ||| Cost preference (0=cheapest, 100=best quality)
 public export
-data CostPreference = MkPref (n : Fin 101)
+data CostPreference = MkPref (Fin 101)
 
 -- ═══════════════════════════════════════════════════════════════════════
 -- Fallback chain proof

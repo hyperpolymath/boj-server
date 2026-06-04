@@ -15,6 +15,7 @@
 module LocalCoord.Protocol
 
 import LocalCoord.SafeLocalCoord
+import Data.List
 
 %default total
 

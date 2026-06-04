@@ -48,7 +48,7 @@ data RequiresPermission : Operation -> PermLevel -> Type where
 
 ||| Room capacity is bounded (1-500 participants)
 public export
-data RoomCapacity = MkCapacity (n : Fin 500)
+data RoomCapacity = MkCapacity (Fin 500)
 
 -- ═══════════════════════════════════════════════════════════════════════
 -- C ABI Exports

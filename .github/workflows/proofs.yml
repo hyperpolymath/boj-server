@@ -1,0 +1,99 @@
+# SPDX-License-Identifier: MPL-2.0
+# Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+#
+# Proofs Gate — type-check every Idris2 proof + enforce the trusted base.
+#
+# Closes the gap that let cartridge ABIs rot into non-compiling states:
+# abi-drift.yml only runs iseriser's *structural* manifest check, and nothing
+# ever ran `idris2 --typecheck` on cartridges/**/abi in CI (the Justfile's old
+# `typecheck` recipe covered only 5 of ~50 cartridge ABIs and was never wired
+# into a workflow). This gate type-checks the core ABI package AND every
+# cartridge ABI under the pinned toolchain (.tool-versions → idris2 0.8.0), and
+# runs the trusted-base audit so no new believe_me / axiom slips in.
+name: Proofs Gate
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/abi/**'
+      - 'cartridges/**/abi/**'
+      - 'verification/**'
+      - 'scripts/check-trusted-base.sh'
+      - 'scripts/typecheck-proofs.sh'
+      - '.github/workflows/proofs.yml'
+      - '.tool-versions'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'src/abi/**'
+      - 'cartridges/**/abi/**'
+      - 'verification/**'
+      - 'scripts/check-trusted-base.sh'
+      - 'scripts/typecheck-proofs.sh'
+      - '.github/workflows/proofs.yml'
+      - '.tool-versions'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: proofs-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  # Cheap, dependency-free gate: scan for unsound constructs + axiom-count drift.
+  trusted-base:
+    name: Trusted-base audit (no new axioms)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Enforce trusted base
+        run: bash scripts/check-trusted-base.sh
+
+  # Full type-check of the core ABI + every cartridge ABI under the pinned Idris2.
+  typecheck:
+    name: Idris2 type-check (core + all cartridge ABIs)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Read pinned Idris2 version
+        id: ver
+        run: echo "idris2=$(awk '/^idris2 /{print $2}' .tool-versions)" >> "$GITHUB_OUTPUT"
+
+      - name: Install build deps (Chez Scheme + GMP)
+        run: sudo apt-get update && sudo apt-get install -y chezscheme libgmp-dev build-essential
+
+      - name: Cache asdf + Idris2 toolchain
+        uses: actions/cache@d4323d4df104b026a6aa633fdb11d772146be0bf # v4.2.2
+        with:
+          path: ~/.asdf
+          key: idris2-asdf-${{ runner.os }}-${{ steps.ver.outputs.idris2 }}
+
+      - name: Install asdf + Idris2 ${{ steps.ver.outputs.idris2 }}
+        env:
+          # Ubuntu's chezscheme package installs the interpreter as `scheme`;
+          # Idris2's bootstrap Makefile reads $SCHEME (defaults to `chez`).
+          SCHEME: scheme
+        run: |
+          set -euo pipefail
+          if [ ! -f "$HOME/.asdf/asdf.sh" ]; then
+            git clone --depth 1 --branch v0.14.0 https://github.com/asdf-vm/asdf.git "$HOME/.asdf"
+          fi
+          . "$HOME/.asdf/asdf.sh"
+          asdf plugin add idris2 || true
+          asdf install idris2 "${{ steps.ver.outputs.idris2 }}"
+          asdf global  idris2 "${{ steps.ver.outputs.idris2 }}"
+
+      - name: Put Idris2 on PATH
+        run: echo "$HOME/.asdf/shims" >> "$GITHUB_PATH"
+
+      - name: Idris2 version
+        run: idris2 --version
+
+      - name: Type-check all proofs (core + cartridges)
+        run: bash scripts/typecheck-proofs.sh

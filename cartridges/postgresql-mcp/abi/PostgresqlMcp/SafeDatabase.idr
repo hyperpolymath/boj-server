@@ -46,8 +46,8 @@ data ConnState
 |||   Connected    -> Disconnected     (graceful disconnect)
 public export
 data ValidTransition : ConnState -> ConnState -> Type where
-  Connect          : ValidTransition Disconnected Connected
-  Disconnect       : ValidTransition Connected Disconnected
+  TConnect          : ValidTransition Disconnected Connected
+  TDisconnect       : ValidTransition Connected Disconnected
   BeginTx          : ValidTransition Connected InTransaction
   CommitTx         : ValidTransition InTransaction Connected
   RollbackTx       : ValidTransition InTransaction Connected

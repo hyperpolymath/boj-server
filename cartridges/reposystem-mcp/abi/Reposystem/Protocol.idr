@@ -37,8 +37,8 @@ record AuditResult where
   constructor MkAuditResult
   passed : Nat
   failed : Nat
-  total  : Nat
-  sumPrf : passed + failed = total
+  totalCount  : Nat
+  sumPrf : passed + failed = totalCount
 
 ||| Proof: a fully passing audit has zero failures.
 export

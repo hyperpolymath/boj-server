@@ -94,7 +94,7 @@ record ClusterSession where
   clusterId   : String
   tool        : K8sTool
   state       : K8sState
-  namespace   : String
+  namespaceName   : String
   contextName : String
 
 ||| Proof that a cluster session has a namespace selected (ready for operations).
