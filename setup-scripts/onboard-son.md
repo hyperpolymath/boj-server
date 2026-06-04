@@ -1,3 +1,7 @@
+<!--
+SPDX-License-Identifier: MPL-2.0
+Copyright (c) Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+-->
 # BoJ + PanLL Full Onboarding Script
 # SPDX-License-Identifier: MPL-2.0
 #
@@ -41,8 +45,8 @@ BoJ is a cartridge-based MCP server that routes ALL tool integrations through a 
    ```json
    {
      "boj-server": {
-       "command": "deno",
-       "args": ["run", "--allow-net", "--allow-env", "<FULL_PATH>/boj-server/mcp-bridge/main.js"],
+       "command": "npx",
+       "args": ["-y", "@hyperpolymath/boj-server@latest"],
        "env": { "BOJ_URL": "http://localhost:7700" }
      }
    }

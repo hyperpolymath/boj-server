@@ -1,3 +1,7 @@
+<!--
+SPDX-License-Identifier: MPL-2.0
+Copyright (c) Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+-->
 # Handoff prompts — coord-mcp + 007-mcp work
 
 Ready-to-paste prompts for continuing the work started in session 2026-04-20. Copy the one that matches your next step.

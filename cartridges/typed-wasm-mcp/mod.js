@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MPL-2.0
-// Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+// Copyright (c) Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
 //
 // typed-wasm-mcp/mod.js — MCP gateway. Delegates to the `affinescript` CLI,
 // which since 2026-05-03 carries the full typed-wasm Level 7/10 verifier

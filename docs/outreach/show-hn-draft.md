@@ -1,3 +1,7 @@
+<!--
+SPDX-License-Identifier: MPL-2.0
+Copyright (c) Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+-->
 # Show HN: BoJ — 99-cartridge MCP server with formal proofs (Idris2 + Zig)
 
 BoJ (Bundle of Joy) is an MCP server that bundles 99 tool cartridges — each with a formally verified ABI (Idris2), a C-compatible FFI (Zig), and a unified adapter exposing REST, gRPC, GraphQL, and SSE on four ports.

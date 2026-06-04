@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: MPL-2.0
+// Copyright (c) Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
 = search-mcp — Multi-provider web search
 
 Cartridge that exposes web search across four providers behind a single MCP tool surface:

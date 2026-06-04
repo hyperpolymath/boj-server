@@ -24,8 +24,8 @@ keywords:
   - zig
 
 server:
-  command: "node"
-  args: ["mcp-bridge/main.js"]
+  command: "npx"
+  args: ["-y", "@hyperpolymath/boj-server@latest"]
   env:
     BOJ_URL: "http://localhost:7700"
 

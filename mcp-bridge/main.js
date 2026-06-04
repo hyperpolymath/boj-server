@@ -1,6 +1,6 @@
-#!/usr/bin/env -S deno run --allow-net --allow-env --allow-read
 // SPDX-License-Identifier: MPL-2.0
-// Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+// Copyright (c) Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+#!/usr/bin/env -S deno run --allow-net --allow-env --allow-read
 //
 // BoJ Server — MCP transport bridge (stdio + HTTP per ADR-0013)
 //

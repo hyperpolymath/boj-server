@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: MPL-2.0
+// Copyright (c) Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
 // SPDX-FileCopyrightText: 2025-2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
 
 = boj-server
@@ -7,7 +8,7 @@
 
 image:https://img.shields.io/badge/OpenSSF-Best_Practices-green?logo=opensourcesecurity[OpenSSF Best Practices,link="https://www.bestpractices.dev/en/projects/new?repo_url=https://github.com/hyperpolymath/boj-server"]
 image:https://api.scorecard.dev/projects/github.com/hyperpolymath/boj-server/badge[OpenSSF Scorecard,link="https://scorecard.dev/viewer/?uri=github.com/hyperpolymath/boj-server"]
-image:https://img.shields.io/badge/License-MPL--2.0-blue.svg[License: MPL-2.0,link="LICENSE"]
+image:https://img.shields.io/badge/License-MPL_2.0--3.0--or--later-blue.svg[License: MPL-2.0,link="LICENSE"]
 image:https://glama.ai/mcp/servers/hyperpolymath/boj-server/badge[Glama MCP Server,link="https://glama.ai/mcp/servers/hyperpolymath/boj-server"]
 image:https://api.thegreenwebfoundation.org/greencheckimage/boj-server.net[Green Hosting,link="https://www.thegreenwebfoundation.org/green-web-check/?url=boj-server.net"]
 image:https://archive.softwareheritage.org/badge/origin/https://github.com/hyperpolymath/boj-server/[Software Heritage,link="https://archive.softwareheritage.org/browse/origin/?origin_url=https://github.com/hyperpolymath/boj-server"]

@@ -1,3 +1,7 @@
+<!--
+SPDX-License-Identifier: MPL-2.0
+Copyright (c) Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+-->
 # Coord-MCP Multi-Agent Coordination — TODO
 
 **Source of truth for pending work.** Complements `COORD-MCP-STATE.md` (where
