@@ -309,11 +309,22 @@ export fn boj_cartridge_invoke(
         const body = std.fmt.bufPrint(&buf, "{{\"slot\":{d},\"collecting\":{},\"state\":{d}}}", .{ slot, rc == 0, fb_state(slot) }) catch return shim.RC_RUNTIME_ERROR;
         return shim.writeResult(out_buf, in_out_len, body);
     } else if (shim.toolIs(tool_name, "feedback_submit")) {
-        const slot = jsonInt(json_args, "\"slot\"", 0);
         const sentiment = jsonInt(json_args, "\"sentiment\"", @intFromEnum(Sentiment.neutral));
+        var slot = jsonInt(json_args, "\"slot\"", -1);
+        // Self-provision: the cartridge invoker is fork-per-request (ADR-0005),
+        // so channel state does not survive between calls. If the target slot is
+        // not already an active, collecting channel, open a fresh one here so a
+        // lone submit still records. Within one process (e.g. a pooled invoker or
+        // a unit test) an already-collecting slot is reused and counts accumulate.
+        if (slot < 0 or fb_state(slot) != @intFromEnum(FeedbackState.collecting)) {
+            const ch = jsonInt(json_args, "\"channel\"", @intFromEnum(FeedbackChannel.api_endpoint));
+            slot = fb_register(ch);
+            if (slot < 0) return shim.writeResult(out_buf, in_out_len, "{\"recorded\":false,\"error\":\"no_channel_slots_available\"}");
+            _ = fb_start_collecting(slot);
+        }
         const count = fb_submit(slot, sentiment);
-        if (count < 0) return shim.writeResult(out_buf, in_out_len, "{\"recorded\":false,\"error\":\"channel_not_collecting\"}");
-        const body = std.fmt.bufPrint(&buf, "{{\"recorded\":true,\"slot\":{d},\"feedback_count\":{d}}}", .{ slot, count }) catch return shim.RC_RUNTIME_ERROR;
+        if (count < 0) return shim.writeResult(out_buf, in_out_len, "{\"recorded\":false,\"error\":\"submit_failed\"}");
+        const body = std.fmt.bufPrint(&buf, "{{\"recorded\":true,\"slot\":{d},\"sentiment\":{d},\"feedback_count\":{d}}}", .{ slot, sentiment, count }) catch return shim.RC_RUNTIME_ERROR;
         return shim.writeResult(out_buf, in_out_len, body);
     } else if (shim.toolIs(tool_name, "feedback_get_stats")) {
         const slot = jsonInt(json_args, "\"slot\"", 0);
@@ -407,6 +418,17 @@ test "invoke: register -> start -> submit -> stats cycle returns real shapes" {
     len = buf.len;
     try std.testing.expectEqual(@as(i32, 0), boj_cartridge_invoke("feedback_get_stats", "{\"slot\":0}", &buf, &len));
     try std.testing.expect(std.mem.indexOf(u8, buf[0..len], "\"total_feedback\":2") != null);
+}
+
+test "invoke: feedback_submit self-provisions a cold channel" {
+    fb_reset();
+    var buf: [512]u8 = undefined;
+    var len: usize = buf.len;
+    // No prior register/start (mirrors the fork-per-request invoker): a lone
+    // submit must still open a channel and record in a single call.
+    try std.testing.expectEqual(@as(i32, 0), boj_cartridge_invoke("feedback_submit", "{\"slot\":0,\"sentiment\":1}", &buf, &len));
+    try std.testing.expect(std.mem.indexOf(u8, buf[0..len], "\"recorded\":true") != null);
+    try std.testing.expect(std.mem.indexOf(u8, buf[0..len], "\"feedback_count\":1") != null);
 }
 
 test "invoke: unknown tool returns -1" {
