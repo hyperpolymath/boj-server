@@ -5,7 +5,7 @@
 
 [metadata]
 version = "1.0.0"
-last-updated = "2026-03-02"
+last-updated = "2026-06-05"
 
 [anchor]
 schema = "hyperpolymath.anchor/1"
@@ -34,7 +34,12 @@ owns = [
 ]
 
 [implementation-policy]
-allowed = ["Idris2", "Zig", "V", "Scheme", "Shell", "Just", "AsciiDoc", "Markdown", "ReScript"]
+# Realigned 2026-06-05 to the current language policy (CLAUDE.md / standards):
+# V banned 2026-04-10; ReScript dropped as the migration destination 2026-04-30;
+# AffineScript is the canonical target for new application code; Elixir (REST) and
+# JavaScript-on-Deno (mod.js cartridges) are the established runtime languages.
+allowed = ["Idris2", "Zig", "Elixir", "AffineScript", "JavaScript (Deno)", "Scheme", "Shell", "Just", "AsciiDoc", "Markdown"]
+# TypeScript: no NEW TS — 6 approved MCP-adapter exemptions only (see CLAUDE.md).
 forbidden = ["Node.js", "npm", "TypeScript", "Python", "Go"]
 
 [golden-path]
