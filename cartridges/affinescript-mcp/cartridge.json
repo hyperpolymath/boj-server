@@ -3,6 +3,8 @@
   "spdx": "MPL-2.0",
   "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath)",
   "name": "affinescript-mcp",
+  "available": false,
+  "status": "catalogued",
   "version": "0.1.0",
   "description": "AffineScript language cartridge -- type checking, parsing, formatting, linting, compiling, hover/goto-def/completion queries, error explanation, stdlib browsing, and syntax reference for the AffineScript language (substructural type system with affine/linear types, algebraic effects)",
   "domain": "Languages",

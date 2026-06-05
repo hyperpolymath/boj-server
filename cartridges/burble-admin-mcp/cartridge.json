@@ -3,6 +3,8 @@
   "spdx": "MPL-2.0",
   "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>",
   "name": "burble-admin-mcp",
+  "available": false,
+  "status": "catalogued",
   "version": "0.1.0",
   "description": "Burble WebRTC server administration",
   "domain": "communications",

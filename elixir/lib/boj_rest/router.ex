@@ -50,6 +50,11 @@ defmodule BojRest.Router do
   get "/menu" do
     carts = BojRest.Catalog.list()
 
+    # `available` is the catalog's load-bearing truth claim: true ONLY when the
+    # cartridge is built and its tools return real results (verified in CI by the
+    # truthfulness invariant). The default is false — a cartridge must opt in by
+    # asserting `"available": true` in its cartridge.json, never the reverse —
+    # so a newly-catalogued stub is never advertised as working by omission.
     summary_of = fn c ->
       %{
         name: Map.get(c, "name"),
@@ -57,7 +62,7 @@ defmodule BojRest.Router do
         domain: Map.get(c, "domain"),
         protocols: Map.get(c, "protocols", []),
         status: Map.get(c, "status", "catalogued"),
-        available: Map.get(c, "available", true),
+        available: Map.get(c, "available", false),
         description: Map.get(c, "description")
       }
     end
@@ -74,7 +79,7 @@ defmodule BojRest.Router do
       tier_ayo: Map.get(grouped, "ayo", []),
       summary: %{
         total: length(carts),
-        ready: Enum.count(carts, fn c -> Map.get(c, "available", true) end),
+        ready: Enum.count(carts, fn c -> Map.get(c, "available", false) end),
         mounted: length(carts)
       }
     })

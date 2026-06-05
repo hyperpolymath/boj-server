@@ -3,6 +3,8 @@
   "spdx": "MPL-2.0",
   "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath)",
   "name": "pypi-mcp",
+  "available": false,
+  "status": "catalogued",
   "version": "0.2.0",
   "description": "PyPI registry cartridge -- Python package search, metadata retrieval, version listing, download stats, dependency analysis, maintainer lookup, classifier browsing, and vulnerability advisory queries via the PyPI JSON API and Warehouse API",
   "domain": "Registry",

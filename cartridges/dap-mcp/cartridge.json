@@ -3,6 +3,8 @@
   "spdx": "MPL-2.0",
   "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath)",
   "name": "dap-mcp",
+  "available": false,
+  "status": "catalogued",
   "version": "0.1.0",
   "description": "Generic Debug Adapter Protocol (DAP) gateway. Spawns any DAP adapter as a persistent subprocess and exposes debug lifecycle operations (initialize, launch/attach, breakpoints, stepping, stack inspection, variable evaluation) as MCP tools.",
   "domain": "Language Tools",

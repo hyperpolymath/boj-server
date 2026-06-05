@@ -3,6 +3,8 @@
   "spdx": "MPL-2.0",
   "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath)",
   "name": "database-mcp",
+  "available": false,
+  "status": "catalogued",
   "version": "0.1.0",
   "description": "Universal database gateway. Connects to PostgreSQL, SQLite, VeriSimDB, QuandleDB, MongoDB, and other backends with unified query interface.",
   "domain": "Database",

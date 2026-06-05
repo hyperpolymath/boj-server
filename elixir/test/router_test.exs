@@ -37,17 +37,35 @@ defmodule BojRest.RouterTest do
 
   # ── menu ───────────────────────────────────────────────────────────────────
 
-  test "GET /menu returns cartridges with name/domain/tier/description" do
+  test "GET /menu returns tiered cartridge lists with a truthful summary" do
     conn = conn(:get, "/menu") |> BojRest.Router.call(@opts)
     assert conn.status == 200
     body = Jason.decode!(conn.resp_body)
-    assert is_list(body["cartridges"])
-    assert body["count"] == length(body["cartridges"])
-    Enum.each(body["cartridges"], fn c ->
-      assert is_binary(c["name"]),   "menu entry missing name"
-      assert is_binary(c["domain"]), "#{c["name"]} missing domain"
-      assert is_binary(c["tier"]),   "#{c["name"]} missing tier"
+
+    # Tiered MenuResponse shape (openapi.yaml): three tier buckets + summary.
+    # There is no flat `cartridges`/`count` here — that shape belongs to
+    # /cartridges. This test previously asserted those nonexistent keys.
+    for tier <- ["tier_teranga", "tier_shield", "tier_ayo"] do
+      assert is_list(body[tier]), "#{tier} should be a list"
+    end
+
+    entries = body["tier_teranga"] ++ body["tier_shield"] ++ body["tier_ayo"]
+    assert entries != [], "expected at least one catalogued cartridge"
+
+    Enum.each(entries, fn c ->
+      assert is_binary(c["name"]),       "menu entry missing name"
+      assert is_binary(c["domain"]),     "#{c["name"]} missing domain"
+      assert is_boolean(c["available"]), "#{c["name"]} missing available flag"
+      assert is_binary(c["status"]),     "#{c["name"]} missing status"
     end)
+
+    # The summary must not over-claim: `ready` counts only cartridges whose
+    # `available` flag is true (built + verified-real), so it equals the number
+    # of available entries and can never exceed `total`.
+    summary = body["summary"]
+    assert summary["total"] == length(entries)
+    assert summary["ready"] == Enum.count(entries, & &1["available"])
+    assert summary["ready"] <= summary["total"]
   end
 
   # ── cartridges list ────────────────────────────────────────────────────────
@@ -328,12 +346,13 @@ defmodule BojRest.RouterTest do
 
   # ── cross-endpoint consistency ────────────────────────────────────────────
 
-  test "GET /cartridges count equals GET /menu count" do
+  test "GET /cartridges count equals GET /menu summary total" do
     conn1 = conn(:get, "/cartridges") |> BojRest.Router.call(@opts)
     conn2 = conn(:get, "/menu") |> BojRest.Router.call(@opts)
     body1 = Jason.decode!(conn1.resp_body)
     body2 = Jason.decode!(conn2.resp_body)
-    assert body1["count"] == body2["count"]
+    # /menu has no flat count; its total lives under summary.
+    assert body1["count"] == body2["summary"]["total"]
   end
 
   test "GET /health version field is non-empty string" do

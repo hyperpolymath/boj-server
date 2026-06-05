@@ -3,6 +3,8 @@
   "spdx": "MPL-2.0",
   "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath)",
   "name": "circleci-mcp",
+  "available": false,
+  "status": "catalogued",
   "version": "0.1.0",
   "description": "CircleCI CI/CD cartridge -- pipeline listing, workflow management, job inspection, artifact retrieval, project listing, environment variable browsing, pipeline triggering, job cancellation, and insight queries via the CircleCI API v2",
   "domain": "CI/CD",

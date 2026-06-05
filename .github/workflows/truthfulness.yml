@@ -1,0 +1,60 @@
+# SPDX-License-Identifier: MPL-2.0
+# Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+#
+# Truthfulness invariant: the cartridge catalogue must never advertise as
+# `available: true` anything that isn't built and returning real results.
+# This gate builds every available cartridge and invokes its first tool,
+# failing if the reply carries a `"status":"stub"` marker (or no reply at all).
+# See tests/truthfulness_check.sh for the rules.
+
+name: Truthfulness
+
+on:
+  push:
+    branches: [main, master, develop]
+    paths:
+      - 'cartridges/**/cartridge.json'
+      - 'cartridges/**/ffi/**'
+      - 'ffi/**'
+      - 'elixir/lib/boj_rest/router.ex'
+      - 'tests/truthfulness_check.sh'
+      - '.github/workflows/truthfulness.yml'
+  pull_request:
+    branches: [main, master]
+    paths:
+      - 'cartridges/**/cartridge.json'
+      - 'cartridges/**/ffi/**'
+      - 'ffi/**'
+      - 'elixir/lib/boj_rest/router.ex'
+      - 'tests/truthfulness_check.sh'
+      - '.github/workflows/truthfulness.yml'
+  workflow_dispatch:
+
+permissions: read-all
+
+concurrency:
+  group: truthfulness-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  truthfulness:
+    name: Catalogue truthfulness (available ⇒ built + real)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Install Zig
+        uses: goto-bus-stop/setup-zig@9566bb3e8749893055694249726756f25e099b30  # v2
+        with:
+          version: 0.15.1
+
+      - name: Install jq
+        run: sudo apt-get update && sudo apt-get install -y jq
+
+      # The script builds boj-invoke and (re)builds each available cartridge's
+      # .so itself, so it is the single source of truth for the gate.
+      - name: Run truthfulness check (probe)
+        run: bash tests/truthfulness_check.sh --probe

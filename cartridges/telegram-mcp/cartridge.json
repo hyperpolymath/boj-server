@@ -3,6 +3,8 @@
   "spdx": "MPL-2.0",
   "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath)",
   "name": "telegram-mcp",
+  "available": false,
+  "status": "catalogued",
   "version": "0.1.0",
   "description": "Telegram Bot API gateway. Send messages, manage chats, handle inline queries, and read updates.",
   "domain": "Communications",

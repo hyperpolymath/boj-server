@@ -3,6 +3,8 @@
   "spdx": "MPL-2.0",
   "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath)",
   "name": "fireflag-mcp",
+  "available": false,
+  "status": "catalogued",
   "version": "1.0.0",
   "description": "Fireflag Cartridge — Extension-to-MCP mapping and discovery tools",
   "domain": "Developer Tools",
