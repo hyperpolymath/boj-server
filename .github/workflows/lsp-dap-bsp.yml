@@ -21,10 +21,15 @@ on:
 
 permissions: read-all
 
+concurrency:
+  group: lsp-dap-bsp-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   abi-check:
     name: ABI Specification Check (Idris2)
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - name: Validate ABI modules exist
@@ -43,9 +48,13 @@ jobs:
               echo "ERROR: No .idr files in $abi_dir"
               exit 1
             fi
-            # Check for banned patterns
-            if grep -r 'believe_me\|assert_total\|sorry' "$abi_dir" 2>/dev/null; then
-              echo "ERROR: Banned pattern found in $abi_dir"
+            # Scan ONLY .idr sources (not README/docs) for axioms in leaf
+            # cartridge proofs. Previously a recursive grep matched the abi/
+            # README's own "Zero believe_me..." prose — a false positive that
+            # red-flagged every run. The full idris2 --check of every ABI is
+            # proofs.yml's job (this is just a fast leaf-axiom guard).
+            if grep -rn --include='*.idr' 'believe_me\|assert_total\|sorry' "$abi_dir" 2>/dev/null; then
+              echo "ERROR: Banned axiom found in $abi_dir/*.idr (leaf proofs must be axiom-free)"
               exit 1
             fi
             echo "  No banned patterns — OK"
@@ -54,12 +63,17 @@ jobs:
   ffi-build:
     name: FFI Build & Test (Zig)
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      - name: Install Zig 0.15.2
-        run: |
-          curl -L https://ziglang.org/builds/zig-linux-x86_64-0.15.2.tar.xz | tar -xJ
-          echo "$PWD/zig-linux-x86_64-0.15.2" >> "$GITHUB_PATH"
+      # The old step curled ziglang.org/builds/...0.15.2... — that path is the
+      # nightly dir, not release downloads, so it returned an error page and
+      # `tar` died ("File format not recognized"). Use the pinned action +
+      # .tool-versions' canonical 0.15.1, matching e2e.yml.
+      - name: Install Zig
+        uses: goto-bus-stop/setup-zig@9566bb3e8749893055694249726756f25e099b30  # v2
+        with:
+          version: 0.15.1
       - name: Build LSP/DAP/BSP cartridge FFI
         run: |
           for cart in lsp-mcp dap-mcp bsp-mcp; do
@@ -94,8 +108,12 @@ jobs:
   panel-validation:
     name: Panel Manifest Validation
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      # jq (pre-installed on ubuntu-latest) — the repo's no-Python policy
+      # (dogfood-gate) bans the previous json.tool/json.load approach.
+      # Same checks: valid JSON + required fields + panel count.
       - name: Validate LSP/DAP/BSP panel manifests
         run: |
           for cart in lsp-mcp dap-mcp bsp-mcp; do
@@ -106,25 +124,23 @@ jobs:
               exit 1
             fi
             # Validate JSON
-            python3 -m json.tool "$manifest" > /dev/null 2>&1 || {
-              echo "ERROR: Invalid JSON in $manifest"
-              exit 1
-            }
+            jq empty "$manifest" 2>/dev/null || { echo "ERROR: Invalid JSON in $manifest"; exit 1; }
             # Check required fields
             for field in cartridge domain version panels; do
-              if ! python3 -c "import json; d=json.load(open('$manifest')); assert '$field' in d" 2>/dev/null; then
+              if ! jq -e --arg f "$field" 'has($f)' "$manifest" >/dev/null 2>&1; then
                 echo "ERROR: Missing field '$field' in $manifest"
                 exit 1
               fi
             done
             # Count panels
-            panel_count=$(python3 -c "import json; print(len(json.load(open('$manifest'))['panels']))")
+            panel_count=$(jq '.panels | length' "$manifest")
             echo "  Valid JSON, $panel_count panels defined"
           done
 
   completeness:
     name: Cartridge Completeness Check
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     needs: [abi-check, ffi-build, panel-validation]
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
