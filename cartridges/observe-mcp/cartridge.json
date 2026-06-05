@@ -3,6 +3,8 @@
   "spdx": "MPL-2.0",
   "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>",
   "name": "observe-mcp",
+  "available": false,
+  "status": "catalogued",
   "version": "0.1.0",
   "description": "Unified observability — metrics, logs, traces (Prometheus, Grafana, Loki, Jaeger)",
   "domain": "observability",

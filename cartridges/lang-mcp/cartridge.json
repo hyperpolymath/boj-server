@@ -3,6 +3,7 @@
   "spdx": "MPL-2.0",
   "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath)",
   "name": "lang-mcp",
+  "available": false,
   "version": "0.1.0",
   "status": "ffi_only",
   "description": "Multi-language session manager for the nextgen-languages family: Eclexia, AffineScript, BetLang, Ephapax, MyLang, WokeLang, Anvomidav, Phronesis, Error-lang, Julia-the-Viper, Me-dialect, Oblibeny. Tracks per-language sessions, delegates type-checking and evaluation to each language's CLI tool, and provides a unified interface across all dialects.",

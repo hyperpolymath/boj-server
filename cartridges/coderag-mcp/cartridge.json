@@ -3,6 +3,8 @@
   "spdx": "MPL-2.0",
   "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath)",
   "name": "coderag-mcp",
+  "available": false,
+  "status": "catalogued",
   "version": "0.1.0",
   "description": "Enterprise Code Intelligence Platform. Advanced graph-based code analysis for AI-assisted software development. Transforms complex software projects into searchable knowledge graphs using Neo4j.",
   "domain": "Code Analysis",

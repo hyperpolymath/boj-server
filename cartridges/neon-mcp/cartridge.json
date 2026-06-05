@@ -3,6 +3,8 @@
   "spdx": "MPL-2.0",
   "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath)",
   "name": "neon-mcp",
+  "available": false,
+  "status": "catalogued",
   "version": "0.1.0",
   "description": "Neon serverless Postgres gateway. Branch management, query execution, and connection pooling for Neon projects.",
   "domain": "Database",

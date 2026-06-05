@@ -3,6 +3,8 @@
   "spdx": "MPL-2.0",
   "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath)",
   "name": "cloudflare-mcp",
+  "available": false,
+  "status": "catalogued",
   "version": "0.1.0",
   "description": "Cloudflare API v4 cartridge -- DNS record management, zone settings, and SSL/TLS configuration",
   "domain": "Cloud",

@@ -22,6 +22,8 @@
   "category": "cross-cutting",
   "federation": "none",
   "name": "local-coord-mcp",
+  "available": false,
+  "status": "catalogued",
   "protocols": [
     "MCP",
     "Agentic"

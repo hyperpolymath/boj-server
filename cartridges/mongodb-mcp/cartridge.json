@@ -3,6 +3,8 @@
   "spdx": "MPL-2.0",
   "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath)",
   "name": "mongodb-mcp",
+  "available": false,
+  "status": "catalogued",
   "version": "0.1.0",
   "description": "MongoDB gateway with collection-level CRUD, aggregation pipeline support, and session management.",
   "domain": "Database",

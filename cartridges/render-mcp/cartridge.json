@@ -3,6 +3,8 @@
   "spdx": "MPL-2.0",
   "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath)",
   "name": "render-mcp",
+  "available": false,
+  "status": "catalogued",
   "version": "0.2.0",
   "description": "Render REST API v1 cartridge -- services, deploys, env groups, custom domains, jobs, suspend/resume, and bandwidth monitoring",
   "domain": "Cloud",

@@ -51,6 +51,8 @@
     "tag_map_path": "schemas/memory-tag-map.a2ml"
   },
   "name": "007-mcp",
+  "available": false,
+  "status": "catalogued",
   "protocols": [
     "MCP",
     "Agentic"

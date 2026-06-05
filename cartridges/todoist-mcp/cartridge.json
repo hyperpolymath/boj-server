@@ -3,6 +3,8 @@
   "spdx": "MPL-2.0",
   "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath)",
   "name": "todoist-mcp",
+  "available": false,
+  "status": "catalogued",
   "version": "0.2.0",
   "description": "Todoist task manager cartridge -- task search, project listing, task creation, task completion, label management, comment retrieval, section browsing, filter queries, activity log access, and productivity stats via the Todoist REST API v2",
   "domain": "Productivity",
