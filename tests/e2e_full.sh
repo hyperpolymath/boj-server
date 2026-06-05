@@ -208,9 +208,9 @@ echo ""
 # Step 5: Cartridge list endpoint
 # ═══════════════════════════════════════════════════════════════════════
 bold "Step 5: Cartridge list"
-cart_list=$(curl -sf "$BASE_URL/cartridges" 2>/dev/null || echo "[]")
-check "/cartridges returns array" '"name"' "$cart_list"
-cart_count=$(echo "$cart_list" | jq 'length' 2>/dev/null || echo "0")
+cart_list=$(curl -sf "$BASE_URL/cartridges" 2>/dev/null || echo "{}")
+check "/cartridges returns catalogue" '"cartridges"' "$cart_list"
+cart_count=$(echo "$cart_list" | jq '.cartridges | length' 2>/dev/null || echo "0")
 check "cartridge count >= 21" "1" "$([ "$cart_count" -ge 21 ] && echo 1 || echo 0)"
 echo ""
 
@@ -222,52 +222,39 @@ echo ""
 # POST /cartridge/:name/invoke endpoint (singular `cartridge`).
 bold "Step 6: Feedback-o-tron full cycle"
 
-# 6a: Register (open_channel)
+# All dispatches go through the unified POST /cartridge/:name/invoke endpoint,
+# which shells out (per ADR-0005) to the boj-invoke CLI fork-per-request. Each
+# invoke is a FRESH process, so the cartridge's in-memory channel state does NOT
+# persist between HTTP calls. feedback_submit is therefore self-provisioning — a
+# single call registers + collects + records. Cross-call accumulation (the full
+# multi-step state machine) belongs to the pooled-invoker follow-up and is
+# covered by the in-process Zig unit test; here we assert only what a stateless
+# invoker can truthfully deliver. Args go under "arguments" (forwarded by BojRest).
+
+# 6a: Register a channel (FeedbackChannel.api_endpoint = 2) — returns a real slot
 reg_result=$(curl -sf -X POST "$BASE_URL/cartridge/feedback-mcp/invoke" \
     -H "Content-Type: application/json" \
-    -d '{"tool":"open_channel","args":"{\"channel\":\"api\"}"}' 2>/dev/null || echo "{}")
-check "feedback register (open_channel)" '"slot"' "$reg_result"
-FEEDBACK_SLOT=$(echo "$reg_result" | jq -r '.slot // "0"' 2>/dev/null || echo "0")
+    -d '{"tool":"feedback_register_channel","arguments":{"channel":2}}' 2>/dev/null || echo "{}")
+check "feedback register channel" '"slot"' "$reg_result"
 
-# 6b: Submit feedback (positive)
-submit_result=$(curl -sf -X POST "$BASE_URL/cartridge/feedback-mcp/invoke" \
+# 6b: Submit positive — self-provisioning, records in a single stateless call
+submit_pos=$(curl -sf -X POST "$BASE_URL/cartridge/feedback-mcp/invoke" \
     -H "Content-Type: application/json" \
-    -d "{\"tool\":\"submit\",\"args\":\"{\\\"slot\\\":\\\"${FEEDBACK_SLOT}\\\",\\\"sentiment\\\":\\\"positive\\\"}\"}" \
-    2>/dev/null || echo "{}")
-check "feedback submit (positive)" '"recorded"' "$submit_result"
+    -d '{"tool":"feedback_submit","arguments":{"slot":0,"sentiment":1}}' 2>/dev/null || echo "{}")
+check "feedback submit (positive) recorded" '"recorded":true' "$submit_pos"
 
-# 6c: Submit feedback (negative)
+# 6c: Submit negative — likewise records in one call
 submit_neg=$(curl -sf -X POST "$BASE_URL/cartridge/feedback-mcp/invoke" \
     -H "Content-Type: application/json" \
-    -d "{\"tool\":\"submit\",\"args\":\"{\\\"slot\\\":\\\"${FEEDBACK_SLOT}\\\",\\\"sentiment\\\":\\\"negative\\\"}\"}" \
-    2>/dev/null || echo "{}")
-check "feedback submit (negative)" '"recorded"' "$submit_neg"
+    -d '{"tool":"feedback_submit","arguments":{"slot":0,"sentiment":-1}}' 2>/dev/null || echo "{}")
+check "feedback submit (negative) recorded" '"recorded":true' "$submit_neg"
 
-# 6d: Summary
-summary_result=$(curl -sf -X POST "$BASE_URL/cartridge/feedback-mcp/invoke" \
+# 6d: Stats — returns the real stats shape (counts are per-call under the
+#     stateless invoker, so accumulation is intentionally not asserted here)
+stats_result=$(curl -sf -X POST "$BASE_URL/cartridge/feedback-mcp/invoke" \
     -H "Content-Type: application/json" \
-    -d '{"tool":"summary","args":"{}"}' 2>/dev/null || echo "{}")
-check "feedback summary" '"total_feedback"' "$summary_result"
-
-# 6e: Export
-export_result=$(curl -sf -X POST "$BASE_URL/cartridge/feedback-mcp/invoke" \
-    -H "Content-Type: application/json" \
-    -d '{"tool":"export_feedback","args":"{}"}' 2>/dev/null || echo "{}")
-check "feedback export" '"export_feedback"' "$export_result"
-
-# 6f: Status check
-status_result=$(curl -sf -X POST "$BASE_URL/cartridge/feedback-mcp/invoke" \
-    -H "Content-Type: application/json" \
-    -d '{"tool":"status","args":"{}"}' 2>/dev/null || echo "{}")
-check "feedback status" '"feedback-o-tron"' "$status_result"
-
-# 6g: Deregister — close the channel
-# Note: deregister is done via the FFI fb_deregister; we test through
-# the list_channels tool which should still work after channel close
-list_result=$(curl -sf -X POST "$BASE_URL/cartridge/feedback-mcp/invoke" \
-    -H "Content-Type: application/json" \
-    -d '{"tool":"list_channels","args":"{}"}' 2>/dev/null || echo "{}")
-check "feedback list_channels" '"available"' "$list_result"
+    -d '{"tool":"feedback_get_stats","arguments":{"slot":0}}' 2>/dev/null || echo "{}")
+check "feedback get_stats shape" '"total_feedback"' "$stats_result"
 echo ""
 
 # Step 7 (order-ticket flow) lives in tests/order_ticket_e2e.sh against

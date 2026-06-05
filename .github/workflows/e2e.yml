@@ -80,9 +80,13 @@ jobs:
 
       - name: Build FFI libraries
         run: |
-          cd ffi/zig && zig build
+          # Subshell keeps the cd contained so the cartridge loop below runs
+          # from the repo root (otherwise its glob never matches). `zig build
+          # invoke` builds the boj-invoke CLI the Elixir Invoker shells out to
+          # for tool dispatch — without it every FFI invoke returns {} (cli_missing).
+          (cd ffi/zig && zig build && zig build invoke)
           for cart in cartridges/*/ffi; do
-            [ -f "$cart/build.zig" ] && (cd "$cart" && zig build) || true
+            if [ -f "$cart/build.zig" ]; then (cd "$cart" && zig build) || true; fi
           done
 
       - name: Run E2E full test suite

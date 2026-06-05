@@ -3,6 +3,8 @@
   "spdx": "MPL-2.0",
   "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath)",
   "name": "obsidian-mcp",
+  "available": false,
+  "status": "catalogued",
   "version": "0.2.0",
   "description": "Obsidian vault cartridge -- note search, content retrieval, backlink navigation, tag browsing, graph analysis, dataview queries, frontmatter extraction, daily notes, template listing, and vault statistics via the Obsidian Local REST API",
   "domain": "Knowledge",

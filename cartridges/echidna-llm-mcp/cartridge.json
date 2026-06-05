@@ -3,6 +3,7 @@
   "spdx": "MPL-2.0",
   "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>",
   "name": "echidna-llm-mcp",
+  "available": false,
   "version": "0.1.0",
   "status": "stub",
   "description": "LLM advisor cartridge for the ECHIDNA formal verification engine. Provides free-form consultation (consult) and structured proof-tactic generation (suggest_tactics) by routing to Anthropic Claude via ANTHROPIC_API_KEY.",

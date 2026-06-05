@@ -259,29 +259,80 @@ pub export fn boj_cartridge_version() [*:0]const u8 {
 
 const shim = @import("cartridge_shim.zig");
 
-/// Dispatch the cartridge.json MCP tools. Grade D Alpha — each arm
-/// returns a stub JSON body shaped to the tool's intended response.
+/// Extract a (possibly negative) integer value for a quoted JSON key from a
+/// flat object string — e.g. `jsonInt(args, "\"slot\"", 0)`. A deliberate
+/// plain byte-scan (no std.json dependency) sufficient for the cartridge's
+/// flat `{ "slot": N, "sentiment": N }` argument objects. Returns `default`
+/// when the key or its number is absent.
+fn jsonInt(json: [*c]const u8, quoted_key: []const u8, default: c_int) c_int {
+    if (json == null) return default;
+    const s = std.mem.span(@as([*:0]const u8, @ptrCast(json)));
+    const kpos = std.mem.indexOf(u8, s, quoted_key) orelse return default;
+    var i = kpos + quoted_key.len;
+    while (i < s.len and (s[i] == ' ' or s[i] == ':')) : (i += 1) {}
+    var neg: c_int = 1;
+    if (i < s.len and s[i] == '-') {
+        neg = -1;
+        i += 1;
+    }
+    var val: c_int = 0;
+    var found = false;
+    while (i < s.len and s[i] >= '0' and s[i] <= '9') : (i += 1) {
+        val = val * 10 + @as(c_int, @intCast(s[i] - '0'));
+        found = true;
+    }
+    return if (found) neg * val else default;
+}
+
+/// Dispatch the cartridge.json MCP tools against the live feedback state
+/// machine (the `fb_*` exports above). Reads `channel`/`slot`/`sentiment`
+/// from the JSON args object and returns each tool's real result shape.
 export fn boj_cartridge_invoke(
     tool_name: [*c]const u8,
     json_args: [*c]const u8,
     out_buf: [*c]u8,
     in_out_len: [*c]usize,
 ) callconv(.c) i32 {
-    _ = json_args;
     if (shim.invokeArgsNull(tool_name, out_buf, in_out_len)) return shim.RC_BAD_ARGS;
 
-    const body: []const u8 =     if (shim.toolIs(tool_name, "feedback_register_channel"))
-        "{\"result\":{\"status\":\"stub\"}}"
-    else if (shim.toolIs(tool_name, "feedback_start_collecting"))
-        "{\"result\":{\"status\":\"stub\"}}"
-    else if (shim.toolIs(tool_name, "feedback_submit"))
-        "{\"result\":{\"status\":\"stub\"}}"
-    else if (shim.toolIs(tool_name, "feedback_get_stats"))
-        "{\"result\":{\"metadata\":{},\"status\":\"stub\"}}"
-else
-    return shim.RC_UNKNOWN_TOOL;
+    var buf: [512]u8 = undefined;
 
-    return shim.writeResult(out_buf, in_out_len, body);
+    if (shim.toolIs(tool_name, "feedback_register_channel")) {
+        const ch = jsonInt(json_args, "\"channel\"", @intFromEnum(FeedbackChannel.api_endpoint));
+        const slot = fb_register(ch);
+        if (slot < 0) return shim.writeResult(out_buf, in_out_len, "{\"error\":\"no_channel_slots_available\"}");
+        const body = std.fmt.bufPrint(&buf, "{{\"slot\":{d},\"channel\":{d},\"state\":{d}}}", .{ slot, ch, @intFromEnum(FeedbackState.channel_registered) }) catch return shim.RC_RUNTIME_ERROR;
+        return shim.writeResult(out_buf, in_out_len, body);
+    } else if (shim.toolIs(tool_name, "feedback_start_collecting")) {
+        const slot = jsonInt(json_args, "\"slot\"", 0);
+        const rc = fb_start_collecting(slot);
+        const body = std.fmt.bufPrint(&buf, "{{\"slot\":{d},\"collecting\":{},\"state\":{d}}}", .{ slot, rc == 0, fb_state(slot) }) catch return shim.RC_RUNTIME_ERROR;
+        return shim.writeResult(out_buf, in_out_len, body);
+    } else if (shim.toolIs(tool_name, "feedback_submit")) {
+        const sentiment = jsonInt(json_args, "\"sentiment\"", @intFromEnum(Sentiment.neutral));
+        var slot = jsonInt(json_args, "\"slot\"", -1);
+        // Self-provision: the cartridge invoker is fork-per-request (ADR-0005),
+        // so channel state does not survive between calls. If the target slot is
+        // not already an active, collecting channel, open a fresh one here so a
+        // lone submit still records. Within one process (e.g. a pooled invoker or
+        // a unit test) an already-collecting slot is reused and counts accumulate.
+        if (slot < 0 or fb_state(slot) != @intFromEnum(FeedbackState.collecting)) {
+            const ch = jsonInt(json_args, "\"channel\"", @intFromEnum(FeedbackChannel.api_endpoint));
+            slot = fb_register(ch);
+            if (slot < 0) return shim.writeResult(out_buf, in_out_len, "{\"recorded\":false,\"error\":\"no_channel_slots_available\"}");
+            _ = fb_start_collecting(slot);
+        }
+        const count = fb_submit(slot, sentiment);
+        if (count < 0) return shim.writeResult(out_buf, in_out_len, "{\"recorded\":false,\"error\":\"submit_failed\"}");
+        const body = std.fmt.bufPrint(&buf, "{{\"recorded\":true,\"slot\":{d},\"sentiment\":{d},\"feedback_count\":{d}}}", .{ slot, sentiment, count }) catch return shim.RC_RUNTIME_ERROR;
+        return shim.writeResult(out_buf, in_out_len, body);
+    } else if (shim.toolIs(tool_name, "feedback_get_stats")) {
+        const slot = jsonInt(json_args, "\"slot\"", 0);
+        const body = std.fmt.bufPrint(&buf, "{{\"slot\":{d},\"total_feedback\":{d},\"positive\":{d},\"negative\":{d},\"neutral\":{d},\"state\":{d}}}", .{ slot, fb_count(slot), fb_positive_count(slot), fb_negative_count(slot), fb_neutral_count(slot), fb_state(slot) }) catch return shim.RC_RUNTIME_ERROR;
+        return shim.writeResult(out_buf, in_out_len, body);
+    } else {
+        return shim.RC_UNKNOWN_TOOL;
+    }
 }
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -344,20 +395,40 @@ test "state transition validation" {
 // ADR-0006 invoke dispatch tests
 // ═══════════════════════════════════════════════════════════════════════
 
-test "invoke: each declared tool succeeds" {
-    var buf: [256]u8 = undefined;
-    const tools = [_][]const u8{
-        "feedback_register_channel",
-        "feedback_start_collecting",
-        "feedback_submit",
-        "feedback_get_stats",
-    };
-    for (tools) |t| {
-        var len: usize = buf.len;
-        const rc = boj_cartridge_invoke(t.ptr, "{}", &buf, &len);
-        try std.testing.expectEqual(@as(i32, 0), rc);
-        try std.testing.expect(std.mem.indexOf(u8, buf[0..len], "result") != null);
-    }
+test "invoke: register -> start -> submit -> stats cycle returns real shapes" {
+    fb_reset();
+    var buf: [512]u8 = undefined;
+
+    var len: usize = buf.len;
+    try std.testing.expectEqual(@as(i32, 0), boj_cartridge_invoke("feedback_register_channel", "{\"channel\":2}", &buf, &len));
+    try std.testing.expect(std.mem.indexOf(u8, buf[0..len], "\"slot\":0") != null);
+
+    len = buf.len;
+    try std.testing.expectEqual(@as(i32, 0), boj_cartridge_invoke("feedback_start_collecting", "{\"slot\":0}", &buf, &len));
+    try std.testing.expect(std.mem.indexOf(u8, buf[0..len], "\"collecting\":true") != null);
+
+    len = buf.len;
+    try std.testing.expectEqual(@as(i32, 0), boj_cartridge_invoke("feedback_submit", "{\"slot\":0,\"sentiment\":1}", &buf, &len));
+    try std.testing.expect(std.mem.indexOf(u8, buf[0..len], "\"recorded\":true") != null);
+
+    len = buf.len;
+    try std.testing.expectEqual(@as(i32, 0), boj_cartridge_invoke("feedback_submit", "{\"slot\":0,\"sentiment\":-1}", &buf, &len));
+    try std.testing.expect(std.mem.indexOf(u8, buf[0..len], "\"recorded\":true") != null);
+
+    len = buf.len;
+    try std.testing.expectEqual(@as(i32, 0), boj_cartridge_invoke("feedback_get_stats", "{\"slot\":0}", &buf, &len));
+    try std.testing.expect(std.mem.indexOf(u8, buf[0..len], "\"total_feedback\":2") != null);
+}
+
+test "invoke: feedback_submit self-provisions a cold channel" {
+    fb_reset();
+    var buf: [512]u8 = undefined;
+    var len: usize = buf.len;
+    // No prior register/start (mirrors the fork-per-request invoker): a lone
+    // submit must still open a channel and record in a single call.
+    try std.testing.expectEqual(@as(i32, 0), boj_cartridge_invoke("feedback_submit", "{\"slot\":0,\"sentiment\":1}", &buf, &len));
+    try std.testing.expect(std.mem.indexOf(u8, buf[0..len], "\"recorded\":true") != null);
+    try std.testing.expect(std.mem.indexOf(u8, buf[0..len], "\"feedback_count\":1") != null);
 }
 
 test "invoke: unknown tool returns -1" {

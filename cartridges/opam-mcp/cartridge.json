@@ -3,6 +3,8 @@
   "spdx": "MPL-2.0",
   "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath)",
   "name": "opam-mcp",
+  "available": false,
+  "status": "catalogued",
   "version": "0.2.0",
   "description": "opam registry cartridge -- OCaml package search, metadata retrieval, version listing, dependency analysis, reverse dependency lookup, maintainer listing, and repository browsing via the opam.ocaml.org API",
   "domain": "Registry",

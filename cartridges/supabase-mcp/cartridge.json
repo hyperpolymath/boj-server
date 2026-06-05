@@ -3,6 +3,8 @@
   "spdx": "MPL-2.0",
   "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath)",
   "name": "supabase-mcp",
+  "available": false,
+  "status": "catalogued",
   "version": "0.1.0",
   "description": "Supabase gateway. PostgreSQL queries, Auth user management, Storage file operations, and Edge Functions.",
   "domain": "Database",

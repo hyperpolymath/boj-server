@@ -3,6 +3,8 @@
   "spdx": "MPL-2.0",
   "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath)",
   "name": "github-actions-mcp",
+  "available": false,
+  "status": "catalogued",
   "version": "0.1.0",
   "description": "GitHub Actions CI/CD cartridge -- workflow listing, run management, job/step inspection, artifact download, log retrieval, workflow dispatch, secret listing, environment browsing, cache management, runner listing, re-run, and cancellation via the GitHub Actions API",
   "domain": "CI/CD",

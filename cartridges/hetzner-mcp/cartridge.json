@@ -3,6 +3,8 @@
   "spdx": "MPL-2.0",
   "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath)",
   "name": "hetzner-mcp",
+  "available": false,
+  "status": "catalogued",
   "version": "0.2.0",
   "description": "Hetzner Cloud API cartridge -- server, volume, firewall, network, SSH key, image, snapshot, floating IP, and load balancer management with per-second rate limiting",
   "domain": "Cloud",

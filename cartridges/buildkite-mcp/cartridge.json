@@ -3,6 +3,8 @@
   "spdx": "MPL-2.0",
   "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath)",
   "name": "buildkite-mcp",
+  "available": false,
+  "status": "catalogued",
   "version": "0.1.0",
   "description": "Buildkite CI/CD cartridge -- pipeline listing, build management, job inspection, artifact retrieval, agent listing, annotation creation, build triggering, log retrieval, environment listing, and build cancellation via the Buildkite REST API",
   "domain": "CI/CD",

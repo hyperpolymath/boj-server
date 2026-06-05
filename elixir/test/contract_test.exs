@@ -45,7 +45,11 @@ defmodule BojRest.ContractTest do
       catalog_names = BojRest.Catalog.list() |> MapSet.new(& &1["name"])
       conn = conn(:get, "/menu") |> BojRest.Router.call(@opts)
       body = Jason.decode!(conn.resp_body)
-      Enum.each(body["cartridges"], fn entry ->
+      # Tiered MenuResponse: entries live in the three tier buckets, not a
+      # flat `cartridges` list (that shape is /cartridges).
+      entries = body["tier_teranga"] ++ body["tier_shield"] ++ body["tier_ayo"]
+      assert entries != [], "expected at least one catalogued cartridge"
+      Enum.each(entries, fn entry ->
         assert MapSet.member?(catalog_names, entry["name"]),
                "Menu entry #{entry["name"]} not found in Catalog"
       end)

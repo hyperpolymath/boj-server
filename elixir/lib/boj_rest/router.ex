@@ -48,17 +48,41 @@ defmodule BojRest.Router do
   end
 
   get "/menu" do
-    carts =
-      BojRest.Catalog.list()
-      |> Enum.map(fn c ->
-        %{
-          name: Map.get(c, "name"),
-          domain: Map.get(c, "domain"),
-          tier: Map.get(c, "tier"),
-          description: Map.get(c, "description")
-        }
-      end)
-    json(conn, 200, %{cartridges: carts, count: length(carts)})
+    carts = BojRest.Catalog.list()
+
+    # `available` is the catalog's load-bearing truth claim: true ONLY when the
+    # cartridge is built and its tools return real results (verified in CI by the
+    # truthfulness invariant). The default is false — a cartridge must opt in by
+    # asserting `"available": true` in its cartridge.json, never the reverse —
+    # so a newly-catalogued stub is never advertised as working by omission.
+    summary_of = fn c ->
+      %{
+        name: Map.get(c, "name"),
+        version: Map.get(c, "version"),
+        domain: Map.get(c, "domain"),
+        protocols: Map.get(c, "protocols", []),
+        status: Map.get(c, "status", "catalogued"),
+        available: Map.get(c, "available", false),
+        description: Map.get(c, "description")
+      }
+    end
+
+    # Group by the cartridge's declared tier (Teranga / Shield / Ayo),
+    # case-folded, into the tiered MenuResponse shape openapi.yaml documents
+    # and the mcp-bridge offline menu already uses.
+    tier_of = fn c -> c |> Map.get("tier", "") |> to_string() |> String.downcase() end
+    grouped = Enum.group_by(carts, tier_of, summary_of)
+
+    json(conn, 200, %{
+      tier_teranga: Map.get(grouped, "teranga", []),
+      tier_shield: Map.get(grouped, "shield", []),
+      tier_ayo: Map.get(grouped, "ayo", []),
+      summary: %{
+        total: length(carts),
+        ready: Enum.count(carts, fn c -> Map.get(c, "available", false) end),
+        mounted: length(carts)
+      }
+    })
   end
 
   get "/cartridges" do

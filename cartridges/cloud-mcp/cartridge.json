@@ -3,6 +3,8 @@
   "spdx": "MPL-2.0",
   "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>",
   "name": "cloud-mcp",
+  "available": false,
+  "status": "catalogued",
   "version": "0.1.0",
   "description": "Multi-cloud provider session manager (AWS/GCP/Azure/DO/Vercel)",
   "domain": "cloud",
