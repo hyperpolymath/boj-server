@@ -3,9 +3,9 @@
 
 # HCG tier-2 — rollout & rollback runbook
 
-**Version:** 0.1 (draft, Phase E first cut)
-**Date:** 2026-05-20
-**Status:** Phase E deliverable E5 (covers also E4 sequencing). Draft — owner-input markers (`!OWNER:`) remain to be filled before any traffic-shift action is taken.
+**Version:** 0.2 (post Phase-D close, Phase E in-progress)
+**Date:** 2026-06-08 (rev. from 2026-05-20)
+**Status:** Phase E deliverables E1 (deploy spec) + E5 (rollback runbook) drafted; checklist refreshed after Phase D close. Owner-input markers (`!OWNER:`) remain to be filled before any traffic-shift action is taken.
 **ADR:** [`docs/decisions/0004-adopt-http-capability-gateway.md`](../decisions/0004-adopt-http-capability-gateway.md)
 **Plan:** [`docs/integration/http-capability-gateway-plan.md`](http-capability-gateway-plan.md) (§ Phase E)
 **Contract:** [`docs/integration/http-capability-gateway-boj-contract.md`](http-capability-gateway-boj-contract.md)
@@ -13,7 +13,7 @@
 
 > **File-format note.** Matches sibling integration docs (`http-capability-gateway-{plan,audit,boj-contract,policy-authoring}.md`); the integration plan §E5 normatively prescribes `.md` for the rollback runbook (the wider rollout-and-rollback scope folds in here per acceptance criterion 3 of `standards#100`). The estate `.adoc` default is deliberately overridden for the `docs/integration/` set.
 
-> **Phase-D dependency.** Production rollout (sections 4–6 below) requires Phase D deliverables D-3 (CI regression alert armed) and D-4 (real baseline numbers populated in `bench/baseline.json`). At the time of this draft, Phase D has merged the **scaffold only** (http-capability-gateway#12); the baseline JSON is `_status: "scaffold-placeholder"` and the perf-regression gate is non-blocking. Section 1 (prerequisites) gates execution on that flip.
+> **Phase-D status (2026-06-08).** Phase D (`standards#99`) is **closed** — joint-closed via boj-server#168 (D-1 load profile, 2026-06-01) on top of the gateway-side D-1..D-3 scaffold + D-4 bootstrap (http-capability-gateway#12 / #14 / #22 / #26 / #30, all merged by 2026-06-02). The perf-regression gate is wired and the harness covers five scenarios. Two owner-driven Phase-D follow-ups remain before §1.1 below can sign off all four boxes: dispatching the `perf-rebaseline.yml` workflow to populate real `bench/baseline.json` numbers, and flipping `_status` from `scaffold-placeholder` to `active` to arm the gate. Both are workflow dispatches plus a maintainer-merge of the generated `perf: rebaseline (standards#99)` PR; no further code changes are required.
 
 ---
 
@@ -43,12 +43,15 @@ These must **all** be green before any traffic-shift action is taken. A red item
 
 ### 1.1 Phase D deliverables landed
 
-- [ ] Phase D-2 (loopback backend fixture) merged.
-- [ ] Phase D-3 (real CI regression alert armed; `bench/baseline.json _status` flipped from `"scaffold-placeholder"` to `"active"`).
-- [ ] Phase D-4 (real baseline numbers populated; p50/p95/p99 + ips populated for all three scenarios in `bench/baseline.json`).
+- [x] Phase D-1 (Benchee harness + comparator + non-blocking CI gate) — http-capability-gateway#12 (2026-05-20).
+- [x] Phase D-2 (loopback backend fixture so the allow scenario measures real dial-and-read cost) — http-capability-gateway#14 (2026-05-26).
+- [x] Phase D-3 (dedicated trust-header-rewrite + mTLS handshake scenarios; schema-drift hardening) — http-capability-gateway#22 (2026-05-27), #30 (2026-06-02).
+- [x] Phase D-4 bootstrap (`workflow_dispatch` rebaseline automation on `ubuntu-latest`) — http-capability-gateway#26 (2026-05-30).
+- [x] Phase D-1 load-profile declaration (this repo's denominator) — boj-server#168 (2026-06-01); joint-closed `standards#99`.
+- [ ] **Pending owner action — D-4 rebaseline + arm.** Dispatch `Perf Rebaseline` workflow on `hyperpolymath/http-capability-gateway` Actions tab, review the generated `perf: rebaseline (standards#99)` PR (real p50/p95/p99/ips for all five scenarios), and either flip `bench/baseline.json _status` from `scaffold-placeholder` to `active` in the same PR or in an immediate follow-up. Until this lands the regression gate runs in non-blocking scaffold mode — Phase E acceptance criterion 2 ("load that matches Phase D benchmark numbers") cannot be evaluated against absolute numbers.
 - [ ] CI on `hyperpolymath/http-capability-gateway:main` is green for the most recent commit including the `Perf Regression` workflow.
 
-> The Phase E acceptance criterion 2 references "load that matches Phase D benchmark numbers". Without D-3+D-4 there is no number to match against and no gate to catch a silent regression.
+> The Phase E acceptance criterion 2 references "load that matches Phase D benchmark numbers". The scaffold-mode gate catches the *shape* of a regression (per-scenario tolerance ratios) but not absolute breach of the load-profile budget published in `docs/integration/gateway-load-profile.md` § 2; the rebaseline + active flip is what arms the absolute check.
 
 ### 1.2 Phase A/B/C contract artefacts in place
 
@@ -73,16 +76,18 @@ These cannot be inferred from the code/contract; the owner must fill them before
 
 ### 1.4 BoJ-side prerequisites
 
-- [ ] BoJ staging instance addressable on loopback only (`:7700`); externally-facing port closed at host firewall or container network.
-- [ ] BoJ `BojRest.TrustPolicy.satisfies?/3` non-loopback-deny clause present (verify by `grep -n 'def satisfies?(_required, _trust, false)' elixir/lib/boj_rest/trust_policy.ex` returns line ~73).
-- [ ] `Trustfile.a2ml [CLOUDFLARE_EDGE_SECURITY].rate_limiting.tier_2_gateway.status` currently `"PENDING — http-capability-gateway wiring forthcoming"` (line ~900). _The flip to a real status is the **last** action; see §6._
+- [x] BoJ codebase defaults its container/Elixir back-side bind to loopback so the externally-facing port is not opened by the in-repo defaults: Elixir Cowboy bind tightening (boj-server#130), k8s Service ClusterIP (boj-server#131), Zig-adapter `APP_HOST=127.0.0.1` across `stapeln.toml`, `entrypoint.sh`, `compose.prod.yaml` (boj-server#132, merged 2026-05-20). Deployment-time confirmation that the staging port really is closed at the network layer (firewall / NetworkPolicy / container network) remains an operator pre-check before §2.1.
+- [x] BoJ `BojRest.TrustPolicy.satisfies?/3` non-loopback-deny clause present — verified at `elixir/lib/boj_rest/trust_policy.ex:73` (`def satisfies?(_required, _trust, false), do: false`). Phase C invariant 3 enforcement; landed in boj-server#106.
+- [x] Phase E NetworkPolicy hardening (back-side reachability restricted) — boj-server#173.
+- [x] HCG-policy SSE-route coverage (`POST /cartridge/:name/sse` governed alongside `cartridge-invoke-post`) — boj-server#165.
+- [ ] `Trustfile.a2ml [CLOUDFLARE_EDGE_SECURITY].rate_limiting.tier_2_gateway.status` currently `"PENDING — http-capability-gateway wiring forthcoming"` (line 900). _The flip to a real status is the **last** action; see §6._
 
 ### 1.5 Gateway-side prerequisites
 
-- [ ] Gateway Containerfile built and signed as a `.ctp` bundle via cerro-torre (plan §E1).
-- [ ] `container/gateway-deploy.k9.ncl` exists in the gateway repo (plan §E1).
-- [x] Gateway policy file in place: `config/gateway-policy-boj-example.yaml`, covering all BoJ surface routes (`/.well-known/boj-node-pubkey`, `/health`, `/menu`, `/cartridges`, `/cartridge/:name`, `/cartridge/:name/invoke`, `/cartridge/:name/sse`, plus any added since contract v1.0). Re-verified 2026-05-28 against `BojRest.Router`; the `POST /cartridge/:name/sse` route (router.ex line 130, wired since the SSE landing — ADR-0013 §6, STATE entry 2026-05-18) was the only drift since contract v1.0 and is now governed by the `cartridge-sse-post` rule alongside `cartridge-invoke-post`. The live policy file (`config/gateway-policy-boj.yaml`, per the example header) is still to be promoted from this example before §3.1.
-- [ ] Gateway has been smoke-tested in isolation with the policy, returning expected allow/deny on each route.
+- [ ] Gateway Containerfile built and signed as a `.ctp` bundle via cerro-torre (plan §E1). `pedigree.security.signature` + `pedigree.validation.checksum` in `container/gateway-deploy.k9.ncl` are `PLACEHOLDER` until this step runs; cerro-torre signing is a separate operator action gated on key-handling discipline.
+- [x] `container/gateway-deploy.k9.ncl` exists in the gateway repo (plan §E1) — http-capability-gateway#38 (2026-06-03). Five-level k9-svc pedigree (Snout / Scent / Leash / Gut / Muscle) modelled on `boj-server:container/deploy.k9.ncl`; per-environment `BACKEND_URL` (`http://127.0.0.1:7700` staging, `http://unix:/run/boj/gnosis.sock:/` production); trust source `"header"` staging → `"mtls"` production after §2.4 rehearsal; `max_unavailable = 0`; `failure_mode = "fail-closed"` matching the `[SEAMS] gateway-boj-gnosis` declaration.
+- [x] Gateway policy file in place: `config/gateway-policy-boj-example.yaml`, covering all BoJ surface routes (`/.well-known/boj-node-pubkey`, `/health`, `/menu`, `/cartridges`, `/cartridge/:name`, `/cartridge/:name/invoke`, `/cartridge/:name/sse`, plus any added since contract v1.0). Re-verified 2026-05-28 against `BojRest.Router`; the `POST /cartridge/:name/sse` route (router.ex line 130, wired since the SSE landing — ADR-0013 §6, STATE entry 2026-05-18) was the only drift since contract v1.0 and is now governed by the `cartridge-sse-post` rule alongside `cartridge-invoke-post` (boj-server#165). The live policy file (`config/gateway-policy-boj.yaml`, per the example header) is still to be promoted from this example before §3.1.
+- [ ] Gateway has been smoke-tested in isolation with the policy, returning expected allow/deny on each route. Sequence: stand the gateway up against `gateway-policy-boj-example.yaml`, exercise one allow + one deny per route from §1.5 above; confirm `POST /cartridge/:name/sse` with `X-Trust-Level: authenticated` proxies through and with `X-Trust-Level: untrusted` returns 403 (deferred to this step by boj-server#165's test plan). Out of band of code review — operator pre-check before §2.1.
 
 ---
 

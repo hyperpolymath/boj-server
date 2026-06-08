@@ -42,6 +42,23 @@ All notable changes to Bundle of Joy Server are documented here.
 
 ### Documentation
 
+- **HCG tier-2 rollout runbook refreshed (v0.1 → v0.2)** in
+  `docs/integration/hcg-tier2-rollout-runbook.md` to reflect the
+  post-Phase-D state of the single-lane channel rooted at
+  [`hyperpolymath/standards#91`](https://github.com/hyperpolymath/standards/issues/91).
+  §1.1 (Phase D deliverables) ticks D-1/D-2/D-3 + D-4 bootstrap + the
+  cross-repo D-1 load-profile (boj-server#168) with PR references; calls
+  out the remaining owner-driven D-4 rebaseline + `_status` flip as the
+  single open item. §1.4 (BoJ-side prereqs) ticks the loopback bind layers
+  (#130/#131/#132), the Phase C `TrustPolicy.satisfies?/3` clause (#106),
+  the NetworkPolicy (#173), and the SSE-route policy coverage (#165).
+  §1.5 (gateway-side prereqs) ticks the new `container/gateway-deploy.k9.ncl`
+  (http-capability-gateway#38) and records what's still placeholder until
+  cerro-torre signing runs. Header banner replaces the stale Phase-D-scaffold-only
+  note with current state. Refs
+  [`hyperpolymath/standards#100`](https://github.com/hyperpolymath/standards/issues/100),
+  [`#91`](https://github.com/hyperpolymath/standards/issues/91).
+
 - **Repository documentation reorganised to match rsr-template-repo taxonomy.**
   Root-level `.adoc` clutter eliminated; all docs now live under `docs/`
   subdirectories clustered by purpose (`quickstarts/`, `wikis/`, `architecture/`,
