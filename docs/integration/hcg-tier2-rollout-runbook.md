@@ -3,9 +3,9 @@
 
 # HCG tier-2 — rollout & rollback runbook
 
-**Version:** 0.2 (post Phase-D close, Phase E in-progress)
-**Date:** 2026-06-08 (rev. from 2026-05-20)
-**Status:** Phase E deliverables E1 (deploy spec) + E5 (rollback runbook) drafted; checklist refreshed after Phase D close. Owner-input markers (`!OWNER:`) remain to be filled before any traffic-shift action is taken.
+**Version:** 0.3 (live policy promoted, Phase E in-progress)
+**Date:** 2026-06-09 (rev. from 2026-06-08)
+**Status:** Phase E deliverables E1 (deploy spec) + E5 (rollback runbook) drafted; live gateway policy (`config/gateway-policy-boj.yaml`) promoted from the worked example (§1.5). Owner-input markers (`!OWNER:`) remain to be filled before any traffic-shift action is taken.
 **ADR:** [`docs/decisions/0004-adopt-http-capability-gateway.md`](../decisions/0004-adopt-http-capability-gateway.md)
 **Plan:** [`docs/integration/http-capability-gateway-plan.md`](http-capability-gateway-plan.md) (§ Phase E)
 **Contract:** [`docs/integration/http-capability-gateway-boj-contract.md`](http-capability-gateway-boj-contract.md)
@@ -86,7 +86,8 @@ These cannot be inferred from the code/contract; the owner must fill them before
 
 - [ ] Gateway Containerfile built and signed as a `.ctp` bundle via cerro-torre (plan §E1). `pedigree.security.signature` + `pedigree.validation.checksum` in `container/gateway-deploy.k9.ncl` are `PLACEHOLDER` until this step runs; cerro-torre signing is a separate operator action gated on key-handling discipline.
 - [x] `container/gateway-deploy.k9.ncl` exists in the gateway repo (plan §E1) — http-capability-gateway#38 (2026-06-03). Five-level k9-svc pedigree (Snout / Scent / Leash / Gut / Muscle) modelled on `boj-server:container/deploy.k9.ncl`; per-environment `BACKEND_URL` (`http://127.0.0.1:7700` staging, `http://unix:/run/boj/gnosis.sock:/` production); trust source `"header"` staging → `"mtls"` production after §2.4 rehearsal; `max_unavailable = 0`; `failure_mode = "fail-closed"` matching the `[SEAMS] gateway-boj-gnosis` declaration.
-- [x] Gateway policy file in place: `config/gateway-policy-boj-example.yaml`, covering all BoJ surface routes (`/.well-known/boj-node-pubkey`, `/health`, `/menu`, `/cartridges`, `/cartridge/:name`, `/cartridge/:name/invoke`, `/cartridge/:name/sse`, plus any added since contract v1.0). Re-verified 2026-05-28 against `BojRest.Router`; the `POST /cartridge/:name/sse` route (router.ex line 130, wired since the SSE landing — ADR-0013 §6, STATE entry 2026-05-18) was the only drift since contract v1.0 and is now governed by the `cartridge-sse-post` rule alongside `cartridge-invoke-post` (boj-server#165). The live policy file (`config/gateway-policy-boj.yaml`, per the example header) is still to be promoted from this example before §3.1.
+- [x] Gateway policy file in place: `config/gateway-policy-boj-example.yaml`, covering all BoJ surface routes (`/.well-known/boj-node-pubkey`, `/health`, `/menu`, `/cartridges`, `/cartridge/:name`, `/cartridge/:name/invoke`, `/cartridge/:name/sse`, plus any added since contract v1.0). Re-verified 2026-05-28 against `BojRest.Router`; the `POST /cartridge/:name/sse` route (router.ex line 130, wired since the SSE landing — ADR-0013 §6, STATE entry 2026-05-18) was the only drift since contract v1.0 and is now governed by the `cartridge-sse-post` rule alongside `cartridge-invoke-post` (boj-server#165).
+- [x] Live policy file (`config/gateway-policy-boj.yaml`) promoted from the example. Content-identical to the example at promotion time; future BoJ-surface evolution lands in the live file and the example remains as the worked-example artefact (Phase A A3). Both §2.1 staging and §3.1 production load the live file via `POLICY_PATH`.
 - [ ] Gateway has been smoke-tested in isolation with the policy, returning expected allow/deny on each route. Sequence: stand the gateway up against `gateway-policy-boj-example.yaml`, exercise one allow + one deny per route from §1.5 above; confirm `POST /cartridge/:name/sse` with `X-Trust-Level: authenticated` proxies through and with `X-Trust-Level: untrusted` returns 403 (deferred to this step by boj-server#165's test plan). Out of band of code review — operator pre-check before §2.1.
 
 ---
@@ -99,7 +100,7 @@ Sequencing follows plan §E2/§E3.
 
 1. Confirm BoJ staging is on the loopback bind (`:7700`) per Phase A contract §1.
 2. Start the gateway with:
-   - `POLICY_PATH=config/gateway-policy-boj-example.yaml`
+   - `POLICY_PATH=config/gateway-policy-boj.yaml` (live file promoted in §1.5; the example `gateway-policy-boj-example.yaml` is retained for documentation only)
    - `BACKEND_URL=http://127.0.0.1:7700`
    - `PORT=8443` (TLS) or `PORT=8080` (HTTP behind Cloudflare Tunnel)
    - `MTLS_CA_CERT_PATH=` _(staging value — !OWNER: fill)_
