@@ -3,9 +3,9 @@
 
 # HCG tier-2 — rollout & rollback runbook
 
-**Version:** 0.3 (live policy promoted, Phase E in-progress)
-**Date:** 2026-06-09 (rev. from 2026-06-08)
-**Status:** Phase E deliverables E1 (deploy spec) + E5 (rollback runbook) drafted; live gateway policy (`config/gateway-policy-boj.yaml`) promoted from the worked example (§1.5). Owner-input markers (`!OWNER:`) remain to be filled before any traffic-shift action is taken.
+**Version:** 0.4 (policy-deny smoke script landed, Phase E in-progress)
+**Date:** 2026-06-10 (rev. from 2026-06-09)
+**Status:** Phase E deliverables E1 (deploy spec) + E5 (rollback runbook) drafted; live gateway policy (`config/gateway-policy-boj.yaml`) promoted from the worked example (§1.5); `scripts/hcg-policy-smoke.sh` lands as the checked-in §1.5 operator pre-check (deny-path covers gateway-alone; `--with-backend` adds allow-path coverage). Owner-input markers (`!OWNER:`) remain to be filled before any traffic-shift action is taken.
 **ADR:** [`docs/decisions/0004-adopt-http-capability-gateway.md`](../decisions/0004-adopt-http-capability-gateway.md)
 **Plan:** [`docs/integration/http-capability-gateway-plan.md`](http-capability-gateway-plan.md) (§ Phase E)
 **Contract:** [`docs/integration/http-capability-gateway-boj-contract.md`](http-capability-gateway-boj-contract.md)
@@ -88,7 +88,7 @@ These cannot be inferred from the code/contract; the owner must fill them before
 - [x] `container/gateway-deploy.k9.ncl` exists in the gateway repo (plan §E1) — http-capability-gateway#38 (2026-06-03). Five-level k9-svc pedigree (Snout / Scent / Leash / Gut / Muscle) modelled on `boj-server:container/deploy.k9.ncl`; per-environment `BACKEND_URL` (`http://127.0.0.1:7700` staging, `http://unix:/run/boj/gnosis.sock:/` production); trust source `"header"` staging → `"mtls"` production after §2.4 rehearsal; `max_unavailable = 0`; `failure_mode = "fail-closed"` matching the `[SEAMS] gateway-boj-gnosis` declaration.
 - [x] Gateway policy file in place: `config/gateway-policy-boj-example.yaml`, covering all BoJ surface routes (`/.well-known/boj-node-pubkey`, `/health`, `/menu`, `/cartridges`, `/cartridge/:name`, `/cartridge/:name/invoke`, `/cartridge/:name/sse`, plus any added since contract v1.0). Re-verified 2026-05-28 against `BojRest.Router`; the `POST /cartridge/:name/sse` route (router.ex line 130, wired since the SSE landing — ADR-0013 §6, STATE entry 2026-05-18) was the only drift since contract v1.0 and is now governed by the `cartridge-sse-post` rule alongside `cartridge-invoke-post` (boj-server#165).
 - [x] Live policy file (`config/gateway-policy-boj.yaml`) promoted from the example. Content-identical to the example at promotion time; future BoJ-surface evolution lands in the live file and the example remains as the worked-example artefact (Phase A A3). Both §2.1 staging and §3.1 production load the live file via `POLICY_PATH`.
-- [ ] Gateway has been smoke-tested in isolation with the policy, returning expected allow/deny on each route. Sequence: stand the gateway up against `gateway-policy-boj-example.yaml`, exercise one allow + one deny per route from §1.5 above; confirm `POST /cartridge/:name/sse` with `X-Trust-Level: authenticated` proxies through and with `X-Trust-Level: untrusted` returns 403 (deferred to this step by boj-server#165's test plan). Out of band of code review — operator pre-check before §2.1.
+- [ ] Gateway has been smoke-tested in isolation with the policy, returning expected allow/deny on each route. Run `scripts/hcg-policy-smoke.sh --gateway-url <staging-gateway-url>` against the gateway loaded with `config/gateway-policy-boj.yaml`; the script exercises a no-trust-header deny probe for every non-public route plus default-deny verb canaries (DELETE/PUT/PATCH on `/cartridges` and `/health`) and is fully gateway-internal — BoJ does **not** need to be reachable for this run. Once BoJ is up behind the gateway, re-run with `--with-backend` from a trusted-proxy IP (loopback by default) to also cover the allow path on authenticated/internal routes including the `POST /cartridge/:name/sse` authenticated/untrusted pair carried over from boj-server#165's test plan. Attach the script's PASS/FAIL summary to the cut-over ticket; a single FAIL is a stop-the-rollout condition (gateway loaded the policy but is not enforcing as declared, or BoJ is unreachable from the gateway, or the script is being run from a non-trusted-proxy IP and the trust header is being stripped).
 
 ---
 
@@ -312,3 +312,4 @@ Also update `[HTTP_CAPABILITY_GATEWAY]` section per plan §E acceptance: `status
 - `http-capability-gateway/docs/perf-contract.md` — Phase D perf-contract.
 - `elixir/lib/boj_rest/trust_policy.ex` — `satisfies?/3` Phase C enforcement.
 - `.machine_readable/contractiles/trust/Trustfile.a2ml` — `[CLOUDFLARE_EDGE_SECURITY].rate_limiting.tier_2_gateway` (current `PENDING` site; §6.4 flip target) + `[SEAMS]` (Phase C gateway↔BoJ-gnosis declaration).
+- `scripts/hcg-policy-smoke.sh` — §1.5 operator pre-check: deny-path smoke (gateway-alone) + optional `--with-backend` allow-path smoke against the live policy.
