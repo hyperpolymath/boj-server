@@ -16,9 +16,11 @@
 // This smoke closes that gap. No REST backend is required: initialize
 // and tools/list are bridge-local (offline manifest).
 //
-// Usage (orchestrator always runs under Node; subject runtime varies):
+// Usage (orchestrator always runs under Node; subject runtime varies).
+// The deno leg uses main.js's own scoped grant, not -A, so the smoke
+// exercises the exact permission set a real install uses:
 //   node mcp-bridge/tests/boot_smoke.js node mcp-bridge/main.js
-//   node mcp-bridge/tests/boot_smoke.js deno run -A mcp-bridge/main.js
+//   node mcp-bridge/tests/boot_smoke.js deno run --allow-net --allow-env --allow-read mcp-bridge/main.js
 //   node mcp-bridge/tests/boot_smoke.js bun mcp-bridge/main.js
 
 import { spawn } from "node:child_process";
