@@ -27,6 +27,7 @@ on:
       - 'mcp-bridge/**'
       - 'tests/**'
       - 'src/**'
+      - '.github/workflows/e2e.yml'
   workflow_dispatch:
 
 permissions: read-all
@@ -162,6 +163,63 @@ jobs:
           name: benchmark-results
           path: ffi/zig/zig-out/bench*
           retention-days: 30
+
+  # ─── Bridge Tests: unit suite + boot smoke × {Node, Deno, Bun} ─────
+  # The README blesses three runtimes for the zero-dependency bridge:
+  # Deno (documented runtime), Node (the npx install path every client
+  # quickstart uses), and Bun (zero-install). Only Deno is exercised by
+  # development, so a runtime leak in the other two ships silently — a
+  # bare `Deno.env` reference once broke the entire npx path at import
+  # time (fixed in PR #211). This job runs the full unit suite AND an
+  # MCP initialize → tools/list boot smoke of main.js under each
+  # runtime. The smoke matters separately: the unit suite imports lib/
+  # but never boots main.js, whose stdio/exit paths are runtime-gated.
+  bridge-tests:
+    name: Bridge — ${{ matrix.runtime }} (unit + boot smoke)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runtime: node
+            unit: node --test mcp-bridge/tests/dispatch_test.js mcp-bridge/tests/http_transport_test.js mcp-bridge/tests/path_claims_test.js
+            boot: node mcp-bridge/main.js
+          - runtime: deno
+            unit: deno test --allow-read --allow-env --allow-run --allow-net mcp-bridge/tests/dispatch_test.js mcp-bridge/tests/http_transport_test.js mcp-bridge/tests/path_claims_test.js
+            boot: deno run -A mcp-bridge/main.js
+          - runtime: bun
+            unit: bun test mcp-bridge/tests/dispatch_test.js mcp-bridge/tests/http_transport_test.js mcp-bridge/tests/path_claims_test.js
+            boot: bun mcp-bridge/main.js
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Setup Node
+        # Node is needed on every leg: it is the subject on the node
+        # leg and the boot-smoke orchestrator on all three.
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '22'
+
+      - name: Install Deno
+        if: matrix.runtime == 'deno'
+        uses: denoland/setup-deno@667a34cdef165d8d2b2e98dde39547c9daac7282  # v2.0.4
+        with:
+          deno-version: v2.x
+
+      - name: Install Bun
+        if: matrix.runtime == 'bun'
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: '1.x'
+
+      - name: Unit suite (${{ matrix.runtime }})
+        run: ${{ matrix.unit }}
+
+      - name: Boot smoke (${{ matrix.runtime }})
+        run: node mcp-bridge/tests/boot_smoke.js ${{ matrix.boot }}
 
   # ─── Bench Bridge: mcp-bridge JS perf (path-claims) ────────────────
   # Separate job from `benchmarks` above because the bridge has no Zig
