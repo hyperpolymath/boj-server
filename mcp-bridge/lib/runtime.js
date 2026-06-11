@@ -18,6 +18,11 @@ export const env = {
   }
 };
 
+/** Current process id, portable across Deno and Node. */
+export const pid = isDeno
+  ? globalThis.Deno.pid
+  : (typeof process !== "undefined" ? process.pid : 0);
+
 const encoder = new TextEncoder();
 
 export const stdout = {

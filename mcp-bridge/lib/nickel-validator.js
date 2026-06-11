@@ -36,6 +36,7 @@ import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
 import { writeFileSync, unlinkSync } from "node:fs";
 import { info, warn } from "./logger.js";
+import { env, pid } from "./runtime.js";
 
 const CONTRACTS_REL = "../../cartridges/local-coord-mcp/schemas/coord-messages-contracts.ncl";
 
@@ -70,7 +71,7 @@ function probeNickel() {
     nickelAvailable = false;
   }
   if (!nickelAvailable) {
-    const strict = Deno.env.get("COORD_REQUIRE_NICKEL") === "1";
+    const strict = env.get("COORD_REQUIRE_NICKEL") === "1";
     if (strict) {
       throw new Error("COORD_REQUIRE_NICKEL=1 but `nickel` not on PATH");
     }
@@ -134,7 +135,7 @@ export function validateEnvelope(envelope, senderRole) {
   // Write the call-site script to a temp file in the same dir as the
   // contracts so its relative `import` resolves. /tmp is writable and
   // isolated enough; we use an absolute import path so location doesn't matter.
-  const tmp = resolve("/tmp", `._boj_validate_${Deno.pid}_${Date.now()}.ncl`);
+  const tmp = resolve("/tmp", `._boj_validate_${pid}_${Date.now()}.ncl`);
   const script =
     `let c = import "${path}" in\n` +
     `let e = ${toNickel(withMeta)} in\n` +
