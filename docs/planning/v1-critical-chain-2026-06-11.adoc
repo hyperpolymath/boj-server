@@ -325,14 +325,20 @@ BUILD-FROM-SOURCE/DEV. A newcomer should never see `asdf install idris2`
 unless they are hacking the ABI.
 
 E5. *Close the regression class found in this session.* The bridge's
-own unit tests (`node --test mcp-bridge/tests/`) are not run by any CI
-workflow — only a bench script is. Consequence: a bare `Deno.env`/
-`Deno.pid` call in `nickel-validator.js` shipped and broke the *entire
-npx/Node install path* at import time (fixed in this session's commit;
-52/52 tests now pass under Node). Add a bridge-tests CI job with a
-{Node, Deno} matrix so the primary install path cannot silently break
-again. Same PR can pick up the two broken gates already catalogued in
-#199 (Zig download URL, ABI-grep false positive).
+own unit tests (`node --test mcp-bridge/tests/`) were not run by any CI
+workflow — only a bench script was. Consequence: a bare `Deno.env`/
+`Deno.pid` call in `nickel-validator.js` shipped and broke the npx/Node
+install path *and* the Bun path at import time (Bun has no `Deno`
+global either; only the dogfooded Deno runtime was clean). Fixed in
+PR #211. *LANDED (follow-up PR):* a `bridge-tests` job in `e2e.yml`
+runs the full unit suite *plus* an MCP initialize → tools/list boot
+smoke of `main.js` under a {Node, Deno, Bun} matrix — all three
+runtimes verified green locally before wiring (52/52 units each; boot
+smoke answers with 68 tools and exits 0). Bun is in the matrix because
+the README blesses it as an install path; the boot smoke exists because
+the unit suite imports `lib/` but never boots `main.js`, whose
+stdio/exit paths are runtime-gated. The two broken gates catalogued in
+#199 (Zig download URL, ABI-grep false positive) stay tracked there.
 
 E6. *Quickstart trace test.* Once per release, someone (or a scripted
 container) executes USER.adoc literally, from clean, and the elapsed
