@@ -1,0 +1,531 @@
+// SPDX-License-Identifier: MPL-2.0
+// SPDX-FileCopyrightText: 2025-2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+
+= BoJ v1 Critical Chain — from honest baseline to production release
+:toc:
+:toc-placement: preamble
+:icons: font
+
+*Date:* 2026-06-11 ·
+*Inputs:* full review of `boj-server` + `boj-server-cartridges`, plus border
+repos `stapeln`, `http-capability-gateway`, `hybrid-automation-router`,
+`standards/consent-aware-http` (with `verisimdb`, `vcl-ut`, `echo-types`
+checked for relevance). ·
+*Companion docs:* `docs/planning/boj-server-proof-story-2026-06-01.md`,
+`docs/planning/cartridge-catalogue-2026-06-01.md`, `PROOF-NEEDS.md`,
+`docs/READINESS.adoc`, `docs/AUTH-DESIGN.adoc`, ADR-0004/0007/0008/0016.
+
+This document is the *ordering*, not new scope. Almost everything below
+already exists as an issue (#197–#202, #186, #188, #87,
+boj-server-cartridges#36/#37/#41) or an ADR. What has been missing is the
+dependency chain between them, the explicit v1 scope cut, and the social/
+community programme treated as release work rather than aftercare.
+
+== 1. Where the product actually is
+
+The review's one-paragraph verdict: *BoJ has inverted the usual failure
+mode.* Most projects ship working code with weak proofs and weak
+governance. BoJ has exceptional proofs (all P1/P2 obligations closed; a
+5-axiom trusted base, each axiom externally validated), exceptional
+governance scaffolding (CRG grading, truthfulness gate, 16 ADRs, 711-line
+SECURITY.md, signed commits, strict schema CI 139/139), a mature
+contributor toolchain (minter → Foundry with machine-checked
+NO-DROPPED-PROOFS and LEAST-AUTHORITY) — and, as of the 2026-06-05 audit,
+*exactly one cartridge that is built and verified-real* (`feedback-mcp`).
+~97 cartridges build a `.so` that returns `{"status":"stub"}`; 10 have no
+FFI. PR #196 made the catalogue stop over-claiming (`available:false` by
+default + truthfulness probe in CI). That was the turning point: the
+catalogue now tells the truth.
+
+The v1 critical chain is therefore: *grow the truth to meet the claims* —
+through the Foundry, gated by the truthfulness probe — while closing the
+three seams that block the word "production" (auth, distribution,
+operator trust) and running the community programme that makes the
+network real.
+
+What is already strong (do not reopen):
+
+* Proof core: 17 ABI modules typecheck under pinned Idris2 0.8.0; 5
+  class-(J) axioms, all with backend-assurance evidence (`PROOF-NEEDS.md`).
+* The honest-catalogue machinery: `tests/truthfulness_check.sh` +
+  `.github/workflows/truthfulness.yml` + explicit `available` on all
+  manifests.
+* The registry: `boj-server-cartridges` is a clean canonical home — 139
+  manifests, strict schema gate green, audited validator, Foundry live.
+* The seed network: 4 fly.io seed nodes live; gossip + hash-attestation
+  design sound; Podman Quadlet operator path is genuinely good (~5 min).
+* Governance surface: CoC, SECURITY.md, discussion templates for
+  *hosting* and *cartridge proposals* already exist — the community
+  programme has hooks to hang on.
+
+== 2. The chain at a glance
+
+Each gate is an *event* with a binary exit test. Gates 1–3 are sequential
+on the critical path; chains C/D/E run in parallel and dock at Gates 4–6.
+
+[cols="1,3,4",options="header"]
+|===
+| Gate | Event | Exit test
+
+| G0
+| *Truthful baseline* — DONE 2026-06-05 (PR #196)
+| Catalogue advertises only verified-real cartridges. ✅
+
+| G1
+| *It installs everywhere*
+| A new user on a clean machine reaches a responding `boj_health` in
+≤ 10 minutes via each documented path: npx/Node, Deno, container.
+Bridge unit tests run in CI under *both* runtimes.
+
+| G2
+| *It does real work* — the Golden Dozen
+| ≥ 12 cartridges `available:true`, each through Foundry + truthfulness
+probe; at least one per dispatch path (Zig `.so`, JS `mod.js`); `/menu`
+summary.ready ≥ 12.
+
+| G3
+| *It is safe to expose*
+| Invoke-auth decision implemented (AUTH-DESIGN); HCG Phase D baselines
+real + Phase E rollout complete (standards#91/#100); threat model
+re-walked against the shipped configuration.
+
+| G4
+| *Others can run it* — network member onboarding
+| Signed release artifact (cerro-torre `.ctp`) + published images; an
+operator who is not the maintainer brings up an attested node from
+ONBOARDING docs alone and appears in the gossip census; operator
+covenant published.
+
+| G5
+| *Others can build on it* — cartridge community open
+| One cartridge authored by a non-maintainer lands through Foundry +
+submission process; semver + tier-promotion policy published; tier
+vocabulary reconciled across repos.
+
+| G6
+| *v1.0.0*
+| One version number everywhere; README/site/registry/menu coherent with
+the verified-real count; MCP Registry listing live (#188); release notes
+carry the proofs manifest + axiom budget.
+|===
+
+The single most load-bearing dependency: *G2 depends on the Foundry
+(#200), not on hand-implementation.* Implementing the Golden Dozen by
+hand would discard the effort-inversion design and leave the ~100
+remaining stubs (#201) with no engine. Validate the factory on the first
+twelve; the long tail then parallelises safely.
+
+== 3. Chain A — the engine (cartridge reality)
+
+*Refs:* #200 (maker), #201 (stubs), #202 (gates), cartridges#36/#37
+(proof homes), #197 (trusted base).
+
+A1. *Foundry end-to-end validation* (#200 deliverable 3). Mint one *new*
+cartridge through mint → provision → configure → harness with zero
+manual patching; the harness gate (idris2 --check + zig build +
+truthfulness probe + capability-subset check) is the only judge.
+Already proven on `gossamer-mcp` re-harness; the missing event is a
+fresh mint that flips truthfully to `available:true`.
+
+A2. *Golden Dozen selection and implementation.* Criteria, in order:
+(1) credential-free local logic first, so the truthfulness probe runs in
+plain CI; (2) highest MCP-user demand; (3) cover both dispatch paths;
+(4) at most one per domain. Candidate slate (owner to confirm):
+
+* Wave 1 (credential-free, CI-provable): `duckdb-mcp`, `local-memory-mcp`,
+  `hesiod-mcp` (DNS lookup), `model-router-mcp` (JS-only canonical),
+  `container-mcp` (local Podman), `git-mcp` (local repo ops).
+* Wave 2 (token-gated, secrets-gated E2E in CI): `github-api-mcp`,
+  `gitlab-api-mcp`, `research-mcp`, `cloudflare-mcp`, `postgresql-mcp`
+  (service container in CI), `browser-mcp` (headless Firefox in CI, or
+  defer to Wave 3 if flaky).
+
+`feedback-mcp` and `boj-health` remain the gold references. The Dozen
+*is* the v1 product surface; everything else ships as honest scaffold
+("ready for adoption — see Foundry").
+
+A3. *Batch waves over the remaining ~100* (#201) — strictly after A1+A2
+prove the factory. Parallelisable to background agents, each wave on its
+own branch + draft PR, never flipping `available:true` except via the
+probe. This continues *through and past* v1; v1 does not wait for it.
+
+A4. *Gate enforcement* (#202). Flip `required_status_checks` to include
+`truthfulness`, `proofs`, `abi-drift`, `e2e`, `zig-test`,
+`backend-assurance`; squash-only merges. Do this immediately after A1 —
+before the batch waves create gate-pressure.
+
+A5. *One proof home* (cartridges#36). Decide the canonical tree
+(recommendation: `boj-server-cartridges/cartridges/**` is canonical;
+`boj-server/cartridges/` becomes a build-time fetch per the #183
+contract), enumerate the 21 embedded cartridges with no `abi/`, and
+extend the drift gate to all cartridges. The cross-cutting base proof
+bundle (cartridges#37) is what the Foundry inherits — it sits *on* the
+critical path to A1, scoped to "compiling skeleton per kind", not full
+behavioural proofs.
+
+== 4. Chain B — the seams (auth, gateway, federation)
+
+*Refs:* `docs/AUTH-DESIGN.adoc`, ADR-0004, standards#91/#100 (HCG
+phases), ADR-0016, ADR-0010, STATE blockers `invoke-auth` +
+`credential-forwarding`.
+
+B1. *Decide and implement invoke-auth.* The design space is already
+written down; the decision has been pending since April. Recommendation
+matching the existing architecture: ship *both* postures v1 —
+(a) single-user/local default: loopback bind (landed, three independent
+layers) + no further ceremony; (b) exposed/operator mode: HCG tier-2
+sidecar derives `X-Trust-Level` (mTLS or bearer), BoJ enforces via the
+existing `TrustPolicy`. No new mechanism needed — the remaining work is
+the bearer/mTLS issuance path on the gateway side and flipping
+enforcement from "read" to "require" for non-loopback callers.
+
+B2. *HCG Phase D made real.* `bench/baseline.json` is still
+scaffold-placeholder; D-3 (regression alert armed) and D-4 (real
+numbers) gate everything in Phase E. This is days, not weeks, and it
+unblocks the entire tier-2 story.
+
+B3. *HCG Phase E rollout* per the existing runbook
+(`docs/integration/hcg-tier2-rollout-runbook.md`) — staging cut-over,
+soak, 10/50/100%, Trustfile flip. The `!OWNER:` markers in §1.3/§4 need
+owner decisions (on-call rota, cert paths, traffic-shift mechanism).
+
+B4. *Credential forwarding stays Options A+B for v1.* Option C (RGTV
+broker) is post-v1. Consequence to state honestly everywhere the network
+is described: *keyed cartridges are not delegatable to community nodes
+in v1* — only `auth.method: none` cartridges run remotely. This is a
+feature (privacy by construction), not a gap: a volunteer node can never
+see your GitHub token because it never receives it.
+
+B5. *Cross-host coordination via ADR-0016* (mTLS + ed25519 stopgap,
+~4–6 days across 6 phases) lands in v1; ADR-0010 (DID + ML-DSA-87 +
+ML-KEM) stays the v2 upgrade. *Load-aware inter-node routing (gap-3) is
+deferred*: the v1 network is a constellation of attested, independent
+nodes serving their own communities with explicit peering — not a
+transparent global mesh. That cut removes a distributed-systems research
+problem from the release path and matches what operators actually asked
+templates exist for (hosting your community's node).
+
+== 5. Chain C — the network members (stapeln + operators)
+
+*Refs:* `stapeln.toml`, `container/manifest.toml`,
+`container/gateway-policy.yaml`, `container/boj-community-node.container`,
+`container/seed-nodes.toml`; stapeln repo (cerro-torre, svalinn, vordr,
+selur-compose — all real per review).
+
+C1. *Publish the images.* `k8s/deployment.yaml` and the Quadlet
+reference images that are not on ghcr.io — the operator quickstart
+currently fails at `podman pull`. Cheapest unblock with the largest
+effect; wire `container-publish.yml` to releases.
+
+C2. *Signed releases as the trust root.* Run the already-wired
+cerro-torre pipeline (`ct-build.sh`-equivalent for this repo) on every
+release: image + SBOM + ML-DSA-87/Ed25519 attestation as a `.ctp`
+bundle. Publish the release public key in-repo and on the site. Svalinn
+verification (`gateway-policy.yaml` `reject_unsigned`) then has a real
+anchor. *Known v1 limitation to document:* no key-rotation/revocation
+protocol yet — revocation rides the transparency-log design post-v1.
+
+C3. *Operator onboarding pack* — one document
+(`docs/quickstarts/OPERATOR.adoc` or evolve MAINTAINER.adoc): hardware
+floor, ports (7700 REST loopback/gateway-fronted, 9999 UDP gossip), key
+generation, Quadlet install, verify-attestation step, joining gossip,
+update procedure, troubleshooting, *and the delegation truth from B4*.
+The review found MAINTAINER.adoc already excellent on mechanics; what is
+missing is trust setup + update story + expectations.
+
+C4. *Update channel, minimum viable:* versioned signed releases +
+Podman `AutoUpdate` label + a release announcements channel (GitHub
+Releases RSS + Discussions category). Fleet dashboards, registries, DHT
+discovery: post-v1.
+
+C5. *The operator covenant* (social seam, see §8). Hash attestation
+makes *binaries* trustworthy; the covenant makes *operators* legible.
+
+UI surfaces for operators in v1: *Quadlet + CLI + `/health` + coord-tui*
+(grade C, real install story). The Gossamer tray app and the PanLL panel
+are explicitly *experimental, unsupported* in v1 (both grade D, tray
+untested and absent from all quickstarts; PanLL panel blocked on its own
+dogfood log). Cutting them from the support surface is a UX decision:
+better one excellent path than three uneven ones.
+
+== 6. Chain D — the cartridge community
+
+*Refs:* ADR-0008 (marketplace RFC), cartridges repo CONTRIBUTING +
+Foundry, #188 (MCP registry), #186/#199 (legal/version hygiene).
+
+D1. *v1 submission path = PR to `boj-server-cartridges`*, with Foundry
+harness as the CI judge and the existing cartridge-proposal discussion
+template as the front door. The full ADR-0008 marketplace
+(cartridge-index repo, ML-DSA-87 author signatures,
+`boj_marketplace_*` tools) is *post-v1*; building it before there are
+external authors is plumbing before water.
+
+D2. *Reconcile the tier vocabulary* — currently genuinely contradictory:
+boj-server README/ADR-0008 use Teranga = formally verified / Shield =
+security-reviewed / Ayo = community-submitted; `boj-server-cartridges`
+labels 129 first-party cartridges "Ayo (community-contributed)" and 10
+"Teranga (core/always available)" with Shield = proof-carrying. One
+definition, canonical in `hyperpolymath/standards`, mirrored in both
+repos; relabel manifests mechanically. This must land *before* G5 —
+recruiting contributors into a trust model that reads two ways damages
+exactly the credibility the proofs earn.
+
+D3. *Policy docs:* semver policy for cartridges (when 0.1.0 → 0.2.0),
+tier-promotion workflow (Ayo → Shield → Teranga requirements, reviewer
+sign-off shape from ADR-0008's table), and the host↔registry fetch
+contract (#183) consolidated in the cartridges repo instead of split
+across two repos.
+
+D4. *Foundry as the headline community feature.* The "notice a missing
+cartridge → 3 minutes of choices → algorithmically-derived,
+proof-carrying cartridge" story is the most distinctive contributor
+experience in the MCP ecosystem. Productise it: a 5-minute screencast,
+a worked example in the README, and `foundry.sh --from` as the
+documented golden path. This converts the ~100 honest stubs from
+embarrassment into *invitation* — each stub manifest is a pre-specified,
+pre-validated contribution ticket.
+
+D5. *Visibility:* MCP Registry listing (#188, ~30 min once the
+capability inventory locks at G2); site/ gets real content (install,
+verified-cartridge count *generated from the catalogue*, operator page,
+Foundry demo); Glama listing already exists.
+
+D6. *Legal/version hygiene before anything ships:* `package.json`
+AGPL-3.0-or-later vs MPL-2.0 everywhere else (#186 — owner decision,
+single line); version drift 0.4.6/0.4.7/1.1.0-wip across CITATION.cff,
+smithery.yaml, package.json, jsr.json, gemini-extension.json,
+glama.json, STATE.a2ml (#199).
+
+== 7. Chain E — truth-coherent UX (the polish that is actually load-bearing)
+
+E1. *One version story.* Recommendation: next public release is
+*0.9.0 "honest beta"* (G1+G2), and *1.0.0* is cut at G6. The current
+1.1.0-wip in STATE next to 0.4.x in the manifests reads as drift, and
+"v1.1.0 Active" in ROADMAP.adoc claims a v1 that never happened. Reset
+the narrative once, loudly, in the changelog.
+
+E2. *Claims pass over README/ROADMAP/TOPOLOGY.* "115 cartridges" /
+"125 cartridges" / "139 cartridges" appear in different documents, and
+ROADMAP's "v1.0.0 — Matrix Fill ✓" reads as complete while STATE says
+one cartridge is real. Adopt a *one-count-one-place* rule: counts are
+generated from the catalogue (`available:true` vs scaffold) and
+everything else links. The honest framing is stronger marketing than
+the inflated one: "12 verified-real cartridges, 100+ proof-scaffolded
+and waiting for you" is a story; "125 cartridges" that stub out is a
+betrayal.
+
+E3. *Delete or rewrite `docs/status/FUTURE_PLANS.adoc`.* It is
+generic LLM boilerplate (blockchain integration, quantum computing,
+SOC 2) that contradicts the estate's positions and dilutes the honest-
+engineering brand. ROADMAP.adoc + this document supersede it.
+
+E4. *USER path ends compile-free.* After C1, USER.adoc's main path is
+container-or-npx only; Idris2/Zig prerequisites move to
+BUILD-FROM-SOURCE/DEV. A newcomer should never see `asdf install idris2`
+unless they are hacking the ABI.
+
+E5. *Close the regression class found in this session.* The bridge's
+own unit tests (`node --test mcp-bridge/tests/`) are not run by any CI
+workflow — only a bench script is. Consequence: a bare `Deno.env`/
+`Deno.pid` call in `nickel-validator.js` shipped and broke the *entire
+npx/Node install path* at import time (fixed in this session's commit;
+52/52 tests now pass under Node). Add a bridge-tests CI job with a
+{Node, Deno} matrix so the primary install path cannot silently break
+again. Same PR can pick up the two broken gates already catalogued in
+#199 (Zig download URL, ABI-grep false positive).
+
+E6. *Quickstart trace test.* Once per release, someone (or a scripted
+container) executes USER.adoc literally, from clean, and the elapsed
+time + failure points go in the dogfood log. G1's exit test is this,
+institutionalised.
+
+== 8. The social programme (first-class release work)
+
+The directive is explicit that v1 is a social and open-source-community
+task, not only an engineering one. BoJ already has the rare asset here:
+a coherent cultural identity (Teranga — hospitality; Umoja — unity;
+Ayo — joy) that is *load-bearing in the architecture* (tier names, menu
+language, federation name), documented respectfully
+(`docs/CULTURAL-RESPECT.adoc`). The programme below operationalises it.
+
+S1. *The operator covenant* (`docs/governance/OPERATOR-COVENANT.adoc`).
+What a network member promises and what they get. Promises: run attested
+binaries (hash attestation makes this checkable), never solicit
+credentials (the architecture makes the strong form *impossible* in v1 —
+say so), publish contact + region, honour the CoC, announce planned
+exits. Gets: listing as a network member, the verified-deploy toolchain
+(stapeln), a voice in promotion reviews, name in the Umoja census.
+Teranga made operational: hospitality with receipts.
+
+S2. *Contributor ladder with a named second-maintainer path.* The bus
+factor is 1 and several v1 items are owner-gated (license decision,
+HCG `!OWNER:` markers, tier promotions, marketplace reviewer pool per
+ADR-0008's own mitigation). Define maintainer-emeritus/co-maintainer
+criteria in GOVERNANCE now, *before* recruiting — people join ladders,
+not cliffs.
+
+S3. *Recognition mechanics already designed — switch them on.* Ayo-tier
+contributor naming in the menu, cartridge author credit in
+`/cartridge/:name` responses, a CONTRIBUTORS roll on the site. Cheap,
+deeply on-brand.
+
+S4. *Launch sequence (after G2, alongside G4/G5):*
+(1) MCP Registry + Glama refresh with locked inventory; (2) a single
+canonical write-up ("a formally verified MCP server with an honest
+catalogue" — the truthfulness gate + 5-axiom trusted base is the hook;
+no other MCP server can publish an axiom budget); (3) call for node
+operators using the existing hosting discussion template + covenant;
+(4) call for cartridge authors anchored on the Foundry screencast and
+the stub-as-invitation framing; (5) academic surface: CITATION.cff +
+Zenodo DOI on the v1 release.
+
+S5. *Success metrics that respect the project's privacy posture* (no
+install telemetry): GitHub stars/forks on both repos, opt-in gossip
+census node count, externally-authored cartridges merged, externally-
+filed issues/PRs, time-to-first-response on hosting/cartridge
+discussions. Review monthly in STATE.a2ml session entries.
+
+S6. *Consent-aware positioning (declaration now, enforcement later).*
+Adopt the AIBDP `.well-known` manifest + reserve HTTP 430 semantics on
+the REST surface as a *declared policy* in v1 (hours of work, spec
+exists in `standards/consent-aware-http`), with enforcement post-v1.
+This aligns the network's public identity with the estate's consent
+culture at near-zero engineering cost — and it is a story node
+operators can tell their communities.
+
+== 9. Border-crossing verdicts
+
+[cols="2,1,4",options="header"]
+|===
+| Repo | v1 verdict | Reasoning
+
+| `http-capability-gateway`
+| *v1-critical, finish what's started*
+| Real code (~7.4k LOC, 22 test files), already the chosen auth seam
+(ADR-0004), Phases A–C landed, D scaffold, E runbook ready. Closing
+D/D-3/D-4 then E *is* the auth gate (G3). No new design needed.
+
+| `stapeln`
+| *v1-essential for G4, as supplier*
+| Cerro-torre signing, svalinn verification, selur-compose verify and
+vordr are real. BoJ consumes them (C2); BoJ does not block on stapeln's
+own open ends (miniKanren engine, PQC completion, temporal isolation).
+
+| `hybrid-automation-router`
+| *post-v1*
+| Scaffold maturity (3 smoke tests across 7 crates). The async-dispatch/
+circuit-breaker value is real but is an XL integration on an unproven
+base; v1's single-node reliability story doesn't need it. Revisit when
+multi-instance dispatch becomes a measured bottleneck. (One borrowable
+idea now: a simple failure-threshold breaker inside `JsWorkerPool` /
+upstream API clients — pattern, not dependency.)
+
+| `consent-aware-http`
+| *declare in v1 (S6), enforce post-v1*
+| Spec-mature, implementation-thin. Declaration is hours; enforcement is
+a real project. PMPL applies prospectively per estate policy.
+
+| `verisimdb`
+| *post-v1 hardening*
+| Already the designated audit/persistence store (grade D component
+"VeriSimDB backing store"); v1 needs only the existing JSONL-fallback
+honesty, not the full octad migration.
+
+| `vcl-ut`, `echo-types`
+| *no v1 role*
+| No load-bearing seam found that v1 needs; echo-types' loss-with-residue
+formalism is conceptually adjacent to the catalogue's
+degradation/truthfulness story but importing it now would be
+architecture tourism.
+|===
+
+== 10. Explicit v1 non-goals
+
+Stating these is part of the truthfulness posture; each gets one line in
+release notes:
+
+* RGTV credential brokering (Option C) — keyed cartridges stay local.
+* Load-aware global routing — nodes are independent; explicit peering only.
+* ADR-0008 marketplace tooling (`boj_marketplace_*`, cartridge-index repo).
+* ADR-0010 DID/PQC federation (ADR-0016 stopgap ships instead).
+* HAR integration; PanLL panel + Gossamer tray as *supported* surfaces.
+* All ~100 remaining stubs implemented (the *engine* ships; the long tail
+  continues post-v1 via #201).
+* AffineScript migration completion, `.md`→`.adoc` completion, 6a2→root
+  `.machine_readable` move (#202 background tracks).
+* Key revocation protocol (documented limitation; transparency-log work).
+
+== 11. Risk register
+
+[cols="2,1,3",options="header"]
+|===
+| Risk | Likelihood | Mitigation
+
+| Bus factor 1 — owner-gated decisions stall gates
+| High
+| §8 S2 ladder; batch the owner decisions (license #186, auth posture B1,
+tier vocabulary D2, HCG `!OWNER:` markers) into *one* decision session —
+they are each ≤ 30 minutes.
+
+| Claims drift re-opens (new docs citing 125/139 as live)
+| High
+| One-count-one-place rule (E2) + truthfulness gate already enforcing at
+the catalogue level; extend the gate to grep README/site claims.
+
+| Foundry proves harder than the gossamer re-harness suggests
+| Medium
+| A1 is deliberately *one* fresh mint before any batch commitments; if it
+slips, the Golden Dozen can proceed via the existing minter + manual
+harness while the Foundry catches up (the gates, not the factory, are
+what protect truth).
+
+| CI runner starvation (estate-wide, standards#122 precedent)
+| Medium
+| Keep required-check set minimal-but-real (#202); prefer fewer, fatter
+jobs; the truthfulness probe stays cheap (builds only `available:true`
+cartridges — currently 1, at G2 twelve).
+
+| Seed-node cost/maintenance fatigue
+| Medium
+| 4 nodes is enough for v1; covenant (S1) recruits successor operators;
+document graceful node retirement.
+
+| Tier-vocabulary relabel breaks consumers
+| Low
+| Manifests are schema-gated; relabel is mechanical with the validator in
+strict mode; do it before external contributors exist (pre-G5).
+|===
+
+== 12. Reconciliations this review surfaced (fix-as-you-touch list)
+
+. Bridge tests absent from CI (E5) — *evidence: this session's Node
+  breakage; fix committed, CI job still to add.*
+. Counts: 115 (README/TEST-NEEDS) vs 125 (STATE/TOPOLOGY) vs 139
+  (cartridges repo) vs "102 inventoried of 125" (TOPOLOGY's own note).
+. Tier semantics divergence between repos (D2).
+. `ROADMAP.adoc` "v1.0.0 Matrix Fill ✓" vs STATE
+  `cartridges-available-real = 1`.
+. `FUTURE_PLANS.adoc` boilerplate (E3).
+. `package.json` license field (#186); version fields (#199).
+. `GEMINI.md`: #199 says delete (root hygiene); STATE 2026-05-26 says
+  load-bearing via `gemini-extension.json` `contextFileName` — resolve
+  the contradiction rather than acting on either.
+. `boj-server-cartridges` has no `.machine_readable/` (flagged
+  2026-06-05; scaffold blocked on standards access — unblock and land).
+. READINESS.adoc still cites "4 believe_me" in §2 headline evidence
+  (audited count is 5) and pre-dates the truthfulness reframe — refresh
+  at G2 when grades genuinely move.
+
+== 13. Suggested immediate next actions (one session each)
+
+. Owner decision batch (≤ 2 h total): license #186 · auth posture B1 ·
+  tier vocabulary D2 · Golden Dozen slate A2 · version reset E1 ·
+  GEMINI.md contradiction.
+. Land the bridge-tests CI job (E5) + the two broken gates from #199.
+. A1: one fresh Foundry mint end-to-end → flips its cartridge to
+  `available:true` through the probe.
+. C1: publish images on release tag; re-run the operator quickstart
+  from clean and log it.
+. HCG D-4: produce real baseline numbers; arm D-3.
+
+Everything else hangs off those five.
