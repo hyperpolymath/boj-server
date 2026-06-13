@@ -7,27 +7,15 @@
 
 name: E2E + Aspect + Bench
 
+# Was workflow-level path-filtered: required checks that never ran on PRs
+# touching none of its paths, leaving them "Expected" and the PR blocked.
+# Now always runs; the `changes` job gates the heavy jobs, which when skipped
+# report SUCCESS to required checks.
 on:
   push:
     branches: [main, master, develop]
-    paths:
-      - 'adapter/**'
-      - 'cartridges/**'
-      - 'ffi/**'
-      - 'mcp-bridge/**'
-      - 'tests/**'
-      - 'src/**'
-      - '.github/workflows/e2e.yml'
   pull_request:
     branches: [main, master]
-    paths:
-      - 'adapter/**'
-      - 'cartridges/**'
-      - 'ffi/**'
-      - 'mcp-bridge/**'
-      - 'tests/**'
-      - 'src/**'
-      - '.github/workflows/e2e.yml'
   workflow_dispatch:
 
 permissions: read-all
@@ -37,9 +25,40 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  changes:
+    name: Detect relevant changes
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      run: ${{ steps.detect.outputs.run }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+      - id: detect
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE: ${{ github.base_ref }}
+          BEFORE: ${{ github.event.before }}
+        run: |
+          set -uo pipefail
+          run=true
+          if [ "$EVENT" = pull_request ]; then
+            git fetch --no-tags --depth=200 origin "$BASE" 2>/dev/null \
+              && changed=$(git diff --name-only "origin/${BASE}...HEAD" 2>/dev/null) \
+              && { printf '%s\n' "$changed" | grep -qE '^adapter/|^cartridges/|^ffi/|^mcp-bridge/|^tests/|^src/' && run=true || run=false; }
+          elif [ "$EVENT" = push ] && [ -n "$BEFORE" ] && [ "$BEFORE" != 0000000000000000000000000000000000000000 ]; then
+            changed=$(git diff --name-only "${BEFORE}...${GITHUB_SHA}" 2>/dev/null) \
+              && { printf '%s\n' "$changed" | grep -qE '^adapter/|^cartridges/|^ffi/|^mcp-bridge/|^tests/|^src/' && run=true || run=false; }
+          fi
+          printf 'run=%s\n' "$run" >> "$GITHUB_OUTPUT"
+          echo "relevant=$run; changed files:"; printf '%s\n' "${changed:-<none computed>}"
+
   # ─── End-to-End: Full REST + MCP Bridge ────────────────────────────
   e2e-full:
     name: E2E — Full REST + MCP Bridge
+    needs: changes
+    if: needs.changes.outputs.run == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
@@ -104,6 +123,8 @@ jobs:
   # ─── End-to-End: Order Ticket (FFI layer) ──────────────────────────
   e2e-order-ticket:
     name: E2E — Order Ticket (FFI layer)
+    needs: changes
+    if: needs.changes.outputs.run == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
@@ -125,6 +146,8 @@ jobs:
   # ─── Aspect Tests: Cross-Cutting Concerns ──────────────────────────
   aspect-tests:
     name: Aspect — Thread Safety + ABI Contract + SPDX
+    needs: changes
+    if: needs.changes.outputs.run == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
@@ -138,6 +161,8 @@ jobs:
   # ─── Benchmarks: Performance Regression Detection ──────────────────
   benchmarks:
     name: Bench — FFI Catalogue + Mount/Unmount + Hash
+    needs: changes
+    if: needs.changes.outputs.run == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
@@ -231,6 +256,8 @@ jobs:
   # deltas across pushes are visible inline.
   bench-bridge:
     name: Bench — mcp-bridge (path-claims)
+    needs: changes
+    if: needs.changes.outputs.run == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
