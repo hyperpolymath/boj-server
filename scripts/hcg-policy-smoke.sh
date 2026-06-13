@@ -193,12 +193,36 @@ probe POST /coprocessor/select           deny "internal:coprocessor-select-post"
 probe GET  /sdp/status                   deny "internal:sdp-status-get"
 
 # Default-deny verb canaries — global_verbs is [GET, POST], so any
-# DELETE/PUT/PATCH on a known path must be denied via the no-match
-# (or unknown-method) path. Verifies the verb-governance core invariant
-# of ADR-0004.
-probe DELETE  /cartridges                deny "verb-canary:DELETE /cartridges"
-probe PUT     /health                    deny "verb-canary:PUT /health"
-probe PATCH   /cartridges                deny "verb-canary:PATCH /cartridges"
+# DELETE/PUT/PATCH/OPTIONS on a known path must be denied via the
+# no-match (or unknown-method) path. Verifies the verb-governance core
+# invariant of ADR-0004.
+#
+# OPTIONS is named in the policy header's banned-verb list and gets its
+# own canary because a CORS preflight auto-responder in the gateway
+# would silently bypass policy.
+#
+# Regex-route verb canary (DELETE on cartridge-invoke-post) catches a
+# class of bug the exact-path canaries miss: a regression where the
+# regex matcher accepts the path under any verb instead of only the
+# verb its rule lists.
+#
+# Wrong-verb-on-listed-path canary (GET on the ssg-mcp webhook, which
+# only lists POST) verifies the {path, verb} pairing is enforced: the
+# path is in the policy as a public exception, but only for POST; GET
+# on the same path must default-deny because no rule covers it.
+#
+# HEAD is also banned by the policy header but is deliberately not
+# canaried here — curl with `-X HEAD` (vs `--head`) waits for a body
+# the server will not send, which interacts badly with `--max-time` in
+# this script. HEAD enforcement remains covered by the gateway's own
+# unit tests; the operator pre-check focuses on probes that survive
+# curl's method quirks.
+probe DELETE  /cartridges                       deny "verb-canary:DELETE /cartridges"
+probe PUT     /health                           deny "verb-canary:PUT /health"
+probe PATCH   /cartridges                       deny "verb-canary:PATCH /cartridges"
+probe OPTIONS /cartridges                       deny "verb-canary:OPTIONS /cartridges (preflight must not bypass)"
+probe DELETE  /cartridge/probe/invoke           deny "verb-canary:DELETE on regex route (cartridge-invoke-post)"
+probe GET     /cartridges/ssg-mcp/webhook       deny "verb-canary:GET on POST-only public route (ssg-mcp-webhook-post)"
 
 if [ "$WITH_BACKEND" = "1" ]; then
     echo
