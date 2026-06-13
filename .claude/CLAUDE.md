@@ -38,3 +38,18 @@ This repo squash-merges PRs. Two consequences worth knowing before pushing follo
 - **After a squash-merge, delete the feature branch.** It contains pre-squash commits with stale SHAs; reusing it for new work re-creates the ghost-conflict problem. `git checkout main && git pull && git branch -D <branch> && git push origin --delete <branch>`.
 
 Diagnostic: if a PR shows `blocked` and `git diff origin/main HEAD` is empty, the PR's content is already on main via squash-merge — close the PR rather than trying to merge it.
+
+---
+
+## CI / Required Status Checks
+
+Never put `on.*.paths` on a workflow that is a **required** status check. A path-filtered required workflow that doesn't trigger is reported as permanently "Expected", which leaves the PR `mergeable_state: blocked` even when everything else is green (this stranded #213/#215 until #216).
+
+Pattern for every required gate:
+
+- **No `on.*.paths`** — the workflow always triggers, so the required check is always created.
+- A lightweight always-run **`changes`** job recomputes the gate's relevant path set via `git diff origin/<base>...HEAD`.
+- Each heavy job carries `needs: changes` + `if: needs.changes.outputs.run == 'true'`. A job skipped via `if:` counts as a **passing** required check, so unrelated PRs aren't blocked and don't pay for the heavy work.
+- **Fail safe:** the detector defaults to `run=true` and only skips on a successful diff showing nothing relevant changed. Don't rename jobs/checks (breaks the required-context list).
+
+Full rationale: `docs/AI-CONVENTIONS.adoc` §"CI / Required Status Checks" and the `docs/wikis/CI-and-Required-Checks.adoc` wiki page.
