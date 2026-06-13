@@ -5,26 +5,59 @@
 
 name: Zig FFI Tests
 
+# NOTE: this workflow used to be workflow-level path-filtered (on.*.paths).
+# That made it a REQUIRED check that simply never ran on PRs touching none of
+# its paths — GitHub then left the check "Expected" forever and the PR sat at
+# mergeable_state=blocked. It now always runs; a lightweight `changes` job
+# decides whether the heavy `test` job is needed. A job skipped via `if:`
+# reports SUCCESS to required status checks, so the required context is always
+# satisfied without running heavy work on unrelated PRs.
 on:
   push:
     branches: [main]
-    paths:
-      - 'ffi/**'
-      - 'cartridges/**/ffi/**'
-      - '.github/workflows/zig-test.yml'
   pull_request:
     branches: [main]
-    paths:
-      - 'ffi/**'
-      - 'cartridges/**/ffi/**'
-      - '.github/workflows/zig-test.yml'
+  workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
+  changes:
+    name: Detect relevant changes
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      run: ${{ steps.detect.outputs.run }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+      - id: detect
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE: ${{ github.base_ref }}
+          BEFORE: ${{ github.event.before }}
+        run: |
+          # Fail-safe: default to running; only set run=false when a successful
+          # diff shows NOTHING in this gate's path set changed.
+          set -uo pipefail
+          run=true
+          if [ "$EVENT" = pull_request ]; then
+            git fetch --no-tags --depth=200 origin "$BASE" 2>/dev/null \
+              && changed=$(git diff --name-only "origin/${BASE}...HEAD" 2>/dev/null) \
+              && { printf '%s\n' "$changed" | grep -qE '^ffi/|^cartridges/.*/ffi/' && run=true || run=false; }
+          elif [ "$EVENT" = push ] && [ -n "$BEFORE" ] && [ "$BEFORE" != 0000000000000000000000000000000000000000 ]; then
+            changed=$(git diff --name-only "${BEFORE}...${GITHUB_SHA}" 2>/dev/null) \
+              && { printf '%s\n' "$changed" | grep -qE '^ffi/|^cartridges/.*/ffi/' && run=true || run=false; }
+          fi
+          printf 'run=%s\n' "$run" >> "$GITHUB_OUTPUT"
+          echo "relevant=$run; changed files:"; printf '%s\n' "${changed:-<none computed>}"
+
   test:
     name: Zig FFI Tests
+    needs: changes
+    if: needs.changes.outputs.run == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
