@@ -5,8 +5,8 @@
 # Runbooks, incident response, deployment procedures.
 
 [metadata]
-version = "0.2.0"
-last-updated = "2026-04-25"
+version = "0.2.1"
+last-updated = "2026-06-13"
 
 [deployment]
 method = "gitops + manual"
@@ -84,3 +84,20 @@ future-canonical-urls = [
 #   just maint-hard-pass
 # Permission audit:
 #   just perms-audit
+
+[ci-required-gates]
+# Required status checks must ALWAYS report, or a PR touching none of a gate's
+# paths sits mergeable_state=blocked forever (the "Expected" trap; see #216,
+# which stranded #213/#215). Pattern for every required gate under
+# .github/workflows/ (proofs, zig-test, e2e, abi-drift, backend-assurance,
+# lsp-dap-bsp, truthfulness):
+#   1. NO on.*.paths — the workflow always triggers (required check always created).
+#   2. An always-run `changes` job recomputes the gate's path set via
+#      `git diff origin/<base>...HEAD` (fail-safe: default run=true; only
+#      run=false on a successful diff with no relevant match).
+#   3. Each heavy job: needs: changes + if: needs.changes.outputs.run == 'true'.
+#      A job skipped via if: reports SUCCESS to required checks.
+# Do NOT rename jobs/checks (breaks branch-protection's required-context list).
+# Adding a new required gate: follow this shape; never reintroduce on.*.paths.
+diagnostic = "PR green but blocked => a required gate never reported (the on.*.paths trap). Fix: drop on.*.paths, add the changes-gate + if:-skipped heavy jobs."
+rationale-docs = ["docs/AI-CONVENTIONS.adoc#ci-required-status-checks", "docs/wikis/CI-and-Required-Checks.adoc"]

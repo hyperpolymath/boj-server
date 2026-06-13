@@ -1,0 +1,128 @@
+// SPDX-License-Identifier: MPL-2.0
+// SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+
+
+= CI & Required Checks
+
+How BoJ's required status-check workflows are structured, *why*, and how to add a
+new one without re-introducing the "permanently blocked PR" bug.
+
+== The problem: path-filtered required checks strand PRs
+
+A GitHub workflow can be scoped with `on.<event>.paths` so it only runs when
+matching files change. That is fine for an *optional* workflow. It is a trap for
+a *required* one.
+
+When a required check's workflow is path-filtered and a PR touches none of those
+paths, the workflow never runs -- so GitHub never reports that check. Branch
+protection keeps waiting: the check sits as "Expected" forever and the PR is
+stuck at `mergeable_state: blocked`, even when every other check is green and the
+PR is approved.
+
+This is exactly what happened to PR #213 (a Dependabot `flake.lock` bump) and
+PR #215 (a scripts-only change): all gates green, but several required gates were
+path-filtered, never fired, and the PRs could not merge. PR #216 fixed it.
+
+== The fix: always run, skip the heavy work
+
+The key asymmetry:
+
+* A path-filtered workflow that never runs => required check never reported =>
+  *blocks*.
+* A *job* skipped via `if:` => its check is reported with conclusion `skipped`,
+  which branch protection treats as *passing*.
+
+So we convert the former into the latter. Every required gate:
+
+. Drops `on.*.paths` -- the workflow always triggers, so the required check is
+  always created.
+. Adds a lightweight, always-run `changes` job that recomputes the gate's
+  original path set.
+. Gates each heavy job on that result, so heavy work is skipped (but still
+  *reported*) when nothing relevant changed.
+
+[source,yaml]
+----
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  changes:
+    name: Detect relevant changes
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      run: ${{ steps.detect.outputs.run }}
+    steps:
+      - uses: actions/checkout@<pinned-sha>  # v6.x
+        with: { fetch-depth: 0 }
+      - id: detect
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE: ${{ github.base_ref }}
+          BEFORE: ${{ github.event.before }}
+        run: |
+          # Fail-safe: default to running; only skip on a SUCCESSFUL diff
+          # that shows nothing in this gate's path set changed.
+          set -uo pipefail
+          run=true
+          RE='^src/abi/|^cartridges/.*/abi/'   # <-- this gate's relevant paths
+          if [ "$EVENT" = pull_request ]; then
+            git fetch --no-tags --depth=200 origin "$BASE" 2>/dev/null \
+              && changed=$(git diff --name-only "origin/${BASE}...HEAD" 2>/dev/null) \
+              && { printf '%s\n' "$changed" | grep -qE "$RE" && run=true || run=false; }
+          elif [ "$EVENT" = push ] && [ -n "$BEFORE" ] && [ "$BEFORE" != 0000000000000000000000000000000000000000 ]; then
+            changed=$(git diff --name-only "${BEFORE}...${GITHUB_SHA}" 2>/dev/null) \
+              && { printf '%s\n' "$changed" | grep -qE "$RE" && run=true || run=false; }
+          fi
+          printf 'run=%s\n' "$run" >> "$GITHUB_OUTPUT"
+
+  heavy-job:
+    name: <unchanged required-check name>
+    needs: changes
+    if: needs.changes.outputs.run == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "the real gate work"
+----
+
+== Rules (do / don't)
+
+[cols="1,1",options="header"]
+|===
+| Do | Don't
+
+| Keep the workflow always-triggered (`push` / `pull_request` / `workflow_dispatch`)
+| Add `on.*.paths` to a required workflow
+
+| Compute relevance in an always-run `changes` job
+| Filter at the workflow level
+
+| Default the detector to `run=true` (fail safe toward running)
+| Skip on any error or unknown base ref
+
+| Keep job/check `name:` values stable
+| Rename a required job (breaks the required-context list)
+
+| Mirror each gate's original `paths:` in the `changes` regex
+| Under-match (would skip a gate that should have run)
+|===
+
+== Diagnostic
+
+PR is green but won't merge (`blocked`)? Check whether every *required* gate has
+actually *reported* -- a `skipped` conclusion counts as success. A gate stuck at
+"Expected" is the path-filter trap: drop its `on.*.paths` and add the
+`changes`-gate pattern above.
+
+== Where this lives
+
+* Conventions (authoritative): `docs/AI-CONVENTIONS.adoc` §"CI / Required Status Checks"
+* AI-agent instructions: `.claude/CLAUDE.md` §"CI / Required Status Checks"
+* Operational runbook: `.machine_readable/6a2/PLAYBOOK.a2ml` `[ci-required-gates]`
+* Reference workflows: every required gate in `.github/workflows/`
+* History: PR #216 (boj-server), PR #45 (boj-server-cartridges)

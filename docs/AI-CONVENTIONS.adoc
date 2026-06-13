@@ -80,7 +80,7 @@ MAINTENANCE-CHECKLIST.a2ml, or SOFTWARE-DEVELOPMENT-APPROACH.a2ml in the reposit
 | Use Instead
 
 | TypeScript
-| ReScript
+| AffineScript
 
 | Node.js / npm / bun
 | Deno
@@ -108,6 +108,35 @@ MAINTENANCE-CHECKLIST.a2ml, or SOFTWARE-DEVELOPMENT-APPROACH.a2ml in the reposit
 == Build System
 
 Use `just` (Justfile) for all build, test, lint, and format tasks.
+
+== CI / Required Status Checks
+
+Required status checks MUST always report. A workflow that is workflow-level
+path-filtered (`on.<event>.paths`) and is also a *required* check sits forever
+as "Expected" on any PR that touches none of its paths -- leaving the PR
+`mergeable_state: blocked` even when every other check is green and the PR is
+approved. (This stranded #213 and #215 until #216.)
+
+Rule for any required gate:
+
+. Do *not* put `on.*.paths` on the workflow -- let it always trigger, so the
+  required check is always created.
+. Add a lightweight always-run `changes` job that recomputes the gate's
+  relevant path set with `git diff origin/<base>...HEAD`.
+. Gate every heavy job with `needs: changes` and
+  `if: needs.changes.outputs.run == 'true'`.
+
+A job skipped via `if:` reports *success* to required checks, so the context is
+always satisfied; the heavy work still runs in full when relevant files change.
+The detector MUST fail safe -- default `run=true`, and set `run=false` only on a
+successful diff that shows nothing relevant changed (any fetch/diff error =>
+run). Job/check *names* must not change, or branch-protection's required-context
+list breaks.
+
+Reference implementations: every gate in `.github/workflows/`
+(`proofs.yml`, `zig-test.yml`, `e2e.yml`, `abi-drift.yml`,
+`backend-assurance.yml`, `lsp-dap-bsp.yml`, `truthfulness.yml`). Full rationale:
+the link:wikis/CI-and-Required-Checks[CI & Required Checks] wiki page.
 
 == References
 

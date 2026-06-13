@@ -43,6 +43,7 @@ The server is *distributed*: community nodes volunteer compute time via the Umoj
 * *Architecture*: link:../ARCHITECTURE.md[`docs/architecture/README.adoc`] -- full design document
 * *Topology*: link:../../TOPOLOGY.md[`TOPOLOGY.md`] -- completion dashboard and system diagram
 * *Extensibility*: link:../EXTENSIBILITY.md[`docs/EXTENSIBILITY.adoc`] -- third-axis extension mechanism
+* *CI & Required Checks*: link:CI-and-Required-Checks[CI & Required Checks] -- the required-gate pattern (always-run `changes` job + `if:`-skipped heavy jobs)
 
 == Current Status
 

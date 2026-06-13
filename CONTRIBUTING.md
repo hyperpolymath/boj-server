@@ -45,6 +45,10 @@ We follow [Conventional Commits](https://www.conventionalcommits.org/):
 
 Types: `feat`, `fix`, `docs`, `test`, `refactor`, `ci`, `chore`, `security`
 
+### CI / Required Checks
+
+Required status-check workflows must **always report**. Never add `on.*.paths` to a required workflow — a path-filtered required check that doesn't trigger is reported as permanently "Expected" and blocks the PR even when everything is green. Use the estate pattern: an always-run `changes` job plus heavy jobs gated by `if: needs.changes.outputs.run == 'true'` (a job skipped via `if:` passes the required check). Full rationale in `docs/AI-CONVENTIONS.adoc` §"CI / Required Status Checks" and the `docs/wikis/CI-and-Required-Checks.adoc` wiki page.
+
 ## Reporting Bugs
 
 Before reporting:
