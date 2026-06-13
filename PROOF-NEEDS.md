@@ -10,6 +10,29 @@
 > greps. Keep both in sync when the marker count in
 > `src/abi/Boj/SafetyLemmas.idr` changes.
 
+## Build Verification (2026-06-13) — full sweep, freshly built toolchain
+
+Re-verified end-to-end on a clean machine with a from-source toolchain
+(Idris2 0.8.0 bootstrapped via Chez Scheme 9.5.8 + libgmp), not a
+desk-read of the prior entry. Three checks, all green:
+
+- **Core ABI:** `cd src/abi && idris2 --typecheck boj.ipkg` → 17/17
+  modules clean, exit 0 (~6.5 s).
+- **Full proof gate:** `bash scripts/typecheck-proofs.sh` → **PASS=105
+  FAIL=0** (core package + all 104 cartridge ABIs) under the pinned
+  toolchain (~80 s). This is broader than the 2026-06-03 entry, which
+  exercised only the core package.
+- **Trusted base:** `bash scripts/check-trusted-base.sh` → PASS,
+  **exactly 5** sanctioned class-(J) axioms in `SafetyLemmas.idr`, zero
+  undocumented unsound constructs. Independently corroborated by a
+  `panic-attack assail` scan (MPL-2.0, built from source), which flags
+  the same 5 `believe_me` as `ProofDrift` and nothing else proof-shaped.
+
+The axiom budget and theorem statements are unchanged from the
+2026-06-03 entry; this checkpoint records that the **full cartridge
+sweep** (not just the core package) compiles, so a future reader sees a
+build-backed number rather than an inherited claim.
+
 ## Build Verification (2026-06-03)
 
 The full core ABI package now type-checks under the pinned toolchain

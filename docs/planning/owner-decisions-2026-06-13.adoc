@@ -1,0 +1,218 @@
+// SPDX-License-Identifier: MPL-2.0
+// SPDX-FileCopyrightText: 2025-2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+
+= Owner-decision batch — six rulings that unblock v1 gates
+:toc: preamble
+:icons: font
+
+*Date:* 2026-06-13 ·
+*Source:* `docs/planning/v1-critical-chain-2026-06-11.adoc` §13 (the
+≤2-hour decision batch). ·
+*Purpose:* each item below is blocked on a judgement only the owner can
+make. They are framed — options, recommendation, and what each unblocks
+— so they can be ruled on in one sitting. Four are confirm-or-adjust;
+two (D1 licence, D3 tiers) genuinely need the owner's intent.
+
+*How to use:* write your call on the `RULE:` line of each. Nothing in
+this batch is acted on until you do — D1 in particular is held under the
+estate licence guardrail (flag-only, never auto-PR).
+
+[NOTE]
+====
+Facts verified on `main` @ 2026-06-13 so these are decisions, not
+homework: `package.json:5` = `AGPL-3.0-or-later`; versions split
+`0.4.6` (CITATION.cff) / `0.4.7` (package/jsr/gemini-extension) /
+`1.1.0-wip` (STATE); `gemini-extension.json:17` *does* set
+`"contextFileName": "GEMINI.md"`; cartridges-repo tiers = 129 Ayo / 10
+Teranga / 0 Shield, and `feedback-mcp` (the one verified-real cartridge)
+is labelled `Ayo`.
+====
+
+== D1 — Licence drift (`package.json`) — unblocks G6
+
+*Question.* `package.json` declares `AGPL-3.0-or-later`; the root
+`LICENSE`, every SPDX header, and the README badge say `MPL-2.0`. Which
+is correct for boj-server?
+
+*Why owner-only.* The estate licence policy is the highest-priority
+guardrail: licence changes are manual, owner-approved, never
+agent-swept. This is a flag, not a PR. The classification turns on one
+fact only you hold: *did anyone other than you author boj-server?*
+
+[cols="1,4"]
+|===
+| ▶ *A (recommended)* | boj-server is sole-owner ⇒ `MPL-2.0`. Fix the
+single outlier line in `package.json`. Matches LICENSE + all SPDX +
+badge + estate default for sole repos.
+| B | boj-server is shared-with-Joshua ⇒ `AGPL-3.0-or-later`. Then the
+*rest* of the repo (LICENSE, ~all headers) is the drift, not
+package.json — a much larger correction.
+|===
+
+Recommendation A: nothing in the repo's history or `CODEOWNERS` suggests
+co-authorship, and AGPL is the estate's "shared with son" category
+(idaptik, paint-type), which boj-server is not listed under.
+
+`RULE: _______________________________________________`
+
+== D2 — Auth posture for v1 — unblocks G3
+
+*Question.* `POST /cartridge/:name/invoke` has no HTTP-layer caller auth
+(`docs/AUTH-DESIGN.adoc`, open since April). Confirm the v1 model.
+
+*Why owner-only.* It sets what "exposed boj-server" means for every
+operator and what credentials can cross a node boundary — a product +
+trust decision, not an implementation detail.
+
+[cols="1,4"]
+|===
+| ▶ *A (recommended)* | *Dual posture.* (a) Local/single-user default:
+loopback bind (already landed, three independent layers) + no ceremony.
+(b) Exposed/operator mode: the HCG tier-2 sidecar derives
+`X-Trust-Level` (mTLS or bearer); BoJ enforces via the existing
+`TrustPolicy`, flipped from "read" to "require" for non-loopback
+callers. Credential forwarding capped at *Options A+B* — keyed
+cartridges stay local; volunteer nodes never receive your tokens
+(privacy by construction). RGTV broker (Option C) is post-v1.
+| B | Same, but pull credential-forwarding Option C (RGTV) into v1 —
+adds a broker build to the critical path; lets keyed cartridges run on
+remote nodes.
+| C | Loopback-only for v1; defer all exposed-mode auth. Simplest, but
+drops the "host for your community" story to local-only.
+|===
+
+Recommendation A: no new mechanism needed (HCG + TrustPolicy exist); the
+honest limitation ("keyed cartridges aren't delegatable in v1") is a
+feature to advertise, not a gap to hide.
+
+`RULE: _______________________________________________`
+
+== D3 — Tier vocabulary — unblocks G5 (and must precede community open)
+
+*Question.* What do Teranga / Shield / Ayo *mean*? Two repos define them
+incompatibly, and the flagship cartridge is mislabelled under either
+reading.
+
+* boj-server README + ADR-0008: an *assurance* ladder — Teranga =
+formally verified, Shield = security-reviewed, Ayo = community/unverified
+(promotion Ayo→Shield→Teranga).
+* cartridges-repo de facto: 129 `Ayo` / 10 `Teranga` / 0 `Shield`, used
+as *provenance/default* — and `feedback-mcp`, the only proof-carrying,
+verified-real cartridge, sits in `Ayo` (the lowest tier). Backwards
+under the README's own "trust tiers" wording.
+
+*Why owner-only.* The tier names are cultural terms (Yoruba/Swahili) with
+intended meaning per `docs/CULTURAL-RESPECT.adoc`; the canonical
+semantics are yours to set.
+
+[cols="1,4"]
+|===
+| ▶ *A (recommended)* | *Assurance semantics* (adopt the README/ADR-0008
+ladder as canonical). Tier == how verified. Mechanical fix: `feedback-mcp`
+→ Teranga; all others stay Ayo until they earn promotion through the
+truthfulness + proof gates. Tier then carries the *same truth the
+honesty programme already enforces*, and Teranga = "the proven work we
+offer as hospitality" keeps the cultural reading.
+| B | *Provenance semantics* (first-party vs community), assurance tracked
+on a separate field. More relabelling; divorces the tier badge from
+trust.
+| C | *Two orthogonal axes* (provenance × assurance). Cleanest
+conceptually, but a schema change + full re-tagging — heavier than v1
+needs.
+|===
+
+Recommendation A: it makes the tier field mean what users assume it
+means, matches the one promotion ladder already written down, and is a
+near-mechanical relabel rather than a schema change. Canonicalise in
+`hyperpolymath/standards`, mirror into both repos.
+
+`RULE: _______________________________________________`
+
+== D4 — The Golden Dozen slate — unblocks G2 (the keystone)
+
+*Question.* Confirm or swap the 12 cartridges that become the v1 product
+surface (made real via the Foundry, gated by the truthfulness probe).
+
+[cols="1,4"]
+|===
+| ▶ *Proposed (recommended)* |
+*Wave 1 — credential-free, CI-provable in plain runners:* `duckdb-mcp`,
+`local-memory-mcp`, `hesiod-mcp`, `model-router-mcp` (canonical JS-only
+path), `container-mcp` (local Podman), `git-mcp` (local repo ops). +
+*Wave 2 — token/secret-gated, E2E via CI secrets/service containers:*
+`github-api-mcp`, `gitlab-api-mcp`, `research-mcp`, `cloudflare-mcp`,
+`postgresql-mcp`, `browser-mcp` (headless Firefox; demote to Wave 3 if
+flaky).
+| adjust | Swap any cartridge; the only hard constraints are
+*credential-free first* (so the probe runs in CI without secrets) and
+*both dispatch paths covered* (Zig `.so` + JS `mod.js`).
+|===
+
+Selection criteria, in order: credential-free first · highest MCP-user
+demand · cover both dispatch paths · ≤ one per domain. `feedback-mcp` +
+`boj-health` remain the gold references (not counted in the twelve).
+
+`RULE (confirm / swaps): ______________________________`
+
+== D5 — Version reset — unblocks G6
+
+*Question.* One version story to replace the `0.4.6 / 0.4.7 / 1.1.0-wip`
+split and ROADMAP's premature "v1.1.0 Active".
+
+[cols="1,4"]
+|===
+| ▶ *A (recommended)* | Next public release is *0.9.0 "honest beta"* (cut
+at G1+G2 — installs everywhere + Golden Dozen real). *1.0.0* is cut at
+G6. Reset all manifests (package/jsr/gemini-extension/glama/smithery/
+CITATION) + STATE to `0.9.0-wip` now; announce the reset once in the
+changelog.
+| B | Keep climbing from 0.4.x — next release 0.5.0, 1.0.0 later. Avoids a
+"backwards" version optics but keeps the manifest/STATE split unless
+also reconciled.
+| C | Declare current state 1.0.0. *Not recommended* — contradicts
+`cartridges-available-real = 1` and the whole truthfulness posture.
+|===
+
+Recommendation A: "0.9.0 honest beta → 1.0.0 at real v1" tells the
+truth and gives the launch a clean story; the one-count-one-place rule
+(plan §7 E2) keeps it from re-drifting.
+
+`RULE: _______________________________________________`
+
+== D6 — GEMINI.md — RESOLVED to a one-liner (confirm only)
+
+*Status.* No longer a contradiction. `gemini-extension.json:17` sets
+`"contextFileName": "GEMINI.md"`, so the file *is* load-bearing
+(STATE 2026-05-26 was right; the #199 "stale → delete" finding is a
+Hypatia `root_hygiene` false positive that doesn't know the
+gemini-extension contract).
+
+*Action (recommended):* keep `GEMINI.md`; add a Hypatia ignore/exemption
+so the false positive stops recurring on every scan; close that line of
+#199. No owner judgement needed unless you *want* to drop Gemini support
+(then delete both the file and the `contextFileName` line).
+
+`RULE (default = keep + exempt): ______________________`
+
+== After the rulings
+
+Each ruling converts directly into mechanical work that needs no further
+decision:
+
+[cols="1,3"]
+|===
+| D1 | one-line `package.json` edit (per ruling) + close #186
+| D2 | flip `TrustPolicy` non-loopback path read→require; finish HCG D-4
+baselines → E rollout
+| D3 | canonical tier doc in `standards`; relabel manifests (A = just
+`feedback-mcp`→Teranga to start)
+| D4 | point the Foundry at Wave 1; one fresh mint proves the factory
+(plan A1) → batch
+| D5 | sweep version fields to `0.9.0-wip`; changelog note; fix ROADMAP
+status line
+| D6 | keep file + add Hypatia exemption
+|===
+
+I can take any/all of these from "ruled" to "PR" on your word — they are
+deliberately scoped so none needs a second decision once you've marked
+the lines above.
