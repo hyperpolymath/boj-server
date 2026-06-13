@@ -12,27 +12,15 @@
 # runs the trusted-base audit so no new believe_me / axiom slips in.
 name: Proofs Gate
 
+# Was workflow-level path-filtered: a required check that never ran on PRs
+# touching none of its paths, leaving the check "Expected" and the PR blocked.
+# Now always runs; the `changes` job gates the heavy jobs, which when skipped
+# report SUCCESS to required checks.
 on:
   push:
     branches: [main]
-    paths:
-      - 'src/abi/**'
-      - 'cartridges/**/abi/**'
-      - 'verification/**'
-      - 'scripts/check-trusted-base.sh'
-      - 'scripts/typecheck-proofs.sh'
-      - '.github/workflows/proofs.yml'
-      - '.tool-versions'
   pull_request:
     branches: [main]
-    paths:
-      - 'src/abi/**'
-      - 'cartridges/**/abi/**'
-      - 'verification/**'
-      - 'scripts/check-trusted-base.sh'
-      - 'scripts/typecheck-proofs.sh'
-      - '.github/workflows/proofs.yml'
-      - '.tool-versions'
   workflow_dispatch:
 
 permissions:
@@ -43,9 +31,40 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  changes:
+    name: Detect relevant changes
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      run: ${{ steps.detect.outputs.run }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+      - id: detect
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE: ${{ github.base_ref }}
+          BEFORE: ${{ github.event.before }}
+        run: |
+          set -uo pipefail
+          run=true
+          if [ "$EVENT" = pull_request ]; then
+            git fetch --no-tags --depth=200 origin "$BASE" 2>/dev/null \
+              && changed=$(git diff --name-only "origin/${BASE}...HEAD" 2>/dev/null) \
+              && { printf '%s\n' "$changed" | grep -qE '^src/abi/|^cartridges/.*/abi/|^verification/|^scripts/check-trusted-base\.sh$|^scripts/typecheck-proofs\.sh$|^\.tool-versions$' && run=true || run=false; }
+          elif [ "$EVENT" = push ] && [ -n "$BEFORE" ] && [ "$BEFORE" != 0000000000000000000000000000000000000000 ]; then
+            changed=$(git diff --name-only "${BEFORE}...${GITHUB_SHA}" 2>/dev/null) \
+              && { printf '%s\n' "$changed" | grep -qE '^src/abi/|^cartridges/.*/abi/|^verification/|^scripts/check-trusted-base\.sh$|^scripts/typecheck-proofs\.sh$|^\.tool-versions$' && run=true || run=false; }
+          fi
+          printf 'run=%s\n' "$run" >> "$GITHUB_OUTPUT"
+          echo "relevant=$run; changed files:"; printf '%s\n' "${changed:-<none computed>}"
+
   # Cheap, dependency-free gate: scan for unsound constructs + axiom-count drift.
   trusted-base:
     name: Trusted-base audit (no new axioms)
+    needs: changes
+    if: needs.changes.outputs.run == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -56,6 +75,8 @@ jobs:
   # Full type-check of the core ABI + every cartridge ABI under the pinned Idris2.
   typecheck:
     name: Idris2 type-check (core + all cartridge ABIs)
+    needs: changes
+    if: needs.changes.outputs.run == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:

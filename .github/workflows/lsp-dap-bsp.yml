@@ -5,19 +5,16 @@
 
 name: LSP/DAP/BSP CI
 
+# Was workflow-level path-filtered: required checks that never ran on PRs
+# touching none of its paths, leaving them "Expected" and the PR blocked.
+# Now always runs; the `changes` job gates the heavy jobs, which when skipped
+# report SUCCESS to required checks.
 on:
   push:
-    paths:
-      - 'cartridges/lsp-mcp/**'
-      - 'cartridges/dap-mcp/**'
-      - 'cartridges/bsp-mcp/**'
-      - 'src/abi/Boj/Protocol.idr'
-      - '.github/workflows/lsp-dap-bsp.yml'
+    branches: [main]
   pull_request:
-    paths:
-      - 'cartridges/lsp-mcp/**'
-      - 'cartridges/dap-mcp/**'
-      - 'cartridges/bsp-mcp/**'
+    branches: [main]
+  workflow_dispatch:
 
 permissions: read-all
 
@@ -26,8 +23,39 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  changes:
+    name: Detect relevant changes
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      run: ${{ steps.detect.outputs.run }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+      - id: detect
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE: ${{ github.base_ref }}
+          BEFORE: ${{ github.event.before }}
+        run: |
+          set -uo pipefail
+          run=true
+          if [ "$EVENT" = pull_request ]; then
+            git fetch --no-tags --depth=200 origin "$BASE" 2>/dev/null \
+              && changed=$(git diff --name-only "origin/${BASE}...HEAD" 2>/dev/null) \
+              && { printf '%s\n' "$changed" | grep -qE '^cartridges/(lsp|dap|bsp)-mcp/|^src/abi/Boj/Protocol\.idr$' && run=true || run=false; }
+          elif [ "$EVENT" = push ] && [ -n "$BEFORE" ] && [ "$BEFORE" != 0000000000000000000000000000000000000000 ]; then
+            changed=$(git diff --name-only "${BEFORE}...${GITHUB_SHA}" 2>/dev/null) \
+              && { printf '%s\n' "$changed" | grep -qE '^cartridges/(lsp|dap|bsp)-mcp/|^src/abi/Boj/Protocol\.idr$' && run=true || run=false; }
+          fi
+          printf 'run=%s\n' "$run" >> "$GITHUB_OUTPUT"
+          echo "relevant=$run; changed files:"; printf '%s\n' "${changed:-<none computed>}"
+
   abi-check:
     name: ABI Specification Check (Idris2)
+    needs: changes
+    if: needs.changes.outputs.run == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -62,6 +90,8 @@ jobs:
 
   ffi-build:
     name: FFI Build & Test (Zig)
+    needs: changes
+    if: needs.changes.outputs.run == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -107,6 +137,8 @@ jobs:
 
   panel-validation:
     name: Panel Manifest Validation
+    needs: changes
+    if: needs.changes.outputs.run == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -141,7 +173,8 @@ jobs:
     name: Cartridge Completeness Check
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    needs: [abi-check, ffi-build, panel-validation]
+    needs: [changes, abi-check, ffi-build, panel-validation]
+    if: needs.changes.outputs.run == 'true'
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - name: Verify triadic structure
