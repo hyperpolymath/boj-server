@@ -1,6 +1,6 @@
+#!/usr/bin/env node
 // SPDX-License-Identifier: MPL-2.0
 // Copyright (c) Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
-#!/usr/bin/env node
 //
 // claude-ai-mcp — Anthropic Messages API cartridge for the BoJ
 //

@@ -33,8 +33,10 @@ jobs:
         include:
           - language: javascript-typescript
             build-mode: none
-          - language: cpp
-            build-mode: none
+            # C/C++ CodeQL is intentionally not enabled for the generated
+            # header-only ABI surface. The FFI implementation is Zig and is
+            # covered by the Zig workflows; re-add cpp only when tracked
+            # .c/.cc/.cpp/.cxx translation units exist.
 
     steps:
       - name: Checkout

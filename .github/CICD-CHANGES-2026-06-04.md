@@ -1,3 +1,8 @@
+<!--
+SPDX-License-Identifier: MPL-2.0
+Copyright (c) Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+-->
+
 # CI/CD Changes — 2026-06-04
 
 **Date:** 2026-06-04  
@@ -22,7 +27,7 @@ All 18 workflows in this repository have been updated to include `timeout-minute
 | Workflow | timeout-minutes | Concurrency Added | Notes |
 |----------|-----------------|------------------|-------|
 | `abi-drift.yml` | 15 | | ABI manifest + FFI verification |
-| `codeql.yml` | 15 | ✓ | Includes C++ support (has C/C++ headers) |
+| `codeql.yml` | 15 | ✓ | JavaScript/TypeScript CodeQL only; Zig FFI is covered by Zig workflows |
 | `container-publish.yml` | 30 | | Container build & push |
 | `dogfood-gate.yml` | 5-15 | ✓ | 6 jobs: a2ml(5), k9(5), empty-lint(15), groove(5), eclexiaiser(5), summary(5) |
 | `e2e.yml` | 15 | ✓ | MCP bridge input fuzz tests |
@@ -54,8 +59,13 @@ All 18 workflows in this repository have been updated to include `timeout-minute
 
 ## CodeQL Configuration
 
-**Languages:** `javascript-typescript` + `cpp`  
-**Reason:** This repository contains C/C++ headers in the FFI layer.
+**Languages:** `javascript-typescript`
+
+**Reason:** The FFI implementation is Zig. The tracked C ABI file is a generated
+header-only surface (`generated/abi/boj_catalogue.h`), not a C/C++ translation
+unit; enabling CodeQL `cpp` for headers alone makes extraction fail before
+analysis. Re-add `cpp` only when tracked `.c`, `.cc`, `.cpp`, or `.cxx` sources
+exist.
 
 ---
 

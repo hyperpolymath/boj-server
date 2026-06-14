@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MPL-2.0
-// Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+// Copyright (c) 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
 //
 // BoJ Server — bridge boot smoke (runtime portability gate)
 //
@@ -58,14 +58,17 @@ let stdout = "";
 let stderr = "";
 child.stdout.on("data", (d) => (stdout += d));
 child.stderr.on("data", (d) => (stderr += d));
+child.stdin.on("error", (e) => (stderr += `stdin error: ${e.message}\n`));
 
 const killTimer = setTimeout(() => {
   console.error(`FAIL: bridge did not exit within ${TIMEOUT_MS}ms`);
   child.kill("SIGKILL");
 }, TIMEOUT_MS);
 
-child.stdin.write(requests.map((r) => JSON.stringify(r)).join("\n") + "\n");
-child.stdin.end();
+const payload = requests.map((r) => JSON.stringify(r)).join("\n") + "\n";
+child.once("spawn", () => {
+  child.stdin.end(payload);
+});
 
 child.on("close", (code) => {
   clearTimeout(killTimer);

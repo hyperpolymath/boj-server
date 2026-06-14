@@ -1,6 +1,6 @@
+#!/usr/bin/env -S deno run --allow-net --allow-env --allow-read
 // SPDX-License-Identifier: MPL-2.0
 // Copyright (c) Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
-#!/usr/bin/env -S deno run --allow-net --allow-env --allow-read
 //
 // BoJ Server — MCP transport bridge (stdio + HTTP per ADR-0013)
 //
@@ -17,10 +17,8 @@
 
 import { env, stdout } from "./lib/runtime.js";
 import { sanitizeErrorMessage } from "./lib/security.js";
-import { dispatchMcpMessage } from "./lib/dispatcher.js";
 import { info, error as logError } from "./lib/logger.js";
 import * as otel from "./lib/otel.js";
-import { startHttpTransport } from "./lib/http-transport.js";
 
 const TRANSPORT = (env.get("BOJ_TRANSPORT") ?? "stdio").toLowerCase();
 
@@ -43,6 +41,15 @@ function sendError(id, code, message) {
   send({ jsonrpc: "2.0", id, error: { code, message: sanitizeErrorMessage(message) } });
 }
 
+let dispatchMcpMessagePromise;
+
+async function getDispatchMcpMessage() {
+  if (!dispatchMcpMessagePromise) {
+    dispatchMcpMessagePromise = import("./lib/dispatcher.js").then((m) => m.dispatchMcpMessage);
+  }
+  return dispatchMcpMessagePromise;
+}
+
 async function handleStdioLine(line) {
   let msg;
   try {
@@ -51,6 +58,7 @@ async function handleStdioLine(line) {
     sendError(null, -32700, "Parse error");
     return;
   }
+  const dispatchMcpMessage = await getDispatchMcpMessage();
   const response = await dispatchMcpMessage(msg, { transport: "stdio" });
   if (response !== null) send(response);
 }
@@ -77,8 +85,16 @@ async function runStdio() {
   if (typeof Deno !== "undefined") {
     for await (const chunk of Deno.stdin.readable) processChunk(chunk);
   } else {
-    // @ts-ignore: process is global in Node
-    for await (const chunk of process.stdin) processChunk(chunk);
+    await new Promise((resolve, reject) => {
+      // @ts-ignore: process is global in Node/Bun
+      process.stdin.on("data", processChunk);
+      // @ts-ignore: process is global in Node/Bun
+      process.stdin.once("end", resolve);
+      // @ts-ignore: process is global in Node/Bun
+      process.stdin.once("error", reject);
+      // @ts-ignore: process is global in Node/Bun
+      process.stdin.resume();
+    });
   }
   await Promise.allSettled(pendingMessages);
 }
@@ -88,6 +104,7 @@ async function runStdio() {
 // ===================================================================
 
 async function runHttp() {
+  const { startHttpTransport } = await import("./lib/http-transport.js");
   const handle = await startHttpTransport();
   await new Promise((resolve) => {
     const stop = async () => {
