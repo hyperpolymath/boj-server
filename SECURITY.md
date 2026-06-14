@@ -133,7 +133,7 @@ A good vulnerability report helps us understand and reproduce the issue quickly.
 [e.g., Command Injection, SSRF, Path Traversal, Privilege Escalation, etc.]
 
 ## Affected Component
-[e.g., src/browser/, cartridges/cloudflare/, ffi/zig/src/, mcp-bridge/]
+[e.g., cartridges/browser-mcp/, cartridges/cloudflare/, ffi/zig/src/, mcp-bridge/]
 
 ## Affected Versions
 [Version range or specific commits]
