@@ -224,6 +224,20 @@ probe OPTIONS /cartridges                       deny "verb-canary:OPTIONS /cartr
 probe DELETE  /cartridge/probe/invoke           deny "verb-canary:DELETE on regex route (cartridge-invoke-post)"
 probe GET     /cartridges/ssg-mcp/webhook       deny "verb-canary:GET on POST-only public route (ssg-mcp-webhook-post)"
 
+# Unknown-path canary — a synthetic path that matches no exact rule,
+# no regex rule, and no public exception. The verb (GET) is in
+# `global_verbs`, so this probe isolates the no-match → default-deny
+# branch of the gateway's three-tier lookup (exact → regex → global)
+# in `lib/http_capability_gateway/gateway.ex` at the `{:error, :no_match}`
+# clause. The verb-canaries above exercise the unknown-method path
+# (a known path with a verb outside `global_verbs`); this canary
+# exercises the unknown-path path (a verb in `global_verbs` against
+# a path with no matching rule). Both must default-deny, but the code
+# paths are distinct — a regression in either is independently
+# possible. The synthetic prefix `__phase-e-canary-` is reserved for
+# this probe; it must never appear as a real route in the policy.
+probe GET     /__phase-e-canary-unknown-path__ deny "path-canary:GET on synthetic unknown path (no-match default-deny)"
+
 if [ "$WITH_BACKEND" = "1" ]; then
     echo
     echo "==> HCG policy allow smoke (--with-backend)"
