@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: MPL-2.0
+// Copyright (c) Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
 // OPSM-MCP Cartridge — Zig FFI build configuration (Zig 0.15+).
 //
 // Bridges the Idris2 ABI (SafeRegistry state machine) to a C-compatible

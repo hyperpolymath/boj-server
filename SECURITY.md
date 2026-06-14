@@ -1,4 +1,7 @@
-<!-- SPDX-License-Identifier: MPL-2.0 -->
+<!--
+SPDX-License-Identifier: MPL-2.0
+Copyright (c) Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+-->
 <!-- Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk> -->
 
 # Security Policy
@@ -130,7 +133,7 @@ A good vulnerability report helps us understand and reproduce the issue quickly.
 [e.g., Command Injection, SSRF, Path Traversal, Privilege Escalation, etc.]
 
 ## Affected Component
-[e.g., src/browser/, cartridges/cloudflare/, ffi/zig/src/, mcp-bridge/]
+[e.g., cartridges/browser-mcp/, cartridges/cloudflare/, ffi/zig/src/, mcp-bridge/]
 
 ## Affected Versions
 [Version range or specific commits]

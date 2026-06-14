@@ -1,5 +1,5 @@
 -- SPDX-License-Identifier: MPL-2.0
--- Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+-- Copyright (c) Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
 ||| NesyMcp.Protocol: Full neurosymbolic protocol types for the nesy-mcp cartridge.
 |||
 ||| Extends SafeReasoning (the harmonization law) with the comprehensive

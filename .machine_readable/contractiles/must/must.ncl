@@ -27,7 +27,7 @@
       version = "1.0.0",
       description = "Evaluates all declared must-invariants. Blocks merge on critical failure. K9 validator is the authoritative CI enforcement.",
       paired_xfile = "Mustfile.a2ml",
-      k9_validator = ".machine_readable/svc/k9/boj-server-metadata.k9.ncl",
+      k9_validator = ".machine_readable/svc/self-validating/boj-server-metadata.k9.ncl",
       author = "Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>",
     },
   },

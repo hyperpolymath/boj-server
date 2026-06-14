@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MPL-2.0
+// Copyright (c) Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
 // (MPL-2.0 preferred; MPL-2.0 required for boj-server ecosystem)
-// Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath)
 
 /**
  * gossamer-bridge.js — Unified IPC bridge for BoJ Node Operator tray app.

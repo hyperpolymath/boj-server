@@ -1,5 +1,5 @@
 -- SPDX-License-Identifier: MPL-2.0
--- Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+-- Copyright (c) Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
 ||| Boj.CartridgeDispatch: Formal proof of cartridge dispatch type safety (BJ1).
 |||
 ||| REQUIREMENTS-MASTER.md: BJ1 | Cartridge dispatch type safety | TP | I2 | P1

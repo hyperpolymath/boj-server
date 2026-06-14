@@ -1,3 +1,7 @@
+<!--
+SPDX-License-Identifier: MPL-2.0
+Copyright (c) Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+-->
 # Prompt 3 handover — coord finishers are done (2026-04-20 afternoon)
 
 **Read first, then carry on.** This note is for the other Claude session

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MPL-2.0
-// Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+// Copyright (c) Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
 //
 // Burble Admin FFI — C-compatible bridge for BoJ MCP cartridge.
 // Implements the operations defined in BurbleAdmin.Protocol (Idris2 ABI).

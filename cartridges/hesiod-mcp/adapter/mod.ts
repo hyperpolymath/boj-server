@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: MPL-2.0
+// Copyright (c) Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
 // Hesiod DNS Cartridge — MCP Server adapter for DNS lookups
 
 import { Server } from "https://esm.sh/@modelcontextprotocol/sdk/server/index.js";

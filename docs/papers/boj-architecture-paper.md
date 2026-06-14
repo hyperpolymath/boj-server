@@ -1,4 +1,7 @@
-<!-- SPDX-License-Identifier: MPL-2.0 -->
+<!--
+SPDX-License-Identifier: MPL-2.0
+Copyright (c) Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+-->
 <!-- Draft: arXiv preprint, cs.SE (primary), cs.PL (secondary) -->
 <!-- Target venue: ICSE 2027 SEIP track or ASE 2027 -->
 
@@ -638,7 +641,7 @@ in decentralised networks without sacrificing safety guarantees. Hash attestatio
 binary integrity to community trust, enabling a volunteer hosting model analogous to
 Tor or IPFS but with stronger provenance guarantees.
 
-We make the BoJ server available as open-source software under the Palimpsest License
+We make the BoJ server available as open-source software under the MPL-2.0
 (MPL-2.0) at `https://github.com/hyperpolymath/boj-server`.
 
 ---

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MPL-2.0
-// Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+// Copyright (c) Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
 //
 // cartridge_shim.zig — Shared helpers for the ADR-0006 five-symbol
 // cartridge ABI (`boj_cartridge_init / deinit / name / version / invoke`).

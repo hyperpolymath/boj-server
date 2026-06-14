@@ -1,3 +1,7 @@
+<!--
+SPDX-License-Identifier: MPL-2.0
+Copyright (c) Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+-->
 # Haiku scout — next-pass lint / trivial-fix prompt
 
 Reusable template for a fast Haiku scouting pass over a concrete file list

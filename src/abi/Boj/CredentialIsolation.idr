@@ -1,5 +1,5 @@
 -- SPDX-License-Identifier: MPL-2.0
--- Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+-- Copyright (c) Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
 ||| Boj.CredentialIsolation: Per-cartridge credential-store isolation model (BJ2).
 |||
 ||| This module closes the remaining BJ2 gap by modelling vault partitioning at

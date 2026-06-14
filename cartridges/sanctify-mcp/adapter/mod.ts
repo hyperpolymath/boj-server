@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: MPL-2.0
+// Copyright (c) Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
 // Sanctify Cartridge — PHP linter and deviation detector MCP server
 
 import { Server } from "https://esm.sh/@modelcontextprotocol/sdk/server/index.js";
