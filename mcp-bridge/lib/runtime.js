@@ -7,6 +7,8 @@
 // Supports the "Deno > Bun > NPM" hierarchy while maintaining
 // compatibility with Node-only MCP clients like Glama.
 
+import { writeSync as writeFdSync } from "node:fs";
+
 const isDeno = typeof globalThis.Deno !== "undefined";
 
 /** @type {{ get: (name: string) => string|undefined }} */
@@ -32,7 +34,7 @@ export const stdout = {
     if (isDeno) {
       globalThis.Deno.stdout.writeSync(buf);
     } else if (typeof process !== "undefined") {
-      process.stdout.write(buf);
+      writeFdSync(process.stdout.fd, buf);
     }
   }
 };
@@ -44,7 +46,7 @@ export const stderr = {
     if (isDeno) {
       globalThis.Deno.stderr.writeSync(buf);
     } else if (typeof process !== "undefined") {
-      process.stderr.write(buf);
+      writeFdSync(process.stderr.fd, buf);
     }
   }
 };
