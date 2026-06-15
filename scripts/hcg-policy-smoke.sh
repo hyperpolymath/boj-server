@@ -9,9 +9,12 @@
 #
 # The default mode probes the *deny* path for every non-public route in
 # `config/gateway-policy-boj.yaml` plus a default-deny verb canary for
-# DELETE/PUT/PATCH. The deny path is fully gateway-internal — it does
-# not require BoJ to be reachable, so this script is the cheapest way
-# to confirm policy enforcement before staging cut-over.
+# DELETE/PUT/PATCH, an exact-status stealth-profile canary that pins
+# internal+stealth routes to 404 (vs authenticated routes to 403), and
+# an unknown-path no-match canary. The deny path is fully gateway-
+# internal — it does not require BoJ to be reachable, so this script
+# is the cheapest way to confirm policy enforcement before staging
+# cut-over.
 #
 # With `--with-backend`, the script additionally sends an authenticated
 # (or internal) probe per route and asserts the gateway *forwarded* it
@@ -152,6 +155,19 @@ probe() {
                 return
             fi
             ;;
+        [1-5][0-9][0-9])
+            # Exact-status pattern — three-digit literal, e.g. 404 or
+            # 403. The stealth-profile canary block below uses this to
+            # distinguish stealth (404) from plain forbidden (403) on
+            # the deny path; the generic `deny` pattern above accepts
+            # both, so a regression that demoted a stealth route to
+            # 403 would slip through it.
+            if [ "$code" = "$pattern" ]; then
+                printf '  PASS  %-65s %s\n' "$label" "$code"
+                PASS=$((PASS + 1))
+                return
+            fi
+            ;;
     esac
     printf '  FAIL  %-65s %s (expected %s)\n' "$label" "$code" "$pattern"
     FAIL=$((FAIL + 1))
@@ -223,6 +239,27 @@ probe PATCH   /cartridges                       deny "verb-canary:PATCH /cartrid
 probe OPTIONS /cartridges                       deny "verb-canary:OPTIONS /cartridges (preflight must not bypass)"
 probe DELETE  /cartridge/probe/invoke           deny "verb-canary:DELETE on regex route (cartridge-invoke-post)"
 probe GET     /cartridges/ssg-mcp/webhook       deny "verb-canary:GET on POST-only public route (ssg-mcp-webhook-post)"
+
+# Stealth-profile canary — confirms the security property that the deny
+# *status code* differs between internal+stealth routes (404, capability
+# existence hidden) and authenticated routes (403, capability exists,
+# caller lacks credentials). The generic `deny` pattern above accepts
+# both, so a misconfiguration where `:stealth_profiles` is not populated
+# at runtime would silently demote internal+stealth routes to 403 —
+# leaking existence to untrusted callers, the exact threat the
+# `sdp-status-get` rule narrative calls out ("not confirmable from
+# outside"). The gateway's `handle_denial/3` returns
+# `stealth_profiles["default"][trust_str]` for rules with
+# `stealth_profile: "default"` and bare 403 otherwise; this canary fixes
+# both ends of that switch.
+#
+# Internal+stealth — exact 404 expected.
+probe GET  /sdp/status               404 "stealth-canary:GET /sdp/status (internal+stealth → 404)"
+probe POST /cartridge/probe/load     404 "stealth-canary:POST /cartridge/:name/load (internal+stealth → 404)"
+
+# Authenticated, no stealth_profile — exact 403 expected.
+probe GET  /status                   403 "stealth-canary:GET /status (authenticated → 403, not stealthed)"
+probe GET  /cartridges               403 "stealth-canary:GET /cartridges (authenticated → 403, not stealthed)"
 
 # Unknown-path canary — a synthetic path that matches no exact rule,
 # no regex rule, and no public exception. The verb (GET) is in
