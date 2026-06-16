@@ -180,7 +180,7 @@ Per plan §E4. Each step requires the prior step's success-criteria green for th
 
 ## 4. Observability — what on-call watches
 
-> **!OWNER:** dashboard URLs and on-call rota go here. The signals below are the *what*; the *where* is owner-specific.
+> **!OWNER:** dashboard URLs and on-call rota go here. The signals below are the *what*; the *where* is owner-specific. The PromQL queries that turn each signal into a dashboard panel or alert rule live in [`gateway-observability-spec.md`](gateway-observability-spec.md) (§§ 2–5), anchored to the gateway-emitted Prometheus metrics declared in `http-capability-gateway/lib/http_capability_gateway/application.ex` `telemetry_metrics/0`.
 
 ### 4.1 Signals (gateway-side)
 
@@ -312,6 +312,7 @@ Also update `[HTTP_CAPABILITY_GATEWAY]` section per plan §E acceptance: `status
 - `docs/integration/http-capability-gateway-plan.md` — full phased plan (§Phase E sourced here).
 - `docs/integration/http-capability-gateway-boj-contract.md` — HTTP boundary contract.
 - `docs/integration/http-capability-gateway-policy-authoring.md` — policy file authoring workflow.
+- `docs/integration/gateway-observability-spec.md` — Phase E PromQL templates + alert-threshold bindings for the §4 signals + §5 rollback triggers.
 - `http-capability-gateway/docs/perf-contract.md` — Phase D perf-contract.
 - `elixir/lib/boj_rest/trust_policy.ex` — `satisfies?/3` Phase C enforcement.
 - `.machine_readable/contractiles/trust/Trustfile.a2ml` — `[CLOUDFLARE_EDGE_SECURITY].rate_limiting.tier_2_gateway` (current `PENDING` site; §6.4 flip target) + `[SEAMS]` (Phase C gateway↔BoJ-gnosis declaration).
