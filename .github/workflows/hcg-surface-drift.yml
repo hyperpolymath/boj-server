@@ -1,0 +1,98 @@
+# SPDX-License-Identifier: MPL-2.0
+# Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+#
+# HCG Surface Drift Gate (standards#100 / standards#91 — Phase E §1.5)
+#
+# Runs `scripts/hcg-surface-drift-check.sh` to assert every wired
+# `BojRest.Router` route is covered by at least one rule in the HCG live
+# Verb Governance Spec (`config/gateway-policy-boj.yaml`). The ADR's
+# largest declared risk is "policy lagging the surface" — a wired route
+# landing without a matching policy rule would default-deny in
+# production (an outage on a route that should be live). The §1.5
+# pre-rollout checklist relied on a manual re-verification stamp in the
+# live policy header; PR #228 made the check executable; this workflow
+# makes it part of every PR build so the risk is gated at merge time.
+#
+# Bracket-style relationship with `scripts/hcg-policy-smoke.sh`:
+#   * Smoke script runs against a live gateway (out of CI's scope here).
+#   * Drift check runs against the source files — fits inside an
+#     ordinary GitHub Actions job.
+#
+# Follows the boj-server "always-trigger + changes job" pattern
+# documented in `docs/wikis/CI-and-Required-Checks.adoc` and
+# `.claude/CLAUDE.md` §"CI / Required Status Checks": no `on.*.paths`
+# so the check is always created, with a lightweight `changes` job
+# computing relevance and the heavy `check` job gated on it. A skipped
+# `check` is reported as success to any future required-context list.
+
+name: HCG Surface Drift Gate
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: hcg-surface-drift-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  changes:
+    name: Detect relevant changes
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      run: ${{ steps.detect.outputs.run }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+      - id: detect
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE: ${{ github.base_ref }}
+          BEFORE: ${{ github.event.before }}
+        run: |
+          # Fail-safe: default to running; only skip on a SUCCESSFUL diff
+          # showing nothing in this gate's path set changed. The path set
+          # is the script's three inputs (router, policy, script itself)
+          # plus the workflow file — any edit to one of those four must
+          # re-prove the surface⊆policy invariant.
+          set -uo pipefail
+          run=true
+          RE='^elixir/lib/boj_rest/router\.ex$|^config/gateway-policy-boj\.yaml$|^scripts/hcg-surface-drift-check\.sh$|^\.github/workflows/hcg-surface-drift\.yml$'
+          if [ "$EVENT" = pull_request ]; then
+            git fetch --no-tags --depth=200 origin "$BASE" 2>/dev/null \
+              && changed=$(git diff --name-only "origin/${BASE}...HEAD" 2>/dev/null) \
+              && { printf '%s\n' "$changed" | grep -qE "$RE" && run=true || run=false; }
+          elif [ "$EVENT" = push ] && [ -n "$BEFORE" ] && [ "$BEFORE" != 0000000000000000000000000000000000000000 ]; then
+            changed=$(git diff --name-only "${BEFORE}...${GITHUB_SHA}" 2>/dev/null) \
+              && { printf '%s\n' "$changed" | grep -qE "$RE" && run=true || run=false; }
+          fi
+          printf 'run=%s\n' "$run" >> "$GITHUB_OUTPUT"
+          echo "relevant=$run; changed files:"; printf '%s\n' "${changed:-<none computed>}"
+
+  check:
+    name: Surface ⊆ policy
+    needs: changes
+    if: needs.changes.outputs.run == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Confirm script + inputs are present
+        run: |
+          set -euo pipefail
+          test -f scripts/hcg-surface-drift-check.sh
+          test -f elixir/lib/boj_rest/router.ex
+          test -f config/gateway-policy-boj.yaml
+      - name: Run hcg-surface-drift-check.sh (verbose)
+        # The script in PR #228 was committed as 0644 (not executable);
+        # invoke it via bash so this works regardless of the file mode
+        # — matches the PR #228 test plan exactly.
+        run: bash scripts/hcg-surface-drift-check.sh -v
