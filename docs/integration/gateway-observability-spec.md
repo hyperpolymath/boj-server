@@ -6,9 +6,9 @@ Copyright (c) Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
 
 # HCG tier-2 — observability spec
 
-**Version:** 0.1 (scaffold, Phase E)
-**Date:** 2026-06-16
-**Status:** Phase E scaffold. Names the gateway-emitted Prometheus metrics, gives PromQL templates for every signal listed in the rollout runbook §4.1/§4.2, and binds alert thresholds to the rollback triggers in runbook §5.1 and the perf contract's tolerance ratios. Absolute-µs values are deliberately left as `Phase D-4` references — once `bench/baseline.json` `_status` flips to `active` the queries here read against real numbers without further edits.
+**Version:** 0.2 (BoJ-side sister spec anchored, Phase E)
+**Date:** 2026-06-22 (rev. from 2026-06-16)
+**Status:** Phase E scaffold. Names the gateway-emitted Prometheus metrics, gives PromQL templates for every signal listed in the rollout runbook §4.1/§4.2, and binds alert thresholds to the rollback triggers in runbook §5.1 and the perf contract's tolerance ratios. §3 BoJ-side templates now anchor to the sister spec [`boj-side-observability-spec.md`](boj-side-observability-spec.md) (events, metric names, instrumentation sites in `BojRest.Router`); the `!OWNER:` scaffold qualifier on those templates is dropped — the wiring PR target is fixed. Absolute-µs values are deliberately left as `Phase D-4` references — once `bench/baseline.json` `_status` flips to `active` the queries here read against real numbers without further edits.
 **ADR:** [`docs/decisions/0004-adopt-http-capability-gateway.md`](../decisions/0004-adopt-http-capability-gateway.md)
 **Plan:** [`docs/integration/http-capability-gateway-plan.md`](http-capability-gateway-plan.md) (§ Phase E, E3 telemetry verification)
 **Contract:** [`docs/integration/http-capability-gateway-boj-contract.md`](http-capability-gateway-boj-contract.md)
@@ -286,23 +286,22 @@ sum(
 
 ## 3. Signal → query mapping (rollout runbook §4.2, BoJ-side)
 
-§4.2 names three BoJ-side signals. The first two require BoJ-emitted Prometheus metrics that are not in this repo's scope; the third is a network-layer signal. This section names the queries each owner needs to wire on the BoJ side; the metric naming convention follows the project's existing telemetry (`BojRest.Router` decisions, `boj-server` Prometheus exporter — both !OWNER: scaffolded since BoJ-side telemetry is outside this Phase E channel).
+§4.2 names three BoJ-side signals. The first two require BoJ-emitted Prometheus metrics; the third is paired with the BoJ-emitted HTTP-response counter. The metric names referenced below are declared normatively in the sister spec [`boj-side-observability-spec.md`](boj-side-observability-spec.md) §2, which anchors them to telemetry events emitted from `elixir/lib/boj_rest/router.ex` — that spec is the contract for the BoJ-side wiring PR that lands the actual emission. Until that wiring PR lands, the queries here remain *templates* (the metric names do not yet resolve in the BoJ exporter, because no exporter is mounted); the rollout-runbook §1.4 prerequisite tracks the wiring as a stop-the-rollout condition for §3.1 sign-off.
 
 ### 3.1 Per-route trust-class distribution
 
 **Runbook signal:** "Per-route trust-class distribution from `BojRest.Router` decisions."
 
-PromQL template (assumes a BoJ-side `boj_router_decision_count_total{route, trust_class}` counter — !OWNER: scaffold against the actual `BojRest.Router` instrumentation):
+PromQL (against the `boj_router_decision_count_total{route, verb, trust_class, outcome}` counter declared in `boj-side-observability-spec.md` §1 + §2):
 
 ```promql
-# Per-route trust-class distribution. Replace boj_router_decision_count_total
-# with whatever name the BoJ exporter uses.
+# Per-route trust-class distribution.
 sum by (route, trust_class) (
   rate(boj_router_decision_count_total[5m])
 )
 ```
 
-If BoJ does not currently expose this metric, the runbook §4.2 signal list is the unambiguous request: BoJ-side observability for the rollout requires emitting this counter before Phase E §3.1 (10% traffic) can begin. **Follow-up:** open as a BoJ-side prereq tracking item; reference this section.
+BoJ does not currently expose this metric. The wiring contract — events, metric names, instrumentation sites, and `/metrics` exposure policy — is `docs/integration/boj-side-observability-spec.md`. The rollout-runbook §1.4 prerequisite tracks the wiring PR as a stop-the-rollout condition for Phase E §3.1 (10% traffic).
 
 ### 3.2 `X-Trust-Level` from non-loopback peers — should be zero
 
@@ -310,11 +309,10 @@ If BoJ does not currently expose this metric, the runbook §4.2 signal list is t
 
 The strongest enforcement is at the network layer (NetworkPolicy, firewall — landed via boj-server#173, runbook §1.4). This signal verifies the *invariant*; non-zero is a deployment defect that NetworkPolicy did not catch.
 
-PromQL template (assumes a BoJ-side counter that distinguishes loopback from non-loopback origin):
+PromQL (against the `boj_router_trust_level_present_count_total{remote_origin}` counter declared in `boj-side-observability-spec.md` §1 + §2; `remote_origin` ∈ `{loopback, non_loopback}`):
 
 ```promql
 # X-Trust-Level from non-loopback peers — must remain at zero.
-# Replace metric name with the BoJ-side equivalent.
 sum(
   rate(boj_router_trust_level_present_count_total{remote_origin!="loopback"}[5m])
 )
@@ -331,11 +329,10 @@ Any non-zero rate is the trigger. Immediate page; this is a §3 contract invaria
 
 **Runbook signal:** "BoJ 5xx rate (independent of gateway's view)."
 
-PromQL template:
+PromQL (against the `boj_http_responses_total{status, route}` counter declared in `boj-side-observability-spec.md` §1 + §2):
 
 ```promql
 # BoJ-emitted 5xx rate as a fraction of BoJ-handled requests.
-# Replace metric names with the BoJ-side equivalents.
 sum(rate(boj_http_responses_total{status=~"5.."}[5m]))
 / sum(rate(boj_http_responses_total[5m]))
 ```
@@ -406,6 +403,7 @@ Phase E §3.4 (decommission BoJ direct external access) further requires all que
 ## 7. References
 
 - Rollout runbook — `docs/integration/hcg-tier2-rollout-runbook.md` (§4 signal list, §5 rollback triggers, §6 Trustfile flip).
+- Sister spec (BoJ side) — `docs/integration/boj-side-observability-spec.md` (events, metric names, instrumentation sites for the §3 templates above).
 - Load profile — `docs/integration/gateway-load-profile.md` (§2 SLO budgets, §3.4 bench harness reference).
 - Audit — `docs/integration/http-capability-gateway-audit.md` (§1.6 telemetry, §5 telemetry shape, §1.4 mTLS path notes).
 - Plan — `docs/integration/http-capability-gateway-plan.md` (§Phase E E3 telemetry verification).

@@ -6,9 +6,9 @@ Copyright (c) Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
 
 # HCG tier-2 — rollout & rollback runbook
 
-**Version:** 0.7 (smoke-script stealth-profile canary, Phase E in-progress)
-**Date:** 2026-06-15 (rev. from 2026-06-14)
-**Status:** Phase E deliverables E1 (deploy spec) + E5 (rollback runbook) drafted; live gateway policy (`config/gateway-policy-boj.yaml`) promoted from the worked example (§1.5); `scripts/hcg-policy-smoke.sh` lands as the checked-in §1.5 operator pre-check (deny-path covers gateway-alone; `--with-backend` adds allow-path coverage); §1.5 verb-canary block covers OPTIONS, regex-route DELETE, and wrong-verb-on-listed-path; a path-canary exercises the no-match default-deny branch (synthetic unknown path with a `global_verbs` verb); and a stealth-profile canary now pins the deny *status code* — internal+stealth routes must return 404 (capability existence hidden) and authenticated routes must return 403, so a missing-`:stealth_profiles` misconfiguration is caught instead of slipping past the generic any-4xx deny pattern. Owner-input markers (`!OWNER:`) remain to be filled before any traffic-shift action is taken.
+**Version:** 0.8 (BoJ-side observability spec prereq, Phase E in-progress)
+**Date:** 2026-06-22 (rev. from 2026-06-15)
+**Status:** Phase E deliverables E1 (deploy spec) + E5 (rollback runbook) drafted; live gateway policy (`config/gateway-policy-boj.yaml`) promoted from the worked example (§1.5); `scripts/hcg-policy-smoke.sh` lands as the checked-in §1.5 operator pre-check (deny-path covers gateway-alone; `--with-backend` adds allow-path coverage); §1.5 verb-canary block covers OPTIONS, regex-route DELETE, and wrong-verb-on-listed-path; a path-canary exercises the no-match default-deny branch (synthetic unknown path with a `global_verbs` verb); a stealth-profile canary pins the deny *status code* — internal+stealth routes must return 404 (capability existence hidden) and authenticated routes must return 403, so a missing-`:stealth_profiles` misconfiguration is caught instead of slipping past the generic any-4xx deny pattern; and `docs/integration/boj-side-observability-spec.md` now declares the BoJ-side telemetry events + Prometheus metric names that back the §4.2 signals — wired into §1.4 as a stop-the-rollout prerequisite, with the actual `BojRest.Router` emission left as a follow-up PR per the spec's §7 checklist. Owner-input markers (`!OWNER:`) remain to be filled before any traffic-shift action is taken.
 **ADR:** [`docs/decisions/0004-adopt-http-capability-gateway.md`](../decisions/0004-adopt-http-capability-gateway.md)
 **Plan:** [`docs/integration/http-capability-gateway-plan.md`](http-capability-gateway-plan.md) (§ Phase E)
 **Contract:** [`docs/integration/http-capability-gateway-boj-contract.md`](http-capability-gateway-boj-contract.md)
@@ -83,6 +83,7 @@ These cannot be inferred from the code/contract; the owner must fill them before
 - [x] BoJ `BojRest.TrustPolicy.satisfies?/3` non-loopback-deny clause present — verified at `elixir/lib/boj_rest/trust_policy.ex:73` (`def satisfies?(_required, _trust, false), do: false`). Phase C invariant 3 enforcement; landed in boj-server#106.
 - [x] Phase E NetworkPolicy hardening (back-side reachability restricted) — boj-server#173.
 - [x] HCG-policy SSE-route coverage (`POST /cartridge/:name/sse` governed alongside `cartridge-invoke-post`) — boj-server#165.
+- [ ] **BoJ-side observability emitted.** Four telemetry events declared in [`boj-side-observability-spec.md`](boj-side-observability-spec.md) §1 are emitted by `BojRest.Router`; the five Prometheus metrics in that spec §2 appear in a `/metrics` scrape; the `metrics-get` policy rule in that spec §5 governs the endpoint; and the `scripts/hcg-policy-smoke.sh` stealth canary covers it. Until this lands, §3.1 success criterion 4 ("No `X-Trust-Level` mismatches in BoJ access logs") and rollback trigger §5.1 row 4 are unobservable via Prometheus — the only signal path is BoJ structured logs, which the §4 dashboards do not currently consume. Spec landed; the wiring PR follows the spec's §7 checklist.
 - [ ] `Trustfile.a2ml [CLOUDFLARE_EDGE_SECURITY].rate_limiting.tier_2_gateway.status` currently `"PENDING — http-capability-gateway wiring forthcoming"` (line 900). _The flip to a real status is the **last** action; see §6._
 
 ### 1.5 Gateway-side prerequisites
@@ -313,6 +314,7 @@ Also update `[HTTP_CAPABILITY_GATEWAY]` section per plan §E acceptance: `status
 - `docs/integration/http-capability-gateway-boj-contract.md` — HTTP boundary contract.
 - `docs/integration/http-capability-gateway-policy-authoring.md` — policy file authoring workflow.
 - `docs/integration/gateway-observability-spec.md` — Phase E PromQL templates + alert-threshold bindings for the §4 signals + §5 rollback triggers.
+- `docs/integration/boj-side-observability-spec.md` — Phase E §1.4 prerequisite spec: BoJ-side telemetry events, Prometheus metric names, and `BojRest.Router` instrumentation sites that back the §4.2 BoJ-side signals.
 - `http-capability-gateway/docs/perf-contract.md` — Phase D perf-contract.
 - `elixir/lib/boj_rest/trust_policy.ex` — `satisfies?/3` Phase C enforcement.
 - `.machine_readable/contractiles/trust/Trustfile.a2ml` — `[CLOUDFLARE_EDGE_SECURITY].rate_limiting.tier_2_gateway` (current `PENDING` site; §6.4 flip target) + `[SEAMS]` (Phase C gateway↔BoJ-gnosis declaration).
