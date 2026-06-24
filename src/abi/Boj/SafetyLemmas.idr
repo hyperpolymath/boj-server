@@ -210,16 +210,6 @@ allNotImpliesAnyFalse {p} {xs = x :: xs'} prf with (p x) proof pEq
   allNotImpliesAnyFalse {p} {xs = x :: xs'} prf | False =
     allNotImpliesAnyFalse {xs = xs'} prf
 
-||| If `allRec p xs = True`, then `allRec p (take n xs) = True`.
-export
-allTake : {p : a -> Bool} -> {xs : List a} -> {n : Nat} ->
-          allRec p xs = True -> allRec p (take n xs) = True
-allTake {n = Z} _ = Refl
-allTake {xs = []} {n = S _} _ = Refl
-allTake {p} {xs = x :: xs'} {n = S n'} prf with (p x) proof eq
-  allTake {p} {xs = x :: xs'} {n = S n'} prf | True  = allTake {xs = xs'} {n = n'} prf
-  allTake {p} {xs = x :: xs'} {n = S n'} prf | False = absurd prf
-
 ||| Convert a Bool lte witness to LTE.
 export
 fromLteTrue : (a, b : Nat) -> (a <= b) = True -> LTE a b
