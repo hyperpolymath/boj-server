@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<!--
+SPDX-License-Identifier: MPL-2.0
+SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+boj-server.net — permanent presence + access point for the BoJ MCP server and cartridge system.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>boj-server — one MCP endpoint for all your tooling</title>
+  <meta name="description" content="Bundle of Joy (BoJ) is a unified MCP server consolidating GitHub, GitLab, Cloudflare, Vercel, Gmail, browser automation, research, ML and 139 open-source cartridges into a single endpoint. Configure your install and browse the cartridge catalogue.">
+  <link rel="canonical" href="https://boj-server.net/">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="boj-server — one MCP endpoint for all your tooling">
+  <meta property="og:description" content="Configure a BoJ install (base + NeSy / Agentic / Coordination bundles) and browse 139 open-source MCP cartridges.">
+  <meta property="og:url" content="https://boj-server.net/">
+  <meta name="theme-color" content="#0d1117">
+  <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/assets/style.css">
+</head>
+<body>
+<a class="skip-link" href="#get">Skip to install configurator</a>
+
+<header class="hero">
+  <div class="container">
+    <p class="eyebrow">boj-server.net</p>
+    <h1>Bundle&nbsp;of&nbsp;Joy</h1>
+    <p class="tagline">One MCP endpoint for all your tooling — GitHub, GitLab, Cloudflare, Vercel, Gmail,
+      browser automation, research, ML, and <strong>139 open-source cartridges</strong>.</p>
+    <div class="badges">
+      <a class="badge badge-license" href="https://github.com/hyperpolymath/boj-server/blob/main/LICENSE">MPL-2.0</a>
+      <a class="badge badge-glama" href="https://glama.ai/mcp/servers/hyperpolymath/boj-server">Glama MCP</a>
+      <a class="badge badge-src" href="https://github.com/hyperpolymath/boj-server">Source</a>
+    </div>
+    <nav class="hero-nav" aria-label="Primary">
+      <a href="#get">Get BoJ</a>
+      <a href="#catalogue">Catalogue</a>
+      <a href="#about">What it does</a>
+      <a href="https://github.com/hyperpolymath/boj-server/tree/main/docs">Docs</a>
+    </nav>
+  </div>
+</header>
+
+<main class="container">
+
+  <!-- ===================== INSTALL CONFIGURATOR ===================== -->
+  <section id="get" aria-labelledby="get-h">
+    <h2 id="get-h">Get BoJ</h2>
+    <p class="lead">Install the base server, then add capability bundles or pick individual cartridges.
+      Everything below updates the commands live.</p>
+
+    <div class="config-grid">
+      <div class="config-col">
+        <h3>1 · Base</h3>
+        <label class="opt opt-fixed">
+          <input type="checkbox" checked disabled>
+          <span><strong>boj-server</strong><em>The unified MCP server. Always included.</em></span>
+        </label>
+
+        <h3>2 · Capability bundles</h3>
+        <fieldset id="bundles" class="bundles">
+          <legend class="visually-hidden">Optional capability bundles</legend>
+          <!-- populated/enhanced by app.js; static fallback below -->
+          <label class="opt">
+            <input type="checkbox" name="bundle" value="nesy">
+            <span><strong>NeSy</strong><em>Neurosymbolic reasoning — ml-mcp, nesy-mcp</em></span>
+          </label>
+          <label class="opt">
+            <input type="checkbox" name="bundle" value="agentic">
+            <span><strong>Agentic</strong><em>Agent harnesses — agent-mcp, claude-ai-mcp, model-router-mcp, +2</em></span>
+          </label>
+          <label class="opt">
+            <input type="checkbox" name="bundle" value="coordination">
+            <span><strong>Coordination</strong><em>Fleet &amp; stack orchestration — stack-orchestrator-mcp, fleet-mcp</em></span>
+          </label>
+        </fieldset>
+
+        <h3>3 · Client</h3>
+        <div id="clients" class="tabs" role="tablist" aria-label="MCP client">
+          <button role="tab" aria-selected="true"  data-client="claude-code">Claude&nbsp;Code</button>
+          <button role="tab" aria-selected="false" data-client="claude-desktop">Claude&nbsp;Desktop</button>
+          <button role="tab" aria-selected="false" data-client="deno">Deno</button>
+          <button role="tab" aria-selected="false" data-client="gemini">Gemini</button>
+          <button role="tab" aria-selected="false" data-client="cursor">Cursor</button>
+        </div>
+      </div>
+
+      <div class="config-col">
+        <h3>Your install</h3>
+        <div class="output">
+          <div class="output-head">
+            <span id="output-label">Claude Code (CLI)</span>
+            <button id="copy-install" class="copy" type="button" data-target="install-cmd">Copy</button>
+          </div>
+          <pre><code id="install-cmd">claude mcp add boj-server -- npx -y @hyperpolymath/boj-server@latest</code></pre>
+        </div>
+
+        <div class="output" id="selection-block" hidden>
+          <div class="output-head">
+            <span>Selected cartridges <span id="sel-count" class="pill">0</span></span>
+            <button id="copy-sel" class="copy" type="button" data-target="sel-list">Copy</button>
+          </div>
+          <pre><code id="sel-list"># add bundles or pick from the catalogue ↓</code></pre>
+          <p class="note">Cartridges are fetched <strong>on demand</strong> from the
+            <a href="https://github.com/hyperpolymath/boj-server-cartridges">canonical registry</a>.
+            Browse and enable them at runtime via the <code>boj_cartridges</code> /
+            <code>boj_cartridge_info</code> tools, or the tray's “Add cartridge source”.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== CATALOGUE ===================== -->
+  <section id="catalogue" aria-labelledby="cat-h">
+    <h2 id="cat-h">Cartridge catalogue</h2>
+    <p class="lead"><span id="cat-total">139</span> open-source cartridges. Filter by group, search by name,
+      or add individual cartridges to your selection above.</p>
+
+    <div class="cat-controls">
+      <label class="search">
+        <span class="visually-hidden">Search cartridges</span>
+        <input id="cat-search" type="search" placeholder="Search 139 cartridges…" autocomplete="off">
+      </label>
+      <label class="select">
+        <span class="visually-hidden">Filter by group</span>
+        <select id="cat-group"><option value="">All groups</option></select>
+      </label>
+      <label class="select">
+        <span class="visually-hidden">Filter by tier</span>
+        <select id="cat-tier">
+          <option value="">All tiers</option>
+          <option value="Ayo">Ayo</option>
+          <option value="Teranga">Teranga</option>
+        </select>
+      </label>
+    </div>
+
+    <p id="cat-status" class="cat-status" role="status">Loading catalogue…</p>
+    <ul id="cat-list" class="cards" aria-label="Cartridges"></ul>
+
+    <noscript>
+      <p class="note">JavaScript is disabled — browse the full catalogue in the
+        <a href="https://github.com/hyperpolymath/boj-server-cartridges/tree/main/cartridges">registry on GitHub</a>.</p>
+    </noscript>
+  </section>
+
+  <!-- ===================== ABOUT ===================== -->
+  <section id="about" aria-labelledby="about-h">
+    <h2 id="about-h">What BoJ does</h2>
+    <p>BoJ (Bundle of Joy) consolidates your service integrations into a single MCP server endpoint for
+      AI assistants. The bridge has <strong>zero runtime dependencies</strong> and runs on Deno, Bun, or Node.</p>
+    <div class="grid">
+      <div class="card-flat"><strong>Forge</strong><p>GitHub, GitLab, Bitbucket — repos, issues, PRs, code search, mirroring</p></div>
+      <div class="card-flat"><strong>Cloud</strong><p>Cloudflare (DNS, Workers, KV, R2, D1), Vercel, Verpex</p></div>
+      <div class="card-flat"><strong>Comms</strong><p>Gmail, Google Calendar, Slack, Discord, Telegram, Matrix</p></div>
+      <div class="card-flat"><strong>Browser</strong><p>Headless navigation, screenshots, JS execution</p></div>
+      <div class="card-flat"><strong>Research / ML</strong><p>Web search, deep research, HuggingFace models &amp; datasets</p></div>
+      <div class="card-flat"><strong>Verified</strong><p>Constructive proofs over the catalogue, dispatch, and credential isolation</p></div>
+    </div>
+  </section>
+</main>
+
+<footer class="site-footer">
+  <div class="container">
+    <div class="foot-links">
+      <a href="https://github.com/hyperpolymath/boj-server">boj-server</a>
+      <a href="https://github.com/hyperpolymath/boj-server-cartridges">cartridge registry</a>
+      <a href="https://glama.ai/mcp/servers/hyperpolymath/boj-server">Glama</a>
+      <a href="https://github.com/hyperpolymath/boj-server/tree/main/docs">docs</a>
+      <a href="/.well-known/security.txt">security.txt</a>
+      <a href="https://github.com/hyperpolymath/boj-server/blob/main/LICENSE">licence</a>
+    </div>
+    <p class="foot-meta">
+      Code <a href="https://github.com/hyperpolymath/boj-server/blob/main/LICENSE">MPL-2.0</a>,
+      docs CC-BY-SA-4.0 · © 2026 Jonathan D.A. Jewell ·
+      catalogue generated from <span id="foot-count">139</span> cartridges
+      (<a href="https://github.com/hyperpolymath/boj-server-cartridges">registry</a>,
+      snapshot <span id="foot-date">2026-06-24</span>).
+    </p>
+  </div>
+</footer>
+
+<script src="/assets/app.js" defer></script>
+</body>
+</html>

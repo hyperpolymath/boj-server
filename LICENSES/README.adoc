@@ -1,10 +1,39 @@
-// SPDX-License-Identifier: MPL-2.0
-// Copyright (c) Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
-= Licensing Folder
+// SPDX-License-Identifier: CC-BY-SA-4.0
+// SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+= Licensing
 
-Store repository licensing/supporting legal texts here.
+boj-server uses exactly two licences.
 
-Conventions:
+[cols="1,1,2"]
+|===
+| Applies to | Licence | SPDX
 
-* Keep root `LICENSE` for forge license scanners.
-* Place extended licensing context and exhibits in this directory.
+| Code (and all non-prose files) | Mozilla Public License 2.0 | `MPL-2.0`
+| Documentation (prose) | Creative Commons Attribution-ShareAlike 4.0 | `CC-BY-SA-4.0`
+|===
+
+== Where it is declared
+
+* *Root `LICENSE`* — the full MPL-2.0 text. This is what forge licence scanners
+  (GitHub, etc.) read, so the repository is indicated as *MPL-2.0*.
+* *This folder* — the canonical full texts, named by SPDX identifier:
+  `MPL-2.0.txt` and `CC-BY-SA-4.0.txt`.
+* *Per-file SPDX headers* — source files carry `SPDX-License-Identifier: MPL-2.0`;
+  documentation files carry `SPDX-License-Identifier: CC-BY-SA-4.0`.
+
+GitHub-required Markdown files (`SECURITY.md`, `CONTRIBUTING.md`,
+`CODE_OF_CONDUCT.md`, `CHANGELOG.md`) are retained as `.md` per the estate
+standard; all other documentation is AsciiDoc (`.adoc`).
+
+== Authoring new files
+
+New code -> `MPL-2.0`. New documentation -> `CC-BY-SA-4.0`. No other identifier
+should be introduced. Licence changes are owner-directed and per-file — never a
+bulk SPDX sweep.
+
+[NOTE]
+====
+`cartridges/pmpl-mcp/` is a cartridge *about* the Palimpsest licence (a product
+feature). Its references to PMPL are subject matter, not a licence declaration for
+this repository, and are out of scope for the two-licence scheme above.
+====

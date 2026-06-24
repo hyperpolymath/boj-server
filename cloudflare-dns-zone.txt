@@ -1,0 +1,27 @@
+; SPDX-License-Identifier: MPL-2.0
+; Reference DNS zone for boj-server.net (Jonathan D.A. Jewell).
+;
+; boj-server.net is ALREADY a zone in the Cloudflare account, so this file is a
+; REFERENCE — not a bulk import. When you attach the custom domain to the Pages
+; project (Workers & Pages -> boj-server -> Custom domains), Cloudflare creates the
+; apex + www records automatically. Only add the security records below if they are
+; not already present. Do NOT bulk-import over an existing live zone.
+
+; --- Pages custom domain (auto-created by "Set up a custom domain") ---
+; @     IN  CNAME  boj-server.pages.dev.   ; apex via CNAME flattening (proxied)
+; www   IN  CNAME  boj-server.pages.dev.   ; www (proxied)
+
+; --- Certificate authority authorisation (Cloudflare edge certs use Let's Encrypt) ---
+@       IN  CAA     0 issue "letsencrypt.org"
+@       IN  CAA     0 issue "pki.goog"
+@       IN  CAA     0 iodef "mailto:j.d.a.jewell@open.ac.uk"
+
+; --- This domain sends no mail: lock it down ---
+@       IN  TXT     "v=spf1 -all"
+@       IN  MX      0 .
+_dmarc  IN  TXT     "v=DMARC1; p=reject; rua=mailto:j.d.a.jewell@open.ac.uk"
+
+; --- Recommended Cloudflare zone settings (set in dashboard, not zone file) ---
+; SSL/TLS mode: Full (strict)
+; Edge Certificates: Always Use HTTPS = on, Min TLS = 1.2, Automatic HTTPS Rewrites = on
+; DNSSEC: enable (add the DS record at your registrar)

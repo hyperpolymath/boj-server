@@ -1,0 +1,17 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+// SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+= boj-server.net — static site
+
+The permanent presence + access point for the BoJ MCP server and cartridge system.
+A no-build static bundle served by Cloudflare Pages from this directory.
+
+* `index.html` — hub: install configurator (base + NeSy / Agentic / Coordination
+  bundles) and a browsable catalogue of all 139 cartridges.
+* `assets/` — `style.css`, `app.js` (vanilla, zero-dependency), `favicon.svg`.
+* `catalog.json` — registry snapshot read by `app.js`. Regenerate with
+  `tools/site-catalog/build-catalog.sh`.
+* `_headers`, `_redirects`, `CNAME`, `robots.txt`, `sitemap.xml`, `.well-known/`.
+
+Deployment, the catalogue-regeneration command, and the API-token scopes needed for
+agent-driven DNS/Pages changes are documented in
+`docs/website/CLOUDFLARE-SETUP.adoc`.
