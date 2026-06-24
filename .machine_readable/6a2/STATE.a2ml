@@ -47,7 +47,7 @@ cartridges-with-both        = 0     # no cartridge uses both paths
 exunit-tests                = 173   # 10 properties + 163 regular tests across 11 files; Phase 9 auth tests added 2026-04-25
 zig-ffi-chain-verified      = true  # boj-invoke → dlopen → libboj_health.so end-to-end tested 2026-04-25
 js-dispatch-chain-verified  = true  # JsWorkerPool → JsWorker → Deno port → mod.js handleTool
-believe-me-count            = 5     # all in SafetyLemmas.idr — 5 class (J) axioms over Idris2 primitives (charEqSound, charEqSym, unpackLength, appendLengthSum, substrLengthBound); reconciled from stale "4" framing per PROOF-NEEDS.md 2026-05-18 audit + #108 honest-framing PR. Reduced from 31 on 2026-04-12.
+believe-me-count            = 4     # all in SafetyLemmas.idr — 4 class (J) axioms over Idris2 primitives (charEqSound, unpackLength, appendLengthSum, substrLengthBound). charEqSym discharged to a constructive theorem (derived from charEqSound) — first §(a) discharge under standards#203, was 5. (The 2026-05-18 audit + #108 had reconciled a stale "4" up to a true 5; this discharge brings it to a true 4.) Reduced from 31 on 2026-04-12.
 zig-files                = 0     # all .v files removed 2026-04-12
 cartridges-available-real   = 1     # only feedback-mcp is built+verified-real (available:true). ~97 cartridges build a .so that returns {"status":"stub"}; 10 have no FFI — ALL now marked available:false (PR #196, 2026-06-05). Catalogue no longer over-claims; tests/truthfulness_check.sh gate enforces it.
 

@@ -50,7 +50,7 @@ The 15 modules under `Boj/` fall into four concentric rings.
 |===
 | Module | Role
 
-| `Boj.CartridgeDispatch` | Requirement **BJ1** — proves three core dispatch invariants (type-safe dispatch, exhaustive routing, no lost traffic). Not yet listed in `boj.ipkg` `modules`; treat as WIP trunk.
+| `Boj.CartridgeDispatch` | Requirement **BJ1** — proves three core dispatch invariants (type-safe dispatch, exhaustive routing, no lost traffic). Listed in `boj.ipkg` `modules`; type-checks with the rest of the trunk.
 | `Boj.CredentialIsolation` | Requirement **BJ2** — per-cartridge credential-store isolation modelled at the type level. Each vault partition is indexed by cartridge name; a token must carry the matching index to read.
 | `Boj.Federation` | Umoja federated network protocol. Community nodes volunteer compute (Tor/IPFS-style) and prove identity by hash attestation.
 | `Boj.Guardian`   | Resource-aware failure tolerance, preemptive thresholds, circuit breaker, self-diagnostics.
@@ -81,13 +81,17 @@ matrix-cell identifier scheme.
 
 * **`%default total`** at every module top. Partial definitions are a
   review blocker across the whole trunk.
-* **`believe_me` budget is 4 and declared.** All four live in this trunk:
-  * `Boj.SafetyLemmas`: `charEqSound`, `charEqSym`, `unpackLength` — three
-    axiomatic primitives covering discharge of `Char`/`String` equalities
-    that the Idris2 prelude does not expose constructively.
-  * `Boj.SafeAPIKey`: `logSafeBounded` at line 152 — bound on logger
-    safe-substring length.
-  Any growth in this count triggers the estate-wide believe_me sweep rule.
+* **`believe_me` budget is 4 and declared.** All four live in
+  `Boj.SafetyLemmas`: `charEqSound`, `unpackLength`, `appendLengthSum`,
+  `substrLengthBound` — class-(J) axioms over opaque `Char`/`String`
+  primitives whose foreign `prim__*` operations the Idris2 0.8.0 prelude
+  does not expose constructively (no in-language induction principle).
+  `charEqSym` was an axiom historically but is now *derived* from
+  `charEqSound` (see `SafetyLemmas.idr`), dropping the count from 5 to 4 —
+  the first discharge under the trusted-base reduction policy (standards#203).
+  `Boj.SafeAPIKey`'s `logSafeBounded` is fully constructive — it consumes
+  these axioms structurally and contains no `believe_me`. Any growth in this
+  count triggers the estate-wide believe_me sweep rule.
 * **Zero `assert_total`, zero `postulate`, zero `Admitted`, zero `sorry`**
   across the trunk (verified by grep: count = 0).
 * **Module DAG is acyclic.** `SafeHTTP`/`SafeCORS`/`SafeWebSocket`/
@@ -105,21 +109,23 @@ blocks across 13 files; see `ffi/zig/src/README.adoc`).
 . `Boj/Protocol.idr` + `Boj/Domain.idr` — matrix axes. Short, definitional.
 . `Boj/Catalogue.idr` — what it means to be a cartridge cell, and
   `IsUnbreakable`.
-. `Boj/SafetyLemmas.idr` — the four (three here, one in `SafeAPIKey`)
-  axiomatic leaves of the proof tree. Everything else refers to them.
+. `Boj/SafetyLemmas.idr` — the four axiomatic leaves of the proof tree (all
+  here; `charEqSym` is a derived theorem, not an axiom). Everything else
+  refers to them.
 . `Boj/CartridgeDispatch.idr` (BJ1) and `Boj/CredentialIsolation.idr` (BJ2)
   — the two named requirements; read after you know the matrix.
 . Safe* modules last — they are leaves that compose the rest.
 
 == Promotion gate
 
-This trunk is graded D in `docs/READINESS.adoc`. Lifting to C requires:
+The Catalogue ABI is graded C (`alpha-stable`) in `docs/READINESS.adoc`.
+Remaining proof-side hygiene:
 
 . Four `believe_me` sites justified and cross-referenced from
-  `SafetyLemmas` docstrings (the three lemmas are already documented as
-  axiomatic primitives; `logSafeBounded` needs the same treatment).
-. `CartridgeDispatch.idr` added to `boj.ipkg modules` once BJ1 is ready
-  to be consumed.
+  `SafetyLemmas` docstrings — all four are documented as axiomatic
+  primitives, externally validated by the backend-assurance harness.
+. `CartridgeDispatch.idr` (BJ1) is in `boj.ipkg modules` and type-checks
+  with the rest of the trunk.
 . Dogfood evidence in `docs/practice/DOGFOOD-LOG.adoc` showing the trunk
   being used in anger (cartridge load → type-check → matrix lookup round
   trip) in the home context.

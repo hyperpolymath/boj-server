@@ -5,7 +5,7 @@
 # check-trusted-base.sh — enforce the estate trusted-base reduction policy
 # (hyperpolymath/standards#203, enforcement #211) for boj-server.
 #
-# The policy sanctions EXACTLY the 5 class-(J) axioms isolated in
+# The policy sanctions EXACTLY the 4 class-(J) axioms isolated in
 # src/abi/Boj/SafetyLemmas.idr — opaque Char/String primitives that have no
 # in-language induction principle in Idris2 0.8.0, externally validated by the
 # backend-assurance harness (docs/backend-assurance/). Every other proof in the
@@ -20,7 +20,9 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 AXIOM_FILE="src/abi/Boj/SafetyLemmas.idr"
-EXPECTED_AXIOMS=5
+# 4 since charEqSym was discharged to a constructive theorem (was 5); the
+# survivors are charEqSound + the three String-primitive length axioms.
+EXPECTED_AXIOMS=4
 
 echo "==> Scanning for unsound constructs outside ${AXIOM_FILE}..."
 FOUND=$(grep -rn 'believe_me\|assert_total\|assert_smaller\|idris_crash' \
