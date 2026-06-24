@@ -1,0 +1,107 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+// Copyright (c) Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+= Elixir Harness — Formal Models (TLA+)
+:toc: macro
+
+TLA+ models of the concurrency-bearing parts of the Elixir REST harness
+(`elixir/lib/boj_rest/`). These close the "the Elixir harness has no formal
+coverage" gap on the *proof axis*: the Idris2 ABI proofs stop at the Zig FFI
+boundary, and the BEAM-side process/supervision protocol is otherwise covered
+only by ExUnit tests.
+
+[NOTE]
+====
+This is the *formal-proof* axis. It does **not** move the CRG readiness grade
+(that is the empirical/dogfooding axis in `docs/READINESS.adoc`). It closes a
+verification gap, not a maturity one.
+====
+
+== JsWorker.tla — models `BojRest.JsWorker`
+
+Source: `elixir/lib/boj_rest/js_worker.ex`. A `JsWorker` is a GenServer wrapping
+one persistent Deno OS process (a `Port`). It *pipelines* several concurrent
+requests to that one process, keeping a `pending` map of `id -> {caller, timer}`;
+replies are matched by `id`. Each request carries a 30 s timeout. If the Deno
+process exits, all pending callers are replied `:worker_crashed` and the
+GenServer `:stop`s so the `:one_for_one` pool Supervisor restarts it.
+
+=== Abstraction
+
+* Requests are opaque ids (the `Requests` constant).
+* The Deno process is a nondeterministic oracle: for any pending request it may
+  respond ok, respond error, stay silent (so the timer fires), or crash.
+* Out of scope: JSON encoding, the HTTP layer, and the Zig FFI — other layers
+  (the FFI is item 3's territory).
+
+=== Code → model mapping
+
+[cols="1,1",options="header"]
+|===
+| `js_worker.ex` | model action
+
+| `handle_call({:invoke,...})` — adds to `pending`, arms timer | `Arrive(r)`
+| `dispatch_response`, status 2xx / non-2xx (`Map.pop` + `GenServer.reply`) | `RespondOk(r)` / `RespondErr(r)`
+| `handle_info({:timeout, id})` | `Timeout(r)`
+| `handle_info({port,{:exit_status,_}})` — reply-all pending, `:stop` | `Crash`
+| `:one_for_one` restart with a fresh Deno process | `Restart`
+|===
+
+The `Map.pop` rule — *whoever pops the id first replies; the loser sees `nil`* —
+is modelled by every delivering action requiring `status[r] = "pending"` and
+atomically moving it to `"done"`, which disables the racing actions. (In the
+real code an already-queued `{:timeout,id}` message can still be delivered after
+`Process.cancel_timer`, but its `Map.pop` returns `nil`, i.e. a no-op — exactly
+the disabled action here.)
+
+=== Properties verified (TLC, `Requests = {r1, r2, r3}`)
+
+Safety invariants:
+
+* `ReplyOnce` — no caller is ever replied twice (no double `GenServer.reply`),
+  under *every* interleaving of response / timeout / crash. **This is the
+  headline result.**
+* `Consistent` — pending ⟺ no reply yet; done ⟺ exactly one reply.
+* `NoPendingWhileDown` — `Crash` clears `pending` atomically, so no stale
+  message can be replied after `:stop`.
+
+Liveness:
+
+* `EventuallyReplied` — every request that enters the worker eventually gets a
+  reply; the 30 s timer guarantees termination even if Deno hangs forever.
+  Fairness: weak fairness on each request's `Timeout` and on `Restart`.
+
+Result: **No error found** — 341 distinct states, search depth 8.
+
+=== Non-vacuity (sanity controls)
+
+`ReachOk`, `ReachTimeout`, `ReachCrashed` (in `JsWorker.tla`, *not* in
+`JsWorker.cfg`) each assert a terminal reply kind is never reached. All three
+are *refuted* by TLC with short witness traces, proving the ok / timeout /
+crashed outcomes are genuinely reachable and the invariants are not passing
+vacuously.
+
+== Running
+
+[source,bash]
+----
+# tla2tools.jar: https://github.com/tlaplus/tlaplus/releases  (needs a JRE)
+java -cp tla2tools.jar tlc2.TLC JsWorker.tla
+
+# sanity controls — each is EXPECTED to report "Invariant ... is violated"
+for inv in ReachOk ReachTimeout ReachCrashed; do
+  printf 'CONSTANTS Requests = {r1, r2, r3}\nSPECIFICATION Spec\nINVARIANT %s\n' "$inv" > /tmp/ctrl.cfg
+  java -cp tla2tools.jar tlc2.TLC -config /tmp/ctrl.cfg JsWorker.tla
+done
+----
+
+Verified with TLC 2026.05.26 (tla2tools) on OpenJDK 21.
+
+== Not yet modelled (future work)
+
+* **`JsWorkerPool`** (`js_worker_pool.ex`) — hash-routing determinism (same
+  `mod_js_path` → same worker via `:erlang.phash2`, or graceful fork-per-call
+  fallback when the slot is dead) and `:one_for_one` crash isolation across the
+  N-worker pool.
+* **`Invoker`** (Zig-FFI path) is currently fork-per-request — *no pool yet*;
+  the ADR-0005 OS-port pool is future work (waits on ADR-0006). Model the pool's
+  checkout/backpressure when it lands.

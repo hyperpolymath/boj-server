@@ -14,6 +14,23 @@ Copyright (c) Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
 > greps. Keep both in sync when the marker count in
 > `src/abi/Boj/SafetyLemmas.idr` changes.
 
+## Discharge (2026-06-24) — `charEqSym` axiom → constructive theorem
+
+`charEqSym : (x, y : Char) -> (x == y) = (y == x)` is no longer a
+`believe_me` axiom. It is now **derived constructively from `charEqSound`**
+in `src/abi/Boj/SafetyLemmas.idr`: a `True` result forces propositional
+equality (`charEqSound`), collapsing both sides to the same expression; a
+mixed `True`/`False` split is impossible under soundness. This is the first
+**§(a) DISCHARGED** entry under the trusted-base reduction policy
+(standards#203) and drops the sanctioned class-(J) count **5 → 4**
+(`charEqSound`, `unpackLength`, `appendLengthSum`, `substrLengthBound`
+remain — all genuinely irreducible over opaque `Char`/`String` primitives).
+
+Verified locally: `cd src/abi && idris2 --typecheck boj.ipkg` → 17/17
+modules clean (Idris2 0.8.0, Chez 9.5.8). `scripts/check-trusted-base.sh`
+updated to `EXPECTED_AXIOMS=4` and passes. The dated audits below are
+retained as history; where they say "5", read "4 since 2026-06-24".
+
 ## Build Verification (2026-06-13) — full sweep, freshly built toolchain
 
 Re-verified end-to-end on a clean machine with a from-source toolchain
@@ -76,9 +93,10 @@ fails on anything else (or on axiom-count drift).
 ## Current State (Updated 2026-06-03)
 
 - **src/abi/Boj/**: 17 Idris2 ABI files
-- **Dangerous patterns**: **5** `believe_me` invocations, **all** in
+- **Dangerous patterns**: **4** `believe_me` invocations, **all** in
   `src/abi/Boj/SafetyLemmas.idr`, **all** classified `(J)` genuinely
-  unavoidable (see audit table below). `logSafeBounded` (SafeAPIKey.idr)
+  unavoidable (see audit table below; `charEqSym` was a 5th, discharged to a
+  theorem 2026-06-24). `logSafeBounded` (SafeAPIKey.idr)
   consumes these structurally and contains no direct `believe_me` —
   down from 31 historically.
   - Note: a raw `grep believe_me *.idr` returns **9** hits. 4 of these
@@ -99,12 +117,15 @@ Classification key: **(J)** genuinely unavoidable, documented as an axiom;
 | # | Site | Function | Type | Class | Rationale |
 |---|------|----------|------|-------|-----------|
 | 1 | `SafetyLemmas.idr:60` | `charEqSound` | `(c1,c2:Char) -> c1 == c2 = True -> c1 = c2` | **J ✓** | `Char` is an opaque primitive; `==` is `prim__eqChar` (foreign `Bool`). Idris2 0.8.0 has no in-language soundness principle for primitive equality. Standard, well-understood axiom. **Externally validated** via backend-assurance harness (`docs/backend-assurance/prim__eqChar.md` + BEAM property test). |
-| 2 | `SafetyLemmas.idr:67` | `charEqSym` | `(x,y:Char) -> (x == y) = (y == x)` | **J ✓** | Symmetry of `prim__eqChar`. Same reason as #1 — opaque primitive, no decision procedure to recurse on. **Externally validated** (same harness as #1). |
+| 2 | `SafetyLemmas.idr` | `charEqSym` | `(x,y:Char) -> (x == y) = (y == x)` | **DISCHARGED 2026-06-24** | ~~Symmetry of `prim__eqChar`~~ — superseded. NOT a necessary axiom: derived constructively from `charEqSound` (a `True` result forces `x = y`, collapsing both sides; mixed `True`/`False` impossible under soundness). Now a theorem in `SafetyLemmas.idr`; no longer counts against the trusted base. |
 | 3 | `SafetyLemmas.idr:218` | `unpackLength` | `length (unpack s) = length s` | **J ✓** | `unpack` = `prim__strToCharList` (foreign). `String` is opaque with no induction principle; the relation between primitive `String` length and `List Char` length is not reducible in-language. **Externally validated** via backend-assurance harness (`docs/backend-assurance/prim__strToCharList.md` + BEAM property test). |
 | 4 | `SafetyLemmas.idr:226` | `appendLengthSum` | `length (s ++ t) = length s + length t` | **J ✓** | `++` on `String` = `prim__strAppend` (foreign). Length additivity is a backend-semantics guarantee, not type-level reducible. **Externally validated** via backend-assurance harness (`docs/backend-assurance/prim__strAppend.md` + BEAM property test). |
 | 5 | `SafetyLemmas.idr:233` | `substrLengthBound` | `LTE (length (substr start len s)) len` | **J ✓** | `substr` = `prim__strSubstr` (foreign). The "result no longer than `len`" bound is a primitive-semantics guarantee with no in-language proof. **Externally validated** via backend-assurance harness (`docs/backend-assurance/prim__strSubstr.md` + BEAM property test). |
 
-**Verdict: 5/5 are class (J).** All five reduce to the same root cause:
+**Verdict (revised 2026-06-24): 4 class (J) + 1 discharged.** `charEqSym`
+(row 2) is no longer an axiom — it was found derivable from `charEqSound`
+and is now a constructive theorem (see the Discharge entry at the top of
+this file). The remaining four reduce to the same root cause:
 Idris2 treats `Char` and `String` as opaque primitive types whose
 operations are foreign functions with no constructors and no induction
 principle. There is no constructive in-language proof for any of them; a
@@ -148,19 +169,20 @@ All P1/P2 proof obligations are now closed.
 | BJ2 | Auth/credential handling — full isolation model | ✅ DONE (`CredentialIsolation.idr`) |
 | BJ3 | API contract compliance — protocol/domain coverage | ✅ DONE (`APIContractCoverage.idr`) |
 
-### Remaining axiomatic surface (5 believe_me, all in SafetyLemmas.idr)
+### Remaining axiomatic surface (4 believe_me, all in SafetyLemmas.idr)
 
-All five are class **(J)** — genuinely unavoidable in Idris2 0.8.0
+All four are class **(J)** — genuinely unavoidable in Idris2 0.8.0
 (opaque `Char`/`String` primitives, foreign-backed operations). See the
-**Axiom Audit (2026-05-18)** table above for per-site detail.
+**Axiom Audit** table above for per-site detail. (`charEqSym` was a 5th here
+until 2026-06-24, now discharged to a theorem — see the Discharge entry at
+the top of this file.)
 
 | Axiom | Site | Justification | Backend-assurance evidence |
 |-------|------|---------------|----------------------------|
-| `charEqSound` | `SafetyLemmas.idr:60` | Soundness of `prim__eqChar` — backend primitive correctness, externally validated | `docs/backend-assurance/prim__eqChar.md` + `elixir/test/backend_assurance/prim_eq_char_test.exs` |
-| `charEqSym` | `SafetyLemmas.idr:67` | Symmetry of `prim__eqChar` — backend primitive correctness, externally validated | `docs/backend-assurance/prim__eqChar.md` + `elixir/test/backend_assurance/prim_eq_char_test.exs` |
-| `unpackLength` | `SafetyLemmas.idr:218` | `prim__strToCharList` preserves length — backend primitive correctness, externally validated | `docs/backend-assurance/prim__strToCharList.md` + `elixir/test/backend_assurance/prim_str_to_char_list_test.exs` |
-| `appendLengthSum` | `SafetyLemmas.idr:226` | `prim__strAppend` length semantics — not reducible at type level, externally validated | `docs/backend-assurance/prim__strAppend.md` + `elixir/test/backend_assurance/prim_str_append_test.exs` |
-| `substrLengthBound` | `SafetyLemmas.idr:233` | `prim__strSubstr` length bound — not reducible at type level, externally validated | `docs/backend-assurance/prim__strSubstr.md` + `elixir/test/backend_assurance/prim_str_substr_test.exs` |
+| `charEqSound` | `SafetyLemmas.idr` | Soundness of `prim__eqChar` — backend primitive correctness, externally validated | `docs/backend-assurance/prim__eqChar.md` + `elixir/test/backend_assurance/prim_eq_char_test.exs` |
+| `unpackLength` | `SafetyLemmas.idr` | `prim__strToCharList` preserves length — backend primitive correctness, externally validated | `docs/backend-assurance/prim__strToCharList.md` + `elixir/test/backend_assurance/prim_str_to_char_list_test.exs` |
+| `appendLengthSum` | `SafetyLemmas.idr` | `prim__strAppend` length semantics — not reducible at type level, externally validated | `docs/backend-assurance/prim__strAppend.md` + `elixir/test/backend_assurance/prim_str_append_test.exs` |
+| `substrLengthBound` | `SafetyLemmas.idr` | `prim__strSubstr` length bound — not reducible at type level, externally validated | `docs/backend-assurance/prim__strSubstr.md` + `elixir/test/backend_assurance/prim_str_substr_test.exs` |
 
 Note: `logSafeBounded` in SafeAPIKey.idr no longer uses `believe_me` directly;
 it calls the documented SafetyLemmas axioms via structural proof.
@@ -187,8 +209,9 @@ sites stay in `SafetyLemmas.idr`. The harness shrinks the trusted base
 from "we trust the backend" to "we read the lowering and randomly
 tested the operation".
 
-Primitives validated so far: `prim__eqChar` (covering `charEqSound`
-and `charEqSym`), `prim__strToCharList` (covering `unpackLength`),
+Primitives validated so far: `prim__eqChar` (covering `charEqSound`;
+formerly also `charEqSym`, now a derived theorem), `prim__strToCharList`
+(covering `unpackLength`),
 `prim__strAppend` (covering `appendLengthSum`), and `prim__strSubstr`
 (covering `substrLengthBound`). Tracked under epic #87 Tier C
 backend-assurance campaign.
@@ -198,7 +221,7 @@ backend-assurance campaign.
 **LOW** — All named proof obligations closed. Future work:
 - Proofs for Dap/Bsp/CodeIntel domains when those cartridges reach Ready status
 - Proof that `dispatch` is surjective onto all BJ3-covered (domain, protocol) pairs
-- The 5 string/char-primitive axioms are **irreducible within Idris2**
+- The 4 string/char-primitive axioms are **irreducible within Idris2**
   (opaque primitive types). They cannot be "proved away" in-language;
   the only reduction path is to shrink the trusted base by validating
   `prim__eqChar` / `prim__strToCharList` / `prim__strAppend` /

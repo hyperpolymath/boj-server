@@ -6,7 +6,7 @@
 ||| proofs in SafeHTTP, SafeCORS, SafeWebSocket, SafePromptInjection,
 ||| SafeAPIKey, and Safety modules.
 |||
-||| Five AXIOM-tagged believe_me primitives are declared here (per the
+||| Four AXIOM-tagged believe_me primitives are declared here (per the
 ||| estate trusted-base reduction policy — hyperpolymath/standards#203).
 ||| Each is class (J) — genuinely unavoidable in Idris2 0.8.0 because
 ||| `Char` and `String` are opaque primitive types whose operations are
@@ -17,11 +17,14 @@
 ||| (audit narrative) for the per-site disposition.
 |||
 |||   charEqSound       — soundness of prim__eqChar (c1 == c2 = True → c1 = c2)
-|||   charEqSym         — symmetry of prim__eqChar (x == y = y == x)
 |||   unpackLength      — prim__strToCharList preserves length
 |||   appendLengthSum   — prim__strAppend: length (s ++ t) = length s + length t
 |||   substrLengthBound — prim__strSubstr: result no longer than the requested count
 |||
+||| `charEqSym` (symmetry of prim__eqChar) is NOT in this list: it was an
+||| axiom historically but is now derived constructively from `charEqSound`
+||| (see its definition below). Discharging it reduced the sanctioned trusted
+||| base from 5 to 4 — the first §(a) DISCHARGED entry under standards#203.
 ||| All other proofs in this module are constructive.
 module Boj.SafetyLemmas
 
@@ -66,14 +69,33 @@ export
 charEqSound : (c1, c2 : Char) -> c1 == c2 = True -> c1 = c2
 charEqSound _ _ _ = believe_me ()
 
-||| Helper: symmetry of Char equality.
-||| AXIOM: charEqSym; class-(J) — symmetry of prim__eqChar on the BEAM/Chez
-||| backend. Same root cause as charEqSound. See docs/proof-debt.md §(c)
-||| and docs/backend-assurance/prim__eqChar.md.
-%unsafe
+||| Symmetry of Char equality — a THEOREM, derived from `charEqSound`; no
+||| longer a class-(J) axiom. Intuition: if either `x == y` or `y == x` is
+||| `True`, soundness forces `x = y`, which collapses both sides to the same
+||| expression; a mixed `True`/`False` split is therefore impossible. This
+||| discharges the former `charEqSym` believe_me, shrinking the sanctioned
+||| trusted base from 5 to 4 (the first §(a) DISCHARGED entry under the estate
+||| trusted-base reduction policy, standards#203). See PROOF-NEEDS.md
+||| §Axiom Audit and docs/proof-debt.md §(a).
 export
 charEqSym : (x, y : Char) -> (x == y) = (y == x)
-charEqSym _ _ = believe_me ()
+charEqSym x y with (x == y) proof xy
+  -- `x == y = True` ⟹ `x = y`; transport the True fact along `x = y` to get
+  -- `y == y = True`, then rewrite the goal's `y == x` to `y == y`.
+  charEqSym x y | True =
+    let eqXY  : (x = y)         := charEqSound x y xy
+        reflY : (y == y = True) := replace {p = \z => z == y = True} eqXY xy
+    in rewrite eqXY in sym reflY
+  charEqSym x y | False with (y == x) proof yx
+    -- Both directions `False`: the goal is `False = False`.
+    charEqSym x y | False | False = Refl
+    -- `y == x = True` ⟹ `y = x` ⟹ `x == y = True`, contradicting
+    -- `x == y = False`. This split cannot occur.
+    charEqSym x y | False | True =
+      let eqYX   : (y = x)         := charEqSound y x yx
+          reflX  : (x == x = True) := replace {p = \z => z == x = True} eqYX yx
+          xyTrue : (x == y = True) := replace {p = \z => x == z = True} (sym eqYX) reflX
+      in void (trueNotFalse (trans (sym xyTrue) xy))
 
 --------------------------------------------------------------------------------
 -- allRec: core lemmas for `allRec` over lists
