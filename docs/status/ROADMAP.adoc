@@ -64,7 +64,7 @@ zig adapter migration complete (0 `.v` files).  Grade C achieved 2026-04-25.
 * [x] SDP cartridge (auto-SDP for community nodes)
 * [ ] DNS Shield cartridge (DoQ/DoH/oDNS)
 * [ ] Container hash state monitoring (vordr integration)
-* [ ] PMPL provenance chain verification
+* [ ] pmpl-mcp cartridge: licence-chain verification
 
 === v1.0.0 — Matrix Fill (Phase 6)
 

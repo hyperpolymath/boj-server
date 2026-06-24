@@ -46,8 +46,6 @@ The model: you don't need a hosting budget if the community IS the hosting.
 
 This is non-punitive. We don't brick your installation. We just don't vouch for it.
 
-The *PMPL license* encodes this same principle legally — provenance metadata with cryptographic signatures is required, so the legal framework and technical framework express the same thing.
-
 === Gossip protocol
 
 Nodes discover each other via IPv6 gossip:
@@ -138,7 +136,7 @@ Community nodes benefit from the full BoJ security stack:
 * *DoQ/DoH*: Encrypted DNS resolution for all BoJ traffic
 * *oDNS*: Oblivious DNS relay option for maximum privacy
 * *Hash attestation*: Binary integrity verification
-* *PMPL provenance*: Cryptographic lineage tracking
+* *Cryptographic provenance*: lineage tracking
 
 == Future: Dynamic Threat Response
 

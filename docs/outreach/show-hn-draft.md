@@ -8,7 +8,7 @@ BoJ (Bundle of Joy) is an MCP server that bundles 99 tool cartridges — each wi
 
 What makes it different:
 
-- **99 cartridges** covering cloud (Cloudflare, Vercel), comms (Gmail, calendar), GitHub/GitLab, databases, containers, security (DNS Shield, container hash monitoring, PMPL provenance), browsers, and more
+- **99 cartridges** covering cloud (Cloudflare, Vercel), comms (Gmail, calendar), GitHub/GitLab, databases, containers, security (DNS Shield, container hash monitoring, licence-chain provenance via pmpl-mcp), browsers, and more
 - **Formal safety proofs** — every cartridge has an Idris2 ABI module with dependent types and zero `believe_me` postulates. The type system prevents entire classes of runtime errors
 - **Zero Python, zero TypeScript** — built with Zig (FFI), Idris2 (proofs), and a ReScript UI. No npm, no pip, no node_modules
 - **Glama AAA grade** — Security A, License A, Quality A
