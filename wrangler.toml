@@ -1,0 +1,7 @@
+# SPDX-License-Identifier: MPL-2.0
+# Cloudflare Pages configuration for boj-server.net.
+# The site is a no-build static bundle; Pages serves the `site/` directory as-is.
+
+name = "boj-server"
+compatibility_date = "2026-06-24"
+pages_build_output_dir = "site"
