@@ -80,28 +80,116 @@ are *refuted* by TLC with short witness traces, proving the ok / timeout /
 crashed outcomes are genuinely reachable and the invariants are not passing
 vacuously.
 
+== JsWorkerPool.tla — models `BojRest.JsWorkerPool`
+
+Source: `elixir/lib/boj_rest/js_worker_pool.ex` + `js_worker.ex`.
+A `JsWorkerPool` is a `:one_for_one` Supervisor over N `JsWorker` GenServers
+(default 5), each wrapping a persistent Deno OS process.  The pool dispatches
+via `:erlang.phash2` (consistent hash): the same `mod_js_path` always routes to
+the same slot, maximising Deno module-cache hits.  If the hashed slot is down,
+the pool falls back to `JsInvoker` (fork-per-call), which always terminates.
+
+This model *composes* with `JsWorker.tla`: it re-uses the same
+`status`/`reply`/`replyCount` variables but lifts them to N workers, adding
+the `assigned` and `wup` variables for pool routing and per-worker liveness.
+
+=== Abstraction
+
+* `Requests` are opaque ids; `Workers` is the set of pool slots.
+* `Route \in [Requests -> Workers]` is a constant (the `phash2` function, fixed
+  at model-check time — routing does not change at runtime).
+* Each Deno process is a nondeterministic oracle (ok / jsErr / silent / crash).
+* `ArriveFallback` is modelled as atomic: `JsInvoker` always terminates, so its
+  internal state is not elaborated here.
+
+=== Code → model mapping
+
+[cols="1,1",options="header"]
+|===
+| `js_worker_pool.ex` / `js_worker.ex` | model action
+
+| `JsWorkerPool.invoke/4` → `pick_worker/1` returns a pid → `JsWorker.handle_call({:invoke,...})`
+| `ArrivePool(r)`
+
+| `pick_worker/1` returns `nil` → `JsInvoker.invoke/4` (fork-per-call)
+| `ArriveFallback(r)`
+
+| `dispatch_response/2`, status 2xx / non-2xx (`Map.pop` + `GenServer.reply`)
+| `RespondOk(r)` / `RespondErr(r)`
+
+| `handle_info({:timeout, id})`
+| `Timeout(r)`
+
+| `handle_info({port,{:exit_status,_}})` — reply-all pending at *this* worker, `:stop`
+| `Crash(w)`
+
+| `:one_for_one` restart — only worker `w`, others unaffected
+| `Restart(w)`
+|===
+
+=== Properties verified (TLC, 2 workers, 3 requests)
+
+Config: `Requests = {r1, r2, r3}`, `Workers = {w0, w1}`,
+`Route = [r1 |-> w0, r2 |-> w1, r3 |-> w0]`.
+The `Route` choice is deliberate: r1 and r3 share slot w0, while r2 is at w1.
+A `Crash(w0)` terminates r1 and r3 but not r2 — the critical crash-isolation
+scenario.
+
+Safety invariants:
+
+* `ReplyOnce` — no caller is ever replied twice, across all N workers and
+  under every interleaving of response / timeout / crash at any slot.
+* `Consistent` — pending ⟺ no reply yet; done ⟺ exactly one reply.
+* `NoPendingWhileDown` — `Crash(w)` atomically clears all pending requests at w,
+  so no stale message can be delivered after `:stop`.
+* `RouteConsistency` — a request in-flight at a pool slot is always at
+  `Route[r]`, not a different slot.  Enforces the `phash2` determinism invariant.
+
+Liveness:
+
+* `EventuallyReplied` — every pending request eventually terminates (ok / jsErr
+  / timeout / crashed).  The 30 s `Timeout` fairness condition guarantees this
+  even if Deno hangs; `Restart` fairness ensures crashed slots come back.
+
+=== Non-vacuity (sanity controls)
+
+`ReachOk`, `ReachTimeout`, `ReachCrashed`, `ReachFallback` (in
+`JsWorkerPool.tla`, *not* in `JsWorkerPool.cfg`) each assert a terminal reply
+kind is never reached.  All four are *refuted* by TLC with short witness traces,
+proving every outcome is genuinely reachable and the invariants are not passing
+vacuously.  `ReachFallback` is specific to the pool model: it witnesses the
+path where a slot is down and the request is served by `JsInvoker`.
+
 == Running
 
 [source,bash]
 ----
 # tla2tools.jar: https://github.com/tlaplus/tlaplus/releases  (needs a JRE)
+
+# Single-worker model
 java -cp tla2tools.jar tlc2.TLC JsWorker.tla
 
-# sanity controls — each is EXPECTED to report "Invariant ... is violated"
+# Pool model (2 workers, 3 requests)
+java -cp tla2tools.jar tlc2.TLC JsWorkerPool.tla
+
+# Sanity controls for JsWorker — each EXPECTED to report "Invariant ... is violated"
 for inv in ReachOk ReachTimeout ReachCrashed; do
   printf 'CONSTANTS Requests = {r1, r2, r3}\nSPECIFICATION Spec\nINVARIANT %s\n' "$inv" > /tmp/ctrl.cfg
   java -cp tla2tools.jar tlc2.TLC -config /tmp/ctrl.cfg JsWorker.tla
 done
+
+# Sanity controls for JsWorkerPool — each EXPECTED to report "Invariant ... is violated"
+for inv in ReachOk ReachTimeout ReachCrashed ReachFallback; do
+  printf 'CONSTANTS\n  Requests = {r1, r2, r3}\n  Workers  = {w0, w1}\n  Route    = [r1 |-> w0, r2 |-> w1, r3 |-> w0]\nSPECIFICATION Spec\nINVARIANT %s\n' "$inv" > /tmp/ctrl.cfg
+  java -cp tla2tools.jar tlc2.TLC -config /tmp/ctrl.cfg JsWorkerPool.tla
+done
 ----
 
-Verified with TLC 2026.05.26 (tla2tools) on OpenJDK 21.
+`JsWorker.tla` verified with TLC 2026.05.26 (tla2tools) on OpenJDK 21:
+341 distinct states, search depth 8.
 
 == Not yet modelled (future work)
 
-* **`JsWorkerPool`** (`js_worker_pool.ex`) — hash-routing determinism (same
-  `mod_js_path` → same worker via `:erlang.phash2`, or graceful fork-per-call
-  fallback when the slot is dead) and `:one_for_one` crash isolation across the
-  N-worker pool.
 * **`Invoker`** (Zig-FFI path) is currently fork-per-request — *no pool yet*;
   the ADR-0005 OS-port pool is future work (waits on ADR-0006). Model the pool's
   checkout/backpressure when it lands.
