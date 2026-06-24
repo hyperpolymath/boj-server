@@ -1,0 +1,327 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+// Copyright (c) Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+// SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+
+= Zig FFI Formal Verification
+:toc:
+:toclevels: 3
+:sectnums:
+
+== Overview
+
+This document describes the formal verification approach for the BoJ Server Zig FFI
+layer.  No standard Zig verifier exists; instead the methodology exploits Zig's
+`comptime` evaluation as a sound proof mechanism: any `comptime {}` block that reaches
+`@compileError` is a *compile-time theorem* — the binary cannot be built unless the
+theorem holds.
+
+=== Trust Chain
+
+----
+Idris2 proofs (src/abi/)
+  │  [ASSUMED] cross-language ABI contract (unverifiable by either tool)
+  ▼
+abi_axioms.zig  — compile-time theorems about every ABI constant
+  │  [CROSS] comptime cross-module assertions in abi_verify.zig
+  ▼
+abi_verify.zig  — live Zig enum/constant values match the axioms
+  │  [RUNTIME] exhaustive boundary tests at every C-ABI entry point
+  ▼
+catalogue.zig, safety.zig, cartridge_shim.zig  — the live FFI layer
+----
+
+=== Evidence Taxonomy
+
+Every claim in this verification is tagged with one of four evidence levels:
+
+[cols="1,4",options="header"]
+|===
+| Tag | Meaning
+
+| [STATIC]
+| `comptime` assertion in the *same* file.  A compiling binary cannot violate it.
+
+| [CROSS]
+| `comptime` assertion in `abi_verify.zig` that imports a live module and
+  compares its value against the axiom.  Fires at compile time of the test binary;
+  a build failure here means the live module and the axiom have diverged.
+
+| [RUNTIME]
+| Exhaustive boundary test exercised at run time.  Proves the C-ABI function
+  *behaves* as specified, not just that types align.
+
+| [ASSUMED]
+| Cross-language invariant that neither Zig nor Idris2 can prove in isolation
+  (e.g., layout agreement between the C header and both implementations).
+  Documented as an axiom; any violation would be discovered by runtime tests or
+  by a mismatch caught in CI.
+|===
+
+== Instruments
+
+=== `ffi/zig/src/abi_axioms.zig`
+
+A *standalone* file with no imports.  Every ABI-relevant numeric constant is
+declared here as an untyped `comptime_int`, enabling universal coercion across
+types without casting.  Each section follows its constant declarations with one
+or more `comptime {}` blocks that call `@compileError` on any violation.
+
+This file is the *single source of truth* for all ABI numeric values visible to
+the Zig layer.
+
+==== Sections
+
+[cols="1,3",options="header"]
+|===
+| Section | Contents
+
+| §1  Invocation ABI
+| `RC_*` return codes (ADR-0006): `RC_SUCCESS=0`, `RC_UNKNOWN_TOOL=-1`, ...,
+  `RC_AUTH_DENIED=-6`.  Theorems ax.1.1–ax.1.4: success is zero, all errors are
+  strictly negative, the range is dense in `[-6,-1]`, and `RC_CODE_COUNT` is
+  consistent.
+
+| §2  Catalogue ABI
+| Status codes, protocol range, domain range, tier values, capacity limits,
+  buffer bounds, and catalogue return codes.  Critical theorem ax.2.2:
+  `MOUNT_GATE_STATUS == STATUS_READY`, i.e., only `STATUS_READY` cartridges
+  may be mounted.  Theorem ax.2.7: `CAT_OK == RC_SUCCESS` (both are 0).
+
+| §3  Loader ABI
+| `HASH_LEN=32`, `HASH_HEX_LEN=64` (SHA-256 hex digest), path limits, and
+  loader return codes.  Critical theorem ax.3.2: `LOADER_MATCH=1 ≠ CAT_OK=0`
+  — the loader's "match" result must *not* be conflated with "success" in
+  catalogue conventions.
+
+| §4  Safety ABI
+| `SAFETY_SAFE=1`, rejection codes `[-8,-1]`, buffer size limits.
+  Theorem ax.4.6: `SAFETY_SAFE=1 ≠ RC_SUCCESS=0` — a "safe" result must not
+  be conflated with "success" in the invocation convention.
+|===
+
+==== Running
+
+----
+zig build abi-axioms
+----
+
+A successful build proves every `comptime` theorem in the file holds.  There are
+no runtime tests in this step; it is purely a compile-time proof.
+
+=== `ffi/zig/src/abi_verify.zig`
+
+Cross-checks the *live* Zig modules against the axioms, then exercises every
+C-ABI entry point exhaustively at the boundaries declared in `abi_axioms.zig`.
+
+==== Section A — Comptime Cross-Module Proofs [CROSS]
+
+Each sub-section imports a live module and checks that its enum integer values
+equal the corresponding axiom constants via `@compileError`:
+
+[cols="1,4",options="header"]
+|===
+| Sub-section | Live module | Claims verified
+
+| A.1 | `catalogue` | `CartridgeStatus` enum: `.development=0`, `.ready=1`,
+  `.deprecated=2`, `.faulty=3` match `STATUS_*` axioms.
+
+| A.2 | `catalogue` | `ProtocolType` enum: MCP=1 through REST=9 match `PROTO_*`
+  axioms.  Count theorem: exactly 9 protocols.
+
+| A.3 | `catalogue` | `CapabilityDomain` enum: spot-checks on CLOUD=1, FLEET=12,
+  NESY=13.
+
+| A.4 | `catalogue` | `MenuTier` enum: TERANGA=0, SHIELD=1, AYO=2 match
+  `TIER_*` axioms.
+
+| A.5 | `cartridge_shim` | `RC_*` constants in the shim match §1 axioms.
+
+| A.6 | _(gap)_ | `loader.zig` cannot be imported as a named module because it
+  uses `@import("catalogue.zig")` (relative path), which conflicts with the named
+  `catalogue` module in a shared compilation.  `HASH_LEN` / `HASH_HEX_LEN`
+  coverage is instead provided by §D axiom-level tests.  *Fix:* update
+  `loader.zig` to `const catalogue = @import("catalogue");` (named module import).
+
+| A.7 | `safety` | `SafetyError` enum: `shell_injection=-1`, `json_unsafe=-8`
+  match `SAFETY_*` axioms.
+|===
+
+==== Section B — Catalogue Boundary Tests [RUNTIME]
+
+Exhaustive black-box tests via `catalogue`'s `pub export fn` symbols:
+
+[cols="1,3",options="header"]
+|===
+| Test | What it proves
+
+| B.1 | `boj_catalogue_init()` returns `CAT_OK=0`; state is clean.
+
+| B.2 | `boj_catalogue_deinit()` is idempotent.
+
+| B.3 | Registering exactly `MAX_CARTRIDGES=128` entries succeeds; the 129th
+  returns `CAT_ERR=-1`.
+
+| B.4 | `boj_catalogue_mount()` succeeds only for `STATUS_READY` cartridges;
+  returns `-1` for development/deprecated/faulty.  Directly exercises the
+  mount-gate invariant (ax.2.2).
+
+| B.5/B.6 | Name boundary: 64-byte name accepted; 65-byte name rejected.
+
+| B.7/B.8 | Version boundary: 16-byte version accepted; 17-byte version rejected.
+
+| B.9–B.11 | Mount/unmount/is-mounted return conventions.
+
+| B.12 | `MAX_ORDER_SIZE=16` slot boundary.
+
+| B.13/B.14 | Backend string boundary: 32 bytes accepted; 33 bytes rejected.
+
+| B.15 | `boj_catalogue_version()` returns a non-null, non-empty string.
+|===
+
+==== Section C — Invocation ABI Tests [RUNTIME]
+
+Tests via `cartridge_shim`'s public Zig functions:
+
+* `RC_SUCCESS=0` on successful invocation.
+* `RC_UNKNOWN_TOOL=-1` for an unknown tool name.
+* `RC_BAD_ARGS=-2` for a malformed argument buffer.
+* `RC_BUFFER_TOO_SMALL=-3` when the output buffer is undersized.
+* `RC_RUNTIME_ERROR=-4`, `RC_PANIC=-5`, `RC_AUTH_DENIED=-6`.
+* Two-phase call pattern (C.8): probe with zero-length buffer to discover
+  required size, then allocate and call with the real buffer.
+
+==== Section D — Hash Constant Boundary Tests [RUNTIME]
+
+Axiom-level verification that does not import `loader.zig` (see §A.6 GAP):
+
+* `HASH_HEX_LEN == HASH_LEN * 2` (SHA-256 hex digest size relationship).
+* `LOADER_MATCH=1 ≠ CAT_OK=0` (trap: loader's "match" must not be confused with
+  catalogue "ok").
+
+==== Section E — Safety Boundary Tests [RUNTIME]
+
+Tests via `extern fn` declarations (because `safety.zig` exports its functions
+without `pub`, so they are only accessible via C linkage):
+
+----
+extern fn boj_safety_check_shell_arg(ptr: [*]const u8, len: usize) c_int;
+extern fn boj_safety_check_sql_value(ptr: [*]const u8, len: usize) c_int;
+extern fn boj_safety_check_path(ptr: [*]const u8, len: usize) c_int;
+extern fn boj_safety_check_url_scheme(ptr: [*]const u8, len: usize) c_int;
+extern fn boj_safety_check_json_string(ptr: [*]const u8, len: usize) c_int;
+----
+
+Boundary exercises (E.2/E.3): `MAX_SHELL_ARG=4096` bytes is accepted;
+4097 bytes is rejected.
+
+==== Section F — Thread-Safety Spot Check [RUNTIME]
+
+Eight threads × 4 catalogue operations each (32 total concurrent operations).
+Verifies that the module-level `Mutex` wrapper provides mutual exclusion: no
+race conditions or assertion failures under concurrent load.
+
+==== Running
+
+----
+zig build abi-verify
+----
+
+All 40 tests must pass.  A failure indicates either a live-module value has
+diverged from an axiom (§A, compile-time), or a C-ABI boundary contract has
+been violated (§B–§F, runtime).
+
+== Known Gaps and Assumptions
+
+=== [ASSUMED] C Header / Zig Alignment
+
+The `generated/abi/boj_catalogue.h` constants (e.g., `BOJ_STATUS_READY=1`,
+`BOJ_PROTO_MCP=1`) are declared to match the Idris2 ABI but are not
+automatically cross-checked against `abi_axioms.zig`.  A divergence between
+the C header and the Zig axioms would go undetected until runtime.
+
+*Mitigation:* The axioms and the C header constants were cross-checked manually
+at the time of writing.  Future: add a CI step that extracts the `#define` values
+from the header and diffs them against the axiom constants.
+
+=== [ASSUMED] Idris2 / Zig Integer Layout Agreement
+
+The Idris2 `statusToInt`, `protocolToInt`, and `domainToInt` functions produce
+values that this layer *assumes* match the `STATUS_*`, `PROTO_*`, and
+`DOMAIN_*` axioms.  This is a cross-language boundary that neither side can
+prove without a shared proof obligation.
+
+=== [GAP] Loader Module Import Conflict (§A.6)
+
+`loader.zig` uses `@import("catalogue.zig")` (relative path), which prevents
+it from being imported as a named module alongside `catalogue` in the same
+compilation unit.  The `HASH_LEN` / `HASH_HEX_LEN` constants in `loader.zig`
+are therefore verified only at the axiom level (§D), not by cross-module
+comptime assertion.
+
+*Fix:* Change `loader.zig` line 181 from `@import("catalogue.zig")` to
+`@import("catalogue")`.  Once applied, add `abi_verify_mod.addImport("loader", loader_mod)`
+in `build.zig` and a §A.6 cross-module check in `abi_verify.zig`.
+
+=== [ASSUMED] Safety Private Constants
+
+`MAX_SHELL_ARG_LEN` and `MAX_PATH_LEN` in `safety.zig` are private (not `pub`).
+The axioms declare `MAX_SHELL_ARG=4096` and `MAX_PATH=4096` as assumed values;
+if `safety.zig` is changed, the axioms will not detect the divergence.
+
+*Mitigation:* §E tests exercise the boundary directly, so a size change in
+`safety.zig` will cause E.2/E.3 to fail.
+
+== Zig 0.16 Mutex Migration
+
+`std.Thread.Mutex` was removed in Zig 0.16 as part of the `Io`-based async
+redesign.  The replacement (`std.Io.Mutex`) requires an `Io` context for every
+`lock()` call, which is incompatible with synchronous C-ABI exports.
+
+The nine affected FFI modules (`catalogue.zig`, `loader.zig`, `sla.zig`,
+`coprocessor.zig`, `community.zig`, `sdp.zig`, `guardian.zig`, `verisimdb.zig`,
+`federation.zig`) were migrated to a local `Mutex` wrapper:
+
+----
+const Mutex = struct {
+    state: std.atomic.Mutex = .unlocked,
+    pub fn lock(m: *Mutex) void {
+        while (!m.state.tryLock()) std.atomic.spinLoopHint();
+    }
+    pub fn unlock(m: *Mutex) void {
+        m.state.unlock();
+    }
+};
+----
+
+`std.atomic.Mutex` is a compare-and-swap TAS lock; `spinLoopHint()` emits a
+CPU pause hint on x86-64 to reduce power consumption and memory bus traffic
+during contention.  This is appropriate for the FFI layer's usage pattern:
+all critical sections are sub-microsecond struct field updates with very low
+contention probability.
+
+If a blocking (sleep-based) OS mutex is needed in future, the recommended
+migration path on Linux is `std.c.pthread_mutex_t` with `link_libc = true`
+in each module's `build.zig` entry.
+
+== How to Run All Verification Steps
+
+----
+# Step 1: Compile-time ABI axiom proofs (pure comptime, no runtime)
+zig build abi-axioms
+
+# Step 2: Cross-module proofs + exhaustive boundary tests (40 tests)
+zig build abi-verify
+
+# Run both together
+zig build abi-axioms abi-verify
+----
+
+Expected output:
+
+----
+Build Summary: 6/6 steps succeeded; 40/40 tests passed
+abi-axioms success
++- run test success
+abi-verify success
++- run test 40 pass (40 total)
+----

@@ -15,6 +15,16 @@
 
 const std = @import("std");
 
+const Mutex = struct {
+    state: std.atomic.Mutex = .unlocked,
+    pub fn lock(m: *Mutex) void {
+        while (!m.state.tryLock()) std.atomic.spinLoopHint();
+    }
+    pub fn unlock(m: *Mutex) void {
+        m.state.unlock();
+    }
+};
+
 // ═══════════════════════════════════════════════════════════════════════
 // Constants
 // ═══════════════════════════════════════════════════════════════════════
@@ -61,7 +71,7 @@ const Submission = struct {
 var submissions: [MAX_SUBMISSIONS]Submission = [_]Submission{.{}} ** MAX_SUBMISSIONS;
 var submission_count: usize = 0;
 var initialised: bool = false;
-var mutex: std.Thread.Mutex = .{};
+var mutex: Mutex = .{};
 
 // ═══════════════════════════════════════════════════════════════════════
 // Internal API

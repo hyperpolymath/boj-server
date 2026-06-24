@@ -15,6 +15,16 @@
 // available, without changing the cartridge code.
 
 const std = @import("std");
+
+const Mutex = struct {
+    state: std.atomic.Mutex = .unlocked,
+    pub fn lock(m: *Mutex) void {
+        while (!m.state.tryLock()) std.atomic.spinLoopHint();
+    }
+    pub fn unlock(m: *Mutex) void {
+        m.state.unlock();
+    }
+};
 const Allocator = std.mem.Allocator;
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -88,7 +98,7 @@ var reads: usize = 0;
 var writes: usize = 0;
 /// Count of failed HTTP requests in persistent mode (best-effort metric).
 var http_errors: usize = 0;
-var mutex: std.Thread.Mutex = .{};
+var mutex: Mutex = .{};
 
 // ═══════════════════════════════════════════════════════════════════════
 // Internal helpers

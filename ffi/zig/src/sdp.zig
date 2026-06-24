@@ -16,6 +16,16 @@
 
 const std = @import("std");
 
+const Mutex = struct {
+    state: std.atomic.Mutex = .unlocked,
+    pub fn lock(m: *Mutex) void {
+        while (!m.state.tryLock()) std.atomic.spinLoopHint();
+    }
+    pub fn unlock(m: *Mutex) void {
+        m.state.unlock();
+    }
+};
+
 // ═══════════════════════════════════════════════════════════════════════
 // Constants
 // ═══════════════════════════════════════════════════════════════════════
@@ -65,7 +75,7 @@ var banned: [MAX_BANNED]BannedPeer = [_]BannedPeer{.{}} ** MAX_BANNED;
 var ban_count: usize = 0;
 var sdp_enabled: bool = false;
 var open_mode: bool = true; // when true, unauthenticated peers are allowed (seed bootstrapping)
-var mutex: std.Thread.Mutex = .{};
+var mutex: Mutex = .{};
 
 // ═══════════════════════════════════════════════════════════════════════
 // Internal API
