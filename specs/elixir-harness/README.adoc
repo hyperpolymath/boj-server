@@ -183,13 +183,94 @@ for inv in ReachOk ReachTimeout ReachCrashed ReachFallback; do
   printf 'CONSTANTS\n  Requests = {r1, r2, r3}\n  Workers  = {w0, w1}\n  Route    = [r1 |-> w0, r2 |-> w1, r3 |-> w0]\nSPECIFICATION Spec\nINVARIANT %s\n' "$inv" > /tmp/ctrl.cfg
   java -cp tla2tools.jar tlc2.TLC -config /tmp/ctrl.cfg JsWorkerPool.tla
 done
+
+# Sanity controls for Invoker — each EXPECTED to report "Invariant ... is violated"
+for inv in ReachOk ReachCliMissing ReachCliCrashed ReachArgs ReachOpen ReachMissingSym ReachInitFailed; do
+  printf 'CONSTANTS Requests = {r1, r2, r3}\nSPECIFICATION Spec\nINVARIANT %s\n' "$inv" > /tmp/ctrl.cfg
+  java -cp tla2tools.jar tlc2.TLC -config /tmp/ctrl.cfg Invoker.tla
+done
 ----
 
 `JsWorker.tla` verified with TLC 2026.05.26 (tla2tools) on OpenJDK 21:
 341 distinct states, search depth 8.
 
+== Invoker.tla — models `BojRest.Invoker`
+
+Source: `elixir/lib/boj_rest/invoker.ex`.
+`Invoker` is a *stateless, synchronous* dispatcher: every call either
+short-circuits immediately (CLI binary not found → `:cli_missing`) or blocks
+on `System.cmd/3` until the `boj-invoke` OS subprocess exits.  There is no
+GenServer, no pool, and no per-invocation timeout in the Phase 2 implementation.
+
+Because `System.cmd` is synchronous and each invocation spawns its own
+subprocess, there is **no shared mutable state** between concurrent calls.
+
+=== Abstraction
+
+* Requests are opaque ids.
+* The `boj-invoke` subprocess is a nondeterministic oracle: it may exit with
+  any of the documented exit codes, or produce unparseable JSON on exit 0.
+* The CLI-missing short-circuit (`cli_path() == nil`) is modelled as
+  `CliMissing(r)`, which resolves directly from `"new"` without spawning.
+* Out of scope: JSON encoding, the HTTP layer, and the Zig FFI internals.
+
+=== Code → model mapping
+
+[cols="1,1",options="header"]
+|===
+| `invoker.ex` | model action
+
+| `Invoker.invoke/4` → `cli_path()` returns a path → `System.cmd` blocks
+| `Invoke(r)` (new → running)
+
+| `cli_path()` returns `nil` → immediate `{:error, :cli_missing}`
+| `CliMissing(r)` (new → done)
+
+| `System.cmd` returns `{stdout, 0}` + `Jason.decode` succeeds
+| `RespondOk(r)`
+
+| `System.cmd` returns `{stdout, 0}` + `Jason.decode` fails, OR other exit
+| `RespondCliCrashed(r)`
+
+| exit 2 / 3 / 4 / 5
+| `RespondArgs` / `RespondOpen` / `RespondMissingSym` / `RespondInitFailed`
+|===
+
+=== Properties verified (TLC, `Requests = {r1, r2, r3}`)
+
+Safety invariants:
+
+* `DoneOnce` — each invocation resolves at most once.  Since `System.cmd` is
+  blocking and synchronous, the subprocess can only exit once; this invariant
+  confirms no race condition can deliver two results for the same call.
+* `Consistent` — running ⟺ no result yet; done ⟺ exactly one result.
+
+Liveness (tagged `[ASSUMED]` — see §"Known gaps"):
+
+* `EventuallyDone` — every running invocation eventually resolves.
+  Requires the subprocess to exit on its own; the Phase 2 code has no timeout.
+
+=== Non-vacuity (sanity controls)
+
+All seven result kinds (`ReachOk`, `ReachCliMissing`, `ReachCliCrashed`,
+`ReachArgs`, `ReachOpen`, `ReachMissingSym`, `ReachInitFailed`) are *refuted*
+by TLC with short witness traces, proving every exit-code branch is reachable
+and the invariants are not passing vacuously.
+
+=== Known gaps
+
+[ASSUMED] *No per-invocation timeout.*  `System.cmd` blocks indefinitely if
+the `boj-invoke` subprocess hangs.  ADR-0005 specifies a 5 s default for the
+future GenServer pool; the Phase 2 skeleton relies on the outer Cowboy
+connection timeout as the de-facto bound.  `EventuallyDone` therefore rests on
+the assumption that the subprocess exits on its own.
+
+[FUTURE] *Invoker pool (ADR-0005 Phase 3).*  Once the GenServer pool lands,
+model its checkout/checkin FSM and backpressure — the interesting state machine
+is in the pool, not in the stateless Phase 2 skeleton.
+
 == Not yet modelled (future work)
 
-* **`Invoker`** (Zig-FFI path) is currently fork-per-request — *no pool yet*;
-  the ADR-0005 OS-port pool is future work (waits on ADR-0006). Model the pool's
-  checkout/backpressure when it lands.
+* **`Invoker` pool** — the ADR-0005 GenServer pool is not yet implemented.
+  Model checkout/backpressure when it lands (waits on ADR-0006 + reference
+  cartridge).
