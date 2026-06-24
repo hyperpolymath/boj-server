@@ -343,7 +343,7 @@ src/abi/              # Idris2 ABI -- formal proofs
   Guardian.idr        #   Resource-aware failure tolerance
 
 ffi/zig/              # Zig FFI -- native execution
-  src/catalogue.zig   #   Mount/unmount, cartridge ops
+  src/catalogue.zig   #   Catalogue tests
   src/loader.zig      #   Dynamic cartridge loading
   src/federation.zig  #   Gossip protocol, QUIC transport
   src/verisimdb.zig   #   VeriSimDB backing store
@@ -371,6 +371,11 @@ container/            # Deployment
 generated/abi/        # Auto-generated C headers from Idris2
 .machine_readable/    # State files, menu, policies
 docs/                 # Architecture, API contract, guides
+specs/elixir-harness/ # TLA+ formal models of the Elixir concurrency layer
+  JsWorker.tla        #   Single GenServer slot (ReplyOnce, 341 states, depth 8)
+  JsWorkerPool.tla    #   N-slot pool (RouteConsistency, crash isolation)
+  Invoker.tla         #   Stateless fork-per-request dispatcher (DoneOnce)
+  README.adoc         #   Properties, code-to-model mapping, TLC run instructions
 ----
 
 == Contributing
