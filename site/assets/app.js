@@ -35,7 +35,7 @@
     },
     "deno": {
       label: "Deno (preferred runtime — zero install)",
-      cmd: () => "deno run -A /path/to/boj-server/mcp-bridge/main.js",
+      cmd: () => "deno run --allow-net --allow-env --allow-read /path/to/boj-server/mcp-bridge/main.js",
     },
     "gemini": {
       label: "Gemini CLI (~/.gemini/settings.json)",
@@ -159,7 +159,7 @@
     const grp = $("#cat-group").value;
     const tier = $("#cat-tier").value;
     const list = $("#cat-list");
-    list.innerHTML = "";
+    list.replaceChildren();
     const matches = state.catalog.filter(c => {
       if (grp && (c.group + "/" + c.bucket) !== grp) return false;
       if (tier && c.tier !== tier) return false;
