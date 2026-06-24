@@ -26,4 +26,4 @@ The whole thing is Alpha — it needs real users doing real things.
 Repo: https://github.com/hyperpolymath/boj-server
 Quickstart: https://github.com/hyperpolymath/boj-server/blob/main/docs/quickstarts/USER.adoc
 
-This is a community project. I make nothing from it. The code is PMPL-licensed (MPL-2.0 fallback). I built this to learn from it, and I learn most from other people using it.
+This is a community project. I make nothing from it. The code is MPL-2.0-licensed. I built this to learn from it, and I learn most from other people using it.

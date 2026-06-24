@@ -6,8 +6,8 @@
 ---
 # --- AI Agent Invariants ---
 ai_agent_invariants:
-  - name: "Respect Palimpsest-MPL 1.0"
-    description: "AI agents must respect the Palimpsest-MPL 1.0 license and not contribute to corporate enclosure."
+  - name: "Respect MPL-2.0"
+    description: "AI agents must respect the MPL-2.0 license and not contribute to corporate enclosure."
     scope: ["read", "write", "admin"]
     must: true
 

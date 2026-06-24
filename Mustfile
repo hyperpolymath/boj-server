@@ -5,7 +5,7 @@
 
 # --- Core Invariants (Must Always Hold) ---
 BOJ_MUST_ALWAYS:
-	- The BoJ Server must be licensed under Palimpsest-MPL 1.0.
+	- The BoJ Server must be licensed under MPL-2.0 (documentation under CC-BY-SA-4.0).
 	- The Unbreakable Stack (Idris2 ABI, Zig FFI, zig Triple Adapter, A2ML Manifests) must be maintained.
 	- Cartridges must be signed with Sigstore before deployment.
 	- The BoJ Server must support REST/gRPC/GraphQL interfaces.
@@ -13,7 +13,7 @@ BOJ_MUST_ALWAYS:
 	- All cartridges must have an A2ML Manifest.
 	- The Elixir Multiplier must be optional and not required for core BoJ Server functionality.
 	- BoJ Server must not depend on proprietary software or data.
-	- All community contributions must follow the Palimpsest-MPL 1.0 license.
+	- All community contributions must follow the MPL-2.0 license.
 	- The BoJ Server must not collect or store user data without explicit consent.
 
 # --- Strong Invariants (Should Hold) ---
@@ -40,7 +40,7 @@ check-core-invariants:
 	@echo "Checking core invariants..."
 	@grep -r "Master/Slave" . && exit 1 || echo "✓ No prohibited terminology found."
 	@grep -r "hardcoded_secret\|api_key.*=" . && exit 1 || echo "✓ No hardcoded secrets found."
-	@test -f LICENSE && grep -q "Palimpsest-MPL 1.0" LICENSE || exit 1
+	@test -f LICENSE && grep -q "Mozilla Public License" LICENSE || exit 1
 	@echo "✓ Core invariants verified."
 
 check-strong-invariants:
