@@ -1,0 +1,8 @@
+# TLC model-checker run artifacts (not source)
+states/
+*_TTrace_*.tla
+*_TTrace_*.bin
+*.st
+*.fp
+MC*.tla
+MC*.cfg
