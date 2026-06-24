@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://hyperpolymath.dev/standards/cartridges/cartridge-v1.json",
   "title": "BoJ Cartridge Manifest (canonical)",
-  "description": "Canonical schema for BoJ cartridge manifests. Mirrors the schema previously held in boj-server/schemas/cartridge-v1.json, expanded to admit the full BoJ server-role taxonomy (MCP, LSP, DAP, BSP, Debug, Format, Lint, Build, NeSy, Agentic, Fleet) per panll/src/abi/cartridge-schema.json v0.3.0. SPDX-License-Identifier: MPL-2.0.",
+  "description": "Canonical schema for BoJ cartridge manifests. Mirrors the schema previously held in boj-server/schemas/cartridge-v1.json, expanded to admit the full BoJ server-role taxonomy (MCP, LSP, DAP, BSP, Debug, Format, Lint, Build, NeSy, Agentic, Fleet) per panll/src/abi/cartridge-schema.json v0.3.0. SPDX-License-Identifier: MPL-2.0",
   "type": "object",
   "properties": {
     "$schema": {

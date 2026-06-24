@@ -74,7 +74,7 @@ A community author submits a PR against `hyperpolymath/cartridge-index/inbox/`. 
    - Has Idris2 ABI + Zig FFI + adapter (standard triple)
    - Has a `policies/<name>.ncl` file matching ADR-0007's schema
    - Has a passing `npm test` (or equivalent) on the submitted rev
-   - Carries `SPDX-License-Identifier: MPL-2.0` (or OSI-approved equivalent)
+   - Carries `SPDX-License-Identifier: CC-BY-SA-4.0` (or OSI-approved equivalent)
 4. A signed CLA-equivalent (`SIGNED-OFF-BY` in commit, with verified email)
 
 A CI workflow in `cartridge-index` runs:
