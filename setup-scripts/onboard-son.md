@@ -1,9 +1,9 @@
 <!--
-SPDX-License-Identifier: MPL-2.0
+SPDX-License-Identifier: CC-BY-SA-4.0
 Copyright (c) Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
 -->
 # BoJ + PanLL Full Onboarding Script
-# SPDX-License-Identifier: MPL-2.0
+# SPDX-License-Identifier: CC-BY-SA-4.0
 #
 # INSTRUCTIONS: Copy everything below the line into Claude Code as a single message.
 # Claude will walk you through each step interactively.
