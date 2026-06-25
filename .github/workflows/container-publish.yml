@@ -23,6 +23,8 @@ jobs:
     permissions:
       contents: read
       packages: write
+      id-token: write       # mint the OIDC token the attestation is signed with
+      attestations: write   # write the build-provenance attestation (the "claim")
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
@@ -74,9 +76,26 @@ jobs:
             .
 
       - name: Push to GitHub Container Registry
+        id: push
         run: |
-          podman push "${{ steps.meta.outputs.image }}:${{ steps.meta.outputs.version }}"
+          # --digestfile makes podman write the digest of the pushed manifest;
+          # this is the real sha256 the attestation must bind to.
+          podman push --digestfile=/tmp/ghcr-digest \
+            "${{ steps.meta.outputs.image }}:${{ steps.meta.outputs.version }}"
           podman push "${{ steps.meta.outputs.image }}:latest"
+          echo "digest=$(cat /tmp/ghcr-digest)" >> "$GITHUB_OUTPUT"
+
+      # GitHub native artifact attestation (build provenance) for the pushed
+      # image — a signed, verifiable claim binding the image digest to this
+      # build. Verify with:
+      #   gh attest verify oci://ghcr.io/${{ github.repository }}:<tag> \
+      #     --repo ${{ github.repository }}
+      - name: Attest container provenance
+        uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be # v2
+        with:
+          subject-name: ghcr.io/${{ github.repository }}
+          subject-digest: ${{ steps.push.outputs.digest }}
+          push-to-registry: true
 
       - name: Tag and push to Docker Hub
         if: steps.dockerhub.outputs.available == 'true'
