@@ -13,6 +13,7 @@ SPDX-FileCopyrightText: 2025-2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
 [![OpenSSF Best Practices](https://img.shields.io/badge/OpenSSF-Best_Practices-green?logo=opensourcesecurity)](https://www.bestpractices.dev/en/projects/new?repo_url=https://github.com/hyperpolymath/boj-server)
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/hyperpolymath/boj-server/badge)](https://scorecard.dev/viewer/?uri=github.com/hyperpolymath/boj-server)
 [![Software Heritage](https://archive.softwareheritage.org/badge/origin/https://github.com/hyperpolymath/boj-server/)](https://archive.softwareheritage.org/browse/origin/?origin_url=https://github.com/hyperpolymath/boj-server)
+[![Quality gate](https://sonarcloud.io/api/project_badges/quality_gate?project=hyperpolymath_boj-server)](https://sonarcloud.io/summary/new_code?id=hyperpolymath_boj-server)
 
 > **What it is, honestly:** BoJ exposes **68 MCP tools** today (45 `boj_*` + 23 `coord_*`) over stdio with **zero runtime dependencies**. It *catalogues* 125 domain cartridges, but most of those are an inspectable catalogue, not live services — a cartridge only performs real actions when its backend process is running and you supply the right credentials. The bridge is fully inspectable offline; side-effectful tools return a structured `{error, hint}` until their backend is up. See [Cartridges](#cartridges) for the full story.
 
