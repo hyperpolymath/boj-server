@@ -58,3 +58,12 @@ Containerfile  text eol=lf
 # Lock files
 Cargo.lock  text eol=lf -diff
 flake.lock  text eol=lf -diff
+
+# GitHub Linguist — surface the JS/Deno MCP bridge (mcp-bridge/) as the
+# primary language instead of the bulky Zig FFI / generated cartridge code.
+cartridges/**   linguist-vendored
+ffi/**          linguist-vendored
+generated/**    linguist-generated
+*.adoc          linguist-documentation
+docs/**         linguist-documentation
+proofs/**       linguist-documentation

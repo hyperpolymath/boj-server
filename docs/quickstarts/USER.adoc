@@ -10,7 +10,7 @@ toc::[]
 
 == What is BoJ Server?
 
-Bundle of Joy (BoJ) Server is a cartridge-based MCP protocol gateway. Each cartridge (database-mcp, fleet-mcp, nesy-mcp, etc.) is a formally verified Idris2 ABI + Zig FFI + Deno/JS adapter triple. The server exposes REST (port 7700) via Elixir/BEAM with Zig FFI for `.so` cartridges and a persistent Deno worker pool for JS cartridges. 115 cartridges cover databases, clouds, messaging, CI/CD, git forges, secrets, queues, proofs, and more.
+Bundle of Joy (BoJ) Server is a cartridge-based MCP protocol gateway. Each cartridge (database-mcp, fleet-mcp, nesy-mcp, etc.) is a formally verified Idris2 ABI + Zig FFI + Deno/JS adapter triple. The server exposes REST (port 7700) via Elixir/BEAM with Zig FFI for `.so` cartridges and a persistent Deno worker pool for JS cartridges. 125 cartridges cover databases, clouds, messaging, CI/CD, git forges, secrets, queues, proofs, and more.
 
 Three-class architecture: Class 1 (simple CLI), Class 2 (orchestrator with webhooks/MQTT), Class 3 (BEAM multiplier for global scale).
 
@@ -76,7 +76,7 @@ Start the Elixir/BEAM server:
 just run
 ----
 
-This starts the BEAM application, auto-discovers all 115 cartridges, and launches the Deno worker pool for JS dispatch:
+This starts the BEAM application, auto-discovers all 125 cartridges, and launches the Deno worker pool for JS dispatch:
 
 - REST API on http://localhost:7700
 

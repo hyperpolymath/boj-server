@@ -5,8 +5,8 @@
 # https://smithery.ai
 
 name: boj-server
-description: "Bundle of Joy — cartridge-based MCP server with 115 formally verified domain cartridges (database, cloud, git, k8s, containers, observability, secrets, IaC, and more)"
-version: "0.4.6"
+description: "Bundle of Joy — cartridge-based MCP server with 125 formally verified domain cartridges (database, cloud, git, k8s, containers, observability, secrets, IaC, and more)"
+version: "0.4.7"
 author: "Jonathan D.A. Jewell"
 license: "MPL-2.0"
 homepage: "https://github.com/hyperpolymath/boj-server"
@@ -31,41 +31,141 @@ server:
 
 tools:
   - name: boj_health
-    description: "Check BoJ server health status"
+    description: "Ping the BoJ server and report liveness."
   - name: boj_menu
-    description: "List all 115 cartridges with domains, protocols, and tiers"
+    description: "List every installed BoJ cartridge grouped by trust tier (Teranga, Shield, Ayo) with name, version, domain, support..."
   - name: boj_cartridges
-    description: "Show the cartridge matrix — protocol x domain grid"
+    description: "Return the BoJ capability matrix — a `protocol × domain` grid marking which cartridges serve each combination (e.g."
   - name: boj_cartridge_info
-    description: "Get detailed info about a specific cartridge"
+    description: "Return the full manifest of a single cartridge."
   - name: boj_cartridge_invoke
-    description: "Invoke a cartridge operation"
-  - name: boj_cloud_cloudflare
-    description: "Manage Cloudflare Workers, D1, KV, R2, DNS"
-  - name: boj_cloud_vercel
-    description: "Manage Vercel deployments, domains, env vars"
+    description: "Generic cartridge invocation — forward a typed command to a specific cartridge's REST endpoint and return its JSON..."
   - name: boj_cloud_verpex
-    description: "Manage Verpex cPanel hosting"
-  - name: boj_github_list_repos
-    description: "List GitHub repositories"
-  - name: boj_github_create_issue
-    description: "Create GitHub issues"
-  - name: boj_github_create_pr
-    description: "Create GitHub pull requests"
-  - name: boj_gitlab_list_projects
-    description: "List GitLab projects"
-  - name: boj_browser_navigate
-    description: "Navigate Firefox browser"
-  - name: boj_browser_screenshot
-    description: "Take browser screenshots"
+    description: "Manage Verpex (cPanel UAPI) hosting resources including domains, DNS records, email accounts, MySQL databases, SSL..."
+  - name: boj_cloud_cloudflare
+    description: "Manage Cloudflare edge resources including Workers scripts, D1 SQLite databases, KV namespaces, R2 object buckets,..."
+  - name: boj_cloud_vercel
+    description: "Manage Vercel projects, deployments, custom domains, environment variables, build logs, and serverless functions."
   - name: boj_comms_gmail
-    description: "Gmail operations"
+    description: "Gmail operations via the comms-mcp cartridge including send, read, search, and label management."
+  - name: boj_comms_calendar
+    description: "Google Calendar operations via the comms-mcp cartridge — list upcoming events, create new events, and check free/bu..."
   - name: boj_ml_huggingface
-    description: "HuggingFace model search and inference"
-  - name: boj_research
-    description: "Academic paper search and citations"
+    description: "Hugging Face Hub operations via the ml-mcp cartridge — search models/datasets/spaces, fetch model cards, and run ho..."
+  - name: boj_browser_navigate
+    description: "Drive the controlled Firefox session to a new URL."
+  - name: boj_browser_click
+    description: "Click the first element matching a CSS selector on the current page."
+  - name: boj_browser_type
+    description: "Type literal text into the first input, textarea, or contenteditable element matching a CSS selector."
+  - name: boj_browser_read_page
+    description: "Extract the visible text content of the active tab."
+  - name: boj_browser_screenshot
+    description: "Capture a PNG screenshot of the active tab's current viewport."
+  - name: boj_browser_tabs
+    description: "Manage browser tabs within the active session."
+  - name: boj_browser_execute_js
+    description: "Execute a JavaScript snippet in the context of the active tab and return the value of the last expression."
+  - name: boj_github_list_repos
+    description: "List repositories owned by or accessible to the authenticated GitHub user."
+  - name: boj_github_get_repo
+    description: "Fetch detailed metadata for a single GitHub repository."
+  - name: boj_github_create_issue
+    description: "Open a new issue on a GitHub repository."
+  - name: boj_github_list_issues
+    description: "List issues on a GitHub repository, filtered by state (open, closed, all)."
+  - name: boj_github_get_issue
+    description: "Fetch a single issue's full details."
+  - name: boj_github_comment_issue
+    description: "Post a new Markdown comment on a GitHub issue."
+  - name: boj_github_create_pr
+    description: "Open a pull request between two branches."
+  - name: boj_github_list_prs
+    description: "List pull requests on a GitHub repository, filtered by state."
+  - name: boj_github_get_pr
+    description: "Fetch a single pull request's detailed metadata."
+  - name: boj_github_merge_pr
+    description: "Merge a pull request into the base branch."
+  - name: boj_github_search_code
+    description: "Search code across GitHub using the Code Search API v2."
+  - name: boj_github_search_issues
+    description: "Search issues and pull requests across GitHub."
+  - name: boj_github_get_file
+    description: "Read a file's contents from a GitHub repository at a specific branch, tag, or commit."
+  - name: boj_github_graphql
+    description: "Execute an arbitrary GitHub GraphQL v4 query."
+  - name: boj_gitlab_list_projects
+    description: "List GitLab projects accessible to the authenticated user."
+  - name: boj_gitlab_get_project
+    description: "Fetch metadata for a single GitLab project."
+  - name: boj_gitlab_create_issue
+    description: "Open a new issue on a GitLab project."
+  - name: boj_gitlab_list_issues
+    description: "List issues on a GitLab project, filtered by state."
+  - name: boj_gitlab_create_mr
+    description: "Open a merge request (MR) on a GitLab project."
+  - name: boj_gitlab_list_mrs
+    description: "List merge requests on a GitLab project, filtered by state."
+  - name: boj_gitlab_list_pipelines
+    description: "List recent CI/CD pipelines for a GitLab project."
+  - name: boj_gitlab_setup_mirror
+    description: "Configure a GitLab project to mirror its repository to an external URL."
   - name: boj_codeseeker
-    description: "CodeSeeker code intelligence — hybrid search (vector + text + path), knowledge graph traversal, coding patterns, Graph RAG"
+    description: "CodeSeeker hybrid code-intelligence cartridge providing vector + BM25 + path-tier search fused via RRF, knowledge-g..."
+  - name: boj_research
+    description: "Academic literature search via the research-mcp cartridge — access papers, citations, references, and author profil..."
+  - name: boj_search
+    description: "Web search across four providers (Tavily, Brave, Exa, Perplexity) behind a single cartridge."
+  - name: boj_vector
+    description: "Vector database + RAG operations across four providers (Pinecone, Weaviate, Qdrant, ChromaDB) behind a single cartr..."
+  - name: boj_multimodal
+    description: "Multi-modal audio/image/video operations across four cartridges: whisper-mcp (STT), elevenlabs-mcp (TTS + voice clo..."
+  - name: coord_register
+    description: "Register this AI instance as a coordination peer on the loopback coord bus (127.0.0.1:7745)."
+  - name: coord_list_peers
+    description: "List all currently-registered peers on the coord bus."
+  - name: coord_send
+    description: "Send a free-form (untyped) message to a specific peer or broadcast to all active peers."
+  - name: coord_receive
+    description: "Dequeue the next message from this peer's FIFO inbox."
+  - name: coord_claim_task
+    description: "Attempt mutex-style ownership of a named task."
+  - name: coord_status
+    description: "Set this peer's current work-status string, visible to all other peers via `coord_list_peers`."
+  - name: coord_promote_to_master
+    description: "Promote this peer from journeyman/apprentice to the master role."
+  - name: coord_send_gated
+    description: "Send a Nickel-contract-validated envelope with a declared risk tier (0-4)."
+  - name: coord_review
+    description: "List all currently-quarantined envelopes awaiting a master/journeyman decision."
+  - name: coord_review_entry
+    description: "Read the full body and metadata of a single quarantined envelope."
+  - name: coord_approve
+    description: "Approve a quarantined envelope, delivering the original message to its target."
+  - name: coord_reject
+    description: "Reject a quarantined envelope with a human-readable reason."
+  - name: coord_report_outcome
+    description: "Record the outcome of a completed claim or attempted operation against an affinity tag."
+  - name: coord_get_affinities
+    description: "Return the computed `effective_affinity` scores for all known (client_kind, tag) pairs."
+  - name: coord_set_declared_affinities
+    description: "Update this peer's self-reported strength tags."
+  - name: coord_scan_suggestions
+    description: "Trigger a pass of the reassignment scanner to compare track records against declared affinities."
+  - name: coord_transfer_master
+    description: "Pass authority from the current master to a named successor."
+  - name: coord_set_variant
+    description: "Set or update this peer's free-form model/variant label."
+  - name: coord_set_capabilities
+    description: "Advertise this peer's capability profile including class, tier, and prover strengths."
+  - name: coord_get_peer_capabilities
+    description: "Read another peer's advertised capability profile."
+  - name: coord_health
+    description: "Fetch a read-only operational snapshot of the coordination bus."
+  - name: coord_progress
+    description: "Signal activity and refresh the watchdog TTL for a held claim."
+  - name: coord_sweep_watchdog
+    description: "Perform an explicit watchdog tick to release expired claims."
 
 install:
   npm: "@hyperpolymath/boj-server"

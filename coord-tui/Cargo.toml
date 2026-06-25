@@ -6,7 +6,7 @@ version = "0.1.0"
 edition = "2021"
 authors = ["Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>"]
 description = "Rapid-setup TUI for BoJ local-coord-mcp (AI multi-instance coordination)"
-license = "AGPL-3.0-or-later"
+license = "MPL-2.0"
 
 # Architecture note: pure functions (state transitions, key dispatch) are
 # deliberately isolated so SPARK/Ada formal modules can replace them later

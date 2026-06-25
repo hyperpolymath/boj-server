@@ -18,7 +18,7 @@ LLM/SLM agents: understand what this repo IS and IS NOT before acting.
 BoJ (Bundle of Joy) is a unified MCP server that consolidates all hyperpolymath
 tooling into a single endpoint. It provides Claude Code integration for GitHub,
 GitLab, Cloudflare, Vercel, Verpex, Gmail, Calendar, browser automation, research,
-ML, and 50+ open-source cartridges. It implements a three-class architecture:
+ML, and 125 open-source cartridges. It implements a three-class architecture:
 - Class 1 (Simple Track): zero-infrastructure CLI/curl workflows
 - Class 2 (Orchestrator Track): HMAC-SHA256 webhooks and real-time MQTT/WS
 - Class 3 (Multiplier Track): Elixir/BEAM mass concurrency

@@ -13,8 +13,8 @@ Copyright (c) Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
 - **gRPC**: gRPC support for high-performance clients
 
 ### Cartridge System
-- **115 Cartridges**: Covering databases, git, cloud, comms, ML, browser, and more
-- **1041 Tools**: Specialized operations across all domains
+- **125 Cartridges**: Covering databases, git, cloud, comms, ML, browser, and more
+- **68 MCP Tools**: 45 boj_* discovery/domain tools + 23 coord_* tools; per-cartridge operations are reachable via boj_cartridge_invoke across the 125-cartridge catalogue
 - **Hot-Reloading**: Add/remove cartridges without restarting
 - **Isolation**: Each cartridge runs in its own sandbox
 

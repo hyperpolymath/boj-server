@@ -18,7 +18,7 @@ abstract: >-
   gateway. Each cartridge — covering databases, container runtimes, git forges,
   Kubernetes, observability, secrets, IaC, cloud providers, and multi-instance
   AI coordination — is a formally verified Idris2 ABI + Zig FFI + Deno/JS
-  adapter triple. The server exposes 115 cartridges through a unified stdio
+  adapter triple. The server exposes 125 cartridges through a unified stdio
   MCP surface plus a local REST API on port 7700. A local-coord-mcp cartridge
   provides loopback peer discovery, typed envelopes, claim/heartbeat/watchdog,
   and master/journeyman/apprentice supervision for multi-agent AI workflows.
@@ -34,5 +34,5 @@ keywords:
   - multi-agent
   - ai-coordination
 license: MPL-2.0
-version: 0.4.6
+version: 0.4.7
 date-released: "2026-04-27"
