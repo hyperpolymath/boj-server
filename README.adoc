@@ -13,7 +13,7 @@ image:https://glama.ai/mcp/servers/hyperpolymath/boj-server/badge[Glama MCP Serv
 image:https://api.thegreenwebfoundation.org/greencheckimage/boj-server.net[Green Hosting,link="https://www.thegreenwebfoundation.org/green-web-check/?url=boj-server.net"]
 image:https://archive.softwareheritage.org/badge/origin/https://github.com/hyperpolymath/boj-server/[Software Heritage,link="https://archive.softwareheritage.org/browse/origin/?origin_url=https://github.com/hyperpolymath/boj-server"]
 
-BoJ (Bundle of Joy) is a unified MCP server that consolidates all hyperpolymath tooling into a single endpoint — GitHub, GitLab, Cloudflare, Vercel, Verpex, Gmail, Calendar, browser automation, research, ML, and 115 open-source cartridges.
+BoJ (Bundle of Joy) is a unified MCP server that consolidates all hyperpolymath tooling into a single endpoint — GitHub, GitLab, Cloudflare, Vercel, Verpex, Gmail, Calendar, browser automation, research, ML, and 125 open-source cartridges.
 
 == Install
 
@@ -224,11 +224,11 @@ Glama listing: https://glama.ai/mcp/servers/hyperpolymath/boj-server
 * *Research* — Semantic Scholar papers, citations, authors
 * *ML* — Hugging Face model / dataset / inference
 * *Local coordination* — `local-coord-mcp` (24 tools): multi-instance AI peer discovery, typed envelopes, claim/heartbeat/watchdog, quarantine + master/journeyman/apprentice supervision, track-record affinity, capability advertisement
-* *Cartridges* — 115 pluggable cartridges across Teranga / Shield / Ayo trust tiers
+* *Cartridges* — 125 pluggable cartridges across Teranga / Shield / Ayo trust tiers
 
 == Scope
 
-*115 cartridges*, organised across the domains below. Each cartridge is a formally verified Idris2 ABI + Zig FFI + Deno/JS adapter triple, reachable through a single MCP endpoint.
+*125 cartridges*, organised across the domains below. Each cartridge is a formally verified Idris2 ABI + Zig FFI + Deno/JS adapter triple, reachable through a single MCP endpoint.
 
 [%collapsible]
 .🔧 Git forges & code hosting — 4 cartridges

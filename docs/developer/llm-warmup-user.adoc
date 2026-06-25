@@ -83,7 +83,7 @@ and many more.
 | Elixir REST server (Catalog, Router, JsWorkerPool)
 
 | `cartridges/`
-| 115 cartridge directories
+| 125 cartridge directories
 
 |===
 

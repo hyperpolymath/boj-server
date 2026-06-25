@@ -11,7 +11,7 @@ date: 2026-03-31
 
 The public web home for this project is [boj-server.net](https://boj-server.net).
 
-BoJ (Bundle of Joy) is a unified MCP server that consolidates all hyperpolymath tooling into a single endpoint — GitHub, GitLab, Cloudflare, Vercel, Verpex, Gmail, Calendar, browser automation, research, ML, and 50+ open-source cartridges.
+BoJ (Bundle of Joy) is a unified MCP server that consolidates all hyperpolymath tooling into a single endpoint — GitHub, GitLab, Cloudflare, Vercel, Verpex, Gmail, Calendar, browser automation, research, ML, and 125 open-source cartridges.
 
 ## Project Links
 
