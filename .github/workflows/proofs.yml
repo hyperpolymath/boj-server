@@ -22,6 +22,17 @@ on:
   pull_request:
     branches: [main]
   workflow_dispatch:
+  # Weekly baseline re-verification of main. The `changes` path-filter below
+  # skips the heavy type-check on PRs/pushes that don't touch src/abi/** (so an
+  # off-path PR isn't blocked and doesn't pay for a 45-min Idris2 build). The
+  # side effect is that a proof break ALREADY living in main — merged before
+  # this gate existed, or via a path the filter ignores — is otherwise never
+  # re-detected. On a `schedule` event the detect step leaves run=true (its
+  # default), so the full core + every-cartridge type-check runs unconditionally
+  # and catches such drift. (This is exactly how a duplicate `allTake` in
+  # SafetyLemmas.idr sat in main with a green gate — see PR fixing it.)
+  schedule:
+    - cron: '17 6 * * 1'   # Mondays 06:17 UTC
 
 permissions:
   contents: read

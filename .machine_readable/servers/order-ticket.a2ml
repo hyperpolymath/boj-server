@@ -100,12 +100,12 @@
   ; Community nodes additionally verify:
   ; - Binary hash matches canonical build (Attested proof in Federation.idr)
   ; - Cartridge hashes match the menu attestation
-  ; - PMPL provenance chain is intact
+  ; - provenance chain is intact
 
   (security
     (session-timeout-seconds 3600)
     (sandbox-cartridges #t)
     (require-agent-identity #f)    ; optional but recommended
     (audit-log #t)
-    (pmpl-provenance #t))
+    (provenance #t))
 )

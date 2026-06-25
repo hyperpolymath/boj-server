@@ -1,0 +1,85 @@
+// SPDX-License-Identifier: MPL-2.0
+// Copyright (c) 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+// Create the Cloudflare Pages project for boj-server and attach its custom domains.
+// Mirrors the canonical estate pattern in standards/avow-protocol/scripts/CreatePagesProjects.affine
+// (single-project variant). Requires CLOUDFLARE_API_TOKEN + CLOUDFLARE_ACCOUNT_ID in the env.
+// Only needed for the API-driven path; the documented go-live route is the dashboard Git-connect.
+
+module CreatePagesProject;
+
+use Deno_Api;
+use Fetch_Api;
+
+extern fn console_log(msg: String) -> Unit = "console" "log";
+extern fn console_error(msg: String) -> Unit = "console" "error";
+extern fn str_repeat(s: String, count: Int) -> String = "string" "repeat";
+extern fn json_stringify(value: a) -> Option<String> = "JSON" "stringifyAny";
+extern fn json_get_bool(j: Json, key: String) -> Bool = "json" "getBool";
+
+let cloudflare_api_token = Deno_Api.Env.get("CLOUDFLARE_API_TOKEN");
+let cloudflare_account_id = Deno_Api.Env.get("CLOUDFLARE_ACCOUNT_ID");
+
+let project_name = "boj-server";
+let domains = ["boj-server.net", "www.boj-server.net"];
+
+fn auth_headers() -> Fetch_Api.Headers {
+  let token = match cloudflare_api_token { Some(t) => t, None => "" };
+  Fetch_Api.Headers { authorization: "Bearer " ++ token, content_type: "application/json" }
+}
+
+pub fn main() -> Effect[Async] Unit {
+  match (cloudflare_api_token, cloudflare_account_id) {
+    (None, _) => { console_error("Missing credentials"); Deno_Api.exit(1); }
+    (_, None) => { console_error("Missing credentials"); Deno_Api.exit(1); }
+    _ => {}
+  }
+
+  let account_id = match cloudflare_account_id { Some(a) => a, None => "" };
+  let bar = str_repeat("=", 70);
+
+  console_log("Creating Cloudflare Pages project: " ++ project_name);
+  console_log(bar);
+
+  let create_body = match json_stringify(json_object([
+    ("name", json_string(project_name)),
+    ("production_branch", json_string("main")),
+  ])) { Some(s) => s, None => "" };
+
+  let create_response = await Fetch_Api.fetch(
+    "https://api.cloudflare.com/client/v4/accounts/" ++ account_id ++ "/pages/projects",
+    Fetch_Api.RequestInit { method: Some("POST"), headers: auth_headers(), body: Some(create_body) },
+  );
+  let create_result = await Fetch_Api.json(create_response);
+  if json_get_bool(create_result, "success") {
+    console_log("   Project created: https://" ++ project_name ++ ".pages.dev");
+  } else {
+    console_log("   Project already exists or failed");
+  }
+
+  let i = 0;
+  while i < len(domains) {
+    let domain = domains[i];
+    console_log("   Adding domain: " ++ domain);
+    let domain_body = match json_stringify(json_object([("name", json_string(domain))])) {
+      Some(s) => s, None => "",
+    };
+    let domain_response = await Fetch_Api.fetch(
+      "https://api.cloudflare.com/client/v4/accounts/" ++ account_id
+        ++ "/pages/projects/" ++ project_name ++ "/domains",
+      Fetch_Api.RequestInit { method: Some("POST"), headers: auth_headers(), body: Some(domain_body) },
+    );
+    let domain_result = await Fetch_Api.json(domain_response);
+    if json_get_bool(domain_result, "success") {
+      console_log("   Domain added: " ++ domain);
+    } else {
+      console_log("   Domain already added or failed: " ++ domain);
+    }
+    i = i + 1;
+  }
+
+  console_log("\n" ++ bar);
+  console_log("Done. Connect the repo in the dashboard (Git integration) or run DeployDirect.affine.");
+  console_log(bar)
+}
+
+main()

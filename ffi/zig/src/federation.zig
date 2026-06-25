@@ -20,6 +20,16 @@
 
 const std = @import("std");
 
+const Mutex = struct {
+    state: std.atomic.Mutex = .unlocked,
+    pub fn lock(m: *Mutex) void {
+        while (!m.state.tryLock()) std.atomic.spinLoopHint();
+    }
+    pub fn unlock(m: *Mutex) void {
+        m.state.unlock();
+    }
+};
+
 // ═══════════════════════════════════════════════════════════════════════
 // Proven-hardened: Circuit breaker, retry, and rate limiter state
 //
@@ -385,7 +395,7 @@ var inbound_rate_limiter: InboundRateLimiter = InboundRateLimiter{};
 /// Protects all module-level global state (including QUIC globals declared
 /// below near the QUIC transport section: transport_mode, quic_sessions,
 /// quic_local_secret, quic_local_public, quic_keypair_valid).
-var mutex: std.Thread.Mutex = .{};
+var mutex: Mutex = .{};
 
 // ═══════════════════════════════════════════════════════════════════════
 // Internal helpers

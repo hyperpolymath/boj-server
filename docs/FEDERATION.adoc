@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: CC-BY-SA-4.0
 // Copyright (c) Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
 // SPDX-FileCopyrightText: 2025-2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
 
@@ -45,8 +45,6 @@ The model: you don't need a hosting budget if the community IS the hosting.
 * *But*: they can still run locally for personal use
 
 This is non-punitive. We don't brick your installation. We just don't vouch for it.
-
-The *PMPL license* encodes this same principle legally — provenance metadata with cryptographic signatures is required, so the legal framework and technical framework express the same thing.
 
 === Gossip protocol
 
@@ -138,7 +136,7 @@ Community nodes benefit from the full BoJ security stack:
 * *DoQ/DoH*: Encrypted DNS resolution for all BoJ traffic
 * *oDNS*: Oblivious DNS relay option for maximum privacy
 * *Hash attestation*: Binary integrity verification
-* *PMPL provenance*: Cryptographic lineage tracking
+* *Cryptographic provenance*: lineage tracking
 
 == Future: Dynamic Threat Response
 

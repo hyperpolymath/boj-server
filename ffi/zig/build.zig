@@ -308,6 +308,54 @@ pub fn build(b: *std.Build) void {
     const shim_step = b.step("shim", "Run cartridge_shim tests (ADR-0006 invoke helpers)");
     shim_step.dependOn(&run_shim_tests.step);
 
+    // --- ABI Axioms module (standalone comptime proofs, no runtime deps) ---
+    //
+    // abi_axioms.zig declares every numeric constant that crosses the C-ABI
+    // boundary and proves static invariants at compile time.  Running the test
+    // binary exercises those comptime blocks; a build failure here means an
+    // invariant was violated.
+    const abi_axioms_mod = b.addModule("boj_abi_axioms", .{
+        .root_source_file = b.path("src/abi_axioms.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+
+    const abi_axioms_tests = b.addTest(.{
+        .root_module = abi_axioms_mod,
+    });
+    const run_abi_axioms_tests = b.addRunArtifact(abi_axioms_tests);
+
+    const abi_axioms_step = b.step("abi-axioms", "Compile ABI axiom static theorems (comptime proofs only)");
+    abi_axioms_step.dependOn(&run_abi_axioms_tests.step);
+
+    // --- ABI Verification module (cross-checks axioms + exhaustive boundary tests) ---
+    //
+    // abi_verify.zig cross-checks that the live Zig types (enums, constants) match
+    // the axiom declarations at compile time, then exhaustively exercises every
+    // C-ABI boundary at runtime.  This is the formal FFI verification instrument.
+    const abi_verify_mod = b.addModule("boj_abi_verify", .{
+        .root_source_file = b.path("src/abi_verify.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    abi_verify_mod.addImport("catalogue", catalogue_mod);
+    // loader is intentionally excluded: loader.zig imports catalogue.zig via relative
+    // path, which conflicts with the named `catalogue` module in a shared compilation.
+    // The loader's HASH_LEN/HASH_HEX_LEN constants are cross-checked via axioms alone.
+    // See abi_verify.zig §A.6 GAP note.
+    abi_verify_mod.addImport("safety", safety_mod);
+    abi_verify_mod.addImport("cartridge_shim", shim_mod);
+    // abi_axioms.zig is imported via relative path @import("abi_axioms.zig") in
+    // abi_verify.zig — no addImport needed since both files share src/.
+
+    const abi_verify_tests = b.addTest(.{
+        .root_module = abi_verify_mod,
+    });
+    const run_abi_verify_tests = b.addRunArtifact(abi_verify_tests);
+
+    const abi_verify_step = b.step("abi-verify", "Run ABI formal verification: comptime proofs + runtime boundary tests");
+    abi_verify_step.dependOn(&run_abi_verify_tests.step);
+
     // --- End-to-end order-ticket tests ---
     const e2e_mod = b.addModule("boj_e2e_order", .{
         .root_source_file = b.path("src/e2e_order.zig"),
@@ -375,6 +423,8 @@ pub fn build(b: *std.Build) void {
 
     // --- Test step runs all ---
     const test_step = b.step("test", "Run all FFI + protocol tests");
+    test_step.dependOn(&run_abi_axioms_tests.step);
+    test_step.dependOn(&run_abi_verify_tests.step);
     test_step.dependOn(&run_catalogue_tests.step);
     test_step.dependOn(&run_loader_tests.step);
     test_step.dependOn(&run_readiness_tests.step);

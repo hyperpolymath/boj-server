@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: CC-BY-SA-4.0
 // Copyright (c) Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
 // SPDX-FileCopyrightText: 2025-2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
 
@@ -334,7 +334,7 @@ BoJ servers are community-hosted, like Tor or IPFS:
 * *Tampered nodes*: excluded from the community network, but can still run locally
 * *Gossip protocol*: nodes discover each other via IPv6 gossip (Byzantine fault tolerant)
 * *Load-aware routing*: requests go to healthy nodes (under 80% capacity) — _not yet wired_
-* *PMPL provenance*: the license's cryptographic provenance requirements ARE the attestation
+* *Cryptographic provenance*: signed lineage metadata complements the hash attestation
 
 === Seed Nodes (Day 1)
 

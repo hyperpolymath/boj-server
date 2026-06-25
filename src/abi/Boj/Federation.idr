@@ -13,7 +13,7 @@
 |||   - Gossip protocol for node discovery (Byzantine fault tolerant)
 |||   - Hash attestation ties binary to canonical build
 |||   - Load-aware routing sends requests to healthy nodes
-|||   - PMPL provenance metadata is the legal expression of attestation
+|||   - Signed provenance metadata complements the hash attestation
 module Boj.Federation
 
 import Data.List
