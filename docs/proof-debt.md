@@ -1,5 +1,5 @@
 <!--
-SPDX-License-Identifier: MPL-2.0
+SPDX-License-Identifier: CC-BY-SA-4.0
 Copyright (c) Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
 -->
 # Proof Debt — boj-server
@@ -7,11 +7,13 @@ Copyright (c) Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
 **Schema**: [hyperpolymath/standards `TRUSTED-BASE-REDUCTION-POLICY.adoc`](https://github.com/hyperpolymath/standards/blob/main/docs/TRUSTED-BASE-REDUCTION-POLICY.adoc) (standards#203).
 
 boj-server is the **reference implementation** for the estate trusted-base
-reduction policy (cited as such in standards#203). The 5 class-J axioms
+reduction policy (cited as such in standards#203). The 4 class-J axioms
 this repo isolates in `src/abi/Boj/SafetyLemmas.idr` are the canonical
 example of disposition §(c) NECESSARY AXIOM, and the
 `docs/backend-assurance/` per-axiom files are the canonical example of
-external validation under §(b)-style discipline.
+external validation under §(b)-style discipline. (A 5th former axiom,
+`charEqSym`, was discharged to a constructive theorem on 2026-06-24 — the
+first §(a) entry below.)
 
 This `docs/proof-debt.md` is a thin schema-aligned index. The substantive
 content lives in:
@@ -26,13 +28,22 @@ content lives in:
 
 ## (a) DISCHARGED in this repo
 
-*(None — the 5 class-J axioms are genuinely unavoidable in Idris2 0.8.0.
-Items would move here if a future Idris2 version exposes in-language
-soundness principles for `Char` / `String` primitives.)*
+- **`charEqSym`** : `(x, y : Char) -> (x == y) = (y == x)` — *discharged
+  2026-06-24*. Formerly a class-J axiom; now **derived constructively from
+  `charEqSound`** in `src/abi/Boj/SafetyLemmas.idr`. Intuition: a `True`
+  result forces propositional equality via `charEqSound`, collapsing both
+  sides to the same expression; a mixed `True`/`False` split is impossible
+  under soundness. Verified by `idris2 --typecheck boj.ipkg` (Idris2 0.8.0,
+  17/17 modules clean). This is the first §(a) discharge and the reason the
+  sanctioned count dropped **5 → 4**.
+
+The remaining 4 class-J axioms are genuinely unavoidable in Idris2 0.8.0;
+they would move here only if a future Idris2 exposes in-language soundness
+principles for `Char` / `String` primitives.
 
 ## (b) BUDGETED — tested with a refutation budget
 
-The 5 axioms below are documented under §(c) (NECESSARY) rather than §(b)
+The 4 axioms below are documented under §(c) (NECESSARY) rather than §(b)
 (BUDGETED) because they cannot be discharged in-language. **However**,
 each one is *externally validated* via the
 [backend-assurance harness](./backend-assurance/) — property tests
@@ -45,19 +56,19 @@ extraction-boundary code.
 
 ## (c) NECESSARY AXIOM
 
-All 5 are class-J ("genuinely unavoidable") per
-[PROOF-NEEDS.md §Axiom Audit](../PROOF-NEEDS.md) (2026-05-18). Each
-reduces to the same root cause: Idris2 0.8.0 treats `Char` and `String`
-as opaque primitive types whose operations are foreign functions with no
-constructors and no induction principle.
+All 4 are class-J ("genuinely unavoidable") per
+[PROOF-NEEDS.md §Axiom Audit](../PROOF-NEEDS.md). Each reduces to the same
+root cause: Idris2 0.8.0 treats `Char` and `String` as opaque primitive
+types whose operations are foreign functions with no constructors and no
+induction principle. (`charEqSym` was a 5th entry here until 2026-06-24,
+now discharged — see §(a).)
 
-| # | Site | Signature | External validation |
+| # | Site (`SafetyLemmas.idr`) | Signature | External validation |
 |---|------|-----------|---------------------|
-| 1 | `src/abi/Boj/SafetyLemmas.idr:60` | `charEqSound : (c1,c2 : Char) -> c1 == c2 = True -> c1 = c2` | [`docs/backend-assurance/prim__eqChar.md`](./backend-assurance/prim__eqChar.md) |
-| 2 | `src/abi/Boj/SafetyLemmas.idr:67` | `charEqSym : (x,y : Char) -> (x == y) = (y == x)` | [`docs/backend-assurance/prim__eqChar.md`](./backend-assurance/prim__eqChar.md) |
-| 3 | `src/abi/Boj/SafetyLemmas.idr:218` | `unpackLength : length (unpack s) = length s` | [`docs/backend-assurance/prim__strToCharList.md`](./backend-assurance/prim__strToCharList.md) |
-| 4 | `src/abi/Boj/SafetyLemmas.idr:226` | `appendLengthSum : length (s ++ t) = length s + length t` | [`docs/backend-assurance/prim__strAppend.md`](./backend-assurance/prim__strAppend.md) |
-| 5 | `src/abi/Boj/SafetyLemmas.idr:233` | `substrLengthBound : LTE (length (substr start len s)) len` | [`docs/backend-assurance/prim__strSubstr.md`](./backend-assurance/prim__strSubstr.md) |
+| 1 | `charEqSound` | `(c1,c2 : Char) -> c1 == c2 = True -> c1 = c2` | [`docs/backend-assurance/prim__eqChar.md`](./backend-assurance/prim__eqChar.md) |
+| 2 | `unpackLength` | `length (unpack s) = length s` | [`docs/backend-assurance/prim__strToCharList.md`](./backend-assurance/prim__strToCharList.md) |
+| 3 | `appendLengthSum` | `length (s ++ t) = length s + length t` | [`docs/backend-assurance/prim__strAppend.md`](./backend-assurance/prim__strAppend.md) |
+| 4 | `substrLengthBound` | `LTE (length (substr start len s)) len` | [`docs/backend-assurance/prim__strSubstr.md`](./backend-assurance/prim__strSubstr.md) |
 
 Citation: see standards#203 §"Precedent" — boj-server's harness is the
 reference implementation the estate trusted-base policy directs other
@@ -65,14 +76,16 @@ proof-bearing repos to adopt.
 
 ## (d) DEBT — actively to be closed
 
-*(None in the Idris2 ABI layer. The 5 class-J axioms above are §(c),
+*(None in the Idris2 ABI layer. The 4 class-J axioms above are §(c),
 not §(d); they are not "to be closed" — they are load-bearing
-assumptions about the trusted base.)*
+assumptions about the trusted base. `charEqSym` moved §(c) → §(a) on
+2026-06-24, not via Idris2 change but because it was found to be derivable
+from `charEqSound`.)*
 
 Future work that would generate §(d) entries:
 
 - Migration to a future Idris2 version exposing in-language soundness
-  principles for primitive types — would let entries #1–#5 move from
+  principles for primitive types — would let entries #1–#4 move from
   §(c) → §(a) via discharge.
 - New `believe_me` introduced in non-SafetyLemmas.idr files — these
   must be classified as §(a)/§(b)/§(c) before merge or land here as

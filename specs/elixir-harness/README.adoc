@@ -1,0 +1,276 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+// Copyright (c) Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+= Elixir Harness — Formal Models (TLA+)
+:toc: macro
+
+TLA+ models of the concurrency-bearing parts of the Elixir REST harness
+(`elixir/lib/boj_rest/`). These close the "the Elixir harness has no formal
+coverage" gap on the *proof axis*: the Idris2 ABI proofs stop at the Zig FFI
+boundary, and the BEAM-side process/supervision protocol is otherwise covered
+only by ExUnit tests.
+
+[NOTE]
+====
+This is the *formal-proof* axis. It does **not** move the CRG readiness grade
+(that is the empirical/dogfooding axis in `docs/READINESS.adoc`). It closes a
+verification gap, not a maturity one.
+====
+
+== JsWorker.tla — models `BojRest.JsWorker`
+
+Source: `elixir/lib/boj_rest/js_worker.ex`. A `JsWorker` is a GenServer wrapping
+one persistent Deno OS process (a `Port`). It *pipelines* several concurrent
+requests to that one process, keeping a `pending` map of `id -> {caller, timer}`;
+replies are matched by `id`. Each request carries a 30 s timeout. If the Deno
+process exits, all pending callers are replied `:worker_crashed` and the
+GenServer `:stop`s so the `:one_for_one` pool Supervisor restarts it.
+
+=== Abstraction
+
+* Requests are opaque ids (the `Requests` constant).
+* The Deno process is a nondeterministic oracle: for any pending request it may
+  respond ok, respond error, stay silent (so the timer fires), or crash.
+* Out of scope: JSON encoding, the HTTP layer, and the Zig FFI — other layers
+  (the FFI is item 3's territory).
+
+=== Code → model mapping
+
+[cols="1,1",options="header"]
+|===
+| `js_worker.ex` | model action
+
+| `handle_call({:invoke,...})` — adds to `pending`, arms timer | `Arrive(r)`
+| `dispatch_response`, status 2xx / non-2xx (`Map.pop` + `GenServer.reply`) | `RespondOk(r)` / `RespondErr(r)`
+| `handle_info({:timeout, id})` | `Timeout(r)`
+| `handle_info({port,{:exit_status,_}})` — reply-all pending, `:stop` | `Crash`
+| `:one_for_one` restart with a fresh Deno process | `Restart`
+|===
+
+The `Map.pop` rule — *whoever pops the id first replies; the loser sees `nil`* —
+is modelled by every delivering action requiring `status[r] = "pending"` and
+atomically moving it to `"done"`, which disables the racing actions. (In the
+real code an already-queued `{:timeout,id}` message can still be delivered after
+`Process.cancel_timer`, but its `Map.pop` returns `nil`, i.e. a no-op — exactly
+the disabled action here.)
+
+=== Properties verified (TLC, `Requests = {r1, r2, r3}`)
+
+Safety invariants:
+
+* `ReplyOnce` — no caller is ever replied twice (no double `GenServer.reply`),
+  under *every* interleaving of response / timeout / crash. **This is the
+  headline result.**
+* `Consistent` — pending ⟺ no reply yet; done ⟺ exactly one reply.
+* `NoPendingWhileDown` — `Crash` clears `pending` atomically, so no stale
+  message can be replied after `:stop`.
+
+Liveness:
+
+* `EventuallyReplied` — every request that enters the worker eventually gets a
+  reply; the 30 s timer guarantees termination even if Deno hangs forever.
+  Fairness: weak fairness on each request's `Timeout` and on `Restart`.
+
+Result: **No error found** — 341 distinct states, search depth 8.
+
+=== Non-vacuity (sanity controls)
+
+`ReachOk`, `ReachTimeout`, `ReachCrashed` (in `JsWorker.tla`, *not* in
+`JsWorker.cfg`) each assert a terminal reply kind is never reached. All three
+are *refuted* by TLC with short witness traces, proving the ok / timeout /
+crashed outcomes are genuinely reachable and the invariants are not passing
+vacuously.
+
+== JsWorkerPool.tla — models `BojRest.JsWorkerPool`
+
+Source: `elixir/lib/boj_rest/js_worker_pool.ex` + `js_worker.ex`.
+A `JsWorkerPool` is a `:one_for_one` Supervisor over N `JsWorker` GenServers
+(default 5), each wrapping a persistent Deno OS process.  The pool dispatches
+via `:erlang.phash2` (consistent hash): the same `mod_js_path` always routes to
+the same slot, maximising Deno module-cache hits.  If the hashed slot is down,
+the pool falls back to `JsInvoker` (fork-per-call), which always terminates.
+
+This model *composes* with `JsWorker.tla`: it re-uses the same
+`status`/`reply`/`replyCount` variables but lifts them to N workers, adding
+the `assigned` and `wup` variables for pool routing and per-worker liveness.
+
+=== Abstraction
+
+* `Requests` are opaque ids; `Workers` is the set of pool slots.
+* `Route \in [Requests -> Workers]` is a constant (the `phash2` function, fixed
+  at model-check time — routing does not change at runtime).
+* Each Deno process is a nondeterministic oracle (ok / jsErr / silent / crash).
+* `ArriveFallback` is modelled as atomic: `JsInvoker` always terminates, so its
+  internal state is not elaborated here.
+
+=== Code → model mapping
+
+[cols="1,1",options="header"]
+|===
+| `js_worker_pool.ex` / `js_worker.ex` | model action
+
+| `JsWorkerPool.invoke/4` → `pick_worker/1` returns a pid → `JsWorker.handle_call({:invoke,...})`
+| `ArrivePool(r)`
+
+| `pick_worker/1` returns `nil` → `JsInvoker.invoke/4` (fork-per-call)
+| `ArriveFallback(r)`
+
+| `dispatch_response/2`, status 2xx / non-2xx (`Map.pop` + `GenServer.reply`)
+| `RespondOk(r)` / `RespondErr(r)`
+
+| `handle_info({:timeout, id})`
+| `Timeout(r)`
+
+| `handle_info({port,{:exit_status,_}})` — reply-all pending at *this* worker, `:stop`
+| `Crash(w)`
+
+| `:one_for_one` restart — only worker `w`, others unaffected
+| `Restart(w)`
+|===
+
+=== Properties verified (TLC, 2 workers, 3 requests)
+
+Config: `Requests = {r1, r2, r3}`, `Workers = {w0, w1}`,
+`Route = [r1 |-> w0, r2 |-> w1, r3 |-> w0]`.
+The `Route` choice is deliberate: r1 and r3 share slot w0, while r2 is at w1.
+A `Crash(w0)` terminates r1 and r3 but not r2 — the critical crash-isolation
+scenario.
+
+Safety invariants:
+
+* `ReplyOnce` — no caller is ever replied twice, across all N workers and
+  under every interleaving of response / timeout / crash at any slot.
+* `Consistent` — pending ⟺ no reply yet; done ⟺ exactly one reply.
+* `NoPendingWhileDown` — `Crash(w)` atomically clears all pending requests at w,
+  so no stale message can be delivered after `:stop`.
+* `RouteConsistency` — a request in-flight at a pool slot is always at
+  `Route[r]`, not a different slot.  Enforces the `phash2` determinism invariant.
+
+Liveness:
+
+* `EventuallyReplied` — every pending request eventually terminates (ok / jsErr
+  / timeout / crashed).  The 30 s `Timeout` fairness condition guarantees this
+  even if Deno hangs; `Restart` fairness ensures crashed slots come back.
+
+=== Non-vacuity (sanity controls)
+
+`ReachOk`, `ReachTimeout`, `ReachCrashed`, `ReachFallback` (in
+`JsWorkerPool.tla`, *not* in `JsWorkerPool.cfg`) each assert a terminal reply
+kind is never reached.  All four are *refuted* by TLC with short witness traces,
+proving every outcome is genuinely reachable and the invariants are not passing
+vacuously.  `ReachFallback` is specific to the pool model: it witnesses the
+path where a slot is down and the request is served by `JsInvoker`.
+
+== Running
+
+[source,bash]
+----
+# tla2tools.jar: https://github.com/tlaplus/tlaplus/releases  (needs a JRE)
+
+# Single-worker model
+java -cp tla2tools.jar tlc2.TLC JsWorker.tla
+
+# Pool model (2 workers, 3 requests)
+java -cp tla2tools.jar tlc2.TLC JsWorkerPool.tla
+
+# Sanity controls for JsWorker — each EXPECTED to report "Invariant ... is violated"
+for inv in ReachOk ReachTimeout ReachCrashed; do
+  printf 'CONSTANTS Requests = {r1, r2, r3}\nSPECIFICATION Spec\nINVARIANT %s\n' "$inv" > /tmp/ctrl.cfg
+  java -cp tla2tools.jar tlc2.TLC -config /tmp/ctrl.cfg JsWorker.tla
+done
+
+# Sanity controls for JsWorkerPool — each EXPECTED to report "Invariant ... is violated"
+for inv in ReachOk ReachTimeout ReachCrashed ReachFallback; do
+  printf 'CONSTANTS\n  Requests = {r1, r2, r3}\n  Workers  = {w0, w1}\n  Route    = [r1 |-> w0, r2 |-> w1, r3 |-> w0]\nSPECIFICATION Spec\nINVARIANT %s\n' "$inv" > /tmp/ctrl.cfg
+  java -cp tla2tools.jar tlc2.TLC -config /tmp/ctrl.cfg JsWorkerPool.tla
+done
+
+# Sanity controls for Invoker — each EXPECTED to report "Invariant ... is violated"
+for inv in ReachOk ReachCliMissing ReachCliCrashed ReachArgs ReachOpen ReachMissingSym ReachInitFailed; do
+  printf 'CONSTANTS Requests = {r1, r2, r3}\nSPECIFICATION Spec\nINVARIANT %s\n' "$inv" > /tmp/ctrl.cfg
+  java -cp tla2tools.jar tlc2.TLC -config /tmp/ctrl.cfg Invoker.tla
+done
+----
+
+`JsWorker.tla` verified with TLC 2026.05.26 (tla2tools) on OpenJDK 21:
+341 distinct states, search depth 8.
+
+== Invoker.tla — models `BojRest.Invoker`
+
+Source: `elixir/lib/boj_rest/invoker.ex`.
+`Invoker` is a *stateless, synchronous* dispatcher: every call either
+short-circuits immediately (CLI binary not found → `:cli_missing`) or blocks
+on `System.cmd/3` until the `boj-invoke` OS subprocess exits.  There is no
+GenServer, no pool, and no per-invocation timeout in the Phase 2 implementation.
+
+Because `System.cmd` is synchronous and each invocation spawns its own
+subprocess, there is **no shared mutable state** between concurrent calls.
+
+=== Abstraction
+
+* Requests are opaque ids.
+* The `boj-invoke` subprocess is a nondeterministic oracle: it may exit with
+  any of the documented exit codes, or produce unparseable JSON on exit 0.
+* The CLI-missing short-circuit (`cli_path() == nil`) is modelled as
+  `CliMissing(r)`, which resolves directly from `"new"` without spawning.
+* Out of scope: JSON encoding, the HTTP layer, and the Zig FFI internals.
+
+=== Code → model mapping
+
+[cols="1,1",options="header"]
+|===
+| `invoker.ex` | model action
+
+| `Invoker.invoke/4` → `cli_path()` returns a path → `System.cmd` blocks
+| `Invoke(r)` (new → running)
+
+| `cli_path()` returns `nil` → immediate `{:error, :cli_missing}`
+| `CliMissing(r)` (new → done)
+
+| `System.cmd` returns `{stdout, 0}` + `Jason.decode` succeeds
+| `RespondOk(r)`
+
+| `System.cmd` returns `{stdout, 0}` + `Jason.decode` fails, OR other exit
+| `RespondCliCrashed(r)`
+
+| exit 2 / 3 / 4 / 5
+| `RespondArgs` / `RespondOpen` / `RespondMissingSym` / `RespondInitFailed`
+|===
+
+=== Properties verified (TLC, `Requests = {r1, r2, r3}`)
+
+Safety invariants:
+
+* `DoneOnce` — each invocation resolves at most once.  Since `System.cmd` is
+  blocking and synchronous, the subprocess can only exit once; this invariant
+  confirms no race condition can deliver two results for the same call.
+* `Consistent` — running ⟺ no result yet; done ⟺ exactly one result.
+
+Liveness (tagged `[ASSUMED]` — see §"Known gaps"):
+
+* `EventuallyDone` — every running invocation eventually resolves.
+  Requires the subprocess to exit on its own; the Phase 2 code has no timeout.
+
+=== Non-vacuity (sanity controls)
+
+All seven result kinds (`ReachOk`, `ReachCliMissing`, `ReachCliCrashed`,
+`ReachArgs`, `ReachOpen`, `ReachMissingSym`, `ReachInitFailed`) are *refuted*
+by TLC with short witness traces, proving every exit-code branch is reachable
+and the invariants are not passing vacuously.
+
+=== Known gaps
+
+[ASSUMED] *No per-invocation timeout.*  `System.cmd` blocks indefinitely if
+the `boj-invoke` subprocess hangs.  ADR-0005 specifies a 5 s default for the
+future GenServer pool; the Phase 2 skeleton relies on the outer Cowboy
+connection timeout as the de-facto bound.  `EventuallyDone` therefore rests on
+the assumption that the subprocess exits on its own.
+
+[FUTURE] *Invoker pool (ADR-0005 Phase 3).*  Once the GenServer pool lands,
+model its checkout/checkin FSM and backpressure — the interesting state machine
+is in the pool, not in the stateless Phase 2 skeleton.
+
+== Not yet modelled (future work)
+
+* **`Invoker` pool** — the ADR-0005 GenServer pool is not yet implemented.
+  Model checkout/backpressure when it lands (waits on ADR-0006 + reference
+  cartridge).

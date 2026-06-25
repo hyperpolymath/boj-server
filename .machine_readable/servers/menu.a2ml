@@ -344,7 +344,7 @@
 # ═══════════════════════════════════════════════════════════════════════════
 
 @attestation:
-  format    = "PMPL-provenance-v1"
+  format    = "boj-provenance-v1"
   algorithm = "Ed25519+Dilithium5"
   signature = "PLACEHOLDER"
   timestamp = "2026-03-08T00:00:00Z"

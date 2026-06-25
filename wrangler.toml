@@ -1,0 +1,18 @@
+# SPDX-License-Identifier: MPL-2.0
+# Cloudflare Workers static-asset configuration for boj-server.net.
+# Migrated from Pages (pages_build_output_dir) to Workers + Assets format:
+# the old key is not recognised by the Workers build system post-Pages merger.
+#
+# [build] command="" prevents the Git Integration from attempting to install
+# .tool-versions entries (Zig, Elixir, Idris2, Deno) before a non-existent
+# build step. The site/ directory is deployed as-is with no build phase.
+# For the GitHub Actions fallback see .github/workflows/pages-deploy.yml.
+
+name = "boj-server"
+compatibility_date = "2026-06-24"
+
+[assets]
+directory = "site"
+
+[build]
+command = ""

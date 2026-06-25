@@ -1,5 +1,5 @@
 <!--
-SPDX-License-Identifier: MPL-2.0
+SPDX-License-Identifier: CC-BY-SA-4.0
 Copyright (c) Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
 -->
 # Cartridge Template
@@ -90,7 +90,7 @@ The `cartridge.json` file contains metadata about your cartridge. Here's an exam
 The `ffi/cartridge_ffi.zig` file contains the FFI implementation. Here's a basic template:
 
 ```zig
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: CC-BY-SA-4.0
 // Copyright (c) 2026 Your Name <your.email@example.com>
 
 const std = @import("std");
@@ -175,7 +175,7 @@ test "invoke with too-small buffer returns -3 and sets required length" {
 The `ffi/build.zig` file contains the build configuration. Here's a basic template:
 
 ```zig
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: CC-BY-SA-4.0
 
 const std = @import("std");
 

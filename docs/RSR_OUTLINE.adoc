@@ -1,8 +1,8 @@
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: CC-BY-SA-4.0
 // Copyright (c) Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
 = Bundle of Joy Server — RSR Compliance Outline
 
-image:[MPL-2.0-1.0,link="https://github.com/hyperpolymath/palimpsest-license"] image:[Palimpsest,link="https://github.com/hyperpolymath/palimpsest-license"]
+image:https://img.shields.io/badge/License-MPL--2.0-1f6feb[License,link="https://github.com/hyperpolymath/boj-server/blob/main/LICENSE"]
 :toc:
 :sectnums:
 
@@ -129,9 +129,7 @@ boj-server/
 │   └── contractiles/          # Policy enforcement (k9, dust, lust, must, trust)
 ├── .well-known/               # RFC metadata (security.txt, ai.txt, humans.txt)
 ├── .github/workflows/         # 17 mandatory + BoJ-specific
-├── LICENSE                    # MPL-2.0
-├── EXHIBIT-A-ETHICAL-USE.txt  # Ethical use guidelines
-└── EXHIBIT-B-QUANTUM-SAFE.txt # Quantum-safe provenance
+└── LICENSE                    # MPL-2.0
 ----
 
 == RSR Compliance
@@ -197,7 +195,7 @@ All present in `.github/workflows/`:
 
 == License
 
-SPDX-License-Identifier: MPL-2.0
+SPDX-License-Identifier: CC-BY-SA-4.0
 
 == Links
 

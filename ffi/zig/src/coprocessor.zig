@@ -20,6 +20,16 @@
 
 const std = @import("std");
 
+const Mutex = struct {
+    state: std.atomic.Mutex = .unlocked,
+    pub fn lock(m: *Mutex) void {
+        while (!m.state.tryLock()) std.atomic.spinLoopHint();
+    }
+    pub fn unlock(m: *Mutex) void {
+        m.state.unlock();
+    }
+};
+
 extern fn getenv(name: [*:0]const u8) ?[*:0]const u8;
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -99,7 +109,7 @@ var affinities: [MAX_CARTRIDGES]CartridgeAffinity = [_]CartridgeAffinity{.{}} **
 var affinity_count: usize = 0;
 
 var initialised: bool = false;
-var mutex: std.Thread.Mutex = .{};
+var mutex: Mutex = .{};
 
 // ═══════════════════════════════════════════════════════════════════════
 // Detection

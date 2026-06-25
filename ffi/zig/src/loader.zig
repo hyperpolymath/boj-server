@@ -12,6 +12,16 @@
 // Phase 2 implementation.
 
 const std = @import("std");
+
+const Mutex = struct {
+    state: std.atomic.Mutex = .unlocked,
+    pub fn lock(m: *Mutex) void {
+        while (!m.state.tryLock()) std.atomic.spinLoopHint();
+    }
+    pub fn unlock(m: *Mutex) void {
+        m.state.unlock();
+    }
+};
 const crypto = std.crypto;
 const fs = std.fs;
 
@@ -261,7 +271,7 @@ var wasm_count: usize = 0;
 /// INVARIANT: Every C-ABI export function (boj_loader_*, boj_wasm_*) acquires
 /// this mutex at entry. Internal pure functions (hashFile, hashToHex, verifyHash,
 /// validateWasmModule) do NOT acquire it — callers are responsible.
-var mutex: std.Thread.Mutex = .{};
+var mutex: Mutex = .{};
 
 /// Validate that a file is a valid WASM module.
 /// Checks magic bytes and version header.

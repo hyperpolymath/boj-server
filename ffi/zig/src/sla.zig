@@ -15,6 +15,16 @@
 
 const std = @import("std");
 
+const Mutex = struct {
+    state: std.atomic.Mutex = .unlocked,
+    pub fn lock(m: *Mutex) void {
+        while (!m.state.tryLock()) std.atomic.spinLoopHint();
+    }
+    pub fn unlock(m: *Mutex) void {
+        m.state.unlock();
+    }
+};
+
 // ═══════════════════════════════════════════════════════════════════════
 // Constants
 // ═══════════════════════════════════════════════════════════════════════
@@ -76,7 +86,7 @@ var cartridge_slas: [MAX_CARTRIDGES]CartridgeSla = [_]CartridgeSla{.{}} ** MAX_C
 var sla_count: usize = 0;
 var system_sla: SystemSla = .{};
 var initialised: bool = false;
-var mutex: std.Thread.Mutex = .{};
+var mutex: Mutex = .{};
 
 // ═══════════════════════════════════════════════════════════════════════
 // Internal API

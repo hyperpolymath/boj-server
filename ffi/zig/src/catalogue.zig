@@ -12,6 +12,16 @@
 
 const std = @import("std");
 
+const Mutex = struct {
+    state: std.atomic.Mutex = .unlocked,
+    pub fn lock(m: *Mutex) void {
+        while (!m.state.tryLock()) std.atomic.spinLoopHint();
+    }
+    pub fn unlock(m: *Mutex) void {
+        m.state.unlock();
+    }
+};
+
 // ═══════════════════════════════════════════════════════════════════════
 // Types (must match src/abi/Catalogue.idr encodings)
 // ═══════════════════════════════════════════════════════════════════════
@@ -106,7 +116,7 @@ var initialised: bool = false;
 
 /// Thread-safety mutex — protects all global state in this module.
 /// Every C-ABI export acquires this before touching globals.
-var mutex: std.Thread.Mutex = .{};
+var mutex: Mutex = .{};
 
 // ═══════════════════════════════════════════════════════════════════════
 // Lifecycle
