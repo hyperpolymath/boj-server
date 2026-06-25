@@ -43,7 +43,7 @@ defmodule BojRest.MixProject do
 
   defp package do
     [
-      licenses: ["AGPL-3.0-or-later"],
+      licenses: ["MPL-2.0"],
       links: %{"GitHub" => "https://github.com/hyperpolymath/boj-server"}
     ]
   end

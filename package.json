@@ -1,9 +1,15 @@
 {
   "name": "@hyperpolymath/boj-server",
   "version": "0.4.7",
-  "description": "Bundle of Joy (BoJ) MCP Server — cartridge-based DevOps + multi-agent coordination toolkit with 100 domain cartridges (database, container, git, k8s, observability, secrets, IaC, multi-instance AI coord, and more). Formally verified (Idris2) core; MPL-2.0.",
-  "license": "AGPL-3.0-or-later",
+  "description": "Bundle of Joy (BoJ) MCP Server — cartridge-based DevOps + multi-agent coordination toolkit with 125 domain cartridges (database, container, git, k8s, observability, secrets, IaC, multi-instance AI coord, and more). Formally verified (Idris2) core; MPL-2.0.",
+  "license": "MPL-2.0",
   "author": "Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>",
+  "files": [
+    "mcp-bridge/",
+    "README.md",
+    "LICENSE",
+    "NOTICE"
+  ],
   "repository": {
     "type": "git",
     "url": "https://github.com/hyperpolymath/boj-server.git"

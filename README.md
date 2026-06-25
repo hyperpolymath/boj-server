@@ -1,58 +1,74 @@
-[![Sponsor](https://img.shields.io/badge/Sponsor-%E2%9D%A4-pink?logo=github)](https://github.com/sponsors/hyperpolymath)
+<!--
+SPDX-License-Identifier: MPL-2.0
+SPDX-FileCopyrightText: 2025-2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+-->
 
-// SPDX-License-Identifier: MPL-2.0
-// SPDX-FileCopyrightText: 2025-2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+# BoJ Server (Bundle of Joy)
 
-= boj-server
-:toc: preamble
-:icons: font
+**One MCP endpoint for the whole hyperpolymath toolchain** — GitHub, GitLab, Cloudflare, Vercel, Verpex, Gmail, Calendar, browser automation, research, ML, multi-agent coordination, and a large catalogue of pluggable domain cartridges, all reachable through a single zero-dependency stdio bridge.
 
-image:https://img.shields.io/badge/OpenSSF-Best_Practices-green?logo=opensourcesecurity[OpenSSF Best Practices,link="https://www.bestpractices.dev/en/projects/new?repo_url=https://github.com/hyperpolymath/boj-server"]
-image:https://api.scorecard.dev/projects/github.com/hyperpolymath/boj-server/badge[OpenSSF Scorecard,link="https://scorecard.dev/viewer/?uri=github.com/hyperpolymath/boj-server"]
-image:https://img.shields.io/badge/License-MPL--2.0-blue.svg[License: MPL-2.0,link="LICENSE"]
-image:https://glama.ai/mcp/servers/hyperpolymath/boj-server/badge[Glama MCP Server,link="https://glama.ai/mcp/servers/hyperpolymath/boj-server"]
-image:https://api.thegreenwebfoundation.org/greencheckimage/boj-server.net[Green Hosting,link="https://www.thegreenwebfoundation.org/green-web-check/?url=boj-server.net"]
-image:https://archive.softwareheritage.org/badge/origin/https://github.com/hyperpolymath/boj-server/[Software Heritage,link="https://archive.softwareheritage.org/browse/origin/?origin_url=https://github.com/hyperpolymath/boj-server"]
+[![License: MPL-2.0](https://img.shields.io/badge/License-MPL_2.0-blue.svg)](LICENSE)
+[![npm](https://img.shields.io/npm/v/@hyperpolymath/boj-server?logo=npm)](https://www.npmjs.com/package/@hyperpolymath/boj-server)
+[![Glama MCP Server](https://glama.ai/mcp/servers/hyperpolymath/boj-server/badge)](https://glama.ai/mcp/servers/hyperpolymath/boj-server)
+[![OpenSSF Best Practices](https://img.shields.io/badge/OpenSSF-Best_Practices-green?logo=opensourcesecurity)](https://www.bestpractices.dev/en/projects/new?repo_url=https://github.com/hyperpolymath/boj-server)
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/hyperpolymath/boj-server/badge)](https://scorecard.dev/viewer/?uri=github.com/hyperpolymath/boj-server)
+[![Software Heritage](https://archive.softwareheritage.org/badge/origin/https://github.com/hyperpolymath/boj-server/)](https://archive.softwareheritage.org/browse/origin/?origin_url=https://github.com/hyperpolymath/boj-server)
 
-BoJ (Bundle of Joy) is a unified MCP server that consolidates all hyperpolymath tooling into a single endpoint — GitHub, GitLab, Cloudflare, Vercel, Verpex, Gmail, Calendar, browser automation, research, ML, and 115 open-source cartridges.
+> **What it is, honestly:** BoJ exposes **68 MCP tools** today (45 `boj_*` + 23 `coord_*`) over stdio with **zero runtime dependencies**. It *catalogues* 125 domain cartridges, but most of those are an inspectable catalogue, not live services — a cartridge only performs real actions when its backend process is running and you supply the right credentials. The bridge is fully inspectable offline; side-effectful tools return a structured `{error, hint}` until their backend is up. See [Cartridges](#cartridges) for the full story.
 
-== Install
+---
 
-BoJ ships as an MCP server over stdio. Every snippet below uses the published npm package; replace `npx -y @hyperpolymath/boj-server@latest` with one of the following from a local clone:
+## Contents
 
-[source,bash]
-----
-# Preferred — Deno (no install step; fetches imports on first run)
-deno run -A /path/to/boj-server/mcp-bridge/main.js
+- [Features](#features)
+- [Install](#install)
+- [Quickstart](#quickstart)
+- [Capabilities overview](#capabilities-overview)
+- [Cartridges](#cartridges)
+- [Backend](#backend)
+- [Transports](#transports)
+- [Configuration](#configuration)
+- [Security](#security)
+- [License](#license)
+- [Contributing & links](#contributing--links)
 
-# Bun (also zero-install)
-bun /path/to/boj-server/mcp-bridge/main.js
+---
 
-# Node — works, but Deno is the project's documented runtime
-node /path/to/boj-server/mcp-bridge/main.js
-----
+## Features
 
-The bridge has *zero runtime dependencies* (see `package.json`) so no install step is ever required, regardless of runtime.
+- **Unified endpoint** — GitHub/GitLab, Cloudflare/Vercel/Verpex, Gmail/Calendar, Firefox browser automation, CodeSeeker code intelligence, Semantic Scholar research, and Hugging Face ML, all behind one MCP server.
+- **68 MCP tools** — 45 `boj_*` (5 core discovery/dispatch + explicit high-frequency tools) and 23 `coord_*` multi-agent coordination tools.
+- **125-cartridge catalogue** — a single `boj_cartridge_invoke` reaches any catalogued cartridge; explicit `boj_<domain>_<verb>` tools exist for the highest-frequency operations.
+- **Multi-instance AI coordination** — `local-coord-mcp` lets several Claude / Gemini / Codex sessions on one machine discover each other, claim tasks without collision, and run under a master/journeyman/apprentice supervision model.
+- **Zero runtime dependencies** — the bridge runs on Node, Deno, or Bun with no install step.
+- **Inspectable offline** — `boj_health`, `boj_menu`, `boj_cartridges`, and `boj_cartridge_info` answer from an offline manifest so clients can introspect the server without any backend running.
+- **MCP resources & prompts** — 7 `boj://` resources and reusable prompts (`audit-repo`, `convene-cluster`, `deploy-with-dns-ssl`, `summarize-channel`, `triage-issues`, `proof-status`).
+- **Hardened** — per-call rate limiting, size caps, prompt-injection detection with Unicode-confusable normalisation, and error sanitisation (paths, stack traces, and env vars stripped from responses).
+- **Formally verified core** — the coordination ABI is written in Idris2 with discharged proof obligations; remaining axioms are documented, not hidden.
 
-Most cartridges require the BoJ REST backend running on `http://localhost:7700` — see <<Backend>> below.
+---
 
-=== Claude Code (CLI)
+## Install
 
-[source,bash]
-----
+BoJ ships as an MCP server over **stdio**. The published npm package (`@hyperpolymath/boj-server`) has **zero runtime dependencies**, so no install step is ever required regardless of runtime.
+
+> Most cartridges call the BoJ REST backend on `http://localhost:7700`. Without it, the server is still fully inspectable; side-effectful tools return `{error, hint}`. See [Backend](#backend).
+
+### Claude Code (CLI)
+
+```bash
 claude mcp add boj-server -- npx -y @hyperpolymath/boj-server@latest
-----
+```
 
-=== Claude Desktop
+### Claude Desktop
 
 Edit `claude_desktop_config.json`:
 
-* *macOS*: `~/Library/Application Support/Claude/claude_desktop_config.json`
-* *Windows*: `%APPDATA%\Claude\claude_desktop_config.json`
-* *Linux*: `~/.config/Claude/claude_desktop_config.json`
+- **macOS** — `~/Library/Application Support/Claude/claude_desktop_config.json`
+- **Windows** — `%APPDATA%\Claude\claude_desktop_config.json`
+- **Linux** — `~/.config/Claude/claude_desktop_config.json`
 
-[source,json]
-----
+```json
 {
   "mcpServers": {
     "boj-server": {
@@ -62,533 +78,186 @@ Edit `claude_desktop_config.json`:
     }
   }
 }
-----
+```
 
 Restart Claude Desktop after saving.
 
-=== Gemini CLI
-
-This repo ships a `gemini-extension.json` — install it directly:
-
-[source,bash]
-----
-gemini extensions install https://github.com/hyperpolymath/boj-server
-----
-
-Or add to `~/.gemini/settings.json`:
-
-[source,json]
-----
-{
-  "mcpServers": {
-    "boj-server": {
-      "command": "npx",
-      "args": ["-y", "@hyperpolymath/boj-server@latest"],
-      "env": { "BOJ_URL": "http://localhost:7700" }
-    }
-  }
-}
-----
-
-=== GitHub Copilot (VS Code)
-
-VS Code 1.99+ supports MCP servers natively. Add to *workspace* `.vscode/mcp.json`:
-
-[source,json]
-----
-{
-  "servers": {
-    "boj-server": {
-      "type": "stdio",
-      "command": "npx",
-      "args": ["-y", "@hyperpolymath/boj-server@latest"],
-      "env": { "BOJ_URL": "http://localhost:7700" }
-    }
-  }
-}
-----
-
-For *user-level* (all workspaces): Command Palette → `MCP: Add Server` → `Command (stdio)` → paste `npx -y @hyperpolymath/boj-server@latest`. Toggle BoJ on in the Copilot Chat agent picker.
-
-=== Cursor
-
-Workspace: `.cursor/mcp.json`. User-global: `~/.cursor/mcp.json`.
-
-[source,json]
-----
-{
-  "mcpServers": {
-    "boj-server": {
-      "command": "npx",
-      "args": ["-y", "@hyperpolymath/boj-server@latest"],
-      "env": { "BOJ_URL": "http://localhost:7700" }
-    }
-  }
-}
-----
-
-Or use Settings → MCP → *Add new MCP server*.
-
-=== Cline (VS Code extension)
-
-Settings → Cline → MCP Servers → *Edit MCP Settings*:
-
-[source,json]
-----
-{
-  "mcpServers": {
-    "boj-server": {
-      "command": "npx",
-      "args": ["-y", "@hyperpolymath/boj-server@latest"],
-      "env": { "BOJ_URL": "http://localhost:7700" }
-    }
-  }
-}
-----
-
-=== Windsurf (Codeium Cascade)
-
-Edit `~/.codeium/windsurf/mcp_config.json`:
-
-[source,json]
-----
-{
-  "mcpServers": {
-    "boj-server": {
-      "command": "npx",
-      "args": ["-y", "@hyperpolymath/boj-server@latest"],
-      "env": { "BOJ_URL": "http://localhost:7700" }
-    }
-  }
-}
-----
-
-=== Continue.dev
-
-In `~/.continue/config.yaml`:
-
-[source,yaml]
-----
-mcpServers:
-  - name: boj-server
-    command: npx
-    args: ["-y", "@hyperpolymath/boj-server@latest"]
-    env:
-      BOJ_URL: http://localhost:7700
-----
-
-=== Zed
-
-Settings (`~/.config/zed/settings.json`):
-
-[source,json]
-----
-{
-  "context_servers": {
-    "boj-server": {
-      "command": {
-        "path": "npx",
-        "args": ["-y", "@hyperpolymath/boj-server@latest"],
-        "env": { "BOJ_URL": "http://localhost:7700" }
-      }
-    }
-  }
-}
-----
-
-=== Generic stdio (any MCP client)
-
-The minimum spec is `command: npx`, `args: ["-y", "@hyperpolymath/boj-server@latest"]`, transport `stdio`. Optional env: `BOJ_URL` (default `http://localhost:7700`).
-
-This repo's `.mcp.json` is a working reference config.
-
-=== Backend
-
-Most cartridges (GitHub/GitLab/Cloud/ML/Browser/CodeSeeker/etc.) call the BoJ REST API. Two options:
-
-. *Run BoJ locally* — clone this repo and `just run` (see link:docs/quickstarts/USER.adoc[QUICKSTART-USER]). REST API on port 7700.
-. *Inspectable mode only* — without the backend, `boj_health`, `boj_menu`, `boj_cartridges`, and `boj_cartridge_info` still respond from the offline manifest fallback, so MCP clients can introspect the server without running anything else. Side-effectful tools will return `{error, hint}` until the backend is up.
-
-=== Verify
-
-After install, ask the LLM: _"Use the `boj_health` tool."_ You should get `{status: "ok", uptime_s, version}` when the backend is up, or a structured hint when it's offline.
-
-Glama listing: https://glama.ai/mcp/servers/hyperpolymath/boj-server
-
-== Features at a glance
-
-* *GitHub/GitLab* — repos, issues, PRs, code search, mirroring (22 tools)
-* *Cloud* — Cloudflare (DNS, Workers, KV, R2, D1), Vercel (deployments, projects), Verpex (cPanel)
-* *Communication* — Gmail, Google Calendar
-* *Browser* — Firefox automation: navigate, click, type, screenshot, arbitrary JS (7 tools)
-* *Code Intelligence* — CodeSeeker hybrid search + graph RAG
-* *Research* — Semantic Scholar papers, citations, authors
-* *ML* — Hugging Face model / dataset / inference
-* *Local coordination* — `local-coord-mcp` (24 tools): multi-instance AI peer discovery, typed envelopes, claim/heartbeat/watchdog, quarantine + master/journeyman/apprentice supervision, track-record affinity, capability advertisement
-* *Cartridges* — 115 pluggable cartridges across Teranga / Shield / Ayo trust tiers
-
-== Scope
-
-*115 cartridges*, organised across the domains below. Each cartridge is a formally verified Idris2 ABI + Zig FFI + Deno/JS adapter triple, reachable through a single MCP endpoint.
-
-[%collapsible]
-.🔧 Git forges & code hosting — 4 cartridges
-====
-[cols="1,4",options="header"]
-|===
-| Cartridge | Description
-| `github-api-mcp`     | GitHub REST API — repos, issues, PRs, search
-| `gitlab-api-mcp`     | GitLab REST API — projects, issues, MRs
-| `github-actions-mcp` | GitHub Actions — workflows, runs, jobs, artifacts, secret rotation
-| `git-mcp`            | Multi-forge git operations (GitHub, GitLab, Gitea, Bitbucket)
-|===
-
-Bridge-level tools: `boj_github_*` (14), `boj_gitlab_*` (8) — 22 explicit tools. Auth via `GITHUB_TOKEN` / `GITLAB_TOKEN` env vars.
-====
-
-[%collapsible]
-.☁️ Cloud platforms — 10 cartridges
-====
-[cols="1,4",options="header"]
-|===
-| Cartridge | Description
-| `cloud-mcp`        | Multi-cloud session manager (AWS / GCP / Azure / DO / Vercel)
-| `aws-mcp`          | AWS gateway — session-based auth, per-region slots, throttle management
-| `gcp-mcp`          | GCP gateway — project-scoped auth, quota tracking, multi-service routing
-| `cloudflare-mcp`   | Cloudflare v4 — Workers, D1, KV, R2, DNS, zone settings, SSL/TLS
-| `digitalocean-mcp` | DigitalOcean — droplets, volumes, domains, SSH keys, snapshots, databases
-| `hetzner-mcp`      | Hetzner Cloud — servers, volumes, firewalls, networks, snapshots, floating IPs
-| `fly-mcp`          | Fly.io Machines v1 — apps, machines, volumes, secrets, regions, IPs, certs
-| `linode-mcp`       | Linode/Akamai — instances, volumes, domains, NodeBalancers, StackScripts
-| `railway-mcp`      | Railway GraphQL v2 — projects, services, deployments, env, domains, logs
-| `render-mcp`       | Render REST v1 — services, deploys, env groups, custom domains, jobs
-|===
-
-Bridge-level tools: `boj_cloud_cloudflare`, `boj_cloud_vercel`, `boj_cloud_verpex`. Other providers reachable via `boj_cartridge_invoke`.
-====
-
-[%collapsible]
-.🗄 Databases — 12 cartridges
-====
-[cols="1,4",options="header"]
-|===
-| Cartridge | Description
-| `database-mcp`     | Universal SQL/NoSQL gateway across multiple engines
-| `postgresql-mcp`   | PostgreSQL — full transaction support, connection pooling, query lifecycle
-| `mongodb-mcp`      | MongoDB — collection-level CRUD, aggregation pipelines, sessions
-| `redis-mcp`        | Redis — KV, sorted sets, pub/sub, streams, Lua scripting
-| `neo4j-mcp`        | Neo4j — graph database query and write
-| `clickhouse-mcp`   | ClickHouse — columnar queries, bulk inserts, real-time analytics
-| `duckdb-mcp`       | DuckDB — in-process analytics over Parquet/CSV/JSON/Arrow
-| `arango-mcp`       | ArangoDB — AQL queries, multi-model documents, graph traversals
-| `turso-mcp`        | Turso libSQL — edge SQLite, multi-DB, embedded replica sync
-| `supabase-mcp`     | Supabase — Postgres, Auth, Storage, Edge Functions
-| `neon-mcp`         | Neon — serverless Postgres, branch management, query execution
-| `verisimdb-mcp`    | *VeriSimDB* — verified simulation database with formal drift detection
-|===
-====
-
-[%collapsible]
-.📦 Containers, deploy & integrity — 5 cartridges
-====
-[cols="1,4",options="header"]
-|===
-| Cartridge | Description
-| `container-mcp`  | Build / create / start / stop / remove via Podman or Docker
-| `docker-hub-mcp` | Docker Hub — image search, repos, tag listing, manifests
-| `k8s-mcp`        | Kubernetes — namespace-scoped CRUD with lifecycle management
-| `stapeln-mcp`    | Stapeln stack manager — Chainguard-base composable container layers
-| `vordr-mcp`      | Vordr integrity monitor — BLAKE3 tamper-detection on container images
-|===
-====
-
-[%collapsible]
-.🔁 CI/CD & observability — 8 cartridges
-====
-[cols="1,4",options="header"]
-|===
-| Cartridge | Description
-| `buildkite-mcp`  | Buildkite — pipelines, builds, jobs, artifacts
-| `circleci-mcp`   | CircleCI — pipelines, workflows, jobs, artifacts
-| `laminar-mcp`    | Laminar — minimalist CI/CD pipeline management
-| `hypatia-mcp`    | *Hypatia* — neurosymbolic CI security/quality/compliance scanner
-| `observe-mcp`    | Unified observability — metrics, logs, traces
-| `grafana-mcp`    | Grafana — dashboards, panel queries, alert rules, annotations
-| `prometheus-mcp` | Prometheus — PromQL instant + range queries, alerts, targets
-| `sentry-mcp`     | Sentry — issues, events, projects, releases, deployments
-|===
-====
-
-[%collapsible]
-.💬 Communications & messaging — 6 cartridges
-====
-[cols="1,4",options="header"]
-|===
-| Cartridge | Description
-| `comms-mcp`      | *Gmail + Google Calendar* — send, read, search, labels, events, free/busy
-| `slack-mcp`      | Slack — messages, channels, threads, search, users
-| `discord-mcp`    | Discord — messages, channel history, guilds, reactions
-| `telegram-mcp`   | Telegram Bot API — messages, chats, inline queries, updates
-| `matrix-mcp`     | Matrix — messages, room join/leave, history, membership
-| `notifyhub-mcp`  | Unified notify — Email, SMS, WhatsApp, Slack, Telegram, Discord
-|===
-
-Bridge-level tools: `boj_comms_gmail`, `boj_comms_calendar`.
-====
-
-[%collapsible]
-.📚 Productivity & knowledge — 10 cartridges
-====
-[cols="1,4",options="header"]
-|===
-| Cartridge | Description
-| `google-docs-mcp`         | Docs — document retrieval, content, search, headings, comments
-| `google-sheets-mcp`       | Sheets — metadata, cell ranges, named ranges, sheet listing
-| `notion-mcp`              | Notion — pages, databases, blocks
-| `obsidian-mcp`            | Obsidian vault — note search, content, backlinks, tags, graph
-| `linear-mcp`              | Linear — issues, projects, cycles, labels
-| `jira-mcp`                | Jira — projects, issues, sprints, workflows
-| `todoist-mcp`             | Todoist — tasks, projects, completion, labels
-| `airtable-mcp`            | Airtable — bases, table schemas, record CRUD
-| `zotero-mcp`              | Zotero — library search, items, collections, tags
-| `academic-workflow-mcp`   | Academic workflow — Zotero integration, citations, paper review
-|===
-====
-
-[%collapsible]
-.🤖 ML, AI & coordination — 8 cartridges
-====
-[cols="1,4",options="header"]
-|===
-| Cartridge | Description
-| `ml-mcp`                  | *Hugging Face* + others — search, model info, inference, spaces, datasets
-| `claude-ai-mcp`           | Anthropic Messages API — Claude models, token counting, multi-turn
-| `claude-agents-power-mcp` | Specialised AI-agent management for dev teams
-| `model-router-mcp`        | Task classifier — recommends opus/sonnet/haiku per task
-| `echidna-llm-mcp`         | LLM advisor for the ECHIDNA formal-verification engine
-| `agent-mcp`               | OODA-loop agent session enforcer
-| `local-coord-mcp`         | *Multi-instance peer discovery + typed envelopes + supervision* (21 tools)
-| `local-memory-mcp`        | Persistent local memory for Claude, Cursor, Codex (13 tools, no cloud)
-|===
-
-Bridge-level tool: `boj_ml_huggingface`. `coord_*` tools (21) wire through `local-coord-mcp` — see the dedicated section below.
-====
-
-[%collapsible]
-.🌐 Browser & web automation — 2 cartridges
-====
-[cols="1,4",options="header"]
-|===
-| Cartridge | Description
-| `browser-mcp`   | Firefox automation via Marionette — navigate, click, type, screenshot, exec JS
-| `gossamer-mcp`  | Native desktop windows — panel loading, JS bridge
-|===
-
-Bridge-level tools: `boj_browser_*` (7) — navigate, click, type, read_page, screenshot, tabs, execute_js.
-====
-
-[%collapsible]
-.🔍 Code intelligence & research — 5 cartridges
-====
-[cols="1,4",options="header"]
-|===
-| Cartridge | Description
-| `codeseeker-mcp` | *CodeSeeker* — vector + BM25 + path-tier fused via RRF; KG traversal; Graph-RAG
-| `coderag-mcp`    | Enterprise code intelligence — graph-based analysis for AI-assisted dev
-| `research-mcp`   | *Semantic Scholar / OpenAlex* — papers, citations, references, authors
-| `opendatamcp`    | Public dataset access for LLM apps
-| `origenemcp`     | Biomedical platform — 600+ tools/databases (ChEMBL, PubChem, FDA, OpenTargets)
-|===
-
-Bridge-level tools: `boj_codeseeker`, `boj_research`.
-====
-
-[%collapsible]
-.🛠 Developer tooling (LSP/DAP/BSP, languages, registries) — 14 cartridges
-====
-[cols="1,4",options="header"]
-|===
-| Cartridge | Description
-| `lsp-mcp`              | Generic Language Server Protocol 3.17 gateway — spawn any LSP server
-| `dap-mcp`              | Generic Debug Adapter Protocol gateway
-| `bsp-mcp`              | Generic Build Server Protocol 2.x gateway
-| `lang-mcp`             | Multi-language session manager — Eclexia, AffineScript, BetLang, Ephapax
-| `toolchain-mcp`        | Toolchain orchestrator — mint/provision/configure language toolchains
-| `orchestrator-lsp-mcp` | Cross-domain LSP router across all 12 poly-*-lsp servers
-| `affinescript-mcp`     | *AffineScript* — type check, parse, format, lint, compile, hover, definition
-| `typed-wasm-mcp`       | *AffineScript → typed-wasm* at Level 7/10 ownership soundness
-| `npm-registry-mcp`     | npm — search, metadata, versions, downloads, dependency analysis
-| `pypi-mcp`             | PyPI — Python packages, search, metadata, versions, downloads
-| `crates-mcp`           | crates.io — Rust crates, search, metadata, versions, downloads
-| `hackage-mcp`          | Hackage — Haskell packages
-| `hex-mcp`              | Hex.pm — Elixir/Erlang packages
-| `opam-mcp`             | opam — OCaml packages
-|===
-
-Plus `opsm-mcp` (Odds-and-Sods Package Manager) routes search/install/dep-resolution across all of the above.
-====
-
-[%collapsible]
-.🔒 Security & secrets — 7 cartridges
-====
-[cols="1,4",options="header"]
-|===
-| Cartridge | Description
-| `secrets-mcp`       | Secrets management — Vault, SOPS, env-vault
-| `vault-mcp`         | Vault CLI credential broker — execute, list, verify, rotate
-| `sanctify-mcp`      | Sanctify — PHP lint + deviation detection
-| `panic-attack-mcp`  | panic-attacker static analysis — dangerous patterns, banned constructs, drift
-| `vext-mcp`          | Vext — signed-message verification, attestation chains
-| `rokur-mcp`         | Rokur — Svalinn secrets GUI authorisation layer
-| `dns-shield-mcp`    | DNS security — DoQ, DoH, DNSSEC, CAA
-|===
-====
-
-[%collapsible]
-.🏗 Infrastructure-as-code, config & proof — 7 cartridges
-====
-[cols="1,4",options="header"]
-|===
-| Cartridge | Description
-| `iac-mcp`        | Terraform / OpenTofu lifecycle — plan → apply → destroy with state lifecycle
-| `conflow-mcp`    | Conflow — configuration management
-| `bofig-mcp`      | Bofig — evidence graph query for investigative workflows
-| `proof-mcp`      | Proof verification — Lean, Coq, Agda, Isabelle, Idris2, Z3, more
-| `nesy-mcp`       | *Neural-symbolic* harmonisation — symbolic truth overrides neural probability
-| `ephapax-mcp`    | Ephapax — proof-compiler query tools for formal verification
-| `pmpl-mcp`       | PMPL licence chain verification + artefact hashing
-|===
-====
-
-[%collapsible]
-.🌱 Hyperpolymath-native admin & ecosystem — 13 cartridges
-====
-[cols="1,4",options="header"]
-|===
-| Cartridge | Description
-| `boj-health`         | Self-health — status, ping, uptime
-| `fleet-mcp`          | gitbot-fleet gate compliance tracker
-| `reposystem-mcp`     | Reposystem — managed repos, health, mirrors, RSR compliance
-| `007-mcp`            | oo7 agent meta-language — parse/run/trace/build/test/lint
-| `k9iser-mcp`         | K9 contract regeneration (k9iser generate/validate/apply)
-| `idaptik-admin-mcp`  | IDApTIK game server administration
-| `burble-admin-mcp`   | Burble WebRTC server administration
-| `game-admin-mcp`     | Game server admin + configuration drift
-| `aerie-mcp`          | Aerie environment lifecycle manager
-| `hesiod-mcp`         | DNS lookup cartridge
-| `fireflag-mcp`       | Fireflag — extension-to-MCP mapping and discovery
-| `kategoria-mcp`      | Type-theory learning system — classification + learner evaluation
-| `civic-connect-mcp`  | CivicConnect community engagement platform
-|===
-
-Plus `feedback-mcp` (feedback collection + sentiment), `ssg-mcp` (Hugo/Zola/Astro/Casket), `ums-mcp` (Universal Map Specification level editor).
-====
-
-=== Bridge-level tools (41 exposed)
-
-A subset of cartridges have explicit `boj_<domain>_<verb>` tools at the bridge for highest-frequency operations. Everything else is reachable via `boj_cartridge_invoke`:
-
-* *5 core*: `boj_health`, `boj_menu`, `boj_cartridges`, `boj_cartridge_info`, `boj_cartridge_invoke`
-* *3 cloud*: `boj_cloud_verpex`, `boj_cloud_cloudflare`, `boj_cloud_vercel`
-* *2 comms*: `boj_comms_gmail`, `boj_comms_calendar`
-* *1 ML*: `boj_ml_huggingface`
-* *7 browser*: `boj_browser_navigate`, `boj_browser_click`, `boj_browser_type`, `boj_browser_read_page`, `boj_browser_screenshot`, `boj_browser_tabs`, `boj_browser_execute_js`
-* *14 GitHub* + *8 GitLab*
-* *1 CodeSeeker*, *1 research*
-* *21 coord* (see below)
-
-Set `BOJ_TOOL_SCOPE=core` to advertise only the discovery surface; explicit tools remain reachable via `boj_cartridge_invoke` regardless.
-
-== Local-coord-mcp at a glance
-
-Localhost multi-agent bus on `127.0.0.1:7745`. Lets multiple Claude / Gemini / Codex / Vibe sessions on the same machine discover each other, claim tasks without collision, and operate under a supervision model (master approves; journeyman executes; apprentice stays gated).
-
-Highlights:
-
-* *Peer registration* with `client_kind`, `variant` (model id — `opus-4.7`, `flash-2.5`, `leanstral`), capability class/tier/prover-strengths — `coord_register`, `coord_set_variant`, `coord_set_capabilities`, `coord_get_peer_capabilities`.
-* *Typed envelopes* validated at the bridge via Nickel contracts (`coord-messages.ncl`) — `coord_send`, `coord_send_gated`.
-* *Task claims* with role-based watchdog TTL (apprentice 30s / journeyman 5m / master none), heartbeats via `coord_progress`, auto-release + explicit `coord_sweep_watchdog`.
-* *Track-record + reassignment* — `coord_report_outcome`, `coord_get_affinities`, `coord_scan_suggestions` (emits `overclaim` fyi + `drift` warn envelopes on confidence/affinity divergence).
-* *Supervision* — `coord_review`, `coord_approve`, `coord_reject`, `coord_promote_to_master`, `coord_transfer_master`.
-* *Observability* — `coord_health` snapshot of peer/quarantine/claim/reject state.
-
-Formally verified core in Idris2 (`cartridges/local-coord-mcp/abi/LocalCoord/`); Zig FFI; Deno/Node MCP bridge with input hardening (rate limiting, prompt-injection detection with unicode-normalisation, error sanitisation).
-
-=== Parallel agents and git
-
-"Claim tasks without collision" is a *task-level* guarantee, not a git-level one. `coord_claim` ensures two peers never own the same task-id at the same time; it does not lock files, branches, or the working tree. If two journeymen claim _different_ tasks that happen to touch the same file, vanilla git merge conflicts can still occur.
-
-The supported pattern for parallel work is:
-
-* *Branch-per-claim + per-peer worktree.* `just coord-worktree <task-id>` claims the task and provisions an isolated `git worktree` at `../<repo>-worktrees/<task>` on branch `agent/<peer-id>/<task>`, so two journeymen on the same checkout never share a working tree. The recipe is a thin wrapper over `coord-tui`'s shell helper of the same name — both refuse to provision when the claim is refused by the backend.
-* *Advisory path-claims.* `coord_claim_task` accepts an optional `paths` array declaring the working-tree files the claim expects to touch. The bridge keeps an in-memory map of active path-claims and annotates the response with `path_overlap` warnings (segment-aware prefix match) when another active claim covers any of those paths. *Advisory by design*: warnings never block the claim — the Idris2-verified backend remains the source of truth for task ownership, and this layer is the early-warning signal that lets the holder split the task, hand off, or accept the merge cost knowingly.
-* *Master-gated integration.* `coord_approve` is the serialisation point: the master peer reviews, rebases or asks the journeyman to rebase, and merges in a defined order. Two approved branches that conflict are resolved at this step, not in the cartridge.
-* *Drift signal, not lock.* `coord_scan_suggestions` emits `drift` warn envelopes when affinities or confidence diverge — that's an _advisory_ signal to re-route or split a task, not a hard lock against file overlap.
-
-What `local-coord-mcp` _does not_ do today: hard file-range locks, automatic rebase, or conflict resolution. The path-overlap layer is a hint, not a mutex — two journeymen can still both proceed against overlapping files and conflict at merge. Those final steps stay with the master peer (or human integrator), in line with the supervision model. If you need stricter isolation than path-claims + worktrees, partition tasks by directory before issuing them.
-
-=== coord-tui — human interface for local-coord-mcp
-
-`coord-tui` is the companion terminal UI for `local-coord-mcp`. It lives here in `coord-tui/` and also has its own dedicated repository:
-
-https://github.com/hyperpolymath/coord-tui
-
-What it provides beyond the MCP tools themselves:
-
-* *Live dashboard* — Peers and Claims panels in a ratatui TUI, auto-refreshed every 5 s.
-* *Commands sidebar* — always-visible key reference, shell helpers, and `just coord-*` recipes (toggle with `\``).
-* *Window titling* — every terminal tab shows its peer ID automatically.
-* *Shell helpers* — `coord-peers`, `coord-claims`, `coord-claim`, `coord-status`, `coord-whoami` — coordination without opening the TUI.
-* *One-command install* — `bash coord-tui/install.sh` sets up everything on a new machine.
-
-[source,bash]
-----
-# New machine setup
-bash coord-tui/install.sh
-
-# Then open your tools normally — registration and titling are automatic
-claude
-gemini
-vibe
-----
-
-== Glama AAA posture
-
-This server targets Glama's AAA tier. Posture:
-
-* *Inspectable* — `.mcp.json` + root `package.json` `bin` entry + shebang; offline manifest fallback so cloud inspection works without the REST backend (see `mcp-bridge/lib/offline-menu.js`).
-* *Tool Definition Quality* — every tool carries purpose, usage guidance, behavioural transparency (side effects, returns, errors), and parameter semantics with enums, ranges, and patterns. A coherence test enforces a minimum description floor so the server-level score (60% mean + 40% _min_) cannot regress — see `mcp-bridge/tests/dispatch_test.js`.
-* *Server Coherence* — one tool ↔ one verb; consistent `boj_<domain>_<action>` and `coord_<action>` naming; the same test asserts the bridge tool list matches the cartridge manifest so nothing advertised is un-dispatched (or vice versa).
-* *Security* — PR #27 hardening: rate limiting, size caps, prompt-injection detection with unicode-confusable normalisation, error sanitisation (strips paths, stack traces, env vars). SHA-pinned workflow actions.
-* *Formal* — `cartridges/local-coord-mcp/abi/LocalCoord/*.idr` Idris2 ABI + proof obligations (P-01..P-07).
+### npx (any MCP client)
+
+The minimum stdio spec is `command: npx`, `args: ["-y", "@hyperpolymath/boj-server@latest"]`. Optional env: `BOJ_URL` (default `http://localhost:7700`). This works with VS Code / Copilot, Cursor, Cline, Windsurf, Continue.dev, Zed, and the Gemini CLI — point each client's MCP config at that command. This repo's `.mcp.json` is a working reference config.
+
+### Deno / Bun / Node (from a clone)
+
+The bridge entrypoint is `mcp-bridge/main.js` and runs on any of the three runtimes with no install:
+
+```bash
+# Deno (no install step; the project's documented runtime)
+deno run -A /path/to/boj-server/mcp-bridge/main.js
+
+# Bun (zero-install)
+bun /path/to/boj-server/mcp-bridge/main.js
+
+# Node (>= 18)
+node /path/to/boj-server/mcp-bridge/main.js
+```
+
+---
+
+## Quickstart
+
+After install, ask your LLM: *"Use the `boj_health` tool."* You get `{status:"ok", uptime_s, version}` when the backend is up, or a structured hint when it is offline.
+
+To talk to the bridge directly over stdio, send newline-delimited JSON-RPC. Initialize, then list tools:
+
+```bash
+printf '%s\n%s\n' \
+  '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"demo","version":"0"}}}' \
+  '{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}' \
+  | node mcp-bridge/main.js
+```
+
+The `initialize` response reports protocol `2024-11-05` and server `boj-server`; `tools/list` returns **68** tool definitions (45 `boj_*`, 23 `coord_*`), each carrying a full description, JSON-Schema `inputSchema`/`outputSchema`, and MCP behaviour annotations (`readOnlyHint`, `destructiveHint`, `idempotentHint`, `openWorldHint`).
+
+Call a tool:
+
+```jsonc
+{ "jsonrpc": "2.0", "id": 3, "method": "tools/call",
+  "params": { "name": "boj_health", "arguments": {} } }
+```
+
+The server also implements `resources/list` (7 `boj://` resources) and `prompts/list`.
+
+---
+
+## Capabilities overview
+
+The bridge exposes **45 `boj_*` tools** and **23 `coord_*` tools**. A subset of cartridges have explicit `boj_<domain>_<verb>` tools for high-frequency operations; everything catalogued is reachable through `boj_cartridge_invoke`.
+
+| Group | Tools | Examples |
+|---|---|---|
+| **Core discovery / dispatch** | 5 | `boj_health`, `boj_menu`, `boj_cartridges`, `boj_cartridge_info`, `boj_cartridge_invoke` |
+| **GitHub** | 14 | `boj_github_list_repos`, `boj_github_create_issue`, `boj_github_create_pr`, `boj_github_merge_pr`, `boj_github_search_code`, `boj_github_graphql` |
+| **GitLab** | 8 | `boj_gitlab_list_projects`, `boj_gitlab_create_mr`, `boj_gitlab_list_pipelines`, `boj_gitlab_setup_mirror` |
+| **Browser (Firefox)** | 7 | `boj_browser_navigate`, `boj_browser_click`, `boj_browser_type`, `boj_browser_read_page`, `boj_browser_screenshot`, `boj_browser_tabs`, `boj_browser_execute_js` |
+| **Cloud** | 3 | `boj_cloud_cloudflare`, `boj_cloud_vercel`, `boj_cloud_verpex` |
+| **Communications** | 2 | `boj_comms_gmail`, `boj_comms_calendar` |
+| **Research / code intel / ML / search** | 4 | `boj_research`, `boj_codeseeker`, `boj_ml_huggingface`, `boj_search` |
+| **Coordination (`local-coord-mcp`)** | 23 | `coord_register`, `coord_claim_task`, `coord_send`, `coord_review`, `coord_approve`, `coord_health` |
+
+> Set `BOJ_TOOL_SCOPE=core` to advertise only the discovery surface; explicit `boj_<domain>_*` tools remain reachable via `boj_cartridge_invoke` regardless. A CSV of prefixes (e.g. `core,github,browser`) advertises core plus named groups.
+
+### Multi-agent coordination (`coord_*`)
+
+A localhost multi-agent bus (default `127.0.0.1:7745`) lets multiple AI sessions on one machine discover each other, claim tasks without collision, and operate under supervision (master approves; journeyman executes; apprentice stays gated):
+
+- **Peers** — `coord_register`, `coord_list_peers`, `coord_set_variant`, `coord_set_capabilities`, `coord_get_peer_capabilities`.
+- **Typed envelopes** — `coord_send`, `coord_send_gated`, `coord_receive` (Nickel-contract validation, opt-in strict mode).
+- **Task claims** — `coord_claim_task` with role-based watchdog TTL, `coord_progress` heartbeats, `coord_sweep_watchdog`, optional advisory `paths` for `path_overlap` warnings.
+- **Track record** — `coord_report_outcome`, `coord_get_affinities`, `coord_set_declared_affinities`, `coord_scan_suggestions` (emits `overclaim`/`drift` advisory envelopes).
+- **Supervision** — `coord_review`, `coord_review_entry`, `coord_approve`, `coord_reject`, `coord_promote_to_master`, `coord_transfer_master`, plus `coord_status` / `coord_health`.
+
+Task-claim collision-freedom is a **task-level** guarantee, not a git-level lock: two journeymen claiming *different* tasks that touch the same file can still hit a vanilla merge conflict. The supported pattern is branch-per-claim + per-peer worktree, advisory path-claims, and master-gated integration. The companion terminal UI lives in [`coord-tui/`](coord-tui/) and at [hyperpolymath/coord-tui](https://github.com/hyperpolymath/coord-tui).
+
+---
+
+## Cartridges
+
+BoJ catalogues **125 cartridges** across trust tiers (Teranga / Shield / Ayo). Be clear about what that means:
+
+- **Catalogued ≠ live.** `boj_menu` lists the full catalogue, but most cartridges report `available: false`. They are entries describing a capability — its API base URL, auth model (often brokered through `vault-mcp`), and any native FFI path — not a running service.
+- **A cartridge becomes available when** (1) its backend process is running and reachable via the BoJ REST API, and (2) you have supplied the credentials it needs.
+- **Credentials** are typically environment variables (`GITHUB_TOKEN`, `GITLAB_TOKEN`, `CF_API_TOKEN`, OAuth tokens, …) or are brokered by the `vault-mcp` credential cartridge. `boj_cartridge_info <name>` returns the cartridge's manifest, including the exact auth requirement.
+- **Without backend or credentials**, side-effectful tools return a structured `{error, hint}` telling you what's missing — they never silently fail.
+
+> **Number transparency:** **125** is the single source of truth — it is the number of `cartridge.json` manifests under `cartridges/` and what the live `boj_menu` reports. Every packaging file (`package.json`, `jsr.json`, `smithery.yaml`, `ai-plugin.json`, `openapi.yaml`, `CITATION.cff`) is reconciled to it. Of those 125, most are a catalogue entry rather than a live service — see the bullets above.
+
+Catalogued domains include: git forges & code hosting, cloud platforms (Cloudflare, Vercel, AWS, GCP, DigitalOcean, Hetzner, Fly, Linode, Railway, Render), databases (PostgreSQL, MongoDB, Redis, Neo4j, ClickHouse, DuckDB, Turso, Supabase, Neon, …), containers & Kubernetes, CI/CD & observability (Buildkite, CircleCI, Hypatia, Grafana, Prometheus, Sentry), messaging (Slack, Discord, Telegram, Matrix), productivity (Notion, Linear, Jira, Obsidian, Zotero), ML/AI & coordination, browser & web automation, code intelligence & research, developer tooling (LSP/DAP/BSP, language & package registries), security & secrets, IaC & proof systems, and hyperpolymath-native admin cartridges.
+
+---
+
+## Backend
+
+Most cartridges (GitHub/GitLab, cloud, ML, browser, CodeSeeker, etc.) call the BoJ REST API — an **Elixir** service on **`http://localhost:7700`**. Two modes:
+
+1. **Run BoJ locally** — clone this repo and `just run` (see [`docs/quickstarts/USER.adoc`](docs/quickstarts/USER.adoc)). The REST API serves on port `7700`.
+2. **Inspectable mode only** — without the backend, `boj_health`, `boj_menu`, `boj_cartridges`, and `boj_cartridge_info` still respond from the offline manifest, so any MCP client can introspect the server. Side-effectful tools return `{error, hint}` until the backend is up.
+
+> **Note on versions:** when the backend is offline, `boj_health` may report a placeholder backend version (`0.1.0`) from the bundled offline manifest — this is the manifest's hardcoded value, not the npm package version (`0.4.7`). The MCP bridge itself reports `0.4.7` at `initialize`.
+
+The coordination bus (`local-coord-mcp`) is a separate localhost service, default `http://127.0.0.1:7745` (`COORD_BACKEND_URL`).
+
+---
+
+## Transports
+
+Selected with `BOJ_TRANSPORT` (ADR-0013):
+
+| Value | Behaviour |
+|---|---|
+| `stdio` *(default)* | Reads JSON-RPC from stdin, writes to stdout — how Claude Code / Desktop launch the bridge as a subprocess. |
+| `http` | Starts an HTTP+SSE listener on `BOJ_HTTP_PORT` (default `7780`) for remote / Workers / browser deployments. Binds `127.0.0.1` by default; `BOJ_HTTP_AUTH=none` is **refused** on a non-loopback bind. |
+| `both` | Runs stdio and HTTP simultaneously. |
+
+HTTP auth: `none` (loopback only), or `bearer` against `BOJ_HTTP_AUTH_TOKENS`. `mtls`/`oidc` are planned, not yet implemented.
+
+---
+
+## Configuration
+
+Key environment variables (full schema in [`glama.json`](glama.json)):
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `BOJ_URL` | `http://localhost:7700` | Base URL for the BoJ REST backend. |
+| `GITHUB_TOKEN` | — | PAT for `boj_github_*` tools. |
+| `GITLAB_TOKEN` / `GITLAB_URL` | — / `https://gitlab.com` | Token + base URL for `boj_gitlab_*` tools. |
+| `BOJ_TOOL_SCOPE` | `full` | `full`, `core`, or a CSV of domain prefixes (e.g. `core,github,browser`). |
+| `BOJ_RATE_LIMIT` | `60` | Max tool calls per minute. |
+| `BOJ_LOG_LEVEL` | `info` | `debug` / `info` / `warn` / `error` / `silent`. |
+| `BOJ_TRANSPORT` | `stdio` | `stdio` / `http` / `both`. |
+| `BOJ_HTTP_PORT` / `BOJ_HTTP_BIND` | `7780` / `127.0.0.1` | HTTP transport port and bind address. |
+| `BOJ_HTTP_AUTH` / `BOJ_HTTP_AUTH_TOKENS` | `none` / — | HTTP auth mode and accepted bearer tokens. |
+| `COORD_BACKEND_URL` | `http://127.0.0.1:7745` | Coordination bus backend. |
+| `COORD_REQUIRE_NICKEL` | `0` | `1` enables strict Nickel-contract validation on gated envelopes. |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | — | When set, every `tools/call` emits an OTLP/JSON span to `<endpoint>/v1/traces`. |
+
+---
+
+## Security
+
+- **Input hardening** — per-call rate limiting (`BOJ_RATE_LIMIT`), request size caps, and prompt-injection detection with Unicode-confusable normalisation.
+- **Error sanitisation** — responses strip filesystem paths, stack traces, and environment variables before they reach the client.
+- **HTTP safety** — `BOJ_HTTP_AUTH=none` is refused on any non-loopback bind; bearer auth is required for remote exposure.
+- **Credential isolation** — cartridge credentials are supplied per-cartridge (env vars or the `vault-mcp` broker), never embedded in tool definitions.
+- **Formal verification** — the coordination ABI safety layer is written in Idris2 with discharged proof obligations; remaining `believe_me` sites are isolated, documented axioms over the compiler's opaque `Char`/`String` primitives, tracked in [`PROOF-NEEDS.md`](PROOF-NEEDS.md).
+- **Supply chain** — SHA-pinned GitHub Actions; coherence tests assert the advertised tool list matches the cartridge manifest so nothing is advertised-but-undispatched.
 
 Run the coherence tests:
 
-[source,bash]
-----
+```bash
 node --test mcp-bridge/tests/
-----
+```
 
-== Formal verification
+Report vulnerabilities per [`SECURITY.md`](SECURITY.md).
 
-BoJ's ABI safety layer is written in Idris2 with the proof obligations audited in `PROOF-NEEDS.md`. Headline posture (as of the 2026-05-18 audit):
+---
 
-* *All P1/P2 obligations closed.* `SafePromptInjection`, `SafeCORS`, `SafeAPIKey`, `SafeWebSocket`, `SafeHTTP`, `Federation`, `Catalogue`, `CartridgeDispatch` (BJ1), `CredentialIsolation` (BJ2), `APIContractCoverage` (BJ3) — all carry constructive proofs.
-* *Five remaining `believe_me` invocations*, all isolated in `src/abi/Boj/SafetyLemmas.idr`, all class (J) — _principled assumptions_, not unproven debt. They axiomatise the soundness of Idris2 0.8.0's opaque `Char`/`String` primitives (`prim__eqChar`, `prim__strToCharList`, `prim__strAppend`, `prim__strSubstr`) which have no in-language induction principle. The only reduction path is external backend-assurance evidence (Chez/BEAM extraction or property-test harness), not constructive in-language proof.
-* *No unproven obligations remain in the audited surface.* The full per-site rationale and the in-progress cross-cartridge composition question are tracked in `PROOF-NEEDS.md` and `docs/decisions/`.
+## License
 
-== Citing
+- **Code** — [MPL-2.0](LICENSE) (Mozilla Public License 2.0) — the license published to npm and detected by GitHub.
+- **Documentation** — MPL-2.0 today (the repository's REUSE config tags every file MPL-2.0); a **CC-BY-SA-4.0** split for prose is the intended model, with the docs-licence rollout tracked as a follow-up.
 
-If you use BoJ Server in academic work, citation metadata is in link:CITATION.cff[`CITATION.cff`]. GitHub renders a "Cite this repository" button in the sidebar from this file.
+This project **does not** use AGPL; any AGPL string remaining in a build manifest is a packaging regression, not the project's license.
 
-Per-release DOIs are available via Zenodo. To enable them:
+---
 
-. Log in to https://zenodo.org/[zenodo.org] with your GitHub account.
-. Account → GitHub → flip the *boj-server* repository toggle to on.
-. Cut a new GitHub release; Zenodo auto-archives it and mints a DOI.
-. Add the DOI badge to this README.
-. Update the `doi:` field in `CITATION.cff` to match.
+## Contributing & links
 
-== License
+- **Repository** — [github.com/hyperpolymath/boj-server](https://github.com/hyperpolymath/boj-server)
+- **npm** — [`@hyperpolymath/boj-server`](https://www.npmjs.com/package/@hyperpolymath/boj-server)
+- **Glama listing** — [glama.ai/mcp/servers/hyperpolymath/boj-server](https://glama.ai/mcp/servers/hyperpolymath/boj-server)
+- **Coordination TUI** — [hyperpolymath/coord-tui](https://github.com/hyperpolymath/coord-tui)
+- **Contributing** — see [`CONTRIBUTING.md`](CONTRIBUTING.md) and [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md).
+- **Citing** — citation metadata is in [`CITATION.cff`](CITATION.cff); GitHub renders a "Cite this repository" button from it.
 
-MPL-2.0 — see link:LICENSE[LICENSE].
+Maintained by Jonathan D.A. Jewell.
