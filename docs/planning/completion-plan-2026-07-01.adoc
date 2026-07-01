@@ -1,0 +1,257 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+// SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+
+= BoJ completion plan — 2026-07-01 ground-truth refresh
+:toc:
+:toc-placement: preamble
+:icons: font
+
+*Date:* 2026-07-01 ·
+*Companion:* `docs/planning/v1-critical-chain-2026-06-11.adoc` (the ordering
+doctrine — gates G0–G6, chains A–E — which this document *refreshes*, not
+replaces) ·
+*Inputs:* two-agent ground-truth survey of both repos + three-critic
+adversarial verification of this document's own claims (accuracy /
+completeness / sequencing), live CI forensics, and the 2026-06-25→07-01
+remediation history.
+
+Everything in the critical chain still stands. This refresh records (1) what
+moved since 2026-06-11, (2) what a fresh adversarial audit found that the
+chain does not yet carry, and (3) the decision list that currently blocks the
+critical path. Line-level citations were spot-verified on 2026-07-01.
+
+== 1. What moved since the critical chain was written
+
+* *Proof break found and fixed* — duplicate `allTake` in `SafetyLemmas.idr`
+  had the core `boj.ipkg` failing to typecheck; repaired, 105/105 PASS
+  (PR #256). The `typecheck-proofs.sh` exit-code bug is fixed; a Monday cron
+  re-baselines main (PR #257).
+* *Licence + README + counts reconciled on main* — MPL-2.0 everywhere
+  (owner kept idaptik AGPL), real Markdown README, one 125/68/0.4.7 story
+  (PRs #255–#265). *Issue #186 is therefore fixed in fact — verified
+  2026-07-01 — and can be closed* (owner action, see §4).
+* *The registry repo's CI was dark and is now lit* (2026-07-01): seven
+  workflows had *never successfully started* on `boj-server-cartridges`.
+  Three stacked causes, all fixed: invalid `timeout-minutes` on
+  reusable-workflow-call jobs (PR cartridges#70); an `allowed_actions:
+  selected` policy with an *empty* allow-list, start-blocking
+  `mlugg/setup-zig` and `dawidd6/action-send-mail` (repo setting aligned to
+  boj-server: `all` + `sha_pinning_required`); and caller jobs not granting
+  the permissions their called reusable workflows request (PR cartridges#71).
+  Consequence worth stating plainly: *zig adapter/FFI tests had never
+  actually executed in the registry repo*. The Cartridge Schema red was a
+  stale `PINNED-SHA` record only (mirror already matched canonical
+  standards@f5f0506a); re-pinned in #70.
+* *Checkout hygiene* — the duplicate-looking local checkout was a symlink
+  (removed); both local mains reset to origin; diverged never-pushed commits
+  preserved on `rescue/main-local-2026-06-04` (boj-server) and
+  `rescue/main-local-2026-06-11` (cartridges).
+* *boj-server.net changed state* — no longer the June 522/dead-Verpex-IP
+  story: the apex now answers HTTP 200 behind a Cloudflare managed
+  challenge (origin/content unverified), and `api.boj-server.net` does not
+  resolve at all (NXDOMAIN — no record, not a dead one). The Phase/G3–G4
+  DNS work is therefore "create + verify", not "replace".
+
+== 2. New findings the chain does not yet carry (adversarially verified)
+
+=== 2.1 G0 has silently regressed in the registry
+
+The truthful-baseline gate (G0, "DONE 2026-06-05") holds in *boj-server*
+(125 manifests, exactly 1 `available:true` = `feedback-mcp`) but *not* in
+`boj-server-cartridges`: *12 manifests say `available:true`*
+(`textkit`, `lang`, `conflow`, `reposystem`, `kategoria`, `burble-admin`,
+`container`, `local-memory`, `hesiod`, `feedback`, `model-router`,
+`boj-health`). Both `site/catalog.json` files (each repo has one) advertise
+*139 cartridges, all `available:true`*. And the external manifest surface
+(`smithery.yaml`, `jsr.json` — "125 formally verified domain cartridges" —
+`glama.json`, `gemini-extension.json`, `ai-plugin.json`, `openapi.yaml`)
+still carries the pre-G0 claims. JSR is *published* at 0.4.7 alongside npm,
+and `publish.yml` hard-couples the release tag to `jsr.json`'s version — so
+the next release cut breaks unless the manifest sweep happens first.
+
+*Rule to adopt* (chain E2 already states it): one-count-one-place — counts
+are *generated* from the catalogue (the committed-on-main basis), everything
+else links. Regenerate rather than hand-edit; regenerate the bridge's
+offline menu (`mcp-bridge/lib/generate-offline-menu.js`) in the same pass
+and assert it in the surface-drift gate, or it desynchronises the moment the
+catalogs are corrected.
+
+=== 2.2 The two cartridge trees have fully diverged
+
+Not one of the 125 shared cartridges is byte-identical across the repos: the
+registry copies carry an extra `capabilities` block (universe / locked_down
+/ inertness) plus header drift. So O2/A5 ("registry is canonical, boj-server
+becomes a build-time fetch") is *not a no-op copy* — it is a schema
+reconciliation. Raising the stakes: `release.yml:38` *already* builds
+release artifacts from the registry via `scripts/fetch-cartridges.sh`, so
+releases and the runtime currently see *different* cartridge sources. The
+runtime side is one default away (`elixir/lib/boj_rest/application.ex`
+already honours `BOJ_CARTRIDGES_PATH` in its fallback chain) — days of
+wiring, not weeks; the proof-tree canonicalisation (cartridges#36) is the
+week-plus workstream and should be split out so it never gates the flip.
+
+=== 2.3 The Foundry's Configure stage is the load-bearing gap
+
+`tools/foundry/`: Mint / Provision / Harness are real and tested, and the
+pipeline is modelled + typechecked in Idris2 (`proof/Foundry.idr` —
+no-dropped-proofs, least-authority). *Configure is a `say` line* — no stage
+script exists (`foundry.sh` §3). Direct evidence in the registry working
+tree: three freshly-minted, uncommitted cartridges — `notebooks-mcp` and
+`visualization-mcp` stranded with `tools: []` and verbatim gossamer-template
+adapters; `datacloud-mcp` completed *by hand* (bespoke `mod.js`, 2 tools) —
+hand-editing being precisely the workaround Configure exists to eliminate.
+Two stray root `*.minter.toml` duplicates ride along. Chain A1's "fresh mint
+that flips truthfully to available:true" is exactly this: build Configure,
+then finish notebooks/visualization through it as the pilot, and re-run
+hand-made datacloud through the harness as the control.
+
+=== 2.4 Two cross-cutting stories the plan must carry explicitly
+
+* *Auth before exposure* (chain B1, pending since April):
+  `docs/AUTH-DESIGN.adoc` marks HTTP-layer caller auth on the invoke
+  endpoint as an *OPEN GAP*. Wiring `api.boj-server.net` to a deployed
+  backend before B1 lands would put an unauthenticated side-effect executor
+  on the public internet. B1's dual-posture recommendation (loopback default
+  + HCG tier-2 for exposed mode) is the answer; the *decision* is the
+  blocker, not the design.
+* *Credentials before the credentialed waves*: `vault-mcp`, the Elixir
+  `credential_decryptor` + `trust_policy`, and B4's delegation truth
+  ("keyed cartridges are not delegatable to community nodes in v1") must be
+  stated as the credential architecture for Wave-2 cartridges — the
+  truthfulness probe cannot even run against them without it.
+
+=== 2.5 Smaller carried items
+
+* *Deployment-artifact sprawl*: `Containerfile`, fly variant, `k8s/`,
+  `wrangler.toml`, `selur-compose.toml`, `stapeln.toml`, `packaging/` — the
+  O3 hosting decision should name ONE canonical path (chain C1 publishes its
+  images) and mark the rest secondary or delete them, so re-filed #262
+  doesn't add a sixth.
+* *`instant-sync.yml` authenticates with `FARM_DISPATCH_TOKEN`* — a secret
+  the estate identity-rebuild plan intends to DROP; migrate to its successor
+  or disable deliberately, before it silently dies mid-plan.
+* *Residual "115" docs debt* (most was fixed by PR #256; the real remaining
+  sites): `docs/status/ROADMAP.adoc:79–86`, `docs/READINESS.adoc:179,182`,
+  `docs/architecture/README.adoc:178,179,277`,
+  `docs/decisions/0007…:19`, `0008…:152`. Plus chain E3's
+  `FUTURE_PLANS.adoc` deletion.
+* *Registry mod.js census*: ~125 of 140 registry cartridges have adapters;
+  14 are canonical-only manifests (per its README); boj-server's 125 split
+  is 1 ready / 109 catalogued / 10 stub / 5 ffi_only.
+* *Duplicate mint tooling*: `tools/cartridge-minter` coexists with the
+  Foundry (plus three one-off batch-fix scripts) — declare the Foundry the
+  sole mint path when Configure lands; keep `validate-cartridges` as a gate
+  input.
+* *`.machine_readable` naming*: the estate mandate renames `6a2` →
+  `descriptiles`; fold into #202's layout move rather than moving it twice.
+* *#214 (`secrets-mcp` stub + insecure GraphQL dispatch)* is
+  security-flagged and independent of backend/Foundry — pull it forward
+  into the immediate window; do not queue it behind Waves.
+
+== 3. Refreshed sequencing (docked into the chain)
+
+[cols="1,4,2",options="header"]
+|===
+| Window | Work | Docks at
+
+| Now (days)
+| Truth reconvergence: 12→probe-judged availability flags in the registry;
+  regenerate both `site/catalog.json` + offline-menu from the catalogue;
+  external-manifest sweep (smithery/jsr/glama/gemini/ai-plugin/openapi);
+  residual 115 sites; delete FUTURE_PLANS; commit-or-discard the three
+  scaffolds' *manifests* (code completion waits for Configure); remove stray
+  minter.tomls; fix #214; verify the two CI-fix PRs hold (zig-test's first
+  real run may surface real findings — that is the point).
+| G0 re-established, E2/E3
+
+| Next (after O2; ~days for the flip)
+| Registry-canonical cut-over: schema reconciliation (capabilities block),
+  flip the runtime default to the registry path, embedded set becomes
+  derived cache; #36 proof canonicalisation runs as a *parallel* workstream.
+| A5, #183 contract
+
+| Parallel track 1 (after B1 decision; 1–2 weeks)
+| Invoke-auth dual posture + backend deployment on the O3 host behind it;
+  create `api.` DNS; verify what the apex serves; elixir suite green against
+  the deployed config; e2e smoke via feedback-mcp. *v0.9 "honest beta" cut
+  here* (chain E1), not after the Waves.
+| G1, G3, B1–B3
+
+| Parallel track 2 (highest engineering leverage)
+| Build Configure; pilot notebooks/visualization + re-harness datacloud;
+  declare Foundry sole mint path; then required checks
+  (truthfulness/proofs/zig-test/abi-drift) flipped ON in the registry —
+  *before* any batch waves, per chain A4 and inverted from the old
+  Phase-6-last ordering.
+| A1, A4, #200
+
+| Then
+| Golden Dozen (A2) → batch waves (A3/#201) with the credential story
+  stated for Wave 2; G4–G6 community/operator chain as written.
+| G2, G4–G6, v1.0
+
+| Long arcs (post-v1)
+| #87 items 14/11/12 (HTTP transport impl, last axioms, composition proof);
+  AffineScript ports (cartridges#46, #67, #48) — gated on AffineScript v1
+  readiness; obleeny (#198); the autonomous bug-reporting pipeline
+  sub-issues (held on O1/D0); coord-tui v0.2/v0.3 roadmap; federation
+  ADR-0010 upgrade.
+| Chain B5, post-v1
+|===
+
+== 4. Decisions currently blocking the critical path (O-list)
+
+[cols="1,5,3",options="header"]
+|===
+| # | Decision | Recommendation / state
+
+| O1 | feedback-o-tron ↔ feedback-mcp identity (D0: Converge vs Separate);
+      then run the staged issue re-file
+      (`~/.claude/jobs/2fe11a32/tmp/apply-refile.sh --go` — umbrella + clean
+      re-files of #262/#263/#264; held sub-issues D0/C1/C2/C3 wait on this)
+    | Pending since 2026-06-28
+
+| O2 | Registry-canonical cut-over + sync direction (#36, #183, chain A5) —
+      note it is a schema reconciliation, not a copy
+    | Registry canonical; boj-server = derived cache
+
+| O3 | Backend host + ONE canonical deployment artifact + CF token with
+      Pages scope for the domains
+    | mesh-server-1 (exists, Guix-managed); Quadlet/container path per
+      chain C
+
+| O4 | B1 invoke-auth decision (open since April) — v1 dual posture
+    | Approve chain B1 as written
+
+| O5 | The three stranded scaffolds
+    | Finish as the Configure pilot (notebooks/visualization); re-harness
+      hand-made datacloud
+
+| O6 | (a) `panll`-the-host in v1? (b) `panll/` ReScript panel: maintain,
+      freeze, or fold into #67
+    | Chain C already cuts tray+PanLL from v1 support surface — ratify
+
+| O7 | Umoja federation + tray + coord-tui scope for v1
+    | Chain B5/C already scopes these (constellation-not-mesh; coord-tui in,
+      tray out) — ratify
+
+| O8 | External publication acts: close #186 (verified fixed), Glama
+      claim + Sync, MCP Registry listing (#188, after G2 locks), and *N* —
+      how many verified-real cartridges gate v1.0 (chain says the Dozen)
+    | Bundle as one ratification
+
+| O9 | Governance advisory-red stance estate-wide (now visible in the
+      registry repo since its CI lit up)
+    | cicd-squabbler domain; not BoJ-specific
+|===
+
+== 5. Definition of complete (unchanged, restated)
+
+v1.0 = G6: one version number everywhere; every advertised surface
+generated from the probe-judged catalogue; backend deployed behind decided
+auth; registry canonical and fetched on demand; Foundry minting
+proof-carrying cartridges end-to-end; gates enforced as required checks;
+operator + contributor paths proven by a non-maintainer. The standing
+invariant behind all of it: *a cartridge is `available:true` iff the
+truthfulness probe says so — and every count everywhere is derived, not
+declared.*
