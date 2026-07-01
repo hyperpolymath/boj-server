@@ -256,7 +256,7 @@ export async function handleTool(toolName, args) {
     case "gdrive_list_folder": {
       if (!args.folder_id) return { error: "Missing required field: folder_id" };
       return await driveFetch("/files", {
-        q: `'${args.folder_id.replace(/'/g, "\\'")}' in parents and trashed = false`,
+        q: `'${args.folder_id.replace(/\\/g, "\\\\").replace(/'/g, "\\'")}' in parents and trashed = false`,
         orderBy: args.order_by || "folder,name",
         pageSize: Math.min(args.page_size || 50, 1000),
         pageToken: args.page_token,
