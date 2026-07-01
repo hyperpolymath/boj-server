@@ -1,0 +1,23 @@
+# SPDX-License-Identifier: MPL-2.0
+# Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+
+name = "google-drive-mcp"
+description = "Google Drive cartridge — full-query search, export-aware reading, folder listing, metadata, permissions + sharing, copy, create, update, move, rename, reversible trash/restore, revisions, format export, quota, shared drives"
+version = "0.1.0"
+domain = "Productivity"
+protocols = [
+    "MCP",
+    "REST",
+]
+tier = "Ayo"
+backend = "universal"
+generate_panel = true
+
+[auth]
+method = "oauth2"
+credential_source = "vault-mcp"
+fields = ["google_drive_access_token"]
+
+[api]
+base_url = "https://www.googleapis.com/drive/v3"
+local_only = false
