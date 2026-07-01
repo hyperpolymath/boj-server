@@ -1,0 +1,62 @@
+{
+  "$schema": "https://panll.dev/schemas/panel-manifest/v1.json",
+  "spdx": "MPL-2.0",
+  "copyright": "Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath)",
+  "cartridge": "google-drive-mcp",
+  "domain": "Productivity",
+  "version": "0.1.0",
+  "panels": [
+    {
+      "id": "gdrive-connection-status",
+      "title": "Connection Status",
+      "description": "Google Drive session state (Disconnected / Connected / RateLimited / Error)",
+      "type": "status-indicator",
+      "data_source": {
+        "endpoint": "/google-drive/state",
+        "method": "GET",
+        "refresh_interval_ms": 5000
+      },
+      "widgets": [
+        {
+          "type": "state-badge",
+          "field": "state",
+          "states": {
+            "disconnected": { "color": "#95a5a6", "icon": "wifi-off" },
+            "connected": { "color": "#2ecc71", "icon": "wifi" },
+            "rate_limited": { "color": "#f39c12", "icon": "clock" },
+            "error": { "color": "#e74c3c", "icon": "alert-triangle" }
+          }
+        }
+      ]
+    },
+    {
+      "id": "gdrive-storage-quota",
+      "title": "Storage Quota",
+      "description": "Account storage usage vs limit (Drive + Trash split)",
+      "type": "gauge",
+      "data_source": {
+        "endpoint": "/google-drive/quota",
+        "method": "GET",
+        "refresh_interval_ms": 60000
+      },
+      "widgets": [
+        { "type": "progress-gauge", "field": "usage", "max_field": "limit" },
+        { "type": "stat", "field": "usageInDriveTrash", "label": "In bin (recoverable)" }
+      ]
+    },
+    {
+      "id": "gdrive-recent-activity",
+      "title": "Recent Files",
+      "description": "Most recently modified files",
+      "type": "list",
+      "data_source": {
+        "endpoint": "/google-drive/recent",
+        "method": "GET",
+        "refresh_interval_ms": 30000
+      },
+      "widgets": [
+        { "type": "item-list", "fields": ["name", "modifiedTime", "mimeType"], "limit": 10 }
+      ]
+    }
+  ]
+}
