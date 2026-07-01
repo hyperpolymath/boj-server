@@ -1,0 +1,350 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+// SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+
+= BoJ category-leadership programme — beyond completion
+:toc:
+:toc-placement: preamble
+:icons: font
+
+*Date:* 2026-07-01 ·
+*Companions:* `completion-plan-2026-07-01.adoc` (make what exists true and
+working) and `v1-critical-chain-2026-06-11.adoc` (gates G0–G6). This third
+document carries what neither of those does: the security/quality queues, the
+full maintenance taxonomy, the capability war against the wider MCP ecosystem,
+the network build-out, the spec, and the plan to make BoJ the standard others
+are measured against. ·
+*Inputs:* four-auditor sweep (security-quality / capability-parity /
+estate-compliance / portfolio-network) over live GitHub queues, the current +
+upcoming MCP specifications, both repos, wikis, and the running network.
+
+== 0. The two findings that reframe everything
+
+1. *BoJ's protocol layer violates BoJ's own truthfulness doctrine.* The bridge
+   declares `tools.listChanged` and `logging` capabilities it never delivers
+   (`dispatcher.js:302-305`; the emit seam in `http-transport.js:155` is
+   unwired; `notifications/message` is never sent). A server whose brand is a
+   truthfulness CI gate must not overclaim in its own `initialize` handshake.
+   Fix in hours (declare only what is delivered — dropping `logging` is
+   forward-correct, the 2026-07-28 MCP release deprecates it) and then extend
+   the truthfulness gate to probe the *protocol* surface, not just the
+   catalogue.
+2. *The network is a library without a server.* `federation.zig` (3,181 lines)
+   + `sdp.zig` (331 lines) + `Federation.idr` (164-line total model) have
+   *zero consumers*. The `/umoja/peers` route is specified in openapi.yaml,
+   gateway policies, entrypoint bootstrap, tests, and the wiki — and served by
+   no process. The `adapter/zig` build target that `stapeln.toml`'s production
+   pipeline compiles *does not exist in the repo*. All 4 fly.io seed nodes are
+   NXDOMAIN (the v1-critical-chain "4 seed nodes live" claim is stale). One
+   thin Zig REST server wiring the existing exports unblocks the entire
+   stapeln/cerro-torre/Quadlet/seed story at once (~1–2 weeks).
+
+== 1. Ledger — every raised dimension, answered
+
+[cols="2,4,2",options="header"]
+|===
+| Dimension raised | Verified state (2026-07-01) | Where it lands
+
+| GitHub security raisings
+| Dependabot: 0 open alerts both repos — but Scorecard's Vulnerabilities
+  check is 0/10 with *12 known vulns* (RUSTSEC-2026-0190/-0185 + 10 Erlang
+  EEF CVEs) that Dependabot is not surfacing (coverage gap, not cleanliness).
+  Code-scanning: *219 open alerts* (boj-server) + *287* (cartridges), mostly
+  Hypatia (`zig_ptr_cast` 121+128, structural drift, 40 banned-language in
+  the registry). 11 `secret_detected` findings to eyeball (likely
+  placeholders; GitLab-PAT-shaped string in `gitlab_api_mcp_ffi.zig`
+  untriaged). Neither repo has ANY required status checks — every CI signal
+  is advisory. Cartridges lacks `.well-known/security.txt`.
+| §2 programme A
+
+| GitHub quality raisings
+| SonarCloud gates green but: 18+7 vulnerabilities, 10+5 bugs, 289+289 code
+  smells, *0.0% coverage reported* (test/proof results never fed to Sonar),
+  1,176 min debt. Scorecard 7.5 / 6.3 (Code-Review 0 structural for a solo
+  estate — document, don't chase).
+| §2 programme A
+
+| The Glama annoyance
+| Improved since June: listing CLAIMED, License = Permissive (MPL-2.0) — the
+  F is gone. Residual: Quality B (want A), Maintenance C, page still says
+  "115+ cartridges"/"100+ tools" vs honest 125/68. Actions: re-sync after
+  the honesty sweep, fix response-time/maintenance signals (issue triage
+  cadence), republish 0.4.8.
+| §2 A + completion-plan Phase "Now"
+
+| Named-but-unaddressed issues
+| Fully mapped in completion-plan §"Issue map" (boj-server #197–#202, #87,
+  #188, #214, #218, #262–264, #67; cartridges #36/#37/#41/#46/#47/#48/#57).
+  #186 verified fixed, ready to close. Staged refile awaits O1.
+| completion plan
+
+| Corrective maintenance
+| = the completion plan + programme A (queues) — everything that makes
+  current claims true.
+| completion plan, §2 A
+
+| Adaptive maintenance
+| *The big miss until now.* BoJ pins MCP `2024-11-05` — two published
+  revisions behind (2025-06-18, 2025-11-25), and the *2026-07-28 release*
+  (RC locked) ships a stateless core that removes `initialize`/sessions,
+  makes `server/discover` + `.well-known` metadata mandatory, replaces
+  sampling/elicitation with MRTR/Tasks, and deprecates `logging`. The
+  session-centric transport just built in ADR-0013 PR1 is the architecture
+  being deprecated. Also: no Origin-header validation on the HTTP transport
+  (2025-11-25 MUST; DNS-rebinding exposure) — hours to fix, do first.
+| §3 programme B
+
+| Perfective maintenance / code optimisation
+| 289+289 Sonar smells, 1.1% dup, toolset gating absent (68 tools always
+  shipped burns client context — GitHub MCP's toolsets saved ~23k tokens),
+  `structuredContent` never returned despite every tool carrying
+  `outputSchema` (mechanical win), coverage wiring, `.md`→`.adoc` backlog
+  (grew 77→109).
+| §3 B + §5 E
+
+| Coordination cartridge development
+| 23 `coord_*` tools + 944-line Rust coord-tui + live loopback backend
+  (127.0.0.1:7745) exist — but the coordination DSL charter (total-language,
+  Idris2 verifying elaborator → frozen plan, algebraic effects, affine QTT
+  resources, session types) exists *only in agent memory*, 0% built; today's
+  coordination is exactly the unverified imperative layer the DSL was
+  designed to replace.
+| §4 programme C (C-1)
+
+| NeSy + agentic server cartridges
+| agentic=5, nesy=2 cartridges; only local-coord has a live backend;
+  boj-health-mcp is a shell (no mod.js/adapter/abi); 3 cartridges have zero
+  `.idr` despite the "formally verified" pitch; stack-orchestrator-mcp is
+  pure TS (breaks the tri-language architecture; also cartridges#46).
+| §4 C (C-2)
+
+| Cartridge portfolio gaps
+| 10 high-demand absences vs the mid-2026 ecosystem (respecting #87's
+  deliberate exclusions): filesystem (THE reference server), fetch/scrape,
+  Playwright (browser-mcp is Firefox-Marionette only), sandbox code-exec
+  (ADR-0009 written, never built), email, calendar, SQLite + MySQL, workflow
+  automation (n8n-class), Figma, Google Drive — *gdrive is being built in a
+  live branch right now* (`feat/google-drive-mcp-cartridge`).
+| §4 C (C-3)
+
+| Tech debt
+| Deprecated `6a2/` layout in BOTH repos (26+18 file references; estate
+  mandate: migrate on sight); boj-server still has `agent_instructions/`
+  (mandate: `bot_directives`); cartridges root AI-manifest misnamed
+  (`0.1-` at root); ReScript backlog #67; two mint paths (cartridge-minter
+  vs Foundry).
+| §5 programme E
+
+| Documentation debt incl. wiki
+| boj-server wiki: 6 pages last touched 2026-03-28 — describes the
+  pre-April architecture (removed components). `FUTURE_PLANS.adoc` is
+  format-broken generic boilerplate. TEST-NEEDS/ROADMAP frozen at
+  2026-04-25. v1-chain's C3 `OPERATOR.adoc` + S1 operator covenant *do not
+  exist*. Cartridges wiki OK (2026-06-01).
+| §5 E
+
+| RSR compliance + ultra-standards
+| *P0: cartridges' `STATE.a2ml` is verbatim rsr-template-repo boilerplate*
+  ("project = rsr-template-repo, 95% complete") — machine-readable
+  disinformation to every bot that reads it. boj-server STATE/ROADMAP claim
+  "4 fly.io seeds live" (false — NXDOMAIN). Standards reusable pins lag head
+  ~1 week and cartridges mixes two pin SHAs. CANONICAL-NAMES: clean.
+| §5 E
+
+| Network / SDP / stapeln / sharing
+| See §0(2). Containerisation itself is genuinely mature (hardened Quadlet,
+  cerro-torre signing, svalinn/vordr verification, stapeln repo active) —
+  all pointed at the missing binary.
+| §6 programme D
+
+| Proof / engineering / UX debt
+| Proofs: healthy core (105/105) + #197/#36/#37 as planned; add: 3 idr-less
+  cartridges, orchestration TS exception needs an ADR. UX: coord-tui v0.2/3
+  roadmap open; tray + PanLL cut from v1 (ratify as O6/O7).
+| completion plan + §4 C
+
+| Enhance / compliance / effects
+| = programme F: the differentiators made legible (proof-carrying
+  attestation, conformance suite, spec).
+| §7 programme F
+
+| Meet/exceed best-practice servers
+| Parity matrix vs GitHub MCP (the category leader) + spec surface: BoJ
+  AHEAD on annotations+outputSchema (every tool), proofs, trust tiers,
+  truthfulness gate, LSP/DAP/BSP surface; BEHIND on protocol revision,
+  OAuth, toolsets/read-only mode, structuredContent, completions/templates/
+  subscriptions, remote-hosted option, Origin validation.
+| §3 B + §7 F
+
+| Finalised spec written up?
+| *No.* It exists as 16 ADRs + 42KB openapi.yaml + AUTH-DESIGN + cartridge
+  spec dir + a DSL charter in agent memory. §7 F-1 consolidates into a
+  versioned BoJ Specification.
+| §7 F
+
+| Plan to make it the new standard?
+| *Now yes* — §7: spec + conformance suite + proof-carrying attestation as
+  a registered MCP extension + registry/JOSS/site visibility.
+| §7 F
+|===
+
+== 2. Programme A — security & quality queue burn-down (corrective)
+
+*A-1 (P0, hours→day)* Patch the 12-vuln cluster: bump the two RUSTSEC crates
++ Erlang/OTP baseline; verify Scorecard Vulnerabilities check recovers; find
+why Dependabot missed them (lockfile indexing) and fix that coverage gap.
+*A-2 (P0, hours)* Required status checks: the completion plan flips them ON
+for the registry after the Foundry pilot; add the missing half — boj-server
+itself (proofs, truthfulness, e2e, zig) — as an explicit owner-ratified
+ruleset change (O4).
+*A-3 (P1, hours)* Triage the 11 `secret_detected` (expect placeholders; the
+GitLab-PAT-shaped string first), then enable non-provider patterns +
+validity checks in GitHub secret scanning on both repos.
+*A-4 (P1, days)* Hypatia alert classes, not instances: one baseline decision
+for `zig_ptr_cast` (121+128), fix the 5 TokenPermissions + remaining
+timeout warnings, curate SD022/CSA001 meta-noise, resolve the registry's 40
+`banned_language_file` before O2 canonicalisation imports the debt.
+*A-5 (P2, day)* Sonar: pull the 25 vulnerability issues, fix/won't-fix; wire
+proof-suite + ExUnit coverage into the scan so 0.0% stops libelling the
+best-tested repo in the estate; burn the top smells.
+*A-6 (P2, minutes)* `security.txt` for cartridges; review+merge Dependabot
+PR cartridges#67.
+
+== 3. Programme B — adaptive maintenance: the protocol war (the "meet" half)
+
+*B-1 (P0, hours)* Truthful capabilities: stop declaring `listChanged`/
+`logging` until wired; extend truthfulness gate to the protocol handshake.
+*B-2 (P0, hours)* Origin-header validation → 403 (spec MUST, real vuln
+class); update ADR-0013 status (it still says "Proposed" with PR1 shipped).
+*B-3 (days)* Version negotiation + `MCP-Protocol-Version` header; declare
+2025-06-18 floor; adopt 2025-11-25 (JSON Schema 2020-12, icons, serverInfo
+description → surface the proof manifest there).
+*B-4 (days)* The mechanical wins: return `structuredContent` (schemas
+already exist); `completion/complete` for the 5 prompts' enum args;
+`boj://cartridge/{name}` resource template; SSE resumability
+(Last-Event-ID).
+*B-5 (days)* Toolset gating (`BOJ_TOOLSETS`, groupings already implicit in
+tool-name prefixes) + `BOJ_READ_ONLY` keyed off existing `readOnlyHint` —
+context-cost parity with GitHub MCP.
+*B-6 (weeks, after 2026-07-28 final)* Stateless core adoption:
+`server/discover` + `.well-known` metadata, `_meta`-carried context, Tasks
+for long-running work, MRTR replacing the never-built sampling/elicitation
+plans (rewrite ADR-0012 BEFORE implementing it). Note: statelessness makes
+Workers deployment (#87 item 14) and federation dramatically easier — do
+not build more session machinery in the meantime.
+*B-7 (weeks)* OAuth 2.1 resource-server metadata for exposed mode — the
+auth bar every remote-server leader now ships; folds into B1/AUTH-DESIGN.
+
+== 4. Programme C — cartridge portfolio + cross-cutting development
+
+*C-1 Coordination (the DSL).* First act (hours): land the charter from
+agent memory as `docs/decisions/0017-coordination-dsl.md` (or ADR number
+next free) so it survives. Phase-1 spike (1–2 weeks): elaborate ONLY the
+existing claim→lease→progress→commit handshake through an Idris2
+elaborator to a frozen plan replayed by the existing Zig adapter — the
+live loopback backend becomes the first verified consumer.
+*C-2 NeSy/agentic/health hygiene (1–2 days):* boj-health-mcp gets a real
+dispatch surface or `available:false`; minimal `abi/*.idr` for the 3
+proof-less cartridges; ADR recording (or ending) stack-orchestrator's TS
+exemption.
+*C-3 Portfolio waves (days each, via Foundry once Configure lands):*
+sequence by demand — filesystem, fetch, playwright, sqlite, email, sandbox
+(ADR-0009 already designed), calendar, gdrive (in flight on a live branch),
+figma, n8n-class automation. File as one tracked epic mirroring #87 so it
+fans in. Payments/CRM stay excluded (#87).
+
+== 5. Programme E — compliance, docs, wiki (perfective + estate)
+
+*E-1 (P0, ~half-day, one PR per repo)* The descriptiles migration:
+`.machine_readable/6a2/` → `descriptiles/` both repos + textual sweep
+(26+18 refs); `agent_instructions/` → `bot_directives/` (boj-server);
+root AI-manifest rename (cartridges); *rewrite cartridges' STATE.a2ml with
+real facts* and correct boj-server STATE/ROADMAP's dead-seed claims.
+*E-2 (half-day)* Docs pruning: delete/supersede FUTURE_PLANS.adoc, refresh
+ROADMAP "Current Status" + TEST-NEEDS stamps, archive April handover logs.
+*E-3 (1–2 days)* Write `docs/quickstarts/OPERATOR.adoc` + the operator
+covenant (v1-chain C3/S1) — blocked only on D-1 images for testability.
+*E-4 (half-day)* Wiki: refresh boj-server's 6 pages against current
+architecture or gut to a pointer page — owner pick (O10).
+*E-5 (hours)* Re-pin standards reusables to one current SHA in both repos;
+retire scorecard-enforcer.yml per estate decision.
+*E-6 (ongoing)* `.md`→`.adoc` conversion (109 files; skip README.md — it is
+deliberately Markdown for registries); CONTRIBUTING expansion (dogfood +
+truthfulness gate expectations).
+
+== 6. Programme D — the network (SDP/stapeln/sharing build-out)
+
+Ordered; each step unblocks the next:
+
+*D-1 (1–2 weeks, THE keystone)* Write the missing `adapter/zig` REST server
+linking `federation.zig` + `sdp.zig`: serve `/umoja/peers` + `/health`,
+satisfy `stapeln.toml`'s build target. Unblocks: cerro-torre signed builds,
+the hardened Quadlet operator path, `tests/federation_multinode.sh`, seed
+redeploy.
+*D-2 (~1 day)* Redeploy the 4 seeds (`container/fly/deploy-seeds.sh` +
+fly.toml files exist); resolve the hyperpolymath.dev DNS delegation or
+re-alias; correct the v1-chain doc's stale "seeds live" line.
+*D-3 (days)* Enforce catalogue-hash attestation on peer admission
+(`boj_federation_check_sync` exists, unused) — the "sharing with
+verification" moment.
+*D-4 (weeks, post-v1)* ADR-0010 DID + ML-KEM identity; request
+routing/load-sharing between nodes (currently only membership/gossip
+primitives exist). The v1 cut remains "constellation, not mesh" (O7) — but
+D-1..D-3 make the constellation REAL rather than aspirational.
+
+== 7. Programme F — the standard play (the "exceed" half)
+
+*F-1 The BoJ Specification v1 (1–2 weeks writing).* One versioned doc-set
+consolidating: protocol surface (bridge contract + transports + auth
+postures), the cartridge model (manifest schema, tri-language ABI, trust
+tiers, truthfulness semantics), the Foundry pipeline (mint→provision→
+configure→harness with the no-dropped-proofs guarantee), the coordination
+DSL charter, and the federation/attestation model. Publish in-repo +
+rendered on the site. This answers "do we have our finalised spec" — today
+we do not; after F-1 we do.
+*F-2 ADR-0017: proof-carrying capability attestation (the moat).* Spec an
+MCP *extension* (reverse-DNS id `net.boj-server.attestation`, the
+2026-07-28 extensions framework is the sanctioned vehicle): a signed
+`.well-known` metadata document embedding hashes of the Idris2 proof
+artefacts + per-tool contracts cross-referenced to the ABI modules that
+prove them, so any client can verify offline that the declared capability
+surface is machine-checked. No other server can copy this without doing
+the proofs. This is what "nextgen MCP+LSP+++" concretely means.
+*F-3 Conformance suite ("BoJ-grade").* Generalise the truthfulness gate
+into a runnable benchmark any MCP server can be pointed at: does your
+server deliver every capability it declares? Publish it; score the
+leaders; BoJ passes by construction. Standards adoption follows the tool,
+not the whitepaper.
+*F-4 Visibility.* MCP Registry listing (#188) + `server.json`; Glama
+re-sync post-honesty-sweep; the JOSS paper (#87 item 12 —
+cross-cartridge composition proof is the publishable core); site refresh
+with generated counts; the Foundry screencast (v1-chain D4).
+
+== 8. New owner decisions (extends the completion plan's O1–O9)
+
+[cols="1,5,2",options="header"]
+|===
+| # | Decision | Recommendation
+| O10 | Wiki: refresh vs gut-to-pointer (boj-server) | Gut to pointer;
+  docs/ is canonical
+| O11 | `zig_ptr_cast` (249 alerts): baseline as FFI-idiomatic vs refactor | Baseline with
+  a documented justification
+| O12 | Code-Review=0 Scorecard stance (solo estate, self-merged PRs) | Document in
+  SECURITY.md, don't chase
+| O13 | MCP 2026-07-28 adoption timing (stateless core rewrite window) | Adopt within 4–6
+  weeks of final; freeze session-machinery work now
+| O14 | Portfolio wave order + whether filesystem/playwright jump the
+  Foundry queue (hand-build vs wait for Configure) | Wait for Configure
+  (weeks away at most); gdrive branch proceeds as-is
+|===
+
+== 9. Sequencing across all three documents
+
+Hours-class P0s first (B-1 truthful capabilities, B-2 Origin, A-1 vulns,
+E-1 descriptiles+STATE truth) — none conflict with the completion plan's
+"Now" window and several are its prerequisites. Then the two keystones in
+parallel: Foundry Configure (completion plan) and D-1 adapter/zig (this
+doc). Then B-3..B-5 protocol parity + C-3 portfolio waves through the
+Foundry. F-1 spec writing can start immediately (it consolidates what
+exists); F-2/F-3 target the 2026-07-28 extensions framework. The firefight
+is won when F-3's conformance suite is public and BoJ is the only server
+that passes its own test — verified honesty as the category boundary.
