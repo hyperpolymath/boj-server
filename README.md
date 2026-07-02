@@ -3,9 +3,9 @@ SPDX-License-Identifier: CC-BY-SA-4.0
 SPDX-FileCopyrightText: 2025-2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
 -->
 
-# BoJ Server (Bundle of Joy)
+# BoJ Server
 
-**One MCP endpoint for the whole hyperpolymath toolchain** — GitHub, GitLab, Cloudflare, Vercel, Verpex, Gmail, Calendar, browser automation, research, ML, multi-agent coordination, and a large catalogue of pluggable domain cartridges, all reachable through a single zero-dependency stdio bridge.
+**One MCP endpoint for the WHOLE toolchain** — GitHub, GitLab, Cloudflare, Vercel, Verpex, Gmail, Calendar, browser automation, research, ML, multi-agent coordination, and a large catalogue of pluggable domain cartridges, all reachable through a single zero-dependency stdio bridge.
 
 [![License: MPL-2.0](https://img.shields.io/badge/License-MPL_2.0-blue.svg)](LICENSE)
 [![npm](https://img.shields.io/npm/v/@hyperpolymath/boj-server?logo=npm)](https://www.npmjs.com/package/@hyperpolymath/boj-server)
