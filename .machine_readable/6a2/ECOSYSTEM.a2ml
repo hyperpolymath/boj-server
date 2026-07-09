@@ -48,3 +48,15 @@ seed-nodes = [
 ]
 dns-status = "hyperpolymath.dev undelegated — registrar action needed (see container/fly/DNS-SETUP.adoc); *.fly.dev hostnames operative"
 federation-protocol = "Umoja gossip (X25519 + ChaCha20-Poly1305, UDP 9999, IPv6)"
+
+# ── Publishing (ADR-004: README single-source derivation) ──────────────────
+# README.adoc is canonical; README.md is DERIVED (GENERATED banner) for Glama,
+# which renders Markdown only. Regenerated + freshness-checked by the
+# readme-derive workflow. Never hand-edit README.md.
+[publishing.readme]
+canonical = "README.adoc"
+derive    = true
+format    = "gfm"
+path      = "README.md"
+consumer  = "glama"
+reason    = "Glama MCP directory renders Markdown only; canonical README.adoc renders as raw markup there"
