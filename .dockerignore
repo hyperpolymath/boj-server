@@ -83,3 +83,5 @@ data/
 configs/
 k8s/
 setup.sh
+!scripts/fetch-cartridges.sh
+!schemas/cartridge-v1.json
