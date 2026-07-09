@@ -24,7 +24,11 @@ ARG BOJ_CARTRIDGES_REPO=https://github.com/hyperpolymath/boj-server-cartridges.g
 
 FROM cgr.dev/chainguard/wolfi-base:latest AS zig-builder
 
-RUN apk add --no-cache zig build-base git bash
+RUN apk add --no-cache build-base git bash curl xz
+# Pin Zig to the repo-declared version (.tool-versions: 0.15.1); wolfi apk zig rolls forward and breaks the build
+RUN curl -fsSL https://ziglang.org/download/0.15.1/zig-x86_64-linux-0.15.1.tar.xz -o /tmp/zig.tar.xz \
+    && mkdir -p /opt/zig && tar -xJf /tmp/zig.tar.xz -C /opt/zig --strip-components=1
+ENV PATH=/opt/zig:${PATH}
 
 WORKDIR /build
 
@@ -59,7 +63,10 @@ RUN for ffi_dir in /build/cartridges/*/ffi; do \
 # Stage 2: Elixir Release Builder
 # ============================================================================
 
-FROM cgr.dev/chainguard/elixir:latest AS mix-builder
+# Strip Zig build caches (multi-GB, runtime-irrelevant) so the cartridge COPY into the runtime stage stays small
+RUN find /build/cartridges -type d -name .zig-cache -prune -exec rm -rf {} + 2>/dev/null || true
+
+FROM docker.io/elixir:1.18.4-otp-25 AS mix-builder
 
 WORKDIR /build
 
@@ -77,7 +84,7 @@ RUN mix release boj_rest
 # Stage 3: Runtime Image
 # ============================================================================
 
-FROM cgr.dev/chainguard/wolfi-base:latest
+FROM docker.io/debian:bullseye-slim
 
 # OCI labels
 LABEL org.opencontainers.image.title="Bundle of Joy Server" \
@@ -90,10 +97,10 @@ LABEL org.opencontainers.image.title="Bundle of Joy Server" \
       dev.stapeln.compose="container/compose.toml"
 
 # Minimal runtime deps: OpenSSL (Elixir TLS), ncurses (Erlang), glibc (boj-invoke + .so)
-RUN apk add --no-cache ca-certificates openssl ncurses-libs libstdc++ gcompat
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates openssl libncurses6 libstdc++6 && rm -rf /var/lib/apt/lists/*
 
 # Non-root user
-RUN addgroup -S appuser && adduser -S appuser -G appuser
+RUN groupadd -r appuser && useradd -r -g appuser -d /app appuser
 
 WORKDIR /app
 
@@ -144,6 +151,9 @@ ENV PORT=7700
 ENV MIX_ENV=prod
 
 VOLUME ["/data"]
+# Cartridge schema mirror (Catalog validates cartridges against /schemas/cartridge-v1.json)
+COPY schemas/cartridge-v1.json /schemas/cartridge-v1.json
+
 USER appuser
 
 EXPOSE 7700
