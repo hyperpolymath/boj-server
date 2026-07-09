@@ -152,6 +152,7 @@ ENV MIX_ENV=prod
 
 VOLUME ["/data"]
 # Cartridge schema mirror (Catalog validates cartridges against /schemas/cartridge-v1.json)
+COPY schemas/cartridge-v1.json /app/schemas/cartridge-v1.json
 COPY schemas/cartridge-v1.json /schemas/cartridge-v1.json
 
 USER appuser
