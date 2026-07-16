@@ -1,0 +1,111 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+// Copyright (c) 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+= bug-filing-mcp
+
+Autonomous bug-report filing cartridge, v0.2. It is the boj-side packaging of the
+real *feedback-o-tron* engine for the autonomous bug-reporting pipeline
+(see `feedback-o-tron/docs/AUTONOMOUS-BUG-PIPELINE.adoc`).
+
+[IMPORTANT]
+====
+*This is not `feedback-mcp`.* `feedback-mcp` is an unrelated in-memory *sentiment
+counter*. Per owner decision *D0 = new wrapping cartridge*, that cartridge is left
+untouched and this *new* cartridge wraps the real bug-filing engine. The two only
+share the `127.0.0.1:7722` placeholder port; run one backend or the other.
+====
+
+== What it does
+
+v0.2 exposes the engine's full interactive loop as three tools:
+
+. `research_feedback` — *before filing anything*: searches the target forge for
+  similar existing issues (scored by title similarity), checks the engine's
+  local dedup index (with recurrence stats, so a recurring theme is visible as
+  a pattern rather than a one-off), and returns the target repo's issue-form
+  questions.
+. `synthesize_feedback` — shapes raw feedback into a report fit for the
+  receiver: classifies intent, fetches the repo's own issue template, hydrates
+  its fields from context and system state, and returns a draft plus the *open
+  questions* still needed. The caller (an LLM agent, typically) resolves those
+  with its user and iterates.
+. `submit_feedback` — files to one or more forges (GitHub, GitLab, Bitbucket,
+  Codeberg, Bugzilla, email). When `template_data` is supplied, answers are
+  validated against the fetched form schema (*fail closed*) and rendered as the
+  issue body. Dedup and audit logging are engine-side.
+
+== The usefulness doctrine
+
+The intent gate is *usefulness, not tone*:
+
+* Harsh-but-substantive feedback keeps its signal — nothing is sanitized away.
+* Zero-signal hostility is rejected with a stated reason (audit-logged
+  engine-side, never filed). A rejection is a *successful* tool result:
+  `{"rejected": true, "reason": ...}`.
+* Mixed content is salvaged: the actionable core is extracted, the hostile
+  wrapping stripped, and both facts are reported back
+  (`salvaged: true`, `stripped_reason`).
+* Useless-but-genuine feedback is never silently discarded — it comes back as
+  open questions that would make it fileable.
+
+== Core status (Teranga)
+
+This cartridge is Teranga-tier: bug filing is a core capability of the boj
+system. It still requires the engine running locally (see below) — the manifest
+does not claim `available: true`; availability is a deployment fact, not a
+catalogue claim.
+
+== How it wires
+
+[source,text]
+----
+boj gateway :7700
+  POST /cartridge/bug-filing-mcp/invoke {tool, arguments}
+    -> bug-filing-mcp/mod.js  (Deno JS worker)
+       -> POST http://127.0.0.1:7722/api/v1/{research,synthesize,submit}_feedback
+          -> feedback-o-tron Synthesis Engine + Submitter -> gh / glab / REST ...
+----
+
+The cartridge is a thin HTTP client; classification, template hydration,
+validation, dedup, audit, rate limiting and dispatch all live in the engine.
+The `ffi/` and `abi/` directories carry the standard cartridge layout: the
+Idris2 module (`abi/BugFilingMcp/SafeBugFiling.idr`, compiled in CI-style
+checks) proves the pipeline's state machine — a rejected report has *no path*
+to submission, and submission is only reachable through validation. The Zig
+FFI answers with a structured delegation notice (the live path is mod.js);
+no `.so` is declared in the manifest.
+
+== Prerequisites
+
+Run the feedback-o-tron engine with its HTTP intake enabled:
+
+[source,sh]
+----
+FEEDBACK_A_TRON_HTTP=1 feedback-a-tron        # listens on 127.0.0.1:7722
+# override: FEEDBACK_A_TRON_HTTP_PORT, FEEDBACK_A_TRON_HTTP_BIND
+----
+
+Point the cartridge elsewhere with `BUG_FILING_BACKEND_URL` if needed.
+
+== The interactive loop, end to end
+
+[source,text]
+----
+1. research_feedback  {repo, title}          -> similar issues + template questions
+2. synthesize_feedback {raw_feedback, repo}  -> draft + open_questions (or rejected/salvaged)
+3.   ... resolve open_questions with your user, repeat 2 if needed ...
+4. submit_feedback {title, body, repo, template, template_data, dry_run:true}  -> preview
+5. submit_feedback {..., dry_run:false}      -> filed, deduplicated, audit-logged
+----
+
+== Tools
+
+[cols="1,1,3",options="header"]
+|===
+| Tool | Required | Meaning
+| `research_feedback` | `repo`, `title` | Duplicate search + template questions; `limit` (≤20), `body`, `include_templates` optional
+| `synthesize_feedback` | `raw_feedback`, `repo` | Intent-gated, template-hydrated draft + open questions; `context`, `system_state`, `template`, `network_probe` optional
+| `submit_feedback` | `title`, `body`, `repo` | Multi-forge filing; `template`+`template_data` validated fail-closed; `platforms`, `labels`, `dry_run`, `skip_dedupe` optional
+|===
+
+If the backend is not running, the cartridge returns a `503` with a hint to
+start the engine with `FEEDBACK_A_TRON_HTTP=1`.

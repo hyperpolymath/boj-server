@@ -1,0 +1,22 @@
+{
+  "$schema": "https://panll.dev/schemas/panel-manifest/v1.json",
+  "spdx": "MPL-2.0",
+  "cartridge": "bug-filing-mcp",
+  "domain": "development",
+  "version": "0.2.0",
+  "panels": [
+    {
+      "id": "bug-filing-engine-status",
+      "title": "Filing Engine",
+      "description": "Health of the local feedback-o-tron engine intake (127.0.0.1:7722) and counts of recent research/synthesize/submit calls.",
+      "type": "status-indicator",
+      "entrypoint": "panels/bug-filing-engine-status.js",
+      "size": { "cols": 2, "rows": 1 },
+      "refresh_interval_ms": 5000,
+      "data_sources": [
+        { "op": "Health", "interval_ms": 15000 },
+        { "op": "SubmitFeedback", "on": "event" }
+      ]
+    }
+  ]
+}

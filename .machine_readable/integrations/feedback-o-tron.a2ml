@@ -5,9 +5,17 @@
 name = "feedback-o-tron"
 type = "bug-reporter"
 repository = "https://github.com/hyperpolymath/feedback-o-tron"
+cartridge = "bug-filing-mcp"
+
+[intake]
+transport = "http"
+endpoint = "http://127.0.0.1:7722"
+enable-with = "FEEDBACK_A_TRON_HTTP=1"
+tools = ["research_feedback", "synthesize_feedback", "submit_feedback"]
 
 [reporting-config]
 platforms = ["github", "gitlab", "bugzilla"]
 deduplication = true
 audit-logging = true
+template-validation = "fail-closed"
 auto-file-upstream = "on-external-dependency-failure"

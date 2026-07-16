@@ -1,0 +1,12 @@
+-- SPDX-License-Identifier: MPL-2.0
+-- Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+-- Note: Idris2 package identifiers reject hyphens, hence "bugfilingmcp".
+package bugfilingmcp
+
+authors    = "Jonathan D.A. Jewell"
+version    = 0.2.0
+sourcedir  = "."
+
+modules    = BugFilingMcp.SafeBugFiling
+
+depends    = base
