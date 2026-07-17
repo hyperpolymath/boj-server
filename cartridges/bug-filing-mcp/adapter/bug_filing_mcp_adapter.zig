@@ -103,7 +103,10 @@ fn dispatch(tool: []const u8, args_json: []const u8, out: []u8) Dispatch {
     abuf[a.len] = 0;
 
     var len: usize = out.len;
-    const rc = ffi.boj_cartridge_invoke(@ptrCast(&tnbuf), @ptrCast(&abuf), @ptrCast(out.ptr), &len);
+    // No @ptrCast needed (CWE-704 fix, matching #89's cartridge_shim.zig
+    // pattern): [*c] parameters accept array/slice/scalar pointers via
+    // Zig's own implicit C-pointer coercion.
+    const rc = ffi.boj_cartridge_invoke(&tnbuf, &abuf, out.ptr, &len);
     return switch (rc) {
         0 => .{ .status = 200, .body = out[0..len] },
         -1 => .{ .status = 404, .body = "{\"error\":\"unknown-tool\"}" },
