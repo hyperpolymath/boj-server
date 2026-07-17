@@ -1,0 +1,51 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+// Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+= bug-filing-mcp / adapter — protocol bridge
+:orientation: shallow
+
+== Purpose
+
+Exposes this cartridge's FFI over the wire protocols declared in
+`cartridge.json`. Dispatches tool invocations to the C-ABI exports at
+`../ffi/` and formats responses per protocol.
+
+INTERNAL-ONLY unified adapter — not a public ingress. Per ADR-0004 the only
+governed public surface is the `http-capability-gateway` (tier-2); this
+adapter binds loopback (`127.0.0.1:9391`) and sits behind it.
+
+== Files
+
+[cols="1,4"]
+|===
+| File | Role
+
+| `build.zig`  | Zig build graph — depends on the sibling `ffi` target.
+| `bug_filing_mcp_adapter.zig` | Protocol dispatch. Tool catalogue matches `cartridge.json` (`research_feedback`, `synthesize_feedback`, `submit_feedback`).
+|===
+
+== Invariants
+
+* **Stateless** — all state lives behind the FFI, never in the adapter.
+* **Response passthrough** — whatever the FFI returns goes back to the wire
+  unmodified (no embellishment, no silent recovery). Since the FFI itself is
+  an honest delegation stub (see `../ffi/README.adoc` / `../ABI-FFI-README.md`
+  equivalent), every protocol surface here answers with that same delegation
+  notice — this adapter does not paper over what the FFI does not do.
+* **Cartridge.json is source of truth** for the tool catalogue; drift between
+  adapter and manifest is a CI failure.
+* **Transaction-gated** — every request passes `exposureSatisfied` (mirroring
+  `BugFilingMcp.SafeBugFiling.exposureSatisfied` in `../abi/`) before dispatch.
+  `auth.method: "none"` in `cartridge.json` means `requiredExposure = Public`.
+
+== Test/proof surface
+
+Inline Zig tests cover protocol classification, tool extraction per protocol,
+dispatch-to-ABI funneling, and the exposure-gate truth table (cross-checked
+against the Idris2 contract by hand — same truth table, same encoding).
+
+== Read-first
+
+. `bug_filing_mcp_adapter.zig` — dispatch function and per-protocol routers.
+. `../cartridge.json` — the tool manifest the dispatcher mirrors.
+. `../abi/BugFilingMcp/SafeBugFiling.idr` — the Idris2 contract this adapter's
+  gate mirrors.
