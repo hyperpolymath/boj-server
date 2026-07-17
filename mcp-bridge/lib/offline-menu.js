@@ -39,6 +39,7 @@ export const OFFLINE_MENU = {
     { name: "ffmpeg-mcp", version: "0.1.0", domain: "Multi-modal", protocols: ["MCP","REST"], status: "Available", available: true, notes: "Local FFmpeg gateway — probe/transcode/extract/concat/trim; not Worker-compatible (local-only); routed via boj_multimodal" },
     { name: "codeseeker-mcp", version: "0.1.0", domain: "Code Intelligence", protocols: ["MCP","REST"], status: "Available", available: true },
     { name: "lang-mcp", version: "0.1.0", domain: "Languages", protocols: ["MCP","REST"], status: "Available", available: true },
+    { name: "bug-filing-mcp", version: "0.2.0", domain: "Development", protocols: ["MCP","REST"], status: "Available", available: true, notes: "Autonomous bug filing via the real feedback-o-tron engine — research_feedback (duplicate search + template questions), synthesize_feedback (usefulness-gated draft + open questions), submit_feedback (validated template_data, multi-forge). Requires the engine running locally: FEEDBACK_A_TRON_HTTP=1 on 127.0.0.1:7722. NOT feedback-mcp (unrelated sentiment counter)." },
   ],
   tier_shield: [
     { name: "secrets-mcp", version: "0.1.0", domain: "Secrets", protocols: ["MCP","REST"], status: "Available", available: true },
@@ -47,9 +48,9 @@ export const OFFLINE_MENU = {
   tier_ayo: [
     { name: "local-coord-mcp", version: "0.9.0", domain: "Agent", protocols: ["MCP","Agentic"], status: "Available", available: true, notes: "Localhost-only (127.0.0.1:7745) multi-instance AI coordination — peer discovery, typed envelopes, task claiming, master/journeyman/apprentice supervision with quarantine + watchdog TTL + track-record affinity + capability advertisement" },
   ],
-  // `total` reflects the full cartridges/ directory (125 cartridges on disk);
+  // `total` reflects the full cartridges/ directory (127 cartridges on disk);
   // the tier_* arrays above enumerate the named ones exposed through the
   // offline menu. Regenerate counts with
   // `node mcp-bridge/lib/generate-offline-menu.js`.
-  summary: { total: 125, ready: 24, mounted: 0 },
+  summary: { total: 127, ready: 24, mounted: 0 },
 };
