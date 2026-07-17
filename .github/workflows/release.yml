@@ -157,7 +157,6 @@ jobs:
     name: SLSA Provenance
     needs: [build]
     runs-on: ubuntu-latest
-    timeout-minutes: 15
     permissions:
       actions: read
       id-token: write
