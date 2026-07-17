@@ -473,21 +473,21 @@ test "C.5: [BOUNDARY] writeResult — zero-capacity buffer, non-empty body, RC_B
 }
 
 test "C.6: toolIs — exact match and non-match" {
-    const name: [*:0]const u8 = "list-databases";
-    try std.testing.expect(shim.toolIs(@ptrCast(name), "list-databases"));
-    try std.testing.expect(!shim.toolIs(@ptrCast(name), "list-database"));
-    try std.testing.expect(!shim.toolIs(@ptrCast(name), "list-databasess"));
-    try std.testing.expect(!shim.toolIs(@ptrCast(name), ""));
+    const name: [*c]const u8 = "list-databases";
+    try std.testing.expect(shim.toolIs(name, "list-databases"));
+    try std.testing.expect(!shim.toolIs(name, "list-database"));
+    try std.testing.expect(!shim.toolIs(name, "list-databasess"));
+    try std.testing.expect(!shim.toolIs(name, ""));
 }
 
 test "C.7: invokeArgsNull — each null slot detected independently" {
     var buf: [4]u8 = undefined;
     var len: usize = 4;
-    const name: [*:0]const u8 = "x";
-    try std.testing.expect(!shim.invokeArgsNull(@ptrCast(name), &buf, &len));
+    const name: [*c]const u8 = "x";
+    try std.testing.expect(!shim.invokeArgsNull(name, &buf, &len));
     try std.testing.expect(shim.invokeArgsNull(null, &buf, &len));
-    try std.testing.expect(shim.invokeArgsNull(@ptrCast(name), null, &len));
-    try std.testing.expect(shim.invokeArgsNull(@ptrCast(name), &buf, null));
+    try std.testing.expect(shim.invokeArgsNull(name, null, &len));
+    try std.testing.expect(shim.invokeArgsNull(name, &buf, null));
 }
 
 test "C.8: RC_BUFFER_TOO_SMALL hint enables two-phase caller pattern" {

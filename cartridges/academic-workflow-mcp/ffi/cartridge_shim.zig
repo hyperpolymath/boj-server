@@ -58,8 +58,14 @@ pub fn invokeArgsNull(
 /// Compare a C-NUL-terminated tool-name pointer against a Zig string
 /// literal. Caller must have already verified `tool_name` is non-null
 /// (usually via `invokeArgsNull`).
+///
+/// Implementation note (CWE-704 fix, post-#146): uses
+/// `std.mem.sliceTo(ptr, 0)` which scans the C string up to the first
+/// NUL — no `@ptrCast` and no `[*:0]` re-typing. The earlier
+/// `std.mem.spanZ` call was removed in Zig 0.14+ and would not
+/// compile under the 0.15.1 CI pin.
 pub fn toolIs(tool_name: [*c]const u8, expected: []const u8) bool {
-    const s = std.mem.span(@as([*:0]const u8, @ptrCast(tool_name)));
+    const s = std.mem.sliceTo(tool_name, 0);
     return std.mem.eql(u8, s, expected);
 }
 
@@ -124,19 +130,19 @@ test "writeResult: empty body" {
 }
 
 test "toolIs: matches and rejects" {
-    const name: [*:0]const u8 = "foo";
-    try std.testing.expect(toolIs(@ptrCast(name), "foo"));
-    try std.testing.expect(!toolIs(@ptrCast(name), "bar"));
-    try std.testing.expect(!toolIs(@ptrCast(name), "foobar"));
-    try std.testing.expect(!toolIs(@ptrCast(name), "fo"));
+    const name: [*c]const u8 = "foo";
+    try std.testing.expect(toolIs(name, "foo"));
+    try std.testing.expect(!toolIs(name, "bar"));
+    try std.testing.expect(!toolIs(name, "foobar"));
+    try std.testing.expect(!toolIs(name, "fo"));
 }
 
 test "invokeArgsNull: detects each null slot" {
     var buf: [4]u8 = undefined;
     var len: usize = 4;
-    const name: [*:0]const u8 = "x";
-    try std.testing.expect(!invokeArgsNull(@ptrCast(name), &buf, &len));
+    const name: [*c]const u8 = "x";
+    try std.testing.expect(!invokeArgsNull(name, &buf, &len));
     try std.testing.expect(invokeArgsNull(null, &buf, &len));
-    try std.testing.expect(invokeArgsNull(@ptrCast(name), null, &len));
-    try std.testing.expect(invokeArgsNull(@ptrCast(name), &buf, null));
+    try std.testing.expect(invokeArgsNull(name, null, &len));
+    try std.testing.expect(invokeArgsNull(name, &buf, null));
 }
