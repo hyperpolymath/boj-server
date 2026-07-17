@@ -156,3 +156,47 @@ export
 bf_can_transition : Int -> Int -> Int
 bf_can_transition from to =
   if canTransition (intToFilingState from) (intToFilingState to) then 1 else 0
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- Exposure / transaction-gating contract (BoJ interface-safety policy)
+-- ═══════════════════════════════════════════════════════════════════════════
+-- A port boundary must never be a gatekeeperless gateway: every adapter
+-- exposes the unified ABI ONLY behind this transaction gate. Mirrors
+-- BojRest.TrustPolicy and K9iserMcp.SafeK9iser's identically-named contract:
+-- caller exposure derived from the cartridge's auth.method, loopback callers
+-- locally trusted, X-Trust-Level enforced otherwise.
+
+||| Caller trust the gateway/sidecar has established.
+public export
+data Exposure = Public | Authenticated | Internal
+
+||| Required exposure inferred from cartridge auth.method.
+||| "none"/absent -> Public; any credential-bearing method -> Authenticated.
+||| bug-filing-mcp's cartridge.json declares auth.method = "none", so this
+||| cartridge's required exposure is Public.
+public export
+requiredExposure : (authMethodIsNone : Bool) -> Exposure
+requiredExposure True  = Public
+requiredExposure False = Authenticated
+
+||| The transaction gate. Loopback callers are locally trusted (mcp-bridge,
+||| local curl). Otherwise the presented X-Trust-Level must meet the
+||| required exposure. This is the total relation the Zig transaction layer
+||| mirrors; no dispatch may occur unless it returns True.
+public export
+exposureSatisfied : (required : Exposure) -> (presented : Exposure) -> (isLocal : Bool) -> Bool
+exposureSatisfied _             _             True  = True
+exposureSatisfied Public        _             _     = True
+exposureSatisfied Authenticated Authenticated _     = True
+exposureSatisfied Authenticated Internal      _     = True
+exposureSatisfied Internal      Internal      _     = True
+exposureSatisfied _             _             _     = False
+
+||| FFI: 1 if dispatch is permitted, 0 if the gate rejects.
+||| req/pres encoding: 0=Public 1=Authenticated 2=Internal; isLocal: 1/0.
+export
+bf_exposure_satisfied : Int -> Int -> Int -> Int
+bf_exposure_satisfied req pres isLocal =
+  let r = case req  of { 0 => Public; 1 => Authenticated; _ => Internal }
+      p = case pres of { 0 => Public; 1 => Authenticated; _ => Internal }
+  in if exposureSatisfied r p (isLocal /= 0) then 1 else 0

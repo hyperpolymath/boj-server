@@ -34,6 +34,49 @@ Adding to this list requires explicit user approval and an unblock condition. Au
 
 ---
 
+## ABI / FFI / Adapter Baseline (verified 2026-07-17)
+
+Every cartridge's interface stack is three layers, in these languages, no
+exceptions:
+
+| Layer | Language | Role |
+|---|---|---|
+| **ABI** | **Idris2** | Formally verified contract — dependent-type proofs, state machine or exposure-gate invariants, `%default total`, zero `believe_me`/`postulate`/`assert_total` in the trusted core. |
+| **FFI** | **Zig** | C-ABI implementation (ADR-0006 five-symbol pattern: `boj_cartridge_{init,deinit,name,version,invoke}`). |
+| **Adapter** | **Zig** | The base-level API/service surface — see below. |
+
+### The "unified adapter"
+
+The current canonical shape (see `cartridges/k9iser-mcp/adapter/` for the
+reference implementation, or `cartridges/templates/gossamer-mcp/adapter/` in
+`boj-server-cartridges` for the minting template): **one loopback listener**,
+protocol-classified (REST `/invoke`, SSE `/sse`, GraphQL `/graphql`, gRPC-compat
+`/grpc/<Svc>/<Method>`), that funnels every request through a **transaction
+gate** (`exposureSatisfied`, mirroring the cartridge's own Idris2 exposure
+contract when it has one) before a single dispatch call into the one Zig ABI
+(`ffi.boj_cartridge_invoke`). Invariants (from the adapter READMEs, verbatim):
+
+- **Stateless** — all state lives behind the FFI, never in the adapter.
+- **Response passthrough** — whatever the FFI returns goes back to the wire
+  unmodified (no embellishment, no silent recovery).
+- **`cartridge.json` is source of truth** for the tool catalogue; drift between
+  adapter and manifest is a CI failure.
+- **Internal-only, never a public ingress.** Per ADR-0004 the only governed
+  public surface is the `http-capability-gateway` (tier-2) in front of the
+  unified Zig core; adapters bind loopback and sit behind it.
+
+Naming lineage: the fuller 16-protocol-surface pattern is called the
+**Hexadeca-Connector** elsewhere in the estate (`hyperpolymath/hypatia`,
+`hyperpolymath/proven-servers`) — same Idris2-ABI + Zig-FFI substrate, more
+protocol surfaces. It descends from a now-**retired** V-lang reference
+(`developer-ecosystem/v-ecosystem/v_api_interfaces/v_api_interfaces.v`),
+replaced across the estate by Zig+Idris2(+Rust-client where relevant) per the
+V-lang ban (2026-04-10). Cartridge `adapter/` dirs keep a `SIDELINED-*.v.adoc`
+note documenting what was replaced — never resurrect the V version, and never
+substitute anything but Zig for a new adapter.
+
+---
+
 ## PR Workflow
 
 This repo squash-merges PRs. Two consequences worth knowing before pushing follow-ups:
