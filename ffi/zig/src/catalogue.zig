@@ -12,15 +12,12 @@
 
 const std = @import("std");
 
-const Mutex = struct {
-    state: std.atomic.Mutex = .unlocked,
-    pub fn lock(m: *Mutex) void {
-        while (!m.state.tryLock()) std.atomic.spinLoopHint();
-    }
-    pub fn unlock(m: *Mutex) void {
-        m.state.unlock();
-    }
-};
+// `std.atomic.Mutex` was removed from the standard library; its replacement is
+// `std.Thread.Mutex`, whose lock/unlock surface is identical to the hand-rolled
+// wrapper this replaces. The wrapper also busy-waited via `spinLoopHint`, burning
+// a core under contention; `std.Thread.Mutex` parks the thread instead. 81 other
+// files in this repo already use this form.
+const Mutex = std.Thread.Mutex;
 
 // ═══════════════════════════════════════════════════════════════════════
 // Types (must match src/abi/Catalogue.idr encodings)
