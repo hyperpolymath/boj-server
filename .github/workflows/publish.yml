@@ -11,6 +11,7 @@ on:
       - 'v*'
 
 permissions:
+  actions: read
   contents: read
 
 jobs:

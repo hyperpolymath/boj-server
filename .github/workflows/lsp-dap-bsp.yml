@@ -17,6 +17,7 @@ on:
   workflow_dispatch:
 
 permissions: read-all
+  actions: read
 
 concurrency:
   group: lsp-dap-bsp-${{ github.ref }}

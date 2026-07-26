@@ -35,6 +35,7 @@ on:
     - cron: '17 6 * * 1'   # Mondays 06:17 UTC
 
 permissions:
+  actions: read
   contents: read
 
 concurrency:
