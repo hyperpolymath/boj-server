@@ -177,8 +177,7 @@ All present in `.github/workflows/`:
 * `security-policy.yml` — Security policy checks
 * `wellknown-enforcement.yml` — .well-known/ validation
 * `workflow-linter.yml` — Workflow validation
-* `npm-bun-blocker.yml` — Package manager policy
-* `ts-blocker.yml` — TypeScript blocker
+* `runtime-policy.yml` — Package manager policy
 * `jekyll-gh-pages.yml` — GitHub Pages
 * `jekyll.yml` — Jekyll
 * `scorecard-enforcer.yml` — Scorecard enforcement
