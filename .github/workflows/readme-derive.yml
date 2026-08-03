@@ -21,6 +21,7 @@ on:
       - .machine_readable/**/ECOSYSTEM.a2ml
 
 permissions:
+  actions: read
   contents: read
 
 jobs:
