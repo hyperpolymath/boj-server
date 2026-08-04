@@ -308,6 +308,11 @@ complete=0
 stubs=0
 ffi_only=0
 
+# The bundled cartridges/ tree was retired (canonical source:
+# hyperpolymath/boj-server-cartridges, which carries its own completeness
+# gates). Nothing to audit here unless a checkout-local tree exists.
+shopt -s nullglob
+
 for cart_dir in "$PROJECT_DIR"/cartridges/*/; do
     cart_name=$(basename "$cart_dir")
     has_abi=false; has_ffi=false
@@ -351,6 +356,7 @@ for cart_dir in "$PROJECT_DIR"/cartridges/*/; do
             ;;
     esac
 done
+shopt -u nullglob
 
 if [[ $incomplete -eq 0 ]]; then
     pass "All cartridges accounted for ($complete complete, $stubs stub, $ffi_only ffi_only)"

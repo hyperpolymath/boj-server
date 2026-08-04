@@ -63,10 +63,22 @@ defmodule BojRest.Catalog do
   end
 
   defp default_schema_path(root) do
-    root
-    |> Path.expand()
-    |> Path.dirname()
-    |> Path.join("schemas/cartridge-v1.json")
+    # Historical convention: the schema mirror sits one level above the
+    # cartridges root (true for the retired bundled tree and for caches
+    # that ship their own mirror). Roots without a sibling mirror (e.g.
+    # the E2E fixture catalog, ad-hoc BOJ_CARTRIDGES_PATH caches) fall
+    # back to this repo's own pinned mirror in schemas/.
+    sibling =
+      root
+      |> Path.expand()
+      |> Path.dirname()
+      |> Path.join("schemas/cartridge-v1.json")
+
+    if File.exists?(sibling) do
+      sibling
+    else
+      Path.expand("../../../schemas/cartridge-v1.json", __DIR__)
+    end
   end
 
   defp load_schema(path) do
