@@ -1,9 +1,0 @@
--- SPDX-License-Identifier: MPL-2.0
-package cloudflare_mcp
-
-authors = "Jonathan D.A. Jewell"
-version = "0.1.0"
-brief   = "Cloudflare API v4 ABI for cloudflare-mcp cartridge"
-
-sourcedir = "."
-modules = CloudflareMcp.SafeCloud

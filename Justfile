@@ -287,7 +287,7 @@ build-release *args:
 
 # Build and watch for changes (requires entr)
 build-watch:
-    find ffi/ cartridges/ -name '*.zig' | entr -c just build
+    find ffi/ -name '*.zig' | entr -c just build
 
 # Clean build artifacts [reversible: rebuild with `just build`]
 clean:
@@ -378,12 +378,12 @@ fix: fmt
 # Format all source files [reversible: git checkout]
 fmt:
     @echo "Zig format..."
-    find ffi/ cartridges/ -name '*.zig' -exec zig fmt {} +
+    find ffi/ -name '*.zig' -exec zig fmt {} +
 
 # Check formatting without changes
 fmt-check:
     @echo "Checking Zig formatting..."
-    find ffi/ cartridges/ -name '*.zig' -exec zig fmt --check {} +
+    find ffi/ -name '*.zig' -exec zig fmt --check {} +
 
 # Lint — verify zero believe_me + type-check all ABI files
 lint: verify-no-believe-me typecheck
@@ -423,16 +423,8 @@ matrix:
     echo "  BoJ Capability Matrix"
     echo "═══════════════════════════════════════════════════"
     echo ""
-    echo "  Cartridge         ABI    FFI    Adapter  Tests"
-    echo "  ───────────────────────────────────────────────"
-    for cart in database-mcp fleet-mcp nesy-mcp agent-mcp; do
-        ABI="✗"; FFI="✗"; ADAPTER="✗"; TESTS="✗"
-        [ -f "cartridges/$cart/abi"/*/*.idr ] 2>/dev/null && ABI="✓"
-        [ -f "cartridges/$cart/ffi"/*_ffi.zig ] 2>/dev/null && FFI="✓"
-        [ -d "elixir" ] 2>/dev/null && ADAPTER="✓"
-        [ -f "cartridges/$cart/ffi/build.zig" ] 2>/dev/null && TESTS="✓"
-        printf "  %-20s %s      %s      %s        %s\n" "$cart" "$ABI" "$FFI" "$ADAPTER" "$TESTS"
-    done
+    echo "  Cartridge sources: hyperpolymath/boj-server-cartridges (canonical registry)"
+    echo "  Local cache:       \${BOJ_CARTRIDGES_PATH:-\$HOME/.boj/cartridges} (populate via scripts/fetch-cartridges.sh)"
     echo ""
     echo "  Core catalogue:    ffi/zig/src/catalogue.zig"
     echo "  Dynamic loader:    ffi/zig/src/loader.zig"
@@ -1364,7 +1356,7 @@ tour:
     echo "  Federation.idr  Umoja gossip protocol"
     echo ""
     echo "Key directories:"
-    echo "  cartridges/     70+ cartridge directories"
+    echo "  (cartridges now live in hyperpolymath/boj-server-cartridges)"
     echo "  ffi/zig/        Core catalogue FFI"
     echo "  elixir/         REST server (Plug/Cowboy)"
     echo "  container/      Stapeln container ecosystem"

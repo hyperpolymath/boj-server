@@ -46,10 +46,10 @@ jobs:
           if [ "$EVENT" = pull_request ]; then
             git fetch --no-tags --depth=200 origin "$BASE" 2>/dev/null \
               && changed=$(git diff --name-only "origin/${BASE}...HEAD" 2>/dev/null) \
-              && { printf '%s\n' "$changed" | grep -qE '^adapter/|^cartridges/|^ffi/|^mcp-bridge/|^tests/|^src/' && run=true || run=false; }
+              && { printf '%s\n' "$changed" | grep -qE '^adapter/|^ffi/|^mcp-bridge/|^tests/|^src/' && run=true || run=false; }
           elif [ "$EVENT" = push ] && [ -n "$BEFORE" ] && [ "$BEFORE" != 0000000000000000000000000000000000000000 ]; then
             changed=$(git diff --name-only "${BEFORE}...${GITHUB_SHA}" 2>/dev/null) \
-              && { printf '%s\n' "$changed" | grep -qE '^adapter/|^cartridges/|^ffi/|^mcp-bridge/|^tests/|^src/' && run=true || run=false; }
+              && { printf '%s\n' "$changed" | grep -qE '^adapter/|^ffi/|^mcp-bridge/|^tests/|^src/' && run=true || run=false; }
           fi
           printf 'run=%s\n' "$run" >> "$GITHUB_OUTPUT"
           echo "relevant=$run; changed files:"; printf '%s\n' "${changed:-<none computed>}"
@@ -100,14 +100,13 @@ jobs:
 
       - name: Build FFI libraries
         run: |
-          # Subshell keeps the cd contained so the cartridge loop below runs
-          # from the repo root (otherwise its glob never matches). `zig build
-          # invoke` builds the boj-invoke CLI the Elixir Invoker shells out to
-          # for tool dispatch — without it every FFI invoke returns {} (cli_missing).
+          # `zig build invoke` builds the boj-invoke CLI the Elixir Invoker
+          # shells out to for tool dispatch — without it every FFI invoke
+          # returns {} (cli_missing). The fixture catalog's feedback-mcp is
+          # the one cartridge the E2E invokes end-to-end (bundled cartridges/
+          # was retired; see hyperpolymath/boj-server-cartridges).
           (cd ffi/zig && zig build && zig build invoke)
-          for cart in cartridges/*/ffi; do
-            if [ -f "$cart/build.zig" ]; then (cd "$cart" && zig build) || true; fi
-          done
+          (cd tests/fixtures/cartridges/feedback-mcp/ffi && zig build)
 
       - name: Run E2E full test suite
         run: bash tests/e2e_full.sh

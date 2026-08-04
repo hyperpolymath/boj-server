@@ -38,7 +38,13 @@ import { writeFileSync, unlinkSync } from "node:fs";
 import { info, warn } from "./logger.js";
 import { env, pid } from "./runtime.js";
 
-const CONTRACTS_REL = "../../cartridges/local-coord-mcp/schemas/coord-messages-contracts.ncl";
+// Bundled cartridges/ was retired (canonical source:
+// hyperpolymath/boj-server-cartridges). The contracts file is resolved from
+// the operator's cartridge cache (BOJ_CARTRIDGES_PATH, flat <name>/ layout —
+// see scripts/fetch-cartridges.sh), with the historical in-repo path kept as
+// a fallback for checkouts that still carry a bundled tree.
+const CONTRACTS_SUBPATH = "local-coord-mcp/schemas/coord-messages-contracts.ncl";
+const CONTRACTS_REL = "../../cartridges/" + CONTRACTS_SUBPATH;
 
 let cachedContractsPath = null;
 let nickelAvailable = null; // null = not yet probed, true = on PATH, false = missing
@@ -52,8 +58,12 @@ export function contractsPath() {
 
   // main.js lives at mcp-bridge/main.js — lib/ is one below.
   const here = dirname(fileURLToPath(import.meta.url));
-  const candidate = resolve(here, CONTRACTS_REL);
-  cachedContractsPath = existsSync(candidate) ? candidate : null;
+  const cacheRoot = env.get("BOJ_CARTRIDGES_PATH");
+  const candidates = [
+    ...(cacheRoot ? [resolve(cacheRoot, CONTRACTS_SUBPATH)] : []),
+    resolve(here, CONTRACTS_REL),
+  ];
+  cachedContractsPath = candidates.find((p) => existsSync(p)) ?? null;
   return cachedContractsPath;
 }
 

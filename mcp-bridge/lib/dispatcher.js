@@ -214,7 +214,7 @@ async function dispatchLocalCoord(toolName, args) {
         return {
           success: false,
           error: `envelope validation failed: ${r.error}`,
-          hint: "See cartridges/local-coord-mcp/schemas/coord-messages-contracts.ncl for the active contracts",
+          hint: "See local-coord-mcp/schemas/coord-messages-contracts.ncl in your cartridge cache (BOJ_CARTRIDGES_PATH; canonical source hyperpolymath/boj-server-cartridges) for the active contracts",
         };
       }
     }
@@ -239,7 +239,7 @@ async function dispatchLocalCoord(toolName, args) {
     return {
       success: false,
       error: `local-coord-mcp backend unavailable at ${LOCAL_COORD_URL}: ${e.message}`,
-      hint: "Start the adapter: cd cartridges/local-coord-mcp/adapter && zig build run",
+      hint: "Start the adapter from your cartridge cache: cd ${BOJ_CARTRIDGES_PATH:-~/.boj/cartridges}/local-coord-mcp/adapter && zig build run (canonical source: hyperpolymath/boj-server-cartridges)",
     };
   }
 }

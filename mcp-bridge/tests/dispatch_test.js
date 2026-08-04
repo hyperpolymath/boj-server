@@ -19,9 +19,12 @@ import { fileURLToPath } from "node:url";
 import { buildToolList } from "../lib/tools.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
+// Bundled cartridges/ was retired (canonical source:
+// hyperpolymath/boj-server-cartridges); the manifest this contract test
+// checks against is a tracked fixture copy.
 const cartridgePath = join(
   __dirname,
-  "../../cartridges/local-coord-mcp/cartridge.json",
+  "../../tests/fixtures/cartridges/local-coord-mcp/cartridge.json",
 );
 
 const tools = buildToolList();
