@@ -181,7 +181,7 @@ BoJ catalogues **125 cartridges** across trust tiers (Teranga / Shield / Ayo). B
 
 - **Without backend or credentials**, side-effectful tools return a structured `{error, hint}` telling you what’s missing — they never silently fail.
 
-> **Number transparency:** **125** is the single source of truth — it is the number of `cartridge.json` manifests under `cartridges/` and what the live `boj_menu` reports. Every packaging file (`package.json`, `jsr.json`, `smithery.yaml`, `ai-plugin.json`, `openapi.yaml`, `CITATION.cff`) is reconciled to it. Of those 125, most are a catalogue entry rather than a live service — see the bullets above.
+> **Number transparency:** **125** is the single source of truth — it is the number of `cartridge.json` manifests in the canonical [boj-server-cartridges](https://github.com/hyperpolymath/boj-server-cartridges) registry (the bundled `cartridges/` tree was retired from this repo; populate a local cache with `scripts/fetch-cartridges.sh` + `BOJ_CARTRIDGES_PATH`) and what the live `boj_menu` reports. Every packaging file (`package.json`, `jsr.json`, `smithery.yaml`, `ai-plugin.json`, `openapi.yaml`, `CITATION.cff`) is reconciled to it. Of those 125, most are a catalogue entry rather than a live service — see the bullets above.
 
 Catalogued domains include: git forges & code hosting, cloud platforms (Cloudflare, Vercel, AWS, GCP, DigitalOcean, Hetzner, Fly, Linode, Railway, Render), databases (PostgreSQL, MongoDB, Redis, Neo4j, ClickHouse, DuckDB, Turso, Supabase, Neon, …), containers & Kubernetes, CI/CD & observability (Buildkite, CircleCI, Hypatia, Grafana, Prometheus, Sentry), messaging (Slack, Discord, Telegram, Matrix), productivity (Notion, Linear, Jira, Obsidian, Zotero), ML/AI & coordination, browser & web automation, code intelligence & research, developer tooling (LSP/DAP/BSP, language & package registries), security & secrets, IaC & proof systems, and hyperpolymath-native admin cartridges.
 
@@ -255,8 +255,6 @@ Report vulnerabilities per [`SECURITY.md`](SECURITY.md).
 - **Code** — [MPL-2.0](LICENSE) (Mozilla Public License 2.0) — the license published to npm and detected by GitHub.
 
 - **Documentation** — MPL-2.0 today (the repository’s REUSE config tags every file MPL-2.0); a **CC-BY-SA-4.0** split for prose is the intended model, with the docs-licence rollout tracked as a follow-up.
-
-This project **does not** use AGPL; any AGPL string remaining in a build manifest is a packaging regression, not the project’s license.
 
 # Contributing & links
 
