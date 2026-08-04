@@ -30,11 +30,14 @@ defmodule BojRest.Application do
     # Resolve cartridges root via fallback chain:
     # Application env (:boj_rest, :cartridges_root)
     #   → BOJ_CARTRIDGES_PATH environment variable
-    #   → default "./cartridges" (preserves historical bundled-cartridges behaviour).
+    #   → default "./cartridges" (historical bundled-tree location; the bundle
+    #     was retired, so this default now typically resolves to an empty
+    #     catalog unless the operator has a checkout-local cache).
     #
-    # Operators wanting on-demand fetch from hyperpolymath/boj-server-cartridges set
-    # BOJ_CARTRIDGES_PATH to their local cache (e.g. "~/.boj/cartridges") and arrange
-    # for tray to populate that path. See standards ADR-002 and the
+    # Operators fetch cartridges on demand from the canonical
+    # hyperpolymath/boj-server-cartridges registry: populate a flat cache with
+    # scripts/fetch-cartridges.sh and point BOJ_CARTRIDGES_PATH at it
+    # (e.g. "~/.boj/cartridges"). See standards ADR-002 and the
     # boj-server-cartridges README for the full extraction story.
     cartridges_root =
       case Application.get_env(:boj_rest, :cartridges_root) do

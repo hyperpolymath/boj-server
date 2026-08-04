@@ -20,13 +20,7 @@ The full policy is canonical in `hyperpolymath/standards`. Key points relevant t
 
 ### TypeScript Exemptions (Approved)
 
-The "no new TypeScript" rule has 6 approved exemptions in this repo — all MCP cartridge adapters. The MCP SDK (`@anthropic/sdk`) is TypeScript-native, and the adapters are JSON-RPC-over-stdio glue. Until AffineScript has bindings to the MCP protocol, these adapters must remain TS.
-
-| Path | Files | Rationale | Unblock condition |
-|---|---|---|---|
-| `cartridges/{academic-workflow,bofig,ephapax,fireflag,hesiod,sanctify}-mcp/adapter/mod.ts` | 6 | MCP cartridge adapters using `@anthropic/sdk`. The SDK is TS-native; equivalent functionality requires AffineScript bindings to MCP, which don't exist yet. | AffineScript MCP bindings (no scheduled issue — file under `affinescript` when scope is decided). |
-
-Adding to this list requires explicit user approval and an unblock condition. Audit lineage: TS-elimination audit, 2026-05-02. Mirror tables in `affinescript`, `standards`, and `my-lang` repos.
+The former 6 exemptions (MCP cartridge adapters under `cartridges/*/adapter/mod.ts`) left this repo with the bundled `cartridges/` tree — the cartridges and their adapter exemptions now live in `boj-server-cartridges` (see its CLAUDE.md exemption table). No TS exemptions remain in this repo; adding one requires explicit user approval and an unblock condition. Audit lineage: TS-elimination audit, 2026-05-02.
 
 ### Documentation Format
 
@@ -47,9 +41,10 @@ exceptions:
 
 ### The "unified adapter"
 
-The current canonical shape (see `cartridges/k9iser-mcp/adapter/` for the
-reference implementation, or `cartridges/templates/gossamer-mcp/adapter/` in
-`boj-server-cartridges` for the minting template): **one loopback listener**,
+The current canonical shape (see
+`cartridges/domains/config/k9iser-mcp/adapter/` in `boj-server-cartridges` for
+the reference implementation, or `cartridges/templates/gossamer-mcp/adapter/`
+there for the minting template): **one loopback listener**,
 protocol-classified (REST `/invoke`, SSE `/sse`, GraphQL `/graphql`, gRPC-compat
 `/grpc/<Svc>/<Method>`), that funnels every request through a **transaction
 gate** (`exposureSatisfied`, mirroring the cartridge's own Idris2 exposure

@@ -95,13 +95,13 @@ const SERVER_INFO_RESOURCE = {
 const PROOFS_MANIFEST = {
   generated: "2026-05-20",
   obligations: [
-    { id: "P-01", cartridge: "local-coord-mcp", title: "Peer-id uniqueness", status: "discharged", evidence: "cartridges/local-coord-mcp/abi/LocalCoord/Identity.idr" },
-    { id: "P-02", cartridge: "local-coord-mcp", title: "Token authenticity", status: "discharged", evidence: "cartridges/local-coord-mcp/abi/LocalCoord/Auth.idr" },
-    { id: "P-03", cartridge: "local-coord-mcp", title: "Watchdog termination", status: "discharged", evidence: "cartridges/local-coord-mcp/abi/LocalCoord/Watchdog.idr" },
-    { id: "P-04", cartridge: "local-coord-mcp", title: "Master-uniqueness invariant", status: "discharged", evidence: "cartridges/local-coord-mcp/abi/LocalCoord/Supervision.idr" },
-    { id: "P-05", cartridge: "local-coord-mcp", title: "Quarantine isolation", status: "discharged", evidence: "cartridges/local-coord-mcp/abi/LocalCoord/Quarantine.idr" },
-    { id: "P-06", cartridge: "local-coord-mcp", title: "Track-record monotonicity", status: "discharged", evidence: "cartridges/local-coord-mcp/abi/LocalCoord/TrackRecord.idr" },
-    { id: "P-07", cartridge: "local-coord-mcp", title: "Reassignment soundness", status: "discharged", evidence: "cartridges/local-coord-mcp/abi/LocalCoord/Reassignment.idr" },
+    { id: "P-01", cartridge: "local-coord-mcp", title: "Peer-id uniqueness", status: "discharged", evidence: "boj-server-cartridges:cartridges/cross-cutting/agentic/local-coord-mcp/abi/LocalCoord/Identity.idr" },
+    { id: "P-02", cartridge: "local-coord-mcp", title: "Token authenticity", status: "discharged", evidence: "boj-server-cartridges:cartridges/cross-cutting/agentic/local-coord-mcp/abi/LocalCoord/Auth.idr" },
+    { id: "P-03", cartridge: "local-coord-mcp", title: "Watchdog termination", status: "discharged", evidence: "boj-server-cartridges:cartridges/cross-cutting/agentic/local-coord-mcp/abi/LocalCoord/Watchdog.idr" },
+    { id: "P-04", cartridge: "local-coord-mcp", title: "Master-uniqueness invariant", status: "discharged", evidence: "boj-server-cartridges:cartridges/cross-cutting/agentic/local-coord-mcp/abi/LocalCoord/Supervision.idr" },
+    { id: "P-05", cartridge: "local-coord-mcp", title: "Quarantine isolation", status: "discharged", evidence: "boj-server-cartridges:cartridges/cross-cutting/agentic/local-coord-mcp/abi/LocalCoord/Quarantine.idr" },
+    { id: "P-06", cartridge: "local-coord-mcp", title: "Track-record monotonicity", status: "discharged", evidence: "boj-server-cartridges:cartridges/cross-cutting/agentic/local-coord-mcp/abi/LocalCoord/TrackRecord.idr" },
+    { id: "P-07", cartridge: "local-coord-mcp", title: "Reassignment soundness", status: "discharged", evidence: "boj-server-cartridges:cartridges/cross-cutting/agentic/local-coord-mcp/abi/LocalCoord/Reassignment.idr" },
   ],
   believe_me_audit: {
     initial_count: 31,

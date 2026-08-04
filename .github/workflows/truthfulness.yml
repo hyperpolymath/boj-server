@@ -48,10 +48,10 @@ jobs:
           if [ "$EVENT" = pull_request ]; then
             git fetch --no-tags --depth=200 origin "$BASE" 2>/dev/null \
               && changed=$(git diff --name-only "origin/${BASE}...HEAD" 2>/dev/null) \
-              && { printf '%s\n' "$changed" | grep -qE '^cartridges/.*/cartridge\.json$|^cartridges/.*/ffi/|^ffi/|^elixir/lib/boj_rest/router\.ex$|^tests/truthfulness_check\.sh$' && run=true || run=false; }
+              && { printf '%s\n' "$changed" | grep -qE '^ffi/|^elixir/lib/boj_rest/router\.ex$|^tests/truthfulness_check\.sh$' && run=true || run=false; }
           elif [ "$EVENT" = push ] && [ -n "$BEFORE" ] && [ "$BEFORE" != 0000000000000000000000000000000000000000 ]; then
             changed=$(git diff --name-only "${BEFORE}...${GITHUB_SHA}" 2>/dev/null) \
-              && { printf '%s\n' "$changed" | grep -qE '^cartridges/.*/cartridge\.json$|^cartridges/.*/ffi/|^ffi/|^elixir/lib/boj_rest/router\.ex$|^tests/truthfulness_check\.sh$' && run=true || run=false; }
+              && { printf '%s\n' "$changed" | grep -qE '^ffi/|^elixir/lib/boj_rest/router\.ex$|^tests/truthfulness_check\.sh$' && run=true || run=false; }
           fi
           printf 'run=%s\n' "$run" >> "$GITHUB_OUTPUT"
           echo "relevant=$run; changed files:"; printf '%s\n' "${changed:-<none computed>}"

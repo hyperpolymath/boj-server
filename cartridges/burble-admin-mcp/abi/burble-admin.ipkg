@@ -1,6 +1,0 @@
--- SPDX-License-Identifier: MPL-2.0
-package burbleAdmin
-
-modules = BurbleAdmin.Protocol
-
-sourcedir = "."

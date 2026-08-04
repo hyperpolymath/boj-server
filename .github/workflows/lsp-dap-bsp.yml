@@ -39,18 +39,15 @@ jobs:
           BASE: ${{ github.base_ref }}
           BEFORE: ${{ github.event.before }}
         run: |
-          set -uo pipefail
-          run=true
-          if [ "$EVENT" = pull_request ]; then
-            git fetch --no-tags --depth=200 origin "$BASE" 2>/dev/null \
-              && changed=$(git diff --name-only "origin/${BASE}...HEAD" 2>/dev/null) \
-              && { printf '%s\n' "$changed" | grep -qE '^cartridges/(lsp|dap|bsp)-mcp/|^src/abi/Boj/Protocol\.idr$' && run=true || run=false; }
-          elif [ "$EVENT" = push ] && [ -n "$BEFORE" ] && [ "$BEFORE" != 0000000000000000000000000000000000000000 ]; then
-            changed=$(git diff --name-only "${BEFORE}...${GITHUB_SHA}" 2>/dev/null) \
-              && { printf '%s\n' "$changed" | grep -qE '^cartridges/(lsp|dap|bsp)-mcp/|^src/abi/Boj/Protocol\.idr$' && run=true || run=false; }
-          fi
-          printf 'run=%s\n' "$run" >> "$GITHUB_OUTPUT"
-          echo "relevant=$run; changed files:"; printf '%s\n' "${changed:-<none computed>}"
+          # RETIRED GATE: the lsp/dap/bsp cartridges this workflow built and
+          # conformance-tested moved to hyperpolymath/boj-server-cartridges
+          # with the rest of the bundled cartridges/ tree. Protocol.idr's
+          # typecheck is covered by the Proofs Gate (src/abi). run=false keeps
+          # the required check satisfied (skipped jobs report success); port
+          # the conformance jobs to the cartridges repo before deleting this
+          # workflow + its required context.
+          printf 'run=false\n' >> "$GITHUB_OUTPUT"
+          echo "relevant=false; bundled cartridges retired — nothing to verify here"
 
   abi-check:
     name: ABI Specification Check (Idris2)

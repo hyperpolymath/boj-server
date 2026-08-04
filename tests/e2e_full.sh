@@ -30,9 +30,14 @@ MCP_BRIDGE="$PROJECT_DIR/mcp-bridge/main.js"
 REST_PORT="${BOJ_REST_PORT:-7700}"
 BASE_URL="http://localhost:${REST_PORT}"
 
+# Cartridge catalog root: bundled cartridges/ was retired in favour of
+# hyperpolymath/boj-server-cartridges; tests run against the fixture
+# catalog unless the operator points BOJ_CARTRIDGES_PATH elsewhere.
+export BOJ_CARTRIDGES_PATH="${BOJ_CARTRIDGES_PATH:-$PROJECT_DIR/tests/fixtures/cartridges}"
+
 # Library path for Zig FFI shared objects
 export LD_LIBRARY_PATH="$PROJECT_DIR/ffi/zig/zig-out/lib:${LD_LIBRARY_PATH:-}"
-for cart_lib in "$PROJECT_DIR"/cartridges/*/ffi/zig-out/lib; do
+for cart_lib in "$BOJ_CARTRIDGES_PATH"/*/ffi/zig-out/lib; do
     [ -d "$cart_lib" ] && LD_LIBRARY_PATH="$cart_lib:$LD_LIBRARY_PATH"
 done
 export LD_LIBRARY_PATH

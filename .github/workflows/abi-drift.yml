@@ -53,18 +53,14 @@ jobs:
           BASE: ${{ github.base_ref }}
           BEFORE: ${{ github.event.before }}
         run: |
-          set -uo pipefail
-          run=true
-          if [ "$EVENT" = pull_request ]; then
-            git fetch --no-tags --depth=200 origin "$BASE" 2>/dev/null \
-              && changed=$(git diff --name-only "origin/${BASE}...HEAD" 2>/dev/null) \
-              && { printf '%s\n' "$changed" | grep -qE '^cartridges/.*/abi/|^cartridges/.*/ffi/' && run=true || run=false; }
-          elif [ "$EVENT" = push ] && [ -n "$BEFORE" ] && [ "$BEFORE" != 0000000000000000000000000000000000000000 ]; then
-            changed=$(git diff --name-only "${BEFORE}...${GITHUB_SHA}" 2>/dev/null) \
-              && { printf '%s\n' "$changed" | grep -qE '^cartridges/.*/abi/|^cartridges/.*/ffi/' && run=true || run=false; }
-          fi
-          printf 'run=%s\n' "$run" >> "$GITHUB_OUTPUT"
-          echo "relevant=$run; changed files:"; printf '%s\n' "${changed:-<none computed>}"
+          # RETIRED GATE: the bundled cartridges/ tree (this gate's entire
+          # subject — per-cartridge Safe*.idr ↔ *_ffi.zig drift) moved to
+          # hyperpolymath/boj-server-cartridges. run=false keeps the required
+          # check satisfied (skipped jobs report success) without phantom
+          # contexts; port the iseriser gate to the cartridges repo before
+          # deleting this workflow + its required context.
+          printf 'run=false\n' >> "$GITHUB_OUTPUT"
+          echo "relevant=false; bundled cartridges retired — nothing to verify here"
 
   verify:
     name: Emit manifest + verify FFI
