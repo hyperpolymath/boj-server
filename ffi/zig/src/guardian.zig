@@ -23,11 +23,11 @@
 const std = @import("std");
 
 // `std.atomic.Mutex` was removed from the standard library; its replacement is
-// `std.Thread.Mutex`, whose lock/unlock surface is identical to the hand-rolled
+// `shim.Mutex`, whose lock/unlock surface is identical to the hand-rolled
 // wrapper this replaces. The wrapper also busy-waited via `spinLoopHint`, burning
-// a core under contention; `std.Thread.Mutex` parks the thread instead. 81 other
+// a core under contention; `shim.Mutex` parks the thread instead. 81 other
 // files in this repo already use this form.
-const Mutex = std.Thread.Mutex;
+const Mutex = shim.Mutex;
 
 // ═══════════════════════════════════════════════════════════════════════
 // Constants
@@ -205,7 +205,7 @@ fn copyBounded(dst: []u8, src_ptr: [*]const u8, src_len: usize) usize {
 /// Append a log entry (ring buffer, overwrites oldest).
 fn appendLog(severity: Severity, action: ActionType, msg_ptr: [*]const u8, msg_len: usize, cart_idx: i32) void {
     var entry = &log_entries[log_write_pos];
-    entry.timestamp = std.time.timestamp();
+    entry.timestamp = shim.timestamp();
     entry.severity = severity;
     entry.action = action;
     entry.message_len = copyBounded(&entry.message, msg_ptr, msg_len);
@@ -308,7 +308,7 @@ pub export fn boj_guardian_track(
     profiles[slot] = CartridgeProfile{};
     profiles[slot].name_len = copyBounded(&profiles[slot].name, name_ptr, name_len);
     profiles[slot].pid = pid;
-    profiles[slot].mounted_at = std.time.timestamp();
+    profiles[slot].mounted_at = shim.timestamp();
     profiles[slot].active = true;
 
     profile_count += 1;
@@ -353,7 +353,7 @@ pub export fn boj_guardian_update_resources(
     profiles[index].cpu_percent = cpu_percent;
     profiles[index].open_fds = open_fds;
     profiles[index].child_procs = child_procs;
-    profiles[index].uptime_seconds = std.time.timestamp() - profiles[index].mounted_at;
+    profiles[index].uptime_seconds = shim.timestamp() - profiles[index].mounted_at;
 
     // Check per-cartridge thresholds.
     if (memory_bytes > MAX_CARTRIDGE_MEMORY) {
@@ -388,7 +388,7 @@ pub export fn boj_guardian_update_system(
     system_snapshot.total_processes = total_processes;
     system_snapshot.boj_processes = boj_processes;
     system_snapshot.load_average_100 = load_average_100;
-    system_snapshot.timestamp = std.time.timestamp();
+    system_snapshot.timestamp = shim.timestamp();
 
     // Compute overall severity.
     const cpu_sev = assessCpu(cpu_usage_percent);
@@ -434,7 +434,7 @@ pub export fn boj_guardian_health_ok(index: usize) c_int {
 
     profiles[index].health_pings += 1;
     profiles[index].failed_pings = 0;
-    profiles[index].last_health_check = std.time.timestamp();
+    profiles[index].last_health_check = shim.timestamp();
 
     // If circuit was half-open, close it (recovery confirmed).
     if (profiles[index].circuit_state == .half_open) {
@@ -454,7 +454,7 @@ pub export fn boj_guardian_health_fail(index: usize) c_int {
     defer mutex.unlock();
     if (!initialised or index >= MAX_TRACKED or !profiles[index].active) return -1;
 
-    const now = std.time.timestamp();
+    const now = shim.timestamp();
     profiles[index].failed_pings += 1;
     profiles[index].last_health_check = now;
 
@@ -489,7 +489,7 @@ pub export fn boj_guardian_check_recovery(index: usize) c_int {
     if (!initialised or index >= MAX_TRACKED or !profiles[index].active) return -1;
 
     if (profiles[index].circuit_state == .open) {
-        const now = std.time.timestamp();
+        const now = shim.timestamp();
         if (now - profiles[index].circuit_last_tripped >= profiles[index].circuit_cooldown) {
             profiles[index].circuit_state = .half_open;
             const msg = "Circuit breaker half-open (testing recovery)";
@@ -831,7 +831,7 @@ test "circuit breaker trip and recovery" {
     _ = boj_guardian_set_circuit_cooldown(idx, 1);
 
     // Simulate time passing by setting last_tripped far in the past.
-    profiles[idx].circuit_last_tripped = std.time.timestamp() - 100;
+    profiles[idx].circuit_last_tripped = shim.timestamp() - 100;
 
     const recovered = boj_guardian_check_recovery(idx);
     try std.testing.expectEqual(@as(c_int, @intFromEnum(CircuitState.half_open)), recovered);
@@ -856,7 +856,7 @@ test "circuit breaker half-open probe failure re-opens" {
     try std.testing.expectEqual(@as(c_int, @intFromEnum(CircuitState.open)), boj_guardian_circuit_state(idx));
 
     // Force half-open.
-    profiles[idx].circuit_last_tripped = std.time.timestamp() - 100;
+    profiles[idx].circuit_last_tripped = shim.timestamp() - 100;
     _ = boj_guardian_set_circuit_cooldown(idx, 1);
     _ = boj_guardian_check_recovery(idx);
     try std.testing.expectEqual(@as(c_int, @intFromEnum(CircuitState.half_open)), boj_guardian_circuit_state(idx));
@@ -961,3 +961,5 @@ test "invalid operations return errors" {
     const empty = "";
     try std.testing.expectEqual(@as(c_int, -1), boj_guardian_track(empty.ptr, 0, 1));
 }
+
+const shim = @import("cartridge_shim");

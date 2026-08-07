@@ -164,3 +164,8 @@ generated/abi/
 # Superpowers docs and artefacts (local only)
 docs/superpowers/
 .superpowers/
+
+# Claude Code scratch worktrees — per-developer checkouts, never shared.
+# Two of these were once committed as gitlinks (mode 160000) with no
+# .gitmodules, so a fresh clone got two permanently-"modified" empty dirs.
+.claude/worktrees/
