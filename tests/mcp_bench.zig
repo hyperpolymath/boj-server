@@ -28,13 +28,13 @@ test "BENCH: JSON-RPC request serialisation (1 000 iters) completes < 200 ms" {
     const req = Request{};
 
     var buf: [512]u8 = undefined;
-    const start = std.time.nanoTimestamp();
+    const start = shim.nanoTimestamp();
     for (0..ITERATIONS) |_| {
         _ = std.fmt.bufPrint(&buf,
             \\{{"jsonrpc":"{s}","id":{d},"method":"{s}","tool":"{s}","sql":"{s}"}}
         , .{ req.jsonrpc, req.id, req.method, req.tool, req.sql }) catch {};
     }
-    const elapsed_ns: u64 = @intCast(std.time.nanoTimestamp() - start);
+    const elapsed_ns: u64 = @intCast(shim.nanoTimestamp() - start);
     const elapsed_ms = elapsed_ns / 1_000_000;
 
     std.debug.print("  Serialisation: {}ms total, {d:.3}ms/req\n", .{
@@ -52,7 +52,7 @@ test "BENCH: JSON-RPC response deserialisation (1 000 iters) completes < 200 ms"
         \\{"jsonrpc":"2.0","id":1,"result":{"content":[{"type":"text","text":"ok"}]}}
     ;
 
-    const start = std.time.nanoTimestamp();
+    const start = shim.nanoTimestamp();
     for (0..ITERATIONS) |_| {
         const parsed = std.json.parseFromSlice(
             std.json.Value,
@@ -62,7 +62,7 @@ test "BENCH: JSON-RPC response deserialisation (1 000 iters) completes < 200 ms"
         ) catch continue;
         parsed.deinit();
     }
-    const elapsed_ns: u64 = @intCast(std.time.nanoTimestamp() - start);
+    const elapsed_ns: u64 = @intCast(shim.nanoTimestamp() - start);
     const elapsed_ms = elapsed_ns / 1_000_000;
 
     std.debug.print("  Deserialisation: {}ms total, {d:.3}ms/req\n", .{
@@ -84,15 +84,17 @@ test "BENCH: cartridge name iteration over sample entries (10 000 iters) < 50 ms
         "lsp-mcp",
     };
 
-    const start = std.time.nanoTimestamp();
+    const start = shim.nanoTimestamp();
     var total: usize = 0;
     for (0..10_000) |_| {
         for (names) |n| total += n.len;
     }
-    const elapsed_ns: u64 = @intCast(std.time.nanoTimestamp() - start);
+    const elapsed_ns: u64 = @intCast(shim.nanoTimestamp() - start);
     const elapsed_ms = elapsed_ns / 1_000_000;
 
     std.debug.print("  Listing: {}ms total, {} chars/iter\n", .{ elapsed_ms, total / 10_000 });
     try testing.expect(elapsed_ms < 50);
     try testing.expect(total > 0);
 }
+
+const shim = @import("cartridge_shim");
