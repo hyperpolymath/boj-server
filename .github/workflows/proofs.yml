@@ -51,7 +51,7 @@ jobs:
     outputs:
       run: ${{ steps.detect.outputs.run }}
     steps:
-      - uses: actions/checkout@v6.0.2
+ uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0
       - id: detect
@@ -81,7 +81,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v6.0.2
+ uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - name: Enforce trusted base
         run: bash scripts/check-trusted-base.sh
 
@@ -93,7 +93,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
-      - uses: actions/checkout@v6.0.2
+ uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Read pinned Idris2 version
         id: ver
@@ -103,7 +103,7 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y chezscheme libgmp-dev build-essential
 
       - name: Cache asdf + Idris2 toolchain
-        uses: actions/cache@v4.2.2
+        uses: actions/cache@d4323d4df104b026a6aa633fdb11d772146be0bf # v4.2.2
         with:
           path: ~/.asdf
           key: idris2-asdf-${{ runner.os }}-${{ steps.ver.outputs.idris2 }}

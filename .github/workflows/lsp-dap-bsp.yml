@@ -31,7 +31,7 @@ jobs:
     outputs:
       run: ${{ steps.detect.outputs.run }}
     steps:
-      - uses: actions/checkout@v6.0.2
+ uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0
       - id: detect
@@ -57,7 +57,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v6.0.2
+ uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - name: Validate ABI modules exist
         run: |
           echo "=== Checking LSP/DAP/BSP ABI modules ==="
@@ -93,13 +93,13 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v6.0.2
+ uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       # The old step curled ziglang.org/builds/...0.15.2... — that path is the
       # nightly dir, not release downloads, so it returned an error page and
       # `tar` died ("File format not recognized"). Use the pinned action +
       # .tool-versions' canonical 0.15.1, matching e2e.yml.
       - name: Install Zig
-        uses: goto-bus-stop/setup-zig@v2.0.0
+        uses: goto-bus-stop/setup-zig@9566bb3e8749893055694249726756f25e099b30 # v2.0.0
         with:
           version: 0.15.1
       - name: Build LSP/DAP/BSP cartridge FFI
@@ -140,7 +140,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v6.0.2
+ uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       # jq (pre-installed on ubuntu-latest) — the repo's no-Python policy
       # (dogfood-gate) bans the previous json.tool/json.load approach.
       # Same checks: valid JSON + required fields + panel count.
@@ -174,7 +174,7 @@ jobs:
     needs: [changes, abi-check, ffi-build, panel-validation]
     if: needs.changes.outputs.run == 'true'
     steps:
-      - uses: actions/checkout@v6.0.2
+ uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - name: Verify triadic structure
         run: |
           echo "=== LSP/DAP/BSP Triadic Structure Audit ==="

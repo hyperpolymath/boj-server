@@ -45,7 +45,7 @@ jobs:
     outputs:
       run: ${{ steps.detect.outputs.run }}
     steps:
-      - uses: actions/checkout@v6.0.2
+ uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0
       - id: detect
@@ -70,7 +70,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v6.0.2
+ uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           # Need at least two commits so `git diff origin/<base>...HEAD`
           # can compute the changed-cartridge set on pull_request events.
@@ -78,7 +78,7 @@ jobs:
           fetch-depth: 0
 
       - name: Install Rust toolchain (stable)
-        uses: dtolnay/rust-toolchain@master
+        uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # master
         with:
           toolchain: stable
 
@@ -90,7 +90,7 @@ jobs:
       # GADT-skip fix (iseriser#20, merged 2026-05-20) never reached CI.
       # Bumping ISERISER_REV invalidates the cache and forces a rebuild.
       - name: Cache cargo bin (iseriser install)
-        uses: actions/cache@v4.2.2
+        uses: actions/cache@d4323d4df104b026a6aa633fdb11d772146be0bf # v4.2.2
         env:
           ISERISER_REV: 741a3b63e7619b6e9cfe7f91b04d7ccfb130b1ca
         with:
