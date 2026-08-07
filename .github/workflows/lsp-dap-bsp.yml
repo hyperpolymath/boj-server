@@ -1,5 +1,5 @@
-# SPDX-License-Identifier: MPL-2.0
 # This workflow is managed by gh actions-lock.
+# SPDX-License-Identifier: MPL-2.0
 # lsp-dap-bsp.yml — Dedicated CI for Language Server, Debug Adapter, and Build Server cartridges
 # Validates ABI specs, FFI builds, adapter compilation, and panel manifests
 # for the three protocol cartridges (lsp-mcp, dap-mcp, bsp-mcp).

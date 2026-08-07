@@ -1,5 +1,5 @@
-# SPDX-License-Identifier: MPL-2.0
 # This workflow is managed by gh actions-lock.
+# SPDX-License-Identifier: MPL-2.0
 # README single-source derivation (ADR-004): README.adoc is canonical;
 # README.md is derived for the Glama MCP directory (Markdown-only renderer).
 # This caller delegates to the standards reusable, which reads the
