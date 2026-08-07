@@ -41,8 +41,15 @@ if [ "$PROBE" = 1 ]; then
   fi
 fi
 
+# The bundled cartridges/ tree was retired; the catalogue now lives in
+# hyperpolymath/boj-server-cartridges and is consumed from a fetched cache.
+# Resolve the same way the runtime does (BojRest.Catalog / the bridge):
+# BOJ_CARTRIDGES_PATH, else the tracked E2E fixture catalogue.
+CATALOGUE_ROOT="${BOJ_CARTRIDGES_PATH:-tests/fixtures/cartridges}"
+
 checked=0
-for f in cartridges/*/cartridge.json; do
+for f in "$CATALOGUE_ROOT"/*/cartridge.json; do
+  [ -e "$f" ] || continue
   checked=$((checked + 1))
   name=$(jq -r '.name // "?"' "$f")
   avail=$(jq -r '.available // false' "$f")
@@ -105,8 +112,21 @@ for f in cartridges/*/cartridge.json; do
 done
 
 echo "---"
+
+# Vacuous-pass guard. Before the cartridges/ retirement this loop always had
+# 125 manifests to walk; afterwards the glob silently matched nothing and the
+# gate printed OK having verified NOTHING. A truthfulness gate that cannot
+# fail is itself an untruth — so zero manifests is a hard failure.
+if [ "$checked" -eq 0 ]; then
+  err "truthfulness: no cartridge manifests found under '$CATALOGUE_ROOT'"
+  err "  Set BOJ_CARTRIDGES_PATH to a fetched cache (scripts/fetch-cartridges.sh)"
+  err "  or restore tests/fixtures/cartridges. A green run over zero cartridges"
+  err "  would be a false assurance."
+  exit 1
+fi
+
 if [ "$fail" = 0 ]; then
-  note "truthfulness: OK — $checked cartridges checked (probe=$PROBE)"
+  note "truthfulness: OK — $checked cartridges checked from $CATALOGUE_ROOT (probe=$PROBE)"
 else
   note "truthfulness: FAILED — see FAIL lines above"
 fi
