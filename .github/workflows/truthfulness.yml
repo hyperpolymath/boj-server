@@ -1,3 +1,4 @@
+# This workflow is managed by gh actions-lock.
 # SPDX-License-Identifier: MPL-2.0
 # Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
 #
@@ -34,7 +35,7 @@ jobs:
     outputs:
       run: ${{ steps.detect.outputs.run }}
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@v6.0.2
         with:
           fetch-depth: 0
       - id: detect
@@ -65,10 +66,10 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@v6.0.2
 
       - name: Install Zig
-        uses: goto-bus-stop/setup-zig@9566bb3e8749893055694249726756f25e099b30  # v2
+        uses: goto-bus-stop/setup-zig@v2.0.0
         with:
           version: 0.15.1
 

@@ -1,3 +1,4 @@
+# This workflow is managed by gh actions-lock.
 # SPDX-License-Identifier: MPL-2.0
 # Instant Forge Sync - Triggers propagation to all forges on push/release
 name: Instant Sync
@@ -26,7 +27,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: Trigger Propagation
-        uses: peter-evans/repository-dispatch@ff45666b9427631e3450c54a1bcbee4d9ff4d7c0 # v3
+        uses: peter-evans/repository-dispatch@v3.0.0
         with:
           token: ${{ secrets.FARM_DISPATCH_TOKEN }}
           repository: hyperpolymath/.git-private-farm

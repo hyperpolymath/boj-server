@@ -1,3 +1,4 @@
+# This workflow is managed by gh actions-lock.
 # SPDX-License-Identifier: MPL-2.0
 # Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
 #
@@ -45,7 +46,7 @@ jobs:
     outputs:
       run: ${{ steps.detect.outputs.run }}
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@v6.0.2
         with:
           fetch-depth: 0
       - id: detect
@@ -77,16 +78,16 @@ jobs:
       run:
         working-directory: elixir
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@v6.0.2
 
       - name: Set up BEAM (Elixir + OTP)
-        uses: erlef/setup-beam@fc68ffb90438ef2936bbb3251622353b3dcb2f93 # v1.24.0
+        uses: erlef/setup-beam@v1.24.0
         with:
           elixir-version: '1.18.4'
           otp-version: '27.0'
 
       - name: Cache deps + _build
-        uses: actions/cache@d4323d4df104b026a6aa633fdb11d772146be0bf # v4.2.2
+        uses: actions/cache@v4.2.2
         with:
           path: |
             elixir/deps
