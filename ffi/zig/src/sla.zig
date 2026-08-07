@@ -16,11 +16,11 @@
 const std = @import("std");
 
 // `std.atomic.Mutex` was removed from the standard library; its replacement is
-// `std.Thread.Mutex`, whose lock/unlock surface is identical to the hand-rolled
+// `shim.Mutex`, whose lock/unlock surface is identical to the hand-rolled
 // wrapper this replaces. The wrapper also busy-waited via `spinLoopHint`, burning
-// a core under contention; `std.Thread.Mutex` parks the thread instead. 81 other
+// a core under contention; `shim.Mutex` parks the thread instead. 81 other
 // files in this repo already use this form.
-const Mutex = std.Thread.Mutex;
+const Mutex = shim.Mutex;
 
 // ═══════════════════════════════════════════════════════════════════════
 // Constants
@@ -92,7 +92,7 @@ var mutex: Mutex = .{};
 fn init() void {
     sla_count = 0;
     system_sla = .{};
-    system_sla.start_time = std.time.timestamp();
+    system_sla.start_time = shim.timestamp();
     cartridge_slas = [_]CartridgeSla{.{}} ** MAX_CARTRIDGES;
     initialised = true;
 }
@@ -117,7 +117,7 @@ fn registerCartridge(name_ptr: [*]const u8, name_len: usize, tier: SlaTier) i32 
     sla.name_len = actual;
     sla.tier = tier;
     sla.active = true;
-    sla.mounted_at = std.time.timestamp();
+    sla.mounted_at = shim.timestamp();
     sla_count += 1;
     system_sla.cartridges_tracked = sla_count;
     return @as(i32, @intCast(sla_count - 1));
@@ -424,3 +424,5 @@ test "sla deinit resets state" {
     try std.testing.expectEqual(@as(usize, 0), boj_sla_cartridge_count());
     try std.testing.expectEqual(@as(u64, 0), boj_sla_total_requests());
 }
+
+const shim = @import("cartridge_shim");

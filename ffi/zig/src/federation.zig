@@ -21,11 +21,29 @@
 const std = @import("std");
 
 // `std.atomic.Mutex` was removed from the standard library; its replacement is
-// `std.Thread.Mutex`, whose lock/unlock surface is identical to the hand-rolled
+// `shim.Mutex`, whose lock/unlock surface is identical to the hand-rolled
 // wrapper this replaces. The wrapper also busy-waited via `spinLoopHint`, burning
-// a core under contention; `std.Thread.Mutex` parks the thread instead. 81 other
+// a core under contention; `shim.Mutex` parks the thread instead. 81 other
 // files in this repo already use this form.
-const Mutex = std.Thread.Mutex;
+const Mutex = shim.Mutex;
+
+// `std.net` was removed in Zig 0.16; the networking surface now lives behind
+// the `std.Io` interface as `std.Io.net`. The raw socket calls this file used
+// (`std.posix.socket`/`bind`/`sendto`/`recvfrom`/`close`) were trimmed from
+// the posix surface at the same time — `std.Io.net.Socket` replaces all five.
+// Every call site below takes its `std.Io` from `shim.io()`, the process-wide
+// `std.Io.Threaded` this repo already uses for the clock, mutexes, and CSPRNG.
+const net = std.Io.net;
+
+// Non-blocking receive. `std.posix.recvfrom(..., MSG.DONTWAIT, ...)` is gone;
+// `Socket.receiveTimeout` with a zero duration is the exact equivalent, because
+// `std.Io.Threaded` issues `recvmsg(2)` with `MSG_DONTWAIT` first and only then
+// falls back to `poll(2)` for the remainder of the timeout — which here is
+// nothing. The "no packet queued" signal is renamed from `error.WouldBlock` to
+// `error.Timeout`; both map to the same `0` return, so callers see no change.
+const RECV_NONBLOCKING: std.Io.Timeout = .{
+    .duration = .{ .raw = .zero, .clock = .awake },
+};
 
 // ═══════════════════════════════════════════════════════════════════════
 // Proven-hardened: Circuit breaker, retry, and rate limiter state
@@ -361,8 +379,10 @@ var local_node_id_len: usize = 0;
 /// Our listen port (set by umoja_bind).
 var local_port: u16 = 0;
 
-/// UDP socket file descriptor. -1 means not bound.
-var udp_fd: std.posix.socket_t = -1;
+/// UDP socket. `null` means not bound. (Was a bare `std.posix.socket_t` fd
+/// sentinelled with -1; `std.Io.net.Socket` carries the handle plus the
+/// resolved bound address, and has no spare sentinel value.)
+var udp_socket: ?net.Socket = null;
 
 /// Whether the UDP socket is bound and ready.
 var socket_bound: bool = false;
@@ -422,7 +442,7 @@ fn copyBounded(dst: []u8, src_ptr: [*]const u8, src_len: usize) usize {
 /// gossip peer selection influences which nodes converge first.
 fn prngNext() u32 {
     var buf: [4]u8 = undefined;
-    std.crypto.random.bytes(&buf);
+    shim.randomBytes(&buf);
     return std.mem.readInt(u32, &buf, .little);
 }
 
@@ -515,7 +535,7 @@ fn sendToPeer(peer_idx: usize, buf: []const u8) c_int {
     if (!validPeer(peer_idx)) return -1;
     if (peer_idx >= MAX_PEERS) return -1;
 
-    const now = std.time.timestamp();
+    const now = shim.timestamp();
     var cb = &peer_circuit_breakers[peer_idx];
 
     // Circuit breaker gate: check if sends are allowed to this peer.
@@ -542,51 +562,50 @@ fn sendToPeerUnchecked(peer_idx: usize, buf: []const u8) c_int {
     if (!validPeer(peer_idx)) return -1;
 
     const peer = &peers[peer_idx];
-    var addr: std.posix.sockaddr.in6 = std.mem.zeroes(std.posix.sockaddr.in6);
-    addr.family = std.posix.AF.INET6;
-    addr.port = std.mem.nativeToBig(u16, peer.port);
 
     // Parse IPv6 address from peer host string.
     const host_slice = peer.host[0..peer.host_len];
-    const parsed = std.net.Ip6Address.parse(host_slice, peer.port) catch {
+    const parsed = net.Ip6Address.parse(host_slice, peer.port) catch {
         last_net_error = -2;
         return -1;
     };
-    addr = parsed.sa;
+    const dest: net.IpAddress = .{ .ip6 = parsed };
 
-    // SAFETY: @ptrCast from sockaddr.in6 to sockaddr is the standard POSIX
-    // pattern for passing typed socket addresses to sendto(2). The in6 struct
-    // is a superset of sockaddr and the size parameter ensures bounds safety.
-    const dest: *const std.posix.sockaddr = @ptrCast(&addr);
-    const sent = std.posix.sendto(udp_fd, buf, 0, dest, @sizeOf(std.posix.sockaddr.in6)) catch {
+    // `Socket.send` carries the destination address itself, so the hand-filled
+    // `sockaddr.in6` (family/port/@ptrCast to `sockaddr`) that sendto(2)
+    // required is gone; the address family and length are derived from the
+    // `IpAddress` union tag.
+    udp_socket.?.send(shim.io(), &dest, buf) catch {
         last_net_error = -3;
         return -1;
     };
-    _ = sent;
     packets_sent += 1;
     return 0;
 }
 
 /// Try to receive one UDP packet (non-blocking).
 /// Returns the number of bytes received, 0 if nothing available, or -1 on error.
-/// Stores the sender's address in the provided sockaddr.
-fn recvPacket(buf: []u8, src_addr: *std.posix.sockaddr.in6) c_int {
+/// Stores the sender's address in the provided address slot.
+fn recvPacket(buf: []u8, src_addr: *net.Ip6Address) c_int {
     if (!socket_bound) return -1;
 
-    var addr6: std.posix.sockaddr.in6 = std.mem.zeroes(std.posix.sockaddr.in6);
-    var addr6_len: std.posix.socklen_t = @sizeOf(std.posix.sockaddr.in6);
-
-    // SAFETY: @ptrCast from sockaddr.in6* to sockaddr* — standard POSIX recvfrom pattern.
-    const n = std.posix.recvfrom(udp_fd, buf, std.posix.MSG.DONTWAIT, @ptrCast(&addr6), &addr6_len) catch |err| {
-        if (err == error.WouldBlock) return 0;
-        last_net_error = -4;
-        return -1;
+    const msg = udp_socket.?.receiveTimeout(shim.io(), buf, RECV_NONBLOCKING) catch |err| switch (err) {
+        // Nothing queued. `MSG.DONTWAIT` used to surface this as
+        // `error.WouldBlock`; the zero-duration timeout surfaces it here.
+        error.Timeout => return 0,
+        else => {
+            last_net_error = -4;
+            return -1;
+        },
     };
 
-    src_addr.* = addr6;
+    // `IncomingMessage.from` is an `IpAddress` union. `Ip6Address.fromAny`
+    // re-maps an IPv4 sender into its IPv4-mapped IPv6 form, which is exactly
+    // what the old dual-stack `recvfrom` wrote into the `sockaddr.in6` slot.
+    src_addr.* = net.Ip6Address.fromAny(msg.from);
 
     packets_received += 1;
-    return @intCast(n);
+    return @intCast(msg.data.len);
 }
 
 /// Format an IPv6 address (16 bytes) into a human-readable string.
@@ -647,11 +666,13 @@ fn formatIp6(raw: [16]u8, buf: []u8) usize {
 }
 
 /// Find or add a peer by IPv6 address and port. Returns peer index.
-fn findOrAddPeerByAddr(addr: *const std.posix.sockaddr.in6) c_int {
-    // Format the raw IPv6 address bytes as a string.
+fn findOrAddPeerByAddr(addr: *const net.Ip6Address) c_int {
+    // Format the raw IPv6 address bytes as a string. `Ip6Address.bytes` is the
+    // same big-endian [16]u8 the old `sockaddr.in6.addr` held, but `.port` is
+    // already native-endian, so the `bigToNative` conversion is gone.
     var addr_buf: [46]u8 = undefined;
-    const host_len = formatIp6(addr.addr, &addr_buf);
-    const port = std.mem.bigToNative(u16, addr.port);
+    const host_len = formatIp6(addr.bytes, &addr_buf);
+    const port = addr.port;
 
     if (host_len == 0 or host_len > MAX_HOST_LEN) return -1;
 
@@ -680,38 +701,46 @@ fn umoja_bind_impl(port: u16) c_int {
     if (socket_bound) return -1; // already bound
     if (port == 0) return -1;
 
-    const fd = std.posix.socket(std.posix.AF.INET6, std.posix.SOCK.DGRAM, 0) catch {
-        last_net_error = -10;
-        return -1;
+    // Bind to [::]:port. `IpAddress.bind` fuses the old socket(2)+bind(2)
+    // pair into one call, so the two failures can no longer be reported
+    // separately by construction — the error set is split back out below to
+    // keep the -10 (socket creation) / -11 (bind) diagnostic codes meaningful.
+    // `ip6_only = false` is the default and preserves the dual-stack
+    // behaviour the old bare AF_INET6 socket had.
+    //
+    // The best-effort `SO_REUSEADDR` that used to sit between socket(2) and
+    // bind(2) is dropped: `BindOptions` exposes no such knob and the option is
+    // only meaningful *before* bind, so there is no longer a window in which to
+    // set it. For a unicast UDP socket its practical effect was nil (there is
+    // no TIME_WAIT for UDP, and sharing a port needs SO_REUSEPORT).
+    const bind_addr: net.IpAddress = .{ .ip6 = .unspecified(port) };
+    const sock = bind_addr.bind(shim.io(), .{ .mode = .dgram, .ip6_only = false }) catch |err| switch (err) {
+        error.AddressInUse,
+        error.AddressUnavailable,
+        error.AddressFamilyUnsupported,
+        => {
+            last_net_error = -11;
+            return -1;
+        },
+        else => {
+            last_net_error = -10;
+            return -1;
+        },
     };
 
-    // Allow address reuse.
-    const one: c_int = 1;
-    std.posix.setsockopt(fd, std.posix.SOL.SOCKET, std.posix.SO.REUSEADDR, std.mem.asBytes(&one)) catch {};
-
-    // Bind to [::]:port.
-    var addr: std.posix.sockaddr.in6 = std.mem.zeroes(std.posix.sockaddr.in6);
-    addr.family = std.posix.AF.INET6;
-    addr.port = std.mem.nativeToBig(u16, port);
-
-    // SAFETY: @ptrCast from sockaddr.in6* to sockaddr* — standard POSIX bind(2) pattern.
-    std.posix.bind(fd, @ptrCast(&addr), @sizeOf(std.posix.sockaddr.in6)) catch {
-        std.posix.close(fd);
-        last_net_error = -11;
-        return -1;
-    };
-
-    // Set non-blocking via ioctl FIONBIO.
+    // Set non-blocking via ioctl FIONBIO. Receives already pass MSG_DONTWAIT
+    // (see RECV_NONBLOCKING), but this keeps sends non-blocking too, exactly
+    // as before.
     const fionbio: c_int = 1;
     const FIONBIO: u32 = 0x5421;
-    const ioctl_result = std.posix.system.ioctl(fd, FIONBIO, @intFromPtr(&fionbio));
+    const ioctl_result = std.posix.system.ioctl(sock.handle, FIONBIO, @intFromPtr(&fionbio));
     if (ioctl_result != 0) {
-        std.posix.close(fd);
+        sock.close(shim.io());
         last_net_error = -12;
         return -1;
     }
 
-    udp_fd = fd;
+    udp_socket = sock;
     local_port = port;
     socket_bound = true;
     return 0;
@@ -730,8 +759,10 @@ pub export fn umoja_bind(port: u16) c_int {
 fn umoja_unbind_impl() c_int {
     if (!socket_bound) return -1;
 
-    std.posix.close(udp_fd);
-    udp_fd = -1;
+    // `std.posix.close` was trimmed; `Socket.close` is the replacement and
+    // takes the same `std.Io` as every other call site here.
+    udp_socket.?.close(shim.io());
+    udp_socket = null;
     local_port = 0;
     socket_bound = false;
     packets_sent = 0;
@@ -812,7 +843,7 @@ pub export fn umoja_send_handshake(peer_idx: usize) c_int {
     const result = sendToPeer(peer_idx, buf[0..pkt_len]);
     if (result == 0) {
         peers[peer_idx].handshake_state = .pending;
-        peers[peer_idx].last_seen = std.time.timestamp();
+        peers[peer_idx].last_seen = shim.timestamp();
     }
     return result;
 }
@@ -848,13 +879,13 @@ fn umoja_recv_and_process_impl() c_int {
     if (!socket_bound) return -1;
 
     var buf: [MAX_PACKET_LEN]u8 = undefined;
-    var src_addr: std.posix.sockaddr.in6 = std.mem.zeroes(std.posix.sockaddr.in6);
+    var src_addr: net.Ip6Address = .unspecified(0);
 
     const n = recvPacket(&buf, &src_addr);
     if (n <= 0) return n; // 0 = no data, -1 = error
 
     // Rate limiter gate: drop packets if bucket exhausted.
-    const now = std.time.timestamp();
+    const now = shim.timestamp();
     if (!inbound_rate_limiter.tryAcquire(now)) {
         packets_rate_limited += 1;
         return 0; // Silently drop — return 0 (no data) to caller.
@@ -871,7 +902,7 @@ fn umoja_recv_and_process_impl() c_int {
     if (pkt.node_id.len > 0 and pkt.node_id.len <= MAX_NODE_ID_LEN) {
         peers[pidx].node_id_len = copyBounded(&peers[pidx].node_id, pkt.node_id.ptr, pkt.node_id.len);
     }
-    peers[pidx].last_seen = std.time.timestamp();
+    peers[pidx].last_seen = shim.timestamp();
 
     switch (pkt.tag) {
         PKT_DISCOVER => {
@@ -962,15 +993,14 @@ pub export fn umoja_discover_udp(
 
     // Parse target address.
     const target_slice = target_ptr[0..target_len];
-    const parsed_ip6 = std.net.Ip6Address.parse(target_slice, target_port) catch {
+    const parsed_ip6 = net.Ip6Address.parse(target_slice, target_port) catch {
         last_net_error = -20;
         return -1;
     };
+    const dest: net.IpAddress = .{ .ip6 = parsed_ip6 };
 
     // Send discovery packet.
-    // SAFETY: @ptrCast from sockaddr.in6* to sockaddr* — standard POSIX sendto(2) pattern.
-    const dest: *const std.posix.sockaddr = @ptrCast(&parsed_ip6.sa);
-    _ = std.posix.sendto(udp_fd, buf[0..pkt_len], 0, dest, @sizeOf(std.posix.sockaddr.in6)) catch {
+    udp_socket.?.send(shim.io(), &dest, buf[0..pkt_len]) catch {
         last_net_error = -21;
         return -1;
     };
@@ -1081,7 +1111,7 @@ pub export fn boj_federation_heartbeat(index: usize) c_int {
     defer mutex.unlock();
     if (!validSlot(index)) return -1;
 
-    nodes[index].last_heartbeat = std.time.timestamp();
+    nodes[index].last_heartbeat = shim.timestamp();
     nodes[index].status = .alive;
     return 0;
 }
@@ -1233,7 +1263,7 @@ fn umoja_add_peer_impl(
     peers[slot] = PeerNode{};
     peers[slot].host_len = copyBounded(&peers[slot].host, host_ptr, host_len);
     peers[slot].port = port;
-    peers[slot].last_seen = std.time.timestamp();
+    peers[slot].last_seen = shim.timestamp();
     peers[slot].active = true;
 
     peer_count += 1;
@@ -1291,7 +1321,7 @@ pub export fn umoja_gossip_round() c_int {
     defer mutex.unlock();
     const maybe_idx = pickRandomPeer();
     if (maybe_idx) |idx| {
-        peers[idx].last_seen = std.time.timestamp();
+        peers[idx].last_seen = shim.timestamp();
         gossip_round_count += 1;
         return @intCast(idx);
     }
@@ -1313,7 +1343,7 @@ pub export fn umoja_receive_digest(
 
     @memcpy(&peers[peer_idx].catalogue_digest, digest_ptr[0..DIGEST_LEN]);
     peers[peer_idx].has_digest = true;
-    peers[peer_idx].last_seen = std.time.timestamp();
+    peers[peer_idx].last_seen = shim.timestamp();
     return 0;
 }
 
@@ -1430,7 +1460,7 @@ pub export fn umoja_handshake(peer_idx: usize) c_int {
     if (!validPeer(peer_idx)) return -1;
 
     peers[peer_idx].handshake_state = .pending;
-    peers[peer_idx].last_seen = std.time.timestamp();
+    peers[peer_idx].last_seen = shim.timestamp();
     return 0;
 }
 
@@ -1444,7 +1474,7 @@ pub export fn umoja_handshake_exchanged(peer_idx: usize) c_int {
     if (peers[peer_idx].handshake_state != .pending) return -1;
 
     peers[peer_idx].handshake_state = .exchanged;
-    peers[peer_idx].last_seen = std.time.timestamp();
+    peers[peer_idx].last_seen = shim.timestamp();
     return 0;
 }
 
@@ -1491,7 +1521,7 @@ pub export fn umoja_heartbeat(peer_idx: usize) c_int {
     defer mutex.unlock();
     if (!validPeer(peer_idx)) return -1;
 
-    peers[peer_idx].last_seen = std.time.timestamp();
+    peers[peer_idx].last_seen = shim.timestamp();
     return 0;
 }
 
@@ -1631,12 +1661,12 @@ const QUIC_OVERHEAD: usize = 1 + NONCE_LEN + AEAD_TAG_LEN;
 /// a security regression disguised as graceful degradation.
 fn generateQuicKeypair() bool {
     // Use OS random for the secret key.
-    std.crypto.random.bytes(&quic_local_secret);
+    shim.randomBytes(&quic_local_secret);
 
     // Derive public key. Retry once on degenerate key (probability ~2^-128).
     quic_local_public = X25519.recoverPublicKey(quic_local_secret) catch {
         // Degenerate key — regenerate with fresh randomness.
-        std.crypto.random.bytes(&quic_local_secret);
+        shim.randomBytes(&quic_local_secret);
         quic_local_public = X25519.recoverPublicKey(quic_local_secret) catch {
             quic_keypair_valid = false;
             return false; // Two consecutive degenerate keys — hardware RNG failure.
@@ -1747,7 +1777,7 @@ fn sendToPeerQuicAware(peer_idx: usize, buf: []const u8) c_int {
     if (!validPeer(peer_idx)) return -1;
     if (peer_idx >= MAX_PEERS) return -1;
 
-    const now = std.time.timestamp();
+    const now = shim.timestamp();
     var cb = &peer_circuit_breakers[peer_idx];
 
     // Circuit breaker gate.
@@ -1790,20 +1820,17 @@ fn sendToPeerRaw(peer_idx: usize, buf: []const u8) c_int {
     if (!validPeer(peer_idx)) return -1;
 
     const peer = &peers[peer_idx];
-    var addr: std.posix.sockaddr.in6 = std.mem.zeroes(std.posix.sockaddr.in6);
-    addr.family = std.posix.AF.INET6;
-    addr.port = std.mem.nativeToBig(u16, peer.port);
 
     const host_slice = peer.host[0..peer.host_len];
-    const parsed = std.net.Ip6Address.parse(host_slice, peer.port) catch {
+    const parsed = net.Ip6Address.parse(host_slice, peer.port) catch {
         last_net_error = -2;
         return -1;
     };
-    addr = parsed.sa;
+    const dest: net.IpAddress = .{ .ip6 = parsed };
 
-    // SAFETY: @ptrCast from sockaddr.in6* to sockaddr* — standard POSIX sendto(2) pattern.
-    const dest: *const std.posix.sockaddr = @ptrCast(&addr);
-    _ = std.posix.sendto(udp_fd, buf, 0, dest, @sizeOf(std.posix.sockaddr.in6)) catch {
+    // `Socket.send` takes the destination address directly — no hand-filled
+    // `sockaddr.in6` and no @ptrCast to `sockaddr`.
+    udp_socket.?.send(shim.io(), &dest, buf) catch {
         last_net_error = -3;
         return -1;
     };
@@ -1821,7 +1848,7 @@ pub export fn umoja_recv_and_process_quic() c_int {
     if (!socket_bound) return -1;
 
     var buf: [MAX_PACKET_LEN + QUIC_OVERHEAD]u8 = undefined;
-    var src_addr: std.posix.sockaddr.in6 = std.mem.zeroes(std.posix.sockaddr.in6);
+    var src_addr: net.Ip6Address = .unspecified(0);
 
     const n = recvPacket(@as([]u8, &buf), &src_addr);
     if (n <= 0) return n;
@@ -1859,7 +1886,7 @@ pub export fn umoja_recv_and_process_quic() c_int {
 
 /// Process a cleartext (or decrypted) packet. Shared logic for both
 /// umoja_recv_and_process() and umoja_recv_and_process_quic().
-fn processPacket(raw: []const u8, src_addr: *std.posix.sockaddr.in6) c_int {
+fn processPacket(raw: []const u8, src_addr: *net.Ip6Address) c_int {
     const pkt = parsePacket(raw) orelse return -1;
 
     const peer_result = findOrAddPeerByAddr(src_addr);
@@ -1869,7 +1896,7 @@ fn processPacket(raw: []const u8, src_addr: *std.posix.sockaddr.in6) c_int {
     if (pkt.node_id.len > 0 and pkt.node_id.len <= MAX_NODE_ID_LEN) {
         peers[pidx].node_id_len = copyBounded(&peers[pidx].node_id, pkt.node_id.ptr, pkt.node_id.len);
     }
-    peers[pidx].last_seen = std.time.timestamp();
+    peers[pidx].last_seen = shim.timestamp();
 
     switch (pkt.tag) {
         PKT_DISCOVER => {
@@ -1917,7 +1944,7 @@ fn processPacket(raw: []const u8, src_addr: *std.posix.sockaddr.in6) c_int {
 
 /// Handle an incoming QUIC key exchange packet.
 /// Format: [0x08][id_len:2][id:N][payload_len:2][public_key:32]
-fn handleQuicKeyExchange(raw: []const u8, src_addr: *std.posix.sockaddr.in6) c_int {
+fn handleQuicKeyExchange(raw: []const u8, src_addr: *net.Ip6Address) c_int {
     const pkt = parsePacket(raw) orelse return -1;
     if (pkt.payload.len != 32) return -1; // X25519 public key is 32 bytes
 
@@ -1928,7 +1955,7 @@ fn handleQuicKeyExchange(raw: []const u8, src_addr: *std.posix.sockaddr.in6) c_i
     if (pkt.node_id.len > 0 and pkt.node_id.len <= MAX_NODE_ID_LEN) {
         peers[pidx].node_id_len = copyBounded(&peers[pidx].node_id, pkt.node_id.ptr, pkt.node_id.len);
     }
-    peers[pidx].last_seen = std.time.timestamp();
+    peers[pidx].last_seen = shim.timestamp();
 
     // Store peer's public key.
     @memcpy(&quic_sessions[pidx].remote_public, pkt.payload[0..32]);
@@ -1936,7 +1963,7 @@ fn handleQuicKeyExchange(raw: []const u8, src_addr: *std.posix.sockaddr.in6) c_i
 
     // Generate per-session ephemeral keypair if not yet done.
     if (!quic_sessions[pidx].established) {
-        std.crypto.random.bytes(&quic_sessions[pidx].local_secret);
+        shim.randomBytes(&quic_sessions[pidx].local_secret);
         quic_sessions[pidx].local_public = X25519.recoverPublicKey(quic_sessions[pidx].local_secret) catch {
             return -1;
         };
@@ -1954,7 +1981,7 @@ fn handleQuicKeyExchange(raw: []const u8, src_addr: *std.posix.sockaddr.in6) c_i
 }
 
 /// Handle an incoming QUIC key reply packet.
-fn handleQuicKeyReply(raw: []const u8, src_addr: *std.posix.sockaddr.in6) c_int {
+fn handleQuicKeyReply(raw: []const u8, src_addr: *net.Ip6Address) c_int {
     const pkt = parsePacket(raw) orelse return -1;
     if (pkt.payload.len != 32) return -1;
 
@@ -1965,7 +1992,7 @@ fn handleQuicKeyReply(raw: []const u8, src_addr: *std.posix.sockaddr.in6) c_int 
     if (pkt.node_id.len > 0 and pkt.node_id.len <= MAX_NODE_ID_LEN) {
         peers[pidx].node_id_len = copyBounded(&peers[pidx].node_id, pkt.node_id.ptr, pkt.node_id.len);
     }
-    peers[pidx].last_seen = std.time.timestamp();
+    peers[pidx].last_seen = shim.timestamp();
 
     // Store peer's public key and derive shared secret.
     @memcpy(&quic_sessions[pidx].remote_public, pkt.payload[0..32]);
@@ -2038,7 +2065,7 @@ pub export fn umoja_quic_key_exchange(peer_idx: usize) c_int {
     if (!quic_keypair_valid) return -1;
 
     // Generate per-session ephemeral keypair.
-    std.crypto.random.bytes(&quic_sessions[peer_idx].local_secret);
+    shim.randomBytes(&quic_sessions[peer_idx].local_secret);
     quic_sessions[peer_idx].local_public = X25519.recoverPublicKey(quic_sessions[peer_idx].local_secret) catch {
         return -1;
     };
@@ -2981,10 +3008,10 @@ test "quic encrypt and decrypt roundtrip" {
     var session_b = QuicPeerSession{};
 
     // Generate keypairs for both sides.
-    std.crypto.random.bytes(&session_a.local_secret);
+    shim.randomBytes(&session_a.local_secret);
     session_a.local_public = X25519.recoverPublicKey(session_a.local_secret) catch unreachable;
 
-    std.crypto.random.bytes(&session_b.local_secret);
+    shim.randomBytes(&session_b.local_secret);
     session_b.local_public = X25519.recoverPublicKey(session_b.local_secret) catch unreachable;
 
     // Exchange public keys.
@@ -3022,10 +3049,10 @@ test "quic decrypt fails with wrong key" {
     var session_wrong = QuicPeerSession{};
 
     // Generate keypairs.
-    std.crypto.random.bytes(&session_a.local_secret);
+    shim.randomBytes(&session_a.local_secret);
     session_a.local_public = X25519.recoverPublicKey(session_a.local_secret) catch unreachable;
 
-    std.crypto.random.bytes(&session_wrong.local_secret);
+    shim.randomBytes(&session_wrong.local_secret);
     session_wrong.local_public = X25519.recoverPublicKey(session_wrong.local_secret) catch unreachable;
 
     // A encrypts with its own shared secret (self-loop for test).
@@ -3065,7 +3092,7 @@ test "quic session established tracking" {
     try std.testing.expectEqual(@as(c_int, 0), umoja_quic_session_established(0));
 
     // Manually establish.
-    std.crypto.random.bytes(&quic_sessions[0].local_secret);
+    shim.randomBytes(&quic_sessions[0].local_secret);
     quic_sessions[0].local_public = X25519.recoverPublicKey(quic_sessions[0].local_secret) catch unreachable;
     quic_sessions[0].remote_public = quic_sessions[0].local_public;
     quic_sessions[0].has_remote_key = true;
@@ -3078,7 +3105,7 @@ test "quic nonce counter increments" {
     _ = boj_federation_init();
 
     var session = QuicPeerSession{};
-    std.crypto.random.bytes(&session.local_secret);
+    shim.randomBytes(&session.local_secret);
     session.local_public = X25519.recoverPublicKey(session.local_secret) catch unreachable;
     session.remote_public = session.local_public;
     session.has_remote_key = true;
@@ -3101,7 +3128,7 @@ test "quic nonce produces unique ciphertexts" {
     _ = boj_federation_init();
 
     var session = QuicPeerSession{};
-    std.crypto.random.bytes(&session.local_secret);
+    shim.randomBytes(&session.local_secret);
     session.local_public = X25519.recoverPublicKey(session.local_secret) catch unreachable;
     session.remote_public = session.local_public;
     session.has_remote_key = true;
@@ -3176,3 +3203,5 @@ test "quic federation init resets sessions" {
     try std.testing.expect(!quic_keypair_valid);
     try std.testing.expect(!quic_sessions[0].established);
 }
+
+const shim = @import("cartridge_shim");

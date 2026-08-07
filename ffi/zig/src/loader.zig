@@ -14,11 +14,11 @@
 const std = @import("std");
 
 // `std.atomic.Mutex` was removed from the standard library; its replacement is
-// `std.Thread.Mutex`, whose lock/unlock surface is identical to the hand-rolled
+// `shim.Mutex`, whose lock/unlock surface is identical to the hand-rolled
 // wrapper this replaces. The wrapper also busy-waited via `spinLoopHint`, burning
-// a core under contention; `std.Thread.Mutex` parks the thread instead. 81 other
+// a core under contention; `shim.Mutex` parks the thread instead. 81 other
 // files in this repo already use this form.
-const Mutex = std.Thread.Mutex;
+const Mutex = shim.Mutex;
 const crypto = std.crypto;
 const fs = std.fs;
 
@@ -60,23 +60,27 @@ pub const LoadError = error{
 ///   most buf.len bytes so `buf[0..n]` is always in-bounds.
 /// - File handle is closed via `defer` even on read errors.
 /// - Empty path is rejected before I/O to avoid platform-specific behaviour.
-pub fn hashFile(path: []const u8) (LoadError || fs.File.OpenError || fs.File.ReadError)![HASH_LEN]u8 {
+pub fn hashFile(path: []const u8) (LoadError || std.Io.File.OpenError || std.Io.File.ReadStreamingError)![HASH_LEN]u8 {
     // SAFETY: reject empty paths before any I/O
     if (path.len == 0) return LoadError.CannotReadBinary;
 
-    const file = fs.cwd().openFile(path, .{}) catch |err| switch (err) {
+    const file = std.Io.Dir.cwd().openFile(shim.io(), path, .{}) catch |err| switch (err) {
         error.FileNotFound, error.AccessDenied => return LoadError.CannotReadBinary,
         else => return err,
     };
-    defer file.close();
+    defer file.close(shim.io());
 
     var hasher = crypto.hash.sha2.Sha256.init(.{});
     var buf: [8192]u8 = undefined;
 
     while (true) {
-        const n = try file.read(&buf);
-        if (n == 0) break;
-        // SAFETY: n <= buf.len guaranteed by file.read contract
+        // 0.16 contract: end-of-stream is error.EndOfStream; a 0 return
+        // just means "no bytes this call" and is not terminal.
+        const n = file.readStreaming(shim.io(), &.{&buf}) catch |err| switch (err) {
+            error.EndOfStream => break,
+            else => return err,
+        };
+        // SAFETY: n <= buf.len guaranteed by the readStreaming contract
         hasher.update(buf[0..n]);
     }
 
@@ -280,12 +284,12 @@ pub fn validateWasmModule(path: []const u8) !u64 {
     // SAFETY: reject empty paths before any I/O (bounds check)
     if (path.len == 0) return 0;
 
-    const file = fs.cwd().openFile(path, .{}) catch return 0;
-    defer file.close();
+    const file = std.Io.Dir.cwd().openFile(shim.io(), path, .{}) catch return 0;
+    defer file.close(shim.io());
 
     // Read the 8-byte WASM header.
     var header: [8]u8 = undefined;
-    const n = file.read(&header) catch return 0;
+    const n = file.readStreaming(shim.io(), &.{&header}) catch return 0;
     // SAFETY: need exactly 8 bytes for magic + version
     if (n < 8) return 0;
 
@@ -296,7 +300,7 @@ pub fn validateWasmModule(path: []const u8) !u64 {
     if (!std.mem.eql(u8, header[4..8], &WASM_VERSION_1)) return 0;
 
     // Get file size.
-    const stat = file.stat() catch return 0;
+    const stat = file.stat(shim.io()) catch return 0;
     // SAFETY: a valid WASM module must be at least 8 bytes (header)
     if (stat.size < 8) return 0;
     return stat.size;
@@ -468,13 +472,14 @@ test "hashFile on known content" {
     var tmp_dir = std.testing.tmpDir(.{});
     defer tmp_dir.cleanup();
 
-    const file = try tmp_dir.dir.createFile("test_hash.bin", .{});
-    try file.writeAll("abc");
-    file.close();
+    const file = try tmp_dir.dir.createFile(shim.io(), "test_hash.bin", .{});
+    try file.writeStreamingAll(shim.io(), "abc");
+    file.close(shim.io());
 
     // Get the full path
     var path_buf: [std.fs.max_path_bytes]u8 = undefined;
-    const path = try tmp_dir.dir.realpath("test_hash.bin", &path_buf);
+    const path_len = try tmp_dir.dir.realPathFile(shim.io(), "test_hash.bin", &path_buf);
+    const path = path_buf[0..path_len];
 
     const digest = try hashFile(path);
     const hex = hashToHex(digest);
@@ -490,12 +495,13 @@ test "verifyHash returns true for matching hash" {
     var tmp_dir = std.testing.tmpDir(.{});
     defer tmp_dir.cleanup();
 
-    const file = try tmp_dir.dir.createFile("verify_match.bin", .{});
-    try file.writeAll("abc");
-    file.close();
+    const file = try tmp_dir.dir.createFile(shim.io(), "verify_match.bin", .{});
+    try file.writeStreamingAll(shim.io(), "abc");
+    file.close(shim.io());
 
     var path_buf: [std.fs.max_path_bytes]u8 = undefined;
-    const path = try tmp_dir.dir.realpath("verify_match.bin", &path_buf);
+    const path_len = try tmp_dir.dir.realPathFile(shim.io(), "verify_match.bin", &path_buf);
+    const path = path_buf[0..path_len];
 
     const result = try verifyHash(path, "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad");
     try std.testing.expect(result);
@@ -505,12 +511,13 @@ test "verifyHash returns false for wrong hash" {
     var tmp_dir = std.testing.tmpDir(.{});
     defer tmp_dir.cleanup();
 
-    const file = try tmp_dir.dir.createFile("verify_mismatch.bin", .{});
-    try file.writeAll("abc");
-    file.close();
+    const file = try tmp_dir.dir.createFile(shim.io(), "verify_mismatch.bin", .{});
+    try file.writeStreamingAll(shim.io(), "abc");
+    file.close(shim.io());
 
     var path_buf: [std.fs.max_path_bytes]u8 = undefined;
-    const path = try tmp_dir.dir.realpath("verify_mismatch.bin", &path_buf);
+    const path_len = try tmp_dir.dir.realPathFile(shim.io(), "verify_mismatch.bin", &path_buf);
+    const path = path_buf[0..path_len];
 
     const result = try verifyHash(path, "0000000000000000000000000000000000000000000000000000000000000000");
     try std.testing.expect(!result);
@@ -520,12 +527,13 @@ test "verifyHash returns false for wrong-length hash" {
     var tmp_dir = std.testing.tmpDir(.{});
     defer tmp_dir.cleanup();
 
-    const file = try tmp_dir.dir.createFile("verify_badlen.bin", .{});
-    try file.writeAll("abc");
-    file.close();
+    const file = try tmp_dir.dir.createFile(shim.io(), "verify_badlen.bin", .{});
+    try file.writeStreamingAll(shim.io(), "abc");
+    file.close(shim.io());
 
     var path_buf: [std.fs.max_path_bytes]u8 = undefined;
-    const path = try tmp_dir.dir.realpath("verify_badlen.bin", &path_buf);
+    const path_len = try tmp_dir.dir.realPathFile(shim.io(), "verify_badlen.bin", &path_buf);
+    const path = path_buf[0..path_len];
 
     const result = try verifyHash(path, "tooshort");
     try std.testing.expect(!result);
@@ -545,14 +553,15 @@ test "validateWasmModule accepts valid WASM" {
     defer tmp_dir.cleanup();
 
     // Create a minimal valid WASM file (8 bytes header + 1 byte body).
-    const file = try tmp_dir.dir.createFile("valid.wasm", .{});
-    try file.writeAll(&WASM_MAGIC);
-    try file.writeAll(&WASM_VERSION_1);
-    try file.writeAll(&[_]u8{0x00}); // empty module body
-    file.close();
+    const file = try tmp_dir.dir.createFile(shim.io(), "valid.wasm", .{});
+    try file.writeStreamingAll(shim.io(), &WASM_MAGIC);
+    try file.writeStreamingAll(shim.io(), &WASM_VERSION_1);
+    try file.writeStreamingAll(shim.io(), &[_]u8{0x00}); // empty module body
+    file.close(shim.io());
 
     var path_buf: [std.fs.max_path_bytes]u8 = undefined;
-    const path = try tmp_dir.dir.realpath("valid.wasm", &path_buf);
+    const path_len = try tmp_dir.dir.realPathFile(shim.io(), "valid.wasm", &path_buf);
+    const path = path_buf[0..path_len];
 
     const size = try validateWasmModule(path);
     try std.testing.expect(size == 9); // 8 header + 1 body
@@ -562,12 +571,13 @@ test "validateWasmModule rejects non-WASM" {
     var tmp_dir = std.testing.tmpDir(.{});
     defer tmp_dir.cleanup();
 
-    const file = try tmp_dir.dir.createFile("not_wasm.bin", .{});
-    try file.writeAll("not a wasm file");
-    file.close();
+    const file = try tmp_dir.dir.createFile(shim.io(), "not_wasm.bin", .{});
+    try file.writeStreamingAll(shim.io(), "not a wasm file");
+    file.close(shim.io());
 
     var path_buf: [std.fs.max_path_bytes]u8 = undefined;
-    const path = try tmp_dir.dir.realpath("not_wasm.bin", &path_buf);
+    const path_len = try tmp_dir.dir.realPathFile(shim.io(), "not_wasm.bin", &path_buf);
+    const path = path_buf[0..path_len];
 
     const size = try validateWasmModule(path);
     try std.testing.expectEqual(@as(u64, 0), size);
@@ -577,12 +587,13 @@ test "validateWasmModule rejects too-short file" {
     var tmp_dir = std.testing.tmpDir(.{});
     defer tmp_dir.cleanup();
 
-    const file = try tmp_dir.dir.createFile("short.wasm", .{});
-    try file.writeAll(&[_]u8{ 0x00, 0x61 }); // Only 2 bytes
-    file.close();
+    const file = try tmp_dir.dir.createFile(shim.io(), "short.wasm", .{});
+    try file.writeStreamingAll(shim.io(), &[_]u8{ 0x00, 0x61 }); // Only 2 bytes
+    file.close(shim.io());
 
     var path_buf: [std.fs.max_path_bytes]u8 = undefined;
-    const path = try tmp_dir.dir.realpath("short.wasm", &path_buf);
+    const path_len = try tmp_dir.dir.realPathFile(shim.io(), "short.wasm", &path_buf);
+    const path = path_buf[0..path_len];
 
     const size = try validateWasmModule(path);
     try std.testing.expectEqual(@as(u64, 0), size);
@@ -595,14 +606,15 @@ test "WASM register and unregister" {
     defer tmp_dir.cleanup();
 
     // Create a valid WASM file.
-    const file = try tmp_dir.dir.createFile("cart.wasm", .{});
-    try file.writeAll(&WASM_MAGIC);
-    try file.writeAll(&WASM_VERSION_1);
-    try file.writeAll("cartridge body data");
-    file.close();
+    const file = try tmp_dir.dir.createFile(shim.io(), "cart.wasm", .{});
+    try file.writeStreamingAll(shim.io(), &WASM_MAGIC);
+    try file.writeStreamingAll(shim.io(), &WASM_VERSION_1);
+    try file.writeStreamingAll(shim.io(), "cartridge body data");
+    file.close(shim.io());
 
     var path_buf: [std.fs.max_path_bytes]u8 = undefined;
-    const path = try tmp_dir.dir.realpath("cart.wasm", &path_buf);
+    const path_len = try tmp_dir.dir.realPathFile(shim.io(), "cart.wasm", &path_buf);
+    const path = path_buf[0..path_len];
 
     // Register.
     const slot = boj_wasm_register(path.ptr, path.len, 0);
@@ -631,12 +643,13 @@ test "WASM register rejects invalid module" {
     var tmp_dir = std.testing.tmpDir(.{});
     defer tmp_dir.cleanup();
 
-    const file = try tmp_dir.dir.createFile("bad.wasm", .{});
-    try file.writeAll("this is not wasm");
-    file.close();
+    const file = try tmp_dir.dir.createFile(shim.io(), "bad.wasm", .{});
+    try file.writeStreamingAll(shim.io(), "this is not wasm");
+    file.close(shim.io());
 
     var path_buf: [std.fs.max_path_bytes]u8 = undefined;
-    const path = try tmp_dir.dir.realpath("bad.wasm", &path_buf);
+    const path_len = try tmp_dir.dir.realPathFile(shim.io(), "bad.wasm", &path_buf);
+    const path = path_buf[0..path_len];
 
     const slot = boj_wasm_register(path.ptr, path.len, 0);
     try std.testing.expectEqual(@as(c_int, -1), slot);
@@ -648,21 +661,23 @@ test "WASM validate export" {
     defer tmp_dir.cleanup();
 
     // Valid WASM.
-    const good = try tmp_dir.dir.createFile("good.wasm", .{});
-    try good.writeAll(&WASM_MAGIC);
-    try good.writeAll(&WASM_VERSION_1);
-    try good.writeAll("body");
-    good.close();
+    const good = try tmp_dir.dir.createFile(shim.io(), "good.wasm", .{});
+    try good.writeStreamingAll(shim.io(), &WASM_MAGIC);
+    try good.writeStreamingAll(shim.io(), &WASM_VERSION_1);
+    try good.writeStreamingAll(shim.io(), "body");
+    good.close(shim.io());
 
     // Invalid file.
-    const bad = try tmp_dir.dir.createFile("bad.txt", .{});
-    try bad.writeAll("hello");
-    bad.close();
+    const bad = try tmp_dir.dir.createFile(shim.io(), "bad.txt", .{});
+    try bad.writeStreamingAll(shim.io(), "hello");
+    bad.close(shim.io());
 
     var good_path: [std.fs.max_path_bytes]u8 = undefined;
-    const gp = try tmp_dir.dir.realpath("good.wasm", &good_path);
+    const gp_len = try tmp_dir.dir.realPathFile(shim.io(), "good.wasm", &good_path);
+    const gp = good_path[0..gp_len];
     var bad_path: [std.fs.max_path_bytes]u8 = undefined;
-    const bp = try tmp_dir.dir.realpath("bad.txt", &bad_path);
+    const bp_len = try tmp_dir.dir.realPathFile(shim.io(), "bad.txt", &bad_path);
+    const bp = bad_path[0..bp_len];
 
     try std.testing.expectEqual(@as(c_int, 1), boj_wasm_validate(gp.ptr, gp.len));
     try std.testing.expectEqual(@as(c_int, 0), boj_wasm_validate(bp.ptr, bp.len));
@@ -700,12 +715,13 @@ test "loader verify checks file hash" {
     defer tmp_dir.cleanup();
 
     // Create a file with known content.
-    const f = try tmp_dir.dir.createFile("verify-test.bin", .{});
-    try f.writeAll("hello world");
-    f.close();
+    const f = try tmp_dir.dir.createFile(shim.io(), "verify-test.bin", .{});
+    try f.writeStreamingAll(shim.io(), "hello world");
+    f.close(shim.io());
 
     var path_buf: [std.fs.max_path_bytes]u8 = undefined;
-    const path = try tmp_dir.dir.realpath("verify-test.bin", &path_buf);
+    const path_len = try tmp_dir.dir.realPathFile(shim.io(), "verify-test.bin", &path_buf);
+    const path = path_buf[0..path_len];
 
     // Compute expected SHA-256 of "hello world".
     var hasher = std.crypto.hash.sha2.Sha256.init(.{});
@@ -729,3 +745,5 @@ test "loader verify checks file hash" {
     const short = "abc";
     try std.testing.expectEqual(@as(c_int, -1), boj_loader_verify(path.ptr, path.len, short.ptr, short.len));
 }
+
+const shim = @import("cartridge_shim");

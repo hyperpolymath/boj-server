@@ -93,14 +93,14 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      # The old step curled ziglang.org/builds/...0.15.2... — that path is the
-      # nightly dir, not release downloads, so it returned an error page and
-      # `tar` died ("File format not recognized"). Use the pinned action +
-      # .tool-versions' canonical 0.15.1, matching e2e.yml.
+      # Use the pinned action + .tool-versions' canonical Zig, matching
+      # e2e.yml. (A previous revision curled ziglang.org/builds/... — the
+      # nightly dir, not release downloads — and got an error page that
+      # `tar` rejected.)
       - name: Install Zig
-        uses: goto-bus-stop/setup-zig@9566bb3e8749893055694249726756f25e099b30  # v2
+        uses: mlugg/setup-zig@d1434d08867e3ee9daa34448df10607b98908d29 # v2
         with:
-          version: 0.15.1
+          version: 0.16.0
       - name: Build LSP/DAP/BSP cartridge FFI
         run: |
           for cart in lsp-mcp dap-mcp bsp-mcp; do
