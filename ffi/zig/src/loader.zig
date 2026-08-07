@@ -80,6 +80,7 @@ pub fn hashFile(path: []const u8) (LoadError || std.Io.File.OpenError || std.Io.
             error.EndOfStream => break,
             else => return err,
         };
+        if (n == 0) break;
         // SAFETY: n <= buf.len guaranteed by the readStreaming contract
         hasher.update(buf[0..n]);
     }
