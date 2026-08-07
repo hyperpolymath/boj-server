@@ -31,7 +31,7 @@ jobs:
     outputs:
       run: ${{ steps.detect.outputs.run }}
     steps:
- uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0
       - id: detect
@@ -57,7 +57,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
- uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - name: Validate ABI modules exist
         run: |
           echo "=== Checking LSP/DAP/BSP ABI modules ==="
@@ -93,7 +93,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
- uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       # The old step curled ziglang.org/builds/...0.15.2... — that path is the
       # nightly dir, not release downloads, so it returned an error page and
       # `tar` died ("File format not recognized"). Use the pinned action +
@@ -140,7 +140,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
- uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       # jq (pre-installed on ubuntu-latest) — the repo's no-Python policy
       # (dogfood-gate) bans the previous json.tool/json.load approach.
       # Same checks: valid JSON + required fields + panel count.
@@ -174,7 +174,7 @@ jobs:
     needs: [changes, abi-check, ffi-build, panel-validation]
     if: needs.changes.outputs.run == 'true'
     steps:
- uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - name: Verify triadic structure
         run: |
           echo "=== LSP/DAP/BSP Triadic Structure Audit ==="

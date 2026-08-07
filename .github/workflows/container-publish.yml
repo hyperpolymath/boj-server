@@ -27,7 +27,7 @@ jobs:
       id-token: write       # mint the OIDC token the attestation is signed with
       attestations: write   # write the build-provenance attestation (the "claim")
     steps:
- uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Extract version metadata
         id: meta
