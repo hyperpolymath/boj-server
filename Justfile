@@ -261,20 +261,35 @@ init:
 # BUILD & COMPILE
 # ═══════════════════════════════════════════════════════════════════════════════
 
-# Build all Zig FFI layers (catalogue + all cartridges)
+# Build all Zig FFI layers (catalogue + every cartridge in the catalog root)
+#
+# The bundled cartridges/ tree was retired (canonical source:
+# hyperpolymath/boj-server-cartridges). The catalog root defaults to the
+# tracked fixture catalogue, as in tests/e2e_full.sh; point
+# BOJ_CARTRIDGES_PATH at a fetched cache (scripts/fetch-cartridges.sh) to
+# build the full registry.
 build *args:
     #!/usr/bin/env bash
     set -euo pipefail
+    CARTS="${BOJ_CARTRIDGES_PATH:-tests/fixtures/cartridges}"
     echo "Building BoJ catalogue FFI..."
     (cd ffi/zig && zig build {{args}})
-    echo "Building cartridge FFIs..."
+    echo "Building cartridge FFIs from $CARTS ..."
     FAILED=()
-    for d in cartridges/*/ffi; do
+    BUILT=0
+    for d in "$CARTS"/*/ffi; do
         [ -f "$d/build.zig" ] || continue
+        BUILT=$((BUILT + 1))
         if ! (cd "$d" && zig build {{args}} 2>&1); then
             FAILED+=("$d")
         fi
     done
+    if [ "$BUILT" -eq 0 ]; then
+        echo "WARNING: no cartridge FFI (no */ffi/build.zig) under $CARTS — built the catalogue only."
+        echo "         Populate a cache with scripts/fetch-cartridges.sh and set BOJ_CARTRIDGES_PATH."
+    else
+        echo "Attempted $BUILT cartridge FFI build(s)."
+    fi
     if [ ${#FAILED[@]} -gt 0 ]; then
         echo "WARNING: ${#FAILED[@]} cartridge FFI(s) failed to build:"
         for f in "${FAILED[@]}"; do echo "  $f"; done
@@ -293,8 +308,8 @@ build-watch:
 clean:
     @echo "Cleaning..."
     rm -rf ffi/zig/.zig-cache ffi/zig/zig-out
-    rm -rf cartridges/*/ffi/.zig-cache cartridges/*/ffi/zig-out
-    rm -rf src/abi/build cartridges/*/abi/build
+    rm -rf tests/fixtures/cartridges/*/ffi/.zig-cache tests/fixtures/cartridges/*/ffi/zig-out
+    rm -rf src/abi/build
     rm -rf target/ _build/ build/ dist/ out/
 
 # Deep clean including caches [reversible: rebuild]
@@ -305,36 +320,51 @@ clean-all: clean
 # TEST & QUALITY
 # ═══════════════════════════════════════════════════════════════════════════════
 
-# Run all Zig FFI tests (catalogue + all 111 cartridges with build.zig)
+# Run all Zig FFI tests (catalogue + every cartridge FFI in the catalog root)
 test *args:
     #!/usr/bin/env bash
     set -euo pipefail
+    CARTS="${BOJ_CARTRIDGES_PATH:-tests/fixtures/cartridges}"
     echo "Running catalogue FFI tests..."
     (cd ffi/zig && zig build test)
-    echo "Running cartridge FFI tests..."
+    echo "Running cartridge FFI tests from $CARTS ..."
     FAILED=()
-    for d in cartridges/*/ffi; do
+    RAN=0
+    for d in "$CARTS"/*/ffi; do
         [ -f "$d/build.zig" ] || continue
+        RAN=$((RAN + 1))
         if ! (cd "$d" && zig build test 2>&1); then
             FAILED+=("$d")
         fi
     done
+    if [ "$RAN" -eq 0 ]; then
+        echo "FAILED: no cartridge FFI (no */ffi/build.zig) under $CARTS — nothing was tested." >&2
+        echo "        Populate a cache with scripts/fetch-cartridges.sh and set BOJ_CARTRIDGES_PATH." >&2
+        exit 1
+    fi
     if [ ${#FAILED[@]} -gt 0 ]; then
-        echo "FAILED: ${#FAILED[@]} cartridge FFI test(s):"
+        echo "FAILED: ${#FAILED[@]} of $RAN cartridge FFI test(s):"
         for f in "${FAILED[@]}"; do echo "  $f"; done
         exit 1
     fi
-    echo "All FFI tests passed!"
+    echo "All FFI tests passed ($RAN cartridge FFI(s))!"
 
 # Run tests with verbose output
 test-verbose *args:
     #!/usr/bin/env bash
     set -euo pipefail
+    CARTS="${BOJ_CARTRIDGES_PATH:-tests/fixtures/cartridges}"
     (cd ffi/zig && zig build test -- --verbose)
-    for d in cartridges/*/ffi; do
+    RAN=0
+    for d in "$CARTS"/*/ffi; do
         [ -f "$d/build.zig" ] || continue
+        RAN=$((RAN + 1))
         (cd "$d" && zig build test -- --verbose)
     done
+    if [ "$RAN" -eq 0 ]; then
+        echo "FAILED: no cartridge FFI (no */ffi/build.zig) under $CARTS — nothing was tested." >&2
+        exit 1
+    fi
 
 # Smoke test — type-check core ABI + run one FFI test
 test-smoke:
@@ -1313,18 +1343,25 @@ heal:
     fi
     # --- Clear stale Zig caches ---
     echo "Clearing stale Zig caches..."
-    rm -rf ffi/zig/.zig-cache cartridges/*/ffi/.zig-cache 2>/dev/null || true
+    rm -rf ffi/zig/.zig-cache tests/fixtures/cartridges/*/ffi/.zig-cache 2>/dev/null || true
     HEALED=$((HEALED + 1))
     echo "  Cleared."
     echo ""
     # --- Rebuild all FFI layers ---
     if command -v zig >/dev/null 2>&1; then
-        echo "Rebuilding all FFI layers..."
+        CARTS="${BOJ_CARTRIDGES_PATH:-tests/fixtures/cartridges}"
+        echo "Rebuilding all FFI layers (cartridge catalog root: $CARTS)..."
         (cd ffi/zig && zig build) && echo "  Catalogue FFI: OK" || echo "  Catalogue FFI: FAILED"
-        for d in cartridges/*/ffi; do
+        REBUILT=0
+        for d in "$CARTS"/*/ffi; do
             [ -f "$d/build.zig" ] || continue
+            REBUILT=$((REBUILT + 1))
             (cd "$d" && zig build 2>/dev/null) && echo "  $d: OK" || echo "  $d: FAILED"
         done
+        if [ "$REBUILT" -eq 0 ]; then
+            echo "  No cartridge FFI under $CARTS — catalogue only."
+            echo "  Populate a cache with scripts/fetch-cartridges.sh and set BOJ_CARTRIDGES_PATH."
+        fi
         HEALED=$((HEALED + 1))
     fi
     echo ""
@@ -1361,8 +1398,14 @@ tour:
     echo "  elixir/         REST server (Plug/Cowboy)"
     echo "  container/      Stapeln container ecosystem"
     echo ""
-    CART_COUNT=$(ls -d cartridges/*-mcp 2>/dev/null | wc -l)
-    echo "Current cartridge count: $CART_COUNT"
+    CARTS="${BOJ_CARTRIDGES_PATH:-tests/fixtures/cartridges}"
+    CART_COUNT=$(ls -d "$CARTS"/*-mcp 2>/dev/null | wc -l)
+    if [ "$CART_COUNT" -eq 0 ]; then
+        echo "Cartridge catalog root $CARTS is empty or absent."
+        echo "  Populate one: scripts/fetch-cartridges.sh; then export BOJ_CARTRIDGES_PATH."
+    else
+        echo "Cartridges visible in $CARTS: $CART_COUNT"
+    fi
     echo ""
     echo "Quick commands:"
     echo "  just run         Start server (REST 7700, gRPC 7701, GraphQL 7702)"
@@ -1400,7 +1443,7 @@ help-me:
     echo "  just tunnel           Cloudflare quick tunnel only"
     echo ""
     echo "TEST & VERIFY:"
-    echo "  just test             Run all FFI tests (catalogue + 17 cartridges)"
+    echo "  just test             Run all FFI tests (catalogue + cartridge catalog root)"
     echo "  just test-verbose     Run tests with verbose output"
     echo "  just test-smoke       Quick smoke test (ABI check + catalogue test)"
     echo "  just readiness        Component Readiness Grade tests"
