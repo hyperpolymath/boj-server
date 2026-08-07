@@ -11,7 +11,11 @@
 // scripts/fetch-cartridges.sh) for subdirectories matching the *-mcp
 // pattern and produces a static OFFLINE_MENU object. This prevents the
 // hardcoded menu from going stale as cartridges are added or removed.
-// The bundled ../../cartridges tree this used to scan was retired.
+//
+// The bundled ../../cartridges tree this used to scan was retired, so the
+// fallback is the tracked fixture catalogue (as in tests/e2e_full.sh) —
+// never a path that cannot exist. Scanning an empty or absent root is a
+// hard error: regenerating the menu from nothing would silently blank it.
 
 import { readdirSync, statSync } from "node:fs";
 import { join, dirname } from "node:path";
@@ -19,20 +23,36 @@ import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const cartridgesDir =
-  Deno.env.get("BOJ_CARTRIDGES_PATH") ?? join(__dirname, "../../cartridges");
+  Deno.env.get("BOJ_CARTRIDGES_PATH") ??
+  join(__dirname, "../../tests/fixtures/cartridges");
 
+let entries;
 try {
-  const entries = readdirSync(cartridgesDir)
+  entries = readdirSync(cartridgesDir)
     .filter(name => {
       const full = join(cartridgesDir, name);
       return statSync(full).isDirectory() && name.endsWith("-mcp");
     })
     .sort();
-
-  console.log(`Found ${entries.length} cartridges in ${cartridgesDir}`);
-  console.log("Cartridges:", entries.join(", "));
-  console.log("\nUpdate mcp-bridge/lib/offline-menu.js with any new cartridges.");
 } catch (err) {
   console.error(`Error scanning cartridges directory: ${err.message}`);
+  console.error(
+    "Set BOJ_CARTRIDGES_PATH to a catalog root populated by " +
+      "scripts/fetch-cartridges.sh.",
+  );
   Deno.exit(1);
 }
+
+if (entries.length === 0) {
+  console.error(`No *-mcp cartridges found in ${cartridgesDir}.`);
+  console.error(
+    "Refusing to regenerate the offline menu from an empty catalog — " +
+      "set BOJ_CARTRIDGES_PATH to a populated catalog root " +
+      "(scripts/fetch-cartridges.sh).",
+  );
+  Deno.exit(1);
+}
+
+console.log(`Found ${entries.length} cartridges in ${cartridgesDir}`);
+console.log("Cartridges:", entries.join(", "));
+console.log("\nUpdate mcp-bridge/lib/offline-menu.js with any new cartridges.");

@@ -18,6 +18,29 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+
+# Cartridge catalog root: the bundled cartridges/ tree was retired in favour
+# of hyperpolymath/boj-server-cartridges. Default to the tracked fixture
+# catalogue (as tests/e2e_full.sh does); point BOJ_CARTRIDGES_PATH at a cache
+# populated by scripts/fetch-cartridges.sh to exercise the full registry.
+CARTRIDGES_ROOT="${BOJ_CARTRIDGES_PATH:-$PROJECT_DIR/tests/fixtures/cartridges}"
+
+# The four cartridges these steps were written against. They are no longer
+# bundled, so each step reports per-cartridge whether it found a subject:
+# absent or manifest-only means SKIP with a message, never a silent pass.
+SUBJECT_CARTS=(database-mcp fleet-mcp nesy-mcp agent-mcp)
+
+# A cartridge carrying none of abi/, ffi/, adapter/ is a manifest-only
+# catalogue entry — the shape of the tracked fixture catalogue, and of any
+# registry entry not yet implemented. There is no implementation to audit,
+# so the layer checks skip it rather than reporting a phantom defect.
+# A cartridge with SOME layers but not the one under test is a real defect
+# and still fails.
+is_manifest_only() {
+    local d="$1"
+    [ ! -d "$d/abi" ] && [ ! -d "$d/ffi" ] && [ ! -d "$d/adapter" ]
+}
+
 PASS=0
 FAIL=0
 SKIP=0
@@ -76,37 +99,61 @@ fi
 
 # --- Step 4: Verify Zig adapter completeness ---
 echo ""
-echo "Step 4: Verifying Zig adapter completeness..."
+echo "Step 4: Verifying Zig adapter completeness (catalog root: $CARTRIDGES_ROOT)..."
 cd "$PROJECT_DIR"
 adapter_count=0
-for cart in database-mcp fleet-mcp nesy-mcp agent-mcp; do
-    if [ -f "cartridges/$cart/adapter/${cart%%-mcp}_adapter.zig" ]; then
+adapter_skipped=0
+for cart in "${SUBJECT_CARTS[@]}"; do
+    cart_dir="$CARTRIDGES_ROOT/$cart"
+    if [ ! -d "$cart_dir" ]; then
+        yellow "  SKIP: $cart is not in $CARTRIDGES_ROOT"
+        adapter_skipped=$((adapter_skipped + 1))
+    elif is_manifest_only "$cart_dir"; then
+        yellow "  SKIP: $cart is a manifest-only catalogue entry — no adapter to check"
+        adapter_skipped=$((adapter_skipped + 1))
+    elif [ -f "$cart_dir/adapter/${cart%%-mcp}_adapter.zig" ]; then
         adapter_count=$((adapter_count + 1))
+    else
+        red "  $cart: has implementation layers but no adapter/${cart%%-mcp}_adapter.zig"
+        FAIL=$((FAIL + 1))
     fi
 done
-if [ $adapter_count -eq 4 ]; then
-    green "  All Zig adapters present ($adapter_count/4)"
+if [ $adapter_count -eq ${#SUBJECT_CARTS[@]} ]; then
+    green "  All Zig adapters present ($adapter_count/${#SUBJECT_CARTS[@]})"
     PASS=$((PASS + 1))
-else
-    red "  Missing Zig adapters ($adapter_count/4)"
-    FAIL=$((FAIL + 1))
+elif [ $adapter_skipped -gt 0 ]; then
+    yellow "  $adapter_skipped/${#SUBJECT_CARTS[@]} subject cartridges carry no implementation here."
+    yellow "  Adapters live in hyperpolymath/boj-server-cartridges — populate a cache"
+    yellow "  with scripts/fetch-cartridges.sh and set BOJ_CARTRIDGES_PATH to check them."
+    SKIP=$((SKIP + 1))
 fi
 
 # --- Step 5: Run cartridge FFI tests ---
 echo ""
-echo "Step 5: Running cartridge FFI tests..."
+echo "Step 5: Running cartridge FFI tests (catalog root: $CARTRIDGES_ROOT)..."
 cd "$PROJECT_DIR"
-for cart in database-mcp fleet-mcp nesy-mcp agent-mcp; do
-    cd "cartridges/$cart/ffi"
-    if zig build test 2>/dev/null; then
+ffi_ran=0
+for cart in "${SUBJECT_CARTS[@]}"; do
+    ffi_dir="$CARTRIDGES_ROOT/$cart/ffi"
+    if [ ! -f "$ffi_dir/build.zig" ]; then
+        yellow "  SKIP: $cart has no $ffi_dir/build.zig — nothing to test"
+        SKIP=$((SKIP + 1))
+        continue
+    fi
+    ffi_ran=$((ffi_ran + 1))
+    if (cd "$ffi_dir" && zig build test 2>/dev/null); then
         green "  $cart: tests passed"
         PASS=$((PASS + 1))
     else
         red "  $cart: tests failed"
         FAIL=$((FAIL + 1))
     fi
-    cd "$PROJECT_DIR"
 done
+if [ $ffi_ran -eq 0 ]; then
+    yellow "  No cartridge FFI test ran — the subjects are in"
+    yellow "  hyperpolymath/boj-server-cartridges. Populate a cache with"
+    yellow "  scripts/fetch-cartridges.sh and set BOJ_CARTRIDGES_PATH to run them."
+fi
 
 # --- Step 6: Run benchmarks ---
 echo ""
@@ -123,11 +170,27 @@ fi
 echo ""
 echo "Step 7: Matrix verification..."
 cd "$PROJECT_DIR"
-for cart in database-mcp fleet-mcp nesy-mcp agent-mcp; do
+matrix_skipped=0
+for cart in "${SUBJECT_CARTS[@]}"; do
+    cart_dir="$CARTRIDGES_ROOT/$cart"
+    if [ ! -d "$cart_dir" ]; then
+        yellow "  SKIP: $cart is not in $CARTRIDGES_ROOT"
+        matrix_skipped=$((matrix_skipped + 1))
+        SKIP=$((SKIP + 1))
+        continue
+    fi
+    if is_manifest_only "$cart_dir"; then
+        yellow "  SKIP: $cart is a manifest-only catalogue entry — no layers to verify"
+        matrix_skipped=$((matrix_skipped + 1))
+        SKIP=$((SKIP + 1))
+        continue
+    fi
     abi_ok=false; ffi_ok=false; adapter_ok=false
-    find "cartridges/$cart/abi" -name '*.idr' 2>/dev/null | grep -q . && abi_ok=true
-    [ -f "cartridges/$cart/ffi"/*_ffi.zig ] 2>/dev/null && ffi_ok=true
-    [ -f "cartridges/$cart/adapter"/*_adapter.v ] 2>/dev/null && adapter_ok=true
+    # `[ -f dir/*_ffi.zig ]` is not a glob test (SC2144): with two matches it
+    # errors out, with none it tests the literal pattern. Use find.
+    find "$CARTRIDGES_ROOT/$cart/abi" -name '*.idr' 2>/dev/null | grep -q . && abi_ok=true
+    find "$CARTRIDGES_ROOT/$cart/ffi" -maxdepth 1 -name '*_ffi.zig' 2>/dev/null | grep -q . && ffi_ok=true
+    find "$CARTRIDGES_ROOT/$cart/adapter" -maxdepth 1 -name '*_adapter.v' 2>/dev/null | grep -q . && adapter_ok=true
 
     if $abi_ok && $ffi_ok && $adapter_ok; then
         green "  $cart: ABI+FFI+Adapter complete"
@@ -137,6 +200,11 @@ for cart in database-mcp fleet-mcp nesy-mcp agent-mcp; do
         FAIL=$((FAIL + 1))
     fi
 done
+if [ $matrix_skipped -eq ${#SUBJECT_CARTS[@]} ]; then
+    yellow "  Matrix verification checked nothing — every subject cartridge is"
+    yellow "  absent or manifest-only under $CARTRIDGES_ROOT. The implementations"
+    yellow "  live in hyperpolymath/boj-server-cartridges (scripts/fetch-cartridges.sh)."
+fi
 
 # --- Summary ---
 echo ""
