@@ -1,5 +1,5 @@
-# This workflow is managed by gh actions-lock.
 # SPDX-License-Identifier: MPL-2.0
+# This workflow is managed by gh actions-lock.
 # Fallback Cloudflare Workers deploy via Direct Upload (wrangler deploy).
 # Bypasses the Cloudflare Git Integration build system entirely.
 # Uses wrangler deploy (Workers + Assets) rather than the deprecated
