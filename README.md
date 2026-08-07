@@ -140,16 +140,16 @@ The server also implements `resources/list` (7 `boj://` resources) and `prompts/
 
 The bridge exposes **45 `boj_*` tools** and **23 `coord_*` tools**. A subset of cartridges have explicit `boj_<domain>_<verb>` tools for high-frequency operations; everything catalogued is reachable through `boj_cartridge_invoke`.
 
-| Group | Tools | Examples |
-|----|----|----|
-| **Core discovery / dispatch** | 5 | `boj_health`, `boj_menu`, `boj_cartridges`, `boj_cartridge_info`, `boj_cartridge_invoke` |
-| **GitHub** | 14 | `boj_github_list_repos`, `boj_github_create_issue`, `boj_github_create_pr`, `boj_github_merge_pr`, `boj_github_search_code`, `boj_github_graphql` |
-| **GitLab** | 8 | `boj_gitlab_list_projects`, `boj_gitlab_create_mr`, `boj_gitlab_list_pipelines`, `boj_gitlab_setup_mirror` |
-| **Browser (Firefox)** | 7 | `boj_browser_navigate`, `boj_browser_click`, `boj_browser_type`, `boj_browser_read_page`, `boj_browser_screenshot`, `boj_browser_tabs`, `boj_browser_execute_js` |
-| **Cloud** | 3 | `boj_cloud_cloudflare`, `boj_cloud_vercel`, `boj_cloud_verpex` |
-| **Communications** | 2 | `boj_comms_gmail`, `boj_comms_calendar` |
-| **Research / code intel / ML / search** | 4 | `boj_research`, `boj_codeseeker`, `boj_ml_huggingface`, `boj_search` |
-| **Coordination (`local-coord-mcp`)** | 23 | `coord_register`, `coord_claim_task`, `coord_send`, `coord_review`, `coord_approve`, `coord_health` |
+| Group                                   | Tools | Examples                                                                                                                                                         |
+|-----------------------------------------|-------|------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **Core discovery / dispatch**           | 5     | `boj_health`, `boj_menu`, `boj_cartridges`, `boj_cartridge_info`, `boj_cartridge_invoke`                                                                         |
+| **GitHub**                              | 14    | `boj_github_list_repos`, `boj_github_create_issue`, `boj_github_create_pr`, `boj_github_merge_pr`, `boj_github_search_code`, `boj_github_graphql`                |
+| **GitLab**                              | 8     | `boj_gitlab_list_projects`, `boj_gitlab_create_mr`, `boj_gitlab_list_pipelines`, `boj_gitlab_setup_mirror`                                                       |
+| **Browser (Firefox)**                   | 7     | `boj_browser_navigate`, `boj_browser_click`, `boj_browser_type`, `boj_browser_read_page`, `boj_browser_screenshot`, `boj_browser_tabs`, `boj_browser_execute_js` |
+| **Cloud**                               | 3     | `boj_cloud_cloudflare`, `boj_cloud_vercel`, `boj_cloud_verpex`                                                                                                   |
+| **Communications**                      | 2     | `boj_comms_gmail`, `boj_comms_calendar`                                                                                                                          |
+| **Research / code intel / ML / search** | 4     | `boj_research`, `boj_codeseeker`, `boj_ml_huggingface`, `boj_search`                                                                                             |
+| **Coordination (`local-coord-mcp`)**    | 23    | `coord_register`, `coord_claim_task`, `coord_send`, `coord_review`, `coord_approve`, `coord_health`                                                              |
 
 > Set `BOJ_TOOL_SCOPE=core` to advertise only the discovery surface; explicit `boj_<domain>_*` tools remain reachable via `boj_cartridge_invoke` regardless. A CSV of prefixes (e.g. `core,github,browser`) advertises core plus named groups.
 
@@ -181,7 +181,7 @@ BoJ catalogues **125 cartridges** across trust tiers (Teranga / Shield / Ayo). B
 
 - **Without backend or credentials**, side-effectful tools return a structured `{error, hint}` telling you what’s missing — they never silently fail.
 
-> **Number transparency:** **125** is the single source of truth — it is the number of `cartridge.json` manifests under `cartridges/` and what the live `boj_menu` reports. Every packaging file (`package.json`, `jsr.json`, `smithery.yaml`, `ai-plugin.json`, `openapi.yaml`, `CITATION.cff`) is reconciled to it. Of those 125, most are a catalogue entry rather than a live service — see the bullets above.
+> **Number transparency:** **125** is the single source of truth — it is the number of `cartridge.json` manifests in the canonical [boj-server-cartridges](https://github.com/hyperpolymath/boj-server-cartridges) registry (the bundled `cartridges/` tree was retired from this repo; populate a local cache with `scripts/fetch-cartridges.sh` + `BOJ_CARTRIDGES_PATH`) and what the live `boj_menu` reports. Every packaging file (`package.json`, `jsr.json`, `smithery.yaml`, `ai-plugin.json`, `openapi.yaml`, `CITATION.cff`) is reconciled to it. Of those 125, most are a catalogue entry rather than a live service — see the bullets above.
 
 Catalogued domains include: git forges & code hosting, cloud platforms (Cloudflare, Vercel, AWS, GCP, DigitalOcean, Hetzner, Fly, Linode, Railway, Render), databases (PostgreSQL, MongoDB, Redis, Neo4j, ClickHouse, DuckDB, Turso, Supabase, Neon, …), containers & Kubernetes, CI/CD & observability (Buildkite, CircleCI, Hypatia, Grafana, Prometheus, Sentry), messaging (Slack, Discord, Telegram, Matrix), productivity (Notion, Linear, Jira, Obsidian, Zotero), ML/AI & coordination, browser & web automation, code intelligence & research, developer tooling (LSP/DAP/BSP, language & package registries), security & secrets, IaC & proof systems, and hyperpolymath-native admin cartridges.
 
@@ -201,11 +201,11 @@ The coordination bus (`local-coord-mcp`) is a separate localhost service, defaul
 
 Selected with `BOJ_TRANSPORT` (ADR-0013):
 
-| Value | Behaviour |
-|----|----|
-| `stdio` *(default)* | Reads JSON-RPC from stdin, writes to stdout — how Claude Code / Desktop launch the bridge as a subprocess. |
-| `http` | Starts an HTTP+SSE listener on `BOJ_HTTP_PORT` (default `7780`) for remote / Workers / browser deployments. Binds `127.0.0.1` by default; `BOJ_HTTP_AUTH=none` is **refused** on a non-loopback bind. |
-| `both` | Runs stdio and HTTP simultaneously. |
+| Value               | Behaviour                                                                                                                                                                                             |
+|---------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `stdio` *(default)* | Reads JSON-RPC from stdin, writes to stdout — how Claude Code / Desktop launch the bridge as a subprocess.                                                                                            |
+| `http`              | Starts an HTTP+SSE listener on `BOJ_HTTP_PORT` (default `7780`) for remote / Workers / browser deployments. Binds `127.0.0.1` by default; `BOJ_HTTP_AUTH=none` is **refused** on a non-loopback bind. |
+| `both`              | Runs stdio and HTTP simultaneously.                                                                                                                                                                   |
 
 HTTP auth: `none` (loopback only), or `bearer` against `BOJ_HTTP_AUTH_TOKENS`. `mtls`/`oidc` are planned, not yet implemented.
 
@@ -213,20 +213,20 @@ HTTP auth: `none` (loopback only), or `bearer` against `BOJ_HTTP_AUTH_TOKENS`. `
 
 Key environment variables (full schema in [`glama.json`](glama.json)):
 
-| Variable | Default | Purpose |
-|----|----|----|
-| `BOJ_URL` | `http://localhost:7700` | Base URL for the BoJ REST backend. |
-| `GITHUB_TOKEN` | — | PAT for `boj_github_*` tools. |
-| `GITLAB_TOKEN` / `GITLAB_URL` | — / `https://gitlab.com` | Token + base URL for `boj_gitlab_*` tools. |
-| `BOJ_TOOL_SCOPE` | `full` | `full`, `core`, or a CSV of domain prefixes (e.g. `core,github,browser`). |
-| `BOJ_RATE_LIMIT` | `60` | Max tool calls per minute. |
-| `BOJ_LOG_LEVEL` | `info` | `debug` / `info` / `warn` / `error` / `silent`. |
-| `BOJ_TRANSPORT` | `stdio` | `stdio` / `http` / `both`. |
-| `BOJ_HTTP_PORT` / `BOJ_HTTP_BIND` | `7780` / `127.0.0.1` | HTTP transport port and bind address. |
-| `BOJ_HTTP_AUTH` / `BOJ_HTTP_AUTH_TOKENS` | `none` / — | HTTP auth mode and accepted bearer tokens. |
-| `COORD_BACKEND_URL` | `http://127.0.0.1:7745` | Coordination bus backend. |
-| `COORD_REQUIRE_NICKEL` | `0` | `1` enables strict Nickel-contract validation on gated envelopes. |
-| `OTEL_EXPORTER_OTLP_ENDPOINT` | — | When set, every `tools/call` emits an OTLP/JSON span to `<endpoint>/v1/traces`. |
+| Variable                                 | Default                  | Purpose                                                                         |
+|------------------------------------------|--------------------------|---------------------------------------------------------------------------------|
+| `BOJ_URL`                                | `http://localhost:7700`  | Base URL for the BoJ REST backend.                                              |
+| `GITHUB_TOKEN`                           | —                        | PAT for `boj_github_*` tools.                                                   |
+| `GITLAB_TOKEN` / `GITLAB_URL`            | — / `https://gitlab.com` | Token + base URL for `boj_gitlab_*` tools.                                      |
+| `BOJ_TOOL_SCOPE`                         | `full`                   | `full`, `core`, or a CSV of domain prefixes (e.g. `core,github,browser`).       |
+| `BOJ_RATE_LIMIT`                         | `60`                     | Max tool calls per minute.                                                      |
+| `BOJ_LOG_LEVEL`                          | `info`                   | `debug` / `info` / `warn` / `error` / `silent`.                                 |
+| `BOJ_TRANSPORT`                          | `stdio`                  | `stdio` / `http` / `both`.                                                      |
+| `BOJ_HTTP_PORT` / `BOJ_HTTP_BIND`        | `7780` / `127.0.0.1`     | HTTP transport port and bind address.                                           |
+| `BOJ_HTTP_AUTH` / `BOJ_HTTP_AUTH_TOKENS` | `none` / —               | HTTP auth mode and accepted bearer tokens.                                      |
+| `COORD_BACKEND_URL`                      | `http://127.0.0.1:7745`  | Coordination bus backend.                                                       |
+| `COORD_REQUIRE_NICKEL`                   | `0`                      | `1` enables strict Nickel-contract validation on gated envelopes.               |
+| `OTEL_EXPORTER_OTLP_ENDPOINT`            | —                        | When set, every `tools/call` emits an OTLP/JSON span to `<endpoint>/v1/traces`. |
 
 # Security
 
@@ -255,8 +255,6 @@ Report vulnerabilities per [`SECURITY.md`](SECURITY.md).
 - **Code** — [MPL-2.0](LICENSE) (Mozilla Public License 2.0) — the license published to npm and detected by GitHub.
 
 - **Documentation** — MPL-2.0 today (the repository’s REUSE config tags every file MPL-2.0); a **CC-BY-SA-4.0** split for prose is the intended model, with the docs-licence rollout tracked as a follow-up.
-
-This project **does not** use AGPL; any AGPL string remaining in a build manifest is a packaging regression, not the project’s license.
 
 # Contributing & links
 
