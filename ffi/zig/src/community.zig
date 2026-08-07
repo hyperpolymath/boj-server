@@ -16,11 +16,11 @@
 const std = @import("std");
 
 // `std.atomic.Mutex` was removed from the standard library; its replacement is
-// `std.Thread.Mutex`, whose lock/unlock surface is identical to the hand-rolled
+// `shim.Mutex`, whose lock/unlock surface is identical to the hand-rolled
 // wrapper this replaces. The wrapper also busy-waited via `spinLoopHint`, burning
-// a core under contention; `std.Thread.Mutex` parks the thread instead. 81 other
+// a core under contention; `shim.Mutex` parks the thread instead. 81 other
 // files in this repo already use this form.
-const Mutex = std.Thread.Mutex;
+const Mutex = shim.Mutex;
 
 // ═══════════════════════════════════════════════════════════════════════
 // Constants
@@ -123,7 +123,7 @@ fn submit(
     sub.hash_len = 64;
 
     sub.status = .submitted;
-    sub.submitted_at = std.time.timestamp();
+    sub.submitted_at = shim.timestamp();
     sub.active = true;
 
     submission_count += 1;
@@ -145,7 +145,7 @@ fn setStatus(idx: usize, new_status: ReviewStatus) i32 {
     if (!valid) return -2;
 
     sub.status = new_status;
-    sub.reviewed_at = std.time.timestamp();
+    sub.reviewed_at = shim.timestamp();
     return 0;
 }
 
@@ -369,3 +369,5 @@ test "community deinit resets" {
     boj_community_deinit();
     try std.testing.expectEqual(@as(usize, 0), boj_community_count());
 }
+
+const shim = @import("cartridge_shim");

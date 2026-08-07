@@ -17,11 +17,11 @@
 const std = @import("std");
 
 // `std.atomic.Mutex` was removed from the standard library; its replacement is
-// `std.Thread.Mutex`, whose lock/unlock surface is identical to the hand-rolled
+// `shim.Mutex`, whose lock/unlock surface is identical to the hand-rolled
 // wrapper this replaces. The wrapper also busy-waited via `spinLoopHint`, burning
-// a core under contention; `std.Thread.Mutex` parks the thread instead. 81 other
+// a core under contention; `shim.Mutex` parks the thread instead. 81 other
 // files in this repo already use this form.
-const Mutex = std.Thread.Mutex;
+const Mutex = shim.Mutex;
 const Allocator = std.mem.Allocator;
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -141,7 +141,7 @@ fn resolveBaseUrl() [MAX_ENDPOINT_LEN]u8 {
         return endpoint;
     }
     // Try the environment variable (read outside of mutex — no global state mutation).
-    const env_val = std.posix.getenv("VERISIMDB_URL");
+    const env_val = shim.getenv("VERISIMDB_URL");
     if (env_val) |url| {
         var buf: [MAX_ENDPOINT_LEN]u8 = [_]u8{0} ** MAX_ENDPOINT_LEN;
         const len = @min(url.len, MAX_ENDPOINT_LEN);
@@ -237,17 +237,20 @@ const HttpResult = struct {
 /// Execute a curl command and return success/failure + stdout body.
 /// Caller must NOT hold the mutex (this blocks on a subprocess).
 fn curlExec(argv: []const []const u8) HttpResult {
-    const result = std.process.Child.run(.{
-        .allocator = std.heap.page_allocator,
+    const result = std.process.run(std.heap.page_allocator, shim.io(), .{
         .argv = argv,
-        .max_output_bytes = MAX_HTTP_RESPONSE,
+        .stdout_limit = .limited(MAX_HTTP_RESPONSE),
+        .stderr_limit = .limited(MAX_HTTP_RESPONSE),
     }) catch {
         return HttpResult{ .ok = false, .body = [_]u8{0} ** MAX_HTTP_RESPONSE, .body_len = 0 };
     };
     defer std.heap.page_allocator.free(result.stdout);
     defer std.heap.page_allocator.free(result.stderr);
 
-    const success = (result.term == .Exited and result.term.Exited == 0);
+    const success = switch (result.term) {
+        .exited => |code| code == 0,
+        else => false,
+    };
 
     var body: [MAX_HTTP_RESPONSE]u8 = [_]u8{0} ** MAX_HTTP_RESPONSE;
     const copy_len = @min(result.stdout.len, MAX_HTTP_RESPONSE);
@@ -405,7 +408,7 @@ pub export fn verisimdb_store_put(
     if (findEntry(key_ptr, key_len)) |idx| {
         entries[idx].value = [_]u8{0} ** MAX_VALUE_LEN;
         entries[idx].value_len = copyBounded(&entries[idx].value, value_ptr, value_len);
-        entries[idx].updated_at = std.time.timestamp();
+        entries[idx].updated_at = shim.timestamp();
         writes += 1;
     } else {
         // Find a free slot.
@@ -417,7 +420,7 @@ pub export fn verisimdb_store_put(
                 entries[i].active = true;
                 entries[i].key_len = copyBounded(&entries[i].key, key_ptr, key_len);
                 entries[i].value_len = copyBounded(&entries[i].value, value_ptr, value_len);
-                entries[i].updated_at = std.time.timestamp();
+                entries[i].updated_at = shim.timestamp();
                 entry_count += 1;
                 writes += 1;
                 found_slot = true;
@@ -484,7 +487,7 @@ pub export fn verisimdb_store_get(
                                 entries[i].active = true;
                                 entries[i].key_len = copyBounded(&entries[i].key, key_ptr, key_len);
                                 entries[i].value_len = copyBounded(&entries[i].value, val.ptr, val.len);
-                                entries[i].updated_at = std.time.timestamp();
+                                entries[i].updated_at = shim.timestamp();
                                 entry_count += 1;
                                 break;
                             }
@@ -812,3 +815,5 @@ test "resolveBaseUrl uses endpoint when set" {
     try std.testing.expectEqualSlices(u8, "http://custom:9090", resolved[0..ep.len]);
     verisimdb_store_deinit();
 }
+
+const shim = @import("cartridge_shim");

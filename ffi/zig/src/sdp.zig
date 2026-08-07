@@ -17,11 +17,11 @@
 const std = @import("std");
 
 // `std.atomic.Mutex` was removed from the standard library; its replacement is
-// `std.Thread.Mutex`, whose lock/unlock surface is identical to the hand-rolled
+// `shim.Mutex`, whose lock/unlock surface is identical to the hand-rolled
 // wrapper this replaces. The wrapper also busy-waited via `spinLoopHint`, burning
-// a core under contention; `std.Thread.Mutex` parks the thread instead. 81 other
+// a core under contention; `shim.Mutex` parks the thread instead. 81 other
 // files in this repo already use this form.
-const Mutex = std.Thread.Mutex;
+const Mutex = shim.Mutex;
 
 // ═══════════════════════════════════════════════════════════════════════
 // Constants
@@ -114,7 +114,7 @@ fn findPeer(id_ptr: [*]const u8, id_len: usize) ?usize {
 
 fn isBanned(id_ptr: [*]const u8, id_len: usize) bool {
     const actual = @min(id_len, NODE_ID_LEN);
-    const now = std.time.timestamp();
+    const now = shim.timestamp();
     for (banned[0..ban_count]) |b| {
         if (b.id_len == actual and
             std.mem.eql(u8, b.node_id[0..actual], id_ptr[0..actual]))
@@ -138,7 +138,7 @@ fn banPeer(id_ptr: [*]const u8, id_len: usize, reason: u8) void {
     var b = &banned[ban_count];
     @memcpy(b.node_id[0..actual], id_ptr[0..actual]);
     b.id_len = actual;
-    b.banned_at = std.time.timestamp();
+    b.banned_at = shim.timestamp();
     b.reason = reason;
     ban_count += 1;
 }
@@ -326,3 +326,5 @@ test "sdp deinit resets" {
     try std.testing.expectEqual(@as(usize, 0), boj_sdp_peer_count());
     try std.testing.expect(!sdp_enabled);
 }
+
+const shim = @import("cartridge_shim");
