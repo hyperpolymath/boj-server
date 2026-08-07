@@ -22,6 +22,12 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 
+# Cartridge catalog root: the bundled cartridges/ tree was retired in favour
+# of hyperpolymath/boj-server-cartridges. Default to the tracked fixture
+# catalogue (as tests/e2e_full.sh does); point BOJ_CARTRIDGES_PATH at a cache
+# populated by scripts/fetch-cartridges.sh to audit the full registry.
+CARTRIDGES_ROOT="${BOJ_CARTRIDGES_PATH:-$PROJECT_DIR/tests/fixtures/cartridges}"
+
 PASS=0
 FAIL=0
 WARN=0
@@ -95,9 +101,11 @@ for zigfile in "$zig_ffi_dir"/*.zig; do
     fi
 done
 
-# Also check cartridge FFI modules
-for cart_dir in "$PROJECT_DIR"/cartridges/*/ffi; do
+# Also check cartridge FFI modules in the catalog root
+cart_ffi_seen=0
+for cart_dir in "$CARTRIDGES_ROOT"/*/ffi; do
     [ -d "$cart_dir" ] || continue
+    cart_ffi_seen=$((cart_ffi_seen + 1))
     cart_name=$(basename "$(dirname "$cart_dir")")
 
     # Find the main FFI .zig file
@@ -122,6 +130,12 @@ for cart_dir in "$PROJECT_DIR"/cartridges/*/ffi; do
         fi
     fi
 done
+if [[ "$cart_ffi_seen" -eq 0 ]]; then
+    warn "no cartridge FFI under $CARTRIDGES_ROOT — checked the core FFI only"
+    warn "  populate a cache with scripts/fetch-cartridges.sh, then set BOJ_CARTRIDGES_PATH"
+else
+    echo "  (audited $cart_ffi_seen cartridge FFI dir(s) under $CARTRIDGES_ROOT)"
+fi
 echo ""
 
 # ═══════════════════════════════════════════════════════════════════════
@@ -287,10 +301,18 @@ bold "Aspect 4: Cartridge layer completeness (ABI + FFI)"
 #                              (e.g., boj-health monitoring code, MCP
 #                              adapters bridging external APIs)
 #
-# `stub` and `ffi_only` are passed but counted in a separate informational
-# tally so they remain visible. The default-when-absent is `complete`
-# (strict). Adding a new exemption requires editing cartridge.json with
-# a stated rationale and is reviewable in PR diff.
+# The catalogue that replaced the bundled tree spells the same two
+# exemptions differently, so both vocabularies are accepted:
+#
+#   "status": "catalogued"   — manifest-only; identical rule to `stub`
+#   "status": "ready"        — built and advertised; identical rule to
+#                              `ffi_only` (FFI present, ABI optional)
+#
+# `stub`/`catalogued` and `ffi_only`/`ready` are passed but counted in a
+# separate informational tally so they remain visible. The
+# default-when-absent is `complete` (strict). Adding a new exemption
+# requires editing cartridge.json with a stated rationale and is
+# reviewable in PR diff.
 read_cartridge_status() {
     local manifest="$1"
     [ -f "$manifest" ] || { echo "complete"; return; }
@@ -310,11 +332,14 @@ ffi_only=0
 
 # The bundled cartridges/ tree was retired (canonical source:
 # hyperpolymath/boj-server-cartridges, which carries its own completeness
-# gates). Nothing to audit here unless a checkout-local tree exists.
+# gates). Audit whatever catalog root is configured; an empty root means
+# this aspect verified nothing and must say so, never report success.
+audited=0
 shopt -s nullglob
 
-for cart_dir in "$PROJECT_DIR"/cartridges/*/; do
+for cart_dir in "$CARTRIDGES_ROOT"/*/; do
     cart_name=$(basename "$cart_dir")
+    audited=$((audited + 1))
     has_abi=false; has_ffi=false
 
     [ -d "$cart_dir/abi" ] && has_abi=true
@@ -323,26 +348,26 @@ for cart_dir in "$PROJECT_DIR"/cartridges/*/; do
     status=$(read_cartridge_status "$cart_dir/cartridge.json")
 
     case "$status" in
-        stub)
+        stub|catalogued)
             # Manifest-only design — both layers absent is the expected shape.
             if ! $has_abi && ! $has_ffi; then
-                pass "$cart_name: stub (manifest-only, by design)"
+                pass "$cart_name: $status (manifest-only, by design)"
                 stubs=$((stubs + 1))
             else
-                fail "$cart_name: marked stub but has partial implementation (ABI=$has_abi FFI=$has_ffi) — promote to ffi_only or complete"
+                fail "$cart_name: marked $status but has partial implementation (ABI=$has_abi FFI=$has_ffi) — promote to ffi_only/ready or complete"
                 incomplete=$((incomplete + 1))
             fi
             ;;
-        ffi_only)
+        ffi_only|ready)
             if $has_ffi && ! $has_abi; then
-                pass "$cart_name: ffi_only (FFI present, no formal ABI by design)"
+                pass "$cart_name: $status (FFI present, no formal ABI by design)"
                 ffi_only=$((ffi_only + 1))
             elif $has_ffi && $has_abi; then
                 # If ABI got added later, the manifest is stale. Pass but warn.
-                pass "$cart_name: ffi_only (manifest stale — both layers present, complete)"
+                pass "$cart_name: $status (manifest stale — both layers present, complete)"
                 complete=$((complete + 1))
             else
-                fail "$cart_name: marked ffi_only but FFI missing"
+                fail "$cart_name: marked $status but FFI missing"
                 incomplete=$((incomplete + 1))
             fi
             ;;
@@ -358,10 +383,14 @@ for cart_dir in "$PROJECT_DIR"/cartridges/*/; do
 done
 shopt -u nullglob
 
-if [[ $incomplete -eq 0 ]]; then
-    pass "All cartridges accounted for ($complete complete, $stubs stub, $ffi_only ffi_only)"
+if [[ $audited -eq 0 ]]; then
+    # An empty catalog root proves nothing. Say so; do not count a PASS.
+    fail "no cartridges found under $CARTRIDGES_ROOT — completeness verified nothing"
+    yellow "  populate a cache with scripts/fetch-cartridges.sh, then set BOJ_CARTRIDGES_PATH"
+elif [[ $incomplete -eq 0 ]]; then
+    pass "All $audited cartridges under $CARTRIDGES_ROOT accounted for ($complete complete, $stubs manifest-only, $ffi_only ffi-only)"
 else
-    red "  $incomplete cartridges are incomplete"
+    red "  $incomplete of $audited cartridges under $CARTRIDGES_ROOT are incomplete"
 fi
 echo ""
 

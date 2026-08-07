@@ -19,7 +19,23 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 ELIXIR_DIR="$PROJECT_DIR/elixir"
-export LD_LIBRARY_PATH="$PROJECT_DIR/ffi/zig/zig-out/lib:$PROJECT_DIR/cartridges/container-mcp/ffi/zig-out/lib"
+
+# Cartridge catalog root: the bundled cartridges/ tree was retired in favour
+# of hyperpolymath/boj-server-cartridges. Default to the tracked fixture
+# catalogue; point BOJ_CARTRIDGES_PATH at a cache populated by
+# scripts/fetch-cartridges.sh to load real cartridge .so files.
+export BOJ_CARTRIDGES_PATH="${BOJ_CARTRIDGES_PATH:-$PROJECT_DIR/tests/fixtures/cartridges}"
+
+# Library path for Zig FFI shared objects. The old hard-coded
+# cartridges/container-mcp/ffi/zig-out/lib entry pointed into the deleted
+# tree, so it silently contributed nothing; take every cartridge lib dir
+# that actually exists under the catalog root instead (as tests/e2e_full.sh
+# does).
+export LD_LIBRARY_PATH="$PROJECT_DIR/ffi/zig/zig-out/lib:${LD_LIBRARY_PATH:-}"
+for cart_lib in "$BOJ_CARTRIDGES_PATH"/*/ffi/zig-out/lib; do
+    [ -d "$cart_lib" ] && LD_LIBRARY_PATH="$cart_lib:$LD_LIBRARY_PATH"
+done
+export LD_LIBRARY_PATH
 
 green() { printf '\033[32m%s\033[0m\n' "$*"; }
 red()   { printf '\033[31m%s\033[0m\n' "$*"; }

@@ -133,7 +133,8 @@ A good vulnerability report helps us understand and reproduce the issue quickly.
 [e.g., Command Injection, SSRF, Path Traversal, Privilege Escalation, etc.]
 
 ## Affected Component
-[e.g., cartridges/browser-mcp/, cartridges/cloudflare/, ffi/zig/src/, mcp-bridge/]
+[e.g., ffi/zig/src/, elixir/lib/boj_rest/, mcp-bridge/, or a cartridge in
+hyperpolymath/boj-server-cartridges — cartridges are no longer bundled here]
 
 ## Affected Versions
 [Version range or specific commits]
