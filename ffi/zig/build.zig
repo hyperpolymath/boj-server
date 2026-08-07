@@ -11,11 +11,20 @@ pub fn build(b: *std.Build) void {
     const optimize = b.standardOptimizeOption(.{});
 
     // --- Catalogue module ---
+    const shim_mod = b.addModule("boj_cartridge_shim", .{
+        .root_source_file = b.path("src/cartridge_shim.zig"),
+        .target = target,
+        .optimize = optimize,
+        // shim.getenv wraps std.c.getenv
+        .link_libc = true,
+    });
+
     const catalogue_mod = b.addModule("boj_catalogue", .{
         .root_source_file = b.path("src/catalogue.zig"),
         .target = target,
         .optimize = optimize,
     });
+    catalogue_mod.addImport("cartridge_shim", shim_mod);
 
     // --- Loader module ---
     const loader_mod = b.addModule("boj_loader", .{
@@ -23,6 +32,7 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
     });
+    loader_mod.addImport("cartridge_shim", shim_mod);
     loader_mod.addImport("catalogue", catalogue_mod);
 
     // --- Static library (for zig adapter linking) ---
@@ -50,6 +60,7 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = .ReleaseFast,
     });
+    bench_mod.addImport("cartridge_shim", shim_mod);
     bench_mod.addImport("catalogue", catalogue_mod);
     const bench = b.addExecutable(.{
         .name = "boj_bench",
@@ -106,6 +117,7 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
     });
+    guardian_mod.addImport("cartridge_shim", shim_mod);
 
     const guardian_lib = b.addLibrary(.{
         .name = "boj_guardian",
@@ -127,6 +139,7 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
     });
+    federation_mod.addImport("cartridge_shim", shim_mod);
 
     const federation_lib = b.addLibrary(.{
         .name = "boj_federation",
@@ -163,6 +176,7 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
     });
+    verisimdb_mod.addImport("cartridge_shim", shim_mod);
     const verisimdb_tests = b.addTest(.{
         .root_module = verisimdb_mod,
     });
@@ -178,6 +192,7 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
         .link_libc = true,
     });
+    coprocessor_mod.addImport("cartridge_shim", shim_mod);
 
     const coprocessor_lib = b.addLibrary(.{
         .name = "boj_coprocessor",
@@ -199,6 +214,7 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
     });
+    sla_mod.addImport("cartridge_shim", shim_mod);
 
     const sla_lib = b.addLibrary(.{
         .name = "boj_sla",
@@ -220,6 +236,7 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
     });
+    community_mod.addImport("cartridge_shim", shim_mod);
 
     const community_lib = b.addLibrary(.{
         .name = "boj_community",
@@ -262,6 +279,7 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
     });
+    sdp_mod.addImport("cartridge_shim", shim_mod);
 
     const sdp_lib = b.addLibrary(.{
         .name = "boj_sdp",
@@ -294,12 +312,6 @@ pub fn build(b: *std.Build) void {
     seams_step.dependOn(&run_seams_tests.step);
 
     // --- Cartridge shim tests (ADR-0006 helpers) ---
-    const shim_mod = b.addModule("boj_cartridge_shim", .{
-        .root_source_file = b.path("src/cartridge_shim.zig"),
-        .target = target,
-        .optimize = optimize,
-    });
-
     const shim_tests = b.addTest(.{
         .root_module = shim_mod,
     });
@@ -411,6 +423,7 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
     });
+    mcp_bench_mod.addImport("cartridge_shim", shim_mod);
     const bench_tests = b.addTest(.{ .root_module = mcp_bench_mod });
     const run_bench = b.addRunArtifact(bench_tests);
 

@@ -146,14 +146,14 @@ test "ASPECT: valid JSON parses without error" {
 }
 
 test "ASPECT: deeply nested JSON (depth 50) parses without crash" {
-    // Build a 50-level nested JSON string.
+    // Build a 50-level nested JSON string. (std.io.fixedBufferStream was
+    // removed in Zig 0.16; std.Io.Writer.fixed is the replacement.)
     var buf: [4096]u8 = undefined;
-    var fbs = std.io.fixedBufferStream(&buf);
-    const w = fbs.writer();
+    var w = std.Io.Writer.fixed(&buf);
     for (0..50) |_| try w.writeAll("{\"n\":");
     try w.writeAll("1");
     for (0..50) |_| try w.writeAll("}");
-    const json_str = fbs.getWritten();
+    const json_str = w.buffered();
     const parsed = try std.json.parseFromSlice(
         std.json.Value, std.testing.allocator, json_str, .{ .max_value_len = 4096 },
     );
