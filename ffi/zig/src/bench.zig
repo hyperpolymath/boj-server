@@ -22,17 +22,16 @@ fn benchmarkFn(comptime name: []const u8, comptime func: anytype) void {
         func();
     }
 
-    // Measure
-    var timer = std.time.Timer.start() catch {
-        std.debug.print("Timer unavailable\n", .{});
-        return;
-    };
+    // Measure (std.time.Timer was removed in Zig 0.16; the monotonic Io
+    // clock is the replacement)
+    const started = std.Io.Clock.Timestamp.now(shim.io(), .monotonic);
 
     for (0..BENCH_ITERS) |_| {
         func();
     }
 
-    const elapsed_ns = timer.read();
+    const ended = std.Io.Clock.Timestamp.now(shim.io(), .monotonic);
+    const elapsed_ns: u64 = @intCast(started.durationTo(ended).raw.nanoseconds);
     const per_op_ns = elapsed_ns / BENCH_ITERS;
     const ops_per_sec = if (per_op_ns > 0) @as(u64, 1_000_000_000) / per_op_ns else 0;
 
@@ -252,3 +251,5 @@ pub fn main() !void {
     std.debug.print("═══════════════════════════════════════════════════════════════\n", .{});
     std.debug.print("\n", .{});
 }
+
+const shim = @import("cartridge_shim");

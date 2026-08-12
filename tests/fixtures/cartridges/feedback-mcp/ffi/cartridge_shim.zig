@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MPL-2.0
-// Copyright (c) Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+// Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
 //
 // cartridge_shim.zig — Shared helpers for the ADR-0006 five-symbol
 // cartridge ABI (`boj_cartridge_init / deinit / name / version / invoke`).
@@ -94,7 +94,115 @@ pub fn writeResult(
     return RC_SUCCESS;
 }
 
+// ── Shared runtime Io (Zig 0.16 compat) ──────────────────────────────
+//
+// Zig 0.16 moved blocking primitives and the wall clock onto the
+// `std.Io` interface (`std.Thread.Mutex` and `std.time.*Timestamp`
+// were removed from the stdlib). The shim owns one process-wide Io
+// backed by `std.Io.Threaded` so cartridge code keeps drop-in call
+// sites — `var m: shim.Mutex = .{}; m.lock(); defer m.unlock();` and
+// `shim.milliTimestamp()` — without threading an Io handle through the
+// C ABI. Cartridges that need richer Io (http, fs, net) should use
+// this same `shim.io()` rather than constructing their own runtime.
+
+var shared_threaded: std.Io.Threaded = undefined;
+var shared_io_state: std.atomic.Value(u8) = .init(0); // 0=uninit 1=initing 2=ready
+
+/// The process-wide `std.Io`, lazily initialised on first use.
+/// Thread-safe: a single CAS winner runs `Threaded.init`; racing
+/// callers yield until it is published.
+pub fn io() std.Io {
+    if (shared_io_state.load(.acquire) != 2) {
+        if (shared_io_state.cmpxchgStrong(0, 1, .acq_rel, .acquire) == null) {
+            shared_threaded = std.Io.Threaded.init(std.heap.smp_allocator, .{});
+            shared_io_state.store(2, .release);
+        } else {
+            while (shared_io_state.load(.acquire) != 2) std.Thread.yield() catch {};
+        }
+    }
+    return shared_threaded.io();
+}
+
+/// Drop-in replacement for the removed `std.Thread.Mutex`, backed by
+/// `std.Io.Mutex` over the shim's shared Io. Zero-initialisable:
+/// `var m: shim.Mutex = .{};`
+pub const Mutex = struct {
+    inner: std.Io.Mutex = .init,
+
+    pub fn lock(m: *Mutex) void {
+        m.inner.lockUncancelable(io());
+    }
+
+    pub fn unlock(m: *Mutex) void {
+        m.inner.unlock(io());
+    }
+
+    pub fn tryLock(m: *Mutex) bool {
+        return m.inner.tryLock();
+    }
+};
+
+/// Nanoseconds since the POSIX epoch (drop-in for the removed
+/// `std.time.nanoTimestamp`).
+pub fn nanoTimestamp() i128 {
+    const ts = std.Io.Clock.Timestamp.now(io(), .real);
+    return @intCast(ts.raw.nanoseconds);
+}
+
+/// Milliseconds since the POSIX epoch (drop-in for the removed
+/// `std.time.milliTimestamp`).
+pub fn milliTimestamp() i64 {
+    return @intCast(@divTrunc(nanoTimestamp(), std.time.ns_per_ms));
+}
+
+/// Seconds since the POSIX epoch (drop-in for the removed
+/// `std.time.timestamp`).
+pub fn timestamp() i64 {
+    return @intCast(@divTrunc(nanoTimestamp(), std.time.ns_per_s));
+}
+
+/// Fill `buffer` with cryptographically secure random bytes (drop-in for
+/// the removed `std.crypto.random.bytes`).
+pub fn randomBytes(buffer: []u8) void {
+    io().random(buffer);
+}
+
+/// Cryptographically secure random integer (drop-in for the removed
+/// `std.crypto.random.int(T)`).
+pub fn randomInt(comptime T: type) T {
+    var buf: [@sizeOf(T)]u8 = undefined;
+    io().random(&buf);
+    return @bitCast(buf);
+}
+
+/// Process environment lookup (drop-in for the removed
+/// `std.posix.getenv`). Only analysed when referenced; callers must link
+/// libc (`root_module.link_libc = true` — the standard ffi build shape).
+pub fn getenv(name: [*:0]const u8) ?[:0]const u8 {
+    const p = std.c.getenv(name) orelse return null;
+    return std.mem.sliceTo(p, 0);
+}
+
 // ── Tests ────────────────────────────────────────────────────────────
+
+test "Mutex: lock/unlock and tryLock round-trip" {
+    var m: Mutex = .{};
+    m.lock();
+    try std.testing.expect(!m.tryLock());
+    m.unlock();
+    try std.testing.expect(m.tryLock());
+    m.unlock();
+}
+
+test "timestamps: monotone-ish and unit-consistent" {
+    const ns = nanoTimestamp();
+    const ms = milliTimestamp();
+    const s = timestamp();
+    try std.testing.expect(ns > 0);
+    // Same instant expressed in three units must agree to within a step.
+    try std.testing.expect(@abs(@divTrunc(ns, std.time.ns_per_s) - s) <= 1);
+    try std.testing.expect(@abs(@divTrunc(ms, std.time.ms_per_s) - s) <= 1);
+}
 
 test "writeResult: body fits, writes and sets length" {
     var buf: [64]u8 = undefined;

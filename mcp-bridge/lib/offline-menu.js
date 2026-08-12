@@ -4,8 +4,11 @@
 // BoJ Server — Offline menu
 //
 // Static cartridge manifest for offline/inspection mode.
-// Generated from cartridges/ directory structure.
-// Run `node mcp-bridge/lib/generate-offline-menu.js` to regenerate.
+// Generated from a cartridge catalog root — the bundled cartridges/ tree
+// was retired; the canonical source is hyperpolymath/boj-server-cartridges.
+// Run `deno run --allow-read --allow-env mcp-bridge/lib/generate-offline-menu.js`
+// to regenerate (BOJ_CARTRIDGES_PATH selects the catalog root; it defaults to
+// the tracked tests/fixtures/cartridges catalogue).
 
 export const OFFLINE_MENU = {
   tier_teranga: [
@@ -48,9 +51,11 @@ export const OFFLINE_MENU = {
   tier_ayo: [
     { name: "local-coord-mcp", version: "0.9.0", domain: "Agent", protocols: ["MCP","Agentic"], status: "Available", available: true, notes: "Localhost-only (127.0.0.1:7745) multi-instance AI coordination — peer discovery, typed envelopes, task claiming, master/journeyman/apprentice supervision with quarantine + watchdog TTL + track-record affinity + capability advertisement" },
   ],
-  // `total` reflects the full cartridges/ directory (127 cartridges on disk);
-  // the tier_* arrays above enumerate the named ones exposed through the
-  // offline menu. Regenerate counts with
-  // `node mcp-bridge/lib/generate-offline-menu.js`.
+  // `total` is a hand-maintained count of the full canonical catalogue; the
+  // tier_* arrays above enumerate only the named ones exposed through the
+  // offline menu. It was last taken from the bundled cartridges/ tree before
+  // that tree was retired, so it is a snapshot, not a live figure — re-derive
+  // it against the catalog root with
+  // `deno run --allow-read --allow-env mcp-bridge/lib/generate-offline-menu.js`.
   summary: { total: 127, ready: 24, mounted: 0 },
 };

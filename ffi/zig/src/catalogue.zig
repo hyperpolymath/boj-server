@@ -13,11 +13,11 @@
 const std = @import("std");
 
 // `std.atomic.Mutex` was removed from the standard library; its replacement is
-// `std.Thread.Mutex`, whose lock/unlock surface is identical to the hand-rolled
+// `shim.Mutex`, whose lock/unlock surface is identical to the hand-rolled
 // wrapper this replaces. The wrapper also busy-waited via `spinLoopHint`, burning
-// a core under contention; `std.Thread.Mutex` parks the thread instead. 81 other
+// a core under contention; `shim.Mutex` parks the thread instead. 81 other
 // files in this repo already use this form.
-const Mutex = std.Thread.Mutex;
+const Mutex = shim.Mutex;
 
 // ═══════════════════════════════════════════════════════════════════════
 // Types (must match src/abi/Catalogue.idr encodings)
@@ -772,3 +772,5 @@ test "menu JSON generation" {
     try std.testing.expect(std.mem.indexOf(u8, json, "\"mcp\"") != null);
     try std.testing.expect(std.mem.indexOf(u8, json, "\"rest\"") != null);
 }
+
+const shim = @import("cartridge_shim");
