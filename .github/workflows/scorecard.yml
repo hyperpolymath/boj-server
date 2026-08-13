@@ -8,7 +8,10 @@
 #   - missing `concurrency:` group (re-pushes piled up superseded runs)
 #   - `branch_protection_rule:` trigger (unused; complicates startup)
 #   - `secrets: inherit` against a reusable with no `secrets:` block
-#   - `permissions: read-all` instead of explicit `contents: read`
+#   - `permissions:
+  contents: read
+  security-events: write
+  id-token: write  id-token: write` instead of explicit `contents: read`
 # Pattern now matches the reusable's header example verbatim. Sister
 # fix landed in hyperpolymath/ephapax#264 (2026-06-01); this PR mirrors
 # it so the two repos stay in sync.
@@ -26,9 +29,9 @@ concurrency:
   cancel-in-progress: true
 
 permissions:
-  actions: read
   contents: read
-
+  security-events: write
+  id-token: write
 jobs:
   analysis:
     permissions:
