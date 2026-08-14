@@ -29,4 +29,4 @@ jobs:
     # Pinned to the standards commit that introduced readme-derive-reusable.yml.
     # Repin to include hyperpolymath/standards#476 (anchor-ID convention guard)
     # once it lands on main; this repo's README.adoc already satisfies it.
-    uses: hyperpolymath/standards/.github/workflows/readme-derive-reusable.yml@db12a6ad3ef9076d5f7bdcf98d7d15cf8547555a
+    uses: hyperpolymath/standards/.github/workflows/readme-derive-reusable.yml@f2f8e6791b09f1f498f01b798e4670a1ebc9c986
