@@ -41,20 +41,27 @@ check_idr() { # dir relfile
 echo "==> Core ABI package (src/abi/boj.ipkg)"
 check_ipkg src/abi boj.ipkg
 
-echo "==> Cartridge ABIs"
-for d in cartridges/*/abi; do
-    [ -d "$d" ] || continue
-    ipkg=$(find "$d" -maxdepth 1 -name '*.ipkg' | head -1)
-    if [ -n "$ipkg" ]; then
-        check_ipkg "$d" "$(basename "$ipkg")"
-    else
-        while IFS= read -r f; do
-            check_idr "$d" "${f#"$d"/}"
-        done < <(find "$d" -name '*.idr')
-    fi
-done
+# Cartridge ABIs used to be walked here (cartridges/*/abi). That tree was
+# retired — the cartridges now live in hyperpolymath/boj-server-cartridges,
+# which type-checks its own 126 abi/ dirs in its own proofs gate. The loop is
+# deliberately NOT replaced with one over a fetched cache: a gate that only
+# checks what happens to be on disk is not a gate.
 
 echo "────────────────────────────────────────"
 echo "Proof type-check: PASS=${pass} FAIL=${fail}"
 [ "$fail" -eq 0 ] || { echo "PROOF TYPECHECK FAILED"; exit 1; }
+
+# Vacuous-pass guard (ported from boj-server-cartridges' twin of this script).
+# PASS=0/FAIL=0 means nothing was found to check — a moved directory, a bad
+# checkout, or a refactor that renames src/abi. Without this the gate reports
+# success having verified NOTHING, which is exactly the failure mode this
+# script exists to prevent. A repo with zero proofs is not a passing repo;
+# it is a broken gate.
+if [ "$pass" -eq 0 ]; then
+    echo "PROOF TYPECHECK FAILED: no proofs were found to check." >&2
+    echo "  Expected the core ABI package at src/abi/boj.ipkg." >&2
+    echo "  A green run with zero proofs verified would be a false assurance." >&2
+    exit 1
+fi
+
 echo "All proofs type-check under the pinned toolchain."

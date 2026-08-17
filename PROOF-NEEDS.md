@@ -39,15 +39,22 @@ desk-read of the prior entry. Three checks, all green:
 
 - **Core ABI:** `cd src/abi && idris2 --typecheck boj.ipkg` → 17/17
   modules clean, exit 0 (~6.5 s).
-- **Full proof gate:** `bash scripts/typecheck-proofs.sh` → **PASS=105
-  FAIL=0** (core package + all 104 cartridge ABIs) under the pinned
-  toolchain (~80 s). This is broader than the 2026-06-03 entry, which
-  exercised only the core package.
+- **Full proof gate:** `bash scripts/typecheck-proofs.sh` → **PASS=1
+  FAIL=0** (the core package). Historical note: this read PASS=105
+  (core + 104 cartridge ABIs) until the bundled `cartridges/` tree was
+  retired in #300. The 104 cartridge ABIs are now type-checked by
+  `hyperpolymath/boj-server-cartridges` in its own proofs gate; this
+  repo no longer has them to check. The script grew a vacuous-pass
+  guard at the same time, so PASS=0 is now a hard failure rather than
+  a green run over nothing.
 - **Trusted base:** `bash scripts/check-trusted-base.sh` → PASS,
-  **exactly 5** sanctioned class-(J) axioms in `SafetyLemmas.idr`, zero
-  undocumented unsound constructs. Independently corroborated by a
-  `panic-attack assail` scan (MPL-2.0, built from source), which flags
-  the same 5 `believe_me` as `ProofDrift` and nothing else proof-shaped.
+  **exactly 4** sanctioned class-(J) axioms in `SafetyLemmas.idr`, zero
+  undocumented unsound constructs. (`charEqSym` was discharged
+  2026-06-24, taking the count 5 → 4; `EXPECTED_AXIOMS=4` in the
+  enforcing script is the source of truth, and `docs/proof-debt.md`
+  agrees.) Independently corroborated by a `panic-attack assail` scan
+  (MPL-2.0, built from source), which flags the same `believe_me` sites
+  as `ProofDrift` and nothing else proof-shaped.
 
 The axiom budget and theorem statements are unchanged from the
 2026-06-03 entry; this checkpoint records that the **full cartridge
