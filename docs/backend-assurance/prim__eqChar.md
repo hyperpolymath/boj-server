@@ -1,29 +1,17 @@
-<!--
-SPDX-License-Identifier: CC-BY-SA-4.0
-Copyright (c) Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
--->
-<!-- Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk> -->
-
 # Backend-Assurance: `prim__eqChar`
 
-Trusted-extraction validation for the class-(J) axiom over Idris2's
-`prim__eqChar` primitive:
+Trusted-extraction validation for the two class-(J) axioms over
+Idris2's `prim__eqChar` primitive:
 
 - `charEqSound : (c1, c2 : Char) -> c1 == c2 = True -> c1 = c2`
-  (`src/abi/Boj/SafetyLemmas.idr`)
+  (`src/abi/Boj/SafetyLemmas.idr:53`)
+- `charEqSym : (x, y : Char) -> (x == y) = (y == x)`
+  (`src/abi/Boj/SafetyLemmas.idr:60`)
 
-`charEqSound` is a `%unsafe` `believe_me` declaration in Idris2 0.8.0
-because `Char` is an opaque primitive type with no in-language induction
+Both are `%unsafe` `believe_me` declarations in Idris2 0.8.0 because
+`Char` is an opaque primitive type with no in-language induction
 principle. This document argues — by inspecting the backend lowerings
-that BoJ actually ships against — that the believed property holds.
-
-> **Note (2026-06-24):** `charEqSym : (x, y : Char) -> (x == y) = (y == x)`
-> was previously a second axiom validated here. It is now a **constructive
-> theorem** derived from `charEqSound` (see `SafetyLemmas.idr`), so it no
-> longer needs independent backend validation — its correctness rides on
-> `charEqSound` plus an in-language proof. The symmetry analysis in the
-> backend sections below is retained as corroborating context (and as the
-> validation basis should `charEqSym` ever be re-axiomatised).
+that BoJ actually ships against — that the believed properties hold.
 
 The companion property test
 (`elixir/test/backend_assurance/prim_eq_char_test.exs`) exercises the
@@ -130,5 +118,4 @@ matching property test.
 - R6RS §11.11 "Characters" — `char=?` specification.
 - OTP `erlang(3)` — `=:=`/`=/=` specification.
 - `PROOF-NEEDS.md` — axiom audit (2026-05-18).
-- `src/abi/Boj/SafetyLemmas.idr` — `charEqSound` axiom declaration
-  (`charEqSym` is now a derived theorem, not an axiom).
+- `src/abi/Boj/SafetyLemmas.idr` — axiom declarations (lines 53, 60).

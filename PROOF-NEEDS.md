@@ -186,10 +186,11 @@ the top of this file.)
 
 | Axiom | Site | Justification | Backend-assurance evidence |
 |-------|------|---------------|----------------------------|
-| `charEqSound` | `SafetyLemmas.idr` | Soundness of `prim__eqChar` — backend primitive correctness, externally validated | `docs/backend-assurance/prim__eqChar.md` + `elixir/test/backend_assurance/prim_eq_char_test.exs` |
-| `unpackLength` | `SafetyLemmas.idr` | `prim__strToCharList` preserves length — backend primitive correctness, externally validated | `docs/backend-assurance/prim__strToCharList.md` + `elixir/test/backend_assurance/prim_str_to_char_list_test.exs` |
-| `appendLengthSum` | `SafetyLemmas.idr` | `prim__strAppend` length semantics — not reducible at type level, externally validated | `docs/backend-assurance/prim__strAppend.md` + `elixir/test/backend_assurance/prim_str_append_test.exs` |
-| `substrLengthBound` | `SafetyLemmas.idr` | `prim__strSubstr` length bound — not reducible at type level, externally validated | `docs/backend-assurance/prim__strSubstr.md` + `elixir/test/backend_assurance/prim_str_substr_test.exs` |
+| `charEqSound` | `SafetyLemmas.idr:53` | Soundness of `prim__eqChar` — backend primitive correctness | `docs/backend-assurance/prim__eqChar.md` + `elixir/test/backend_assurance/prim_eq_char_test.exs` |
+| `charEqSym` | `SafetyLemmas.idr:60` | Symmetry of `prim__eqChar` — backend primitive correctness | `docs/backend-assurance/prim__eqChar.md` + `elixir/test/backend_assurance/prim_eq_char_test.exs` |
+| `unpackLength` | `SafetyLemmas.idr:211` | `prim__strToCharList` preserves length — backend primitive correctness | _pending_ |
+| `appendLengthSum` | `SafetyLemmas.idr:219` | `prim__strAppend` length semantics — not reducible at type level | _pending_ |
+| `substrLengthBound` | `SafetyLemmas.idr:226` | `prim__strSubstr` length bound — not reducible at type level | _pending_ |
 
 Note: `logSafeBounded` in SafeAPIKey.idr no longer uses `believe_me` directly;
 it calls the documented SafetyLemmas axioms via structural proof.
@@ -216,12 +217,10 @@ sites stay in `SafetyLemmas.idr`. The harness shrinks the trusted base
 from "we trust the backend" to "we read the lowering and randomly
 tested the operation".
 
-Primitives validated so far: `prim__eqChar` (covering `charEqSound`;
-formerly also `charEqSym`, now a derived theorem), `prim__strToCharList`
-(covering `unpackLength`),
-`prim__strAppend` (covering `appendLengthSum`), and `prim__strSubstr`
-(covering `substrLengthBound`). Tracked under epic #87 Tier C
-backend-assurance campaign.
+First primitive landed: `prim__eqChar` (covering both `charEqSound`
+and `charEqSym`). Remaining three (`prim__strToCharList`,
+`prim__strAppend`, `prim__strSubstr`) tracked under epic #87 Tier C
+backend-assurance campaign — one PR per primitive.
 
 ## Priority Going Forward
 

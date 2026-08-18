@@ -1,9 +1,3 @@
-<!--
-SPDX-License-Identifier: CC-BY-SA-4.0
-Copyright (c) Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
--->
-<!-- Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk> -->
-
 # Backend-Assurance Harness
 
 External evidence for the class-(J) `believe_me` axioms in
@@ -33,11 +27,12 @@ companion property-test harness lives under
 | Primitive          | Axioms covered                       | Trusted-extraction               | Property test                                                  |
 |--------------------|--------------------------------------|----------------------------------|----------------------------------------------------------------|
 | `prim__eqChar`     | `charEqSound`, `charEqSym`           | `prim__eqChar.md`                | `elixir/test/backend_assurance/prim_eq_char_test.exs`          |
-| `prim__strToCharList` | `unpackLength`                    | `prim__strToCharList.md`         | `elixir/test/backend_assurance/prim_str_to_char_list_test.exs` |
-| `prim__strAppend`  | `appendLengthSum`                    | `prim__strAppend.md`             | `elixir/test/backend_assurance/prim_str_append_test.exs`       |
-| `prim__strSubstr`  | `substrLengthBound`                  | `prim__strSubstr.md`             | `elixir/test/backend_assurance/prim_str_substr_test.exs`       |
+| `prim__strToCharList` | `unpackLength`                    | _pending_                        | _pending_                                                      |
+| `prim__strAppend`  | `appendLengthSum`                    | _pending_                        | _pending_                                                      |
+| `prim__strSubstr`  | `substrLengthBound`                  | _pending_                        | _pending_                                                      |
 
-Each row is delivered as one PR per primitive.
+Each row is delivered as one PR per primitive. `prim__eqChar` is the
+first; the other three follow the same shape.
 
 ## Constraints
 
