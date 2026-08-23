@@ -161,7 +161,7 @@ oracle-cloud-mcp, alibaba-mcp, huawei-cloud-mcp, ibm-cloud-mcp, packet-mcp, vult
 podman-mcp, containerd-mcp, docker-compose-mcp, nomad-mcp, mesos-mcp, swarm-mcp, cri-o-mcp, moby-mcp, lxc-lxd-mcp, openstack-mcp, vmware-tanzu-mcp, redhat-openshift-mcp, canonical-microk8s-mcp, k3s-mcp, k0s-mcp, serf-mcp, consul-svc-mcp, linkerd-mcp, istio-mcp, kuma-mcp, flannel-mcp, calico-mcp, cilium-mcp, weave-mcp, openebs-mcp, longhorn-mcp, rook-mcp, operator-sdk-mcp, helm-mcp, kustomize-mcp
 
 #### IaC & config management (31)
-pulumi-mcp, cdktf-mcp, tofu-mcp, crossplane-mcp, cloud-formation-mcp, heat-mcp, troposphere-mcp, cdktf-providers-mcp, jsonnet-mcp, jinja2-mcp, cdk-mcp, salt-mcp, puppet-mcp, chef-mcp, nix-mcp, nixos-mcp, guix-mcp, ignition-mcp, cloud-init-mcp, kickstart-mcp, preseed-mcp, packer-mcp, vagrant-mcp, blueprint-mcp, arm-templates-mcp, bicep-mcp, sarl-mcp, cue-mcp, dhall-mcp, hcl-mcp, tctl-mcp
+pulumi-mcp, cdktf-mcp, tofu-mcp, crossplane-mcp, cloud-formation-mcp, heat-mcp, troposphere-mcp, cdktf-providers-mcp, jsonnet-mcp, jinja2-mcp, cdk-mcp, salt-mcp, puppet-mcp, chef-mcp, guix-mcp, nixos-mcp, guix-mcp, ignition-mcp, cloud-init-mcp, kickstart-mcp, preseed-mcp, packer-mcp, vagrant-mcp, blueprint-mcp, arm-templates-mcp, bicep-mcp, sarl-mcp, cue-mcp, dhall-mcp, hcl-mcp, tctl-mcp
 
 #### Edge / CDN / DNS (32)
 akamai-edge-mcp, fastly-mcp, bunny-mcp, limelight-networks-mcp, maxcdn-mcp, section-mcp, route53-mcp, azure-dns-mcp, gcp-cloud-dns-mcp, dnsimple-mcp, linode-dns-mcp, namecheap-api-mcp, godaddy-api-mcp, verisign-mcp, bind9-mcp, coredns-mcp, dnsmasq-mcp, powerdns-mcp, easyname-mcp, ns1-mcp, constellix-mcp, edgedns-mcp, cloudxns-mcp, zonomi-mcp, ttk-dns-mcp, edgecast-mcp, incapsula-mcp, keycdn-mcp, cdn77-mcp, quic-edge-mcp, worker-mcp

@@ -38,7 +38,7 @@ decisions = [
 build-tool = "just"
 container-runtime = "podman"
 ci-platform = "github-actions"
-package-manager = "guix"  # guix | nix | cargo | mix
+package-manager = "guix"  # guix | guix | cargo | mix
 
 [maintenance-axes]
 scoping-first = true
@@ -62,7 +62,7 @@ perfective-source = "axis-1 honest state after corrective/adaptive updates"
 [axis-3-audit-rules]
 audit-focus = "systems in place, documentation explains actual state, safety/security accounted for, observed effects reviewed"
 compliance-focus = "seams/compromises/exception register, bounded exceptions, anti-drift checks"
-drift-risk-example = "single exception broadening into policy violation (e.g. ReScript->TypeScript spread)"
+drift-risk-example = "single exception broadening into policy violation (e.g. AffineScript->TypeScript spread)"
 effects-evidence = "benchmark execution/results and maintainer status dialogue/review"
 
 [design-rationale]

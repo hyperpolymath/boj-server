@@ -209,7 +209,7 @@ The rows are *capability domains* --- the classes of infrastructure operation:
 | 5 | Git/VCS | GitHub, GitLab, Bitbucket |
 | 6 | Secrets | Vault, SOPS, sealed-secrets |
 | 7 | Queues | NATS, RabbitMQ, Kafka |
-| 8 | IaC | Terraform, Pulumi, Nix |
+| 8 | IaC | Terraform, Pulumi, Guix |
 | 9 | Observability | Metrics, logs, traces |
 | 10 | SSG | Jekyll, Hugo, Zola |
 | 11 | Proof | Idris 2, Lean, Coq assistants |

@@ -139,7 +139,7 @@ Every cartridge MUST declare exactly one CapabilityDomain.
 | `Git` | 5 | Git/VCS operations — GitHub, GitLab, Bitbucket |
 | `Secrets` | 6 | Secret management — Vault, SOPS, sealed-secrets |
 | `Queues` | 7 | Message queues — NATS, RabbitMQ, Kafka |
-| `IaC` | 8 | Infrastructure as Code — Terraform, Pulumi, Nix, Guix |
+| `IaC` | 8 | Infrastructure as Code — Terraform, Pulumi, Guix, Guix |
 | `Observe` | 9 | Observability — metrics, logs, distributed traces |
 | `SSG` | 10 | Static site generation — Jekyll, Hugo, Zola |
 | `Proof` | 11 | Formal proof assistants — Idris2, Lean4, Coq/Rocq |

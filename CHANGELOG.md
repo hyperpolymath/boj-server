@@ -279,7 +279,7 @@ All notable changes to Bundle of Joy Server are documented here.
 
 ### Added
 - Consolidated boj-server-mistral and boj-server-gemini into unified repo
-- PanLL ReScript/TEA UI components (BojModel, BojEngine, Boj, BojModule)
+- PanLL AffineScript/TEA UI components (BojModel, BojEngine, Boj, BojModule)
 - Gemini CLI extension support (gemini-extension.json, GEMINI.md)
 - 9 architecture docs: Quantum Security, HSM Integration, Cartridge Marketplace,
   BoJ OS, Formal Verification, Type Safety, Zero Trust, SDP Architecture, Gossip Protocol

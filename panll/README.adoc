@@ -6,7 +6,7 @@ v1.0.0, 2026-03-02
 :toc:
 
 == Overview
-This directory contains the ReScript/TEA (The Elm Architecture) source code for the BoJ Server's PanLL Panel.
+This directory contains the AffineScript/TEA (The Elm Architecture) source code for the BoJ Server's PanLL Panel.
 
 == Architecture
 The panel provides a visual "Maître D'" interface for the BoJ Server, allowing users to select cartridges from the Teranga Menu and generate an `order-ticket.scm` without modifying configuration files.

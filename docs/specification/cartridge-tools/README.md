@@ -76,7 +76,7 @@ graph TD
 | CM-NFR-001 | Reproducibility | Same input → same output every time | Docker layers, deterministic builds |
 | CM-NFR-002 | Security | Cartridges are signed and verified before deployment | Sigstore, :mix hex signatures |
 | CM-NFR-003 | Performance | Minting should be fast (<10s for most cartridges) | Parallel dependency resolution, caching |
-| CM-NFR-004 | Extensibility | Support custom packagers (e.g., Nix, Bazel) | Plugin architecture |
+| CM-NFR-004 | Extensibility | Support custom packagers (e.g., Guix, Bazel) | Plugin architecture |
 
 #### Example Workflow
 
@@ -338,7 +338,7 @@ sequenceDiagram
 
 | Component | Recommended Tech | Alternatives |
 |-----------|------------------|--------------|
-| Cartridge Minter | Elixir (:mix), Docker, OCI | Nix, Bazel |
+| Cartridge Minter | Elixir (:mix), Docker, OCI | Guix, Bazel |
 | Cartridge Provisioner | Elixir (:libcluster, :telemetry), Kubernetes | Terraform, Nomad |
 | Cartridge Configurator | Elixir (:confex, :libcluster) | Consul, etcd |
 | Panel Harness | Phoenix Channels, Absinthe | gRPC, HTTP/2 |

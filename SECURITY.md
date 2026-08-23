@@ -558,7 +558,7 @@ The `ffi/zig/` directory implements C-compatible FFI functions with:
 The following patterns are banned across the entire codebase and enforced by CI:
 
 - `believe_me`, `assert_total` (Idris2)
-- `unsafeCoerce`, `Obj.magic` (OCaml/ReScript)
+- `unsafeCoerce`, `Obj.magic` (OCaml/AffineScript)
 - `Admitted`, `sorry` (Coq/Lean)
 - `unsafe` blocks without justification comments (Rust/Zig)
 

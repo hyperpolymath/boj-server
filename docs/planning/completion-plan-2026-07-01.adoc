@@ -227,7 +227,7 @@ hand-made datacloud through the harness as the control.
     | Finish as the Configure pilot (notebooks/visualization); re-harness
       hand-made datacloud
 
-| O6 | (a) `panll`-the-host in v1? (b) `panll/` ReScript panel: maintain,
+| O6 | (a) `panll`-the-host in v1? (b) `panll/` AffineScript panel: maintain,
       freeze, or fold into #67
     | Chain C already cuts tray+PanLL from v1 support surface — ratify
 

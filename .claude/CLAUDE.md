@@ -14,7 +14,7 @@ This repo follows the hyperpolymath standard. See `https://github.com/hyperpolym
 
 The full policy is canonical in `hyperpolymath/standards`. Key points relevant to this repo:
 
-- **No new TypeScript** — convert existing TS to AffineScript (`.affine`) directly; ReScript is no longer the destination as of 2026-04-30.
+- **No new TypeScript** — convert existing TS to AffineScript (`.affine`) directly; AffineScript is no longer the destination as of 2026-04-30.
 - **Deno** for the runtime, not Node. `deno.json` for imports, no `node_modules` in production.
 - **AffineScript** for new application code. Compiles to typed-wasm.
 

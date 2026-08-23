@@ -123,7 +123,7 @@ Based on my answer:
 >
 > You and the AI work together as equals — neither is "the assistant." PanLL monitors cognitive load (a "Vexometer" tracks frustration), adjusts information density, and manages 79+ specialist overlay panels you can summon for different tasks.
 >
-> It runs as a lightweight Tauri app (5 MB, not an Electron bloat-fest) built in ReScript + Rust.
+> It runs as a lightweight Tauri app (5 MB, not an Electron bloat-fest) built in AffineScript + Rust.
 
 **If YES:**
 
@@ -134,7 +134,7 @@ Based on my answer:
    ```
 
 2. Install PanLL prerequisites:
-   - ReScript compiler: `npm install rescript` (exception to npm ban — ReScript requires it)
+   - AffineScript compiler: `npm install affinescript` (exception to npm ban — AffineScript requires it)
    - Deno (already installed from Phase 1)
    - Rust + Tauri 2.0: check `cargo tauri --version`
    - Tailwind CSS: handled by deno tasks

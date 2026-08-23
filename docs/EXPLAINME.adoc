@@ -25,7 +25,7 @@ This is the Model-Controller-Processor pattern: cartridges are pluggable service
 
 === Claim 2: PanLL Grid Layout Auto-Wiring for Panel Cartridges
 
-**Location**: `panll/lib/autowire.ts` (ReScript panel autowiring with constraint solver)
+**Location**: `panll/lib/autowire.ts` (AffineScript panel autowiring with constraint solver)
 
 **How verified**: The PanLL framework defines panels (UI widgets) with declared dependencies. The autowire module runs a topological sort + constraint satisfaction solver to bind panel inputs to outputs from other panels. README's panll/ subdir documents the "workspace layer" that orchestrates 108 panels into coherent layouts. The solver validates connectivity before rendering and rejects cycles.
 
@@ -45,8 +45,8 @@ This is the Model-Controller-Processor pattern: cartridges are pluggable service
 | 125 cartridge directories (`cartridges/*/`), each with `abi/`, `ffi/`, `mod.js` structure; auto-discovered at startup via manifest scan
 | echidna (prover orchestration as cartridges), hypatia (rule composition), gitbot-fleet (bot cartridges per service)
 
-| *PanLL ReScript workspace layer*
-| `panll/` — ReScript/TEA panel framework, autowiring constraint solver, 108 panels for UI
+| *PanLL AffineScript workspace layer*
+| `panll/` — AffineScript/TEA panel framework, autowiring constraint solver, 108 panels for UI
 | idaptik (game UI panels), gossamer-powered SPAs, PanLL monorepo panels estate-wide
 
 | *panic-attack security gate*
@@ -72,7 +72,7 @@ This is the Model-Controller-Processor pattern: cartridges are pluggable service
 | `elixir/priv/js_pool_worker.js` | Deno-side pool worker; module cache, env isolation per request
 | `cartridges/*/` | 125 cartridge directories, each with abi/, ffi/, mod.js structure
 | `src/abi/Boj/` | Idris2 ABI definitions (Protocol, Domain, Catalogue, Safety, etc.)
-| `panll/` | ReScript/TEA panel framework for UI workspace layer
+| `panll/` | AffineScript/TEA panel framework for UI workspace layer
 |===
 
 == Testing Critical Paths

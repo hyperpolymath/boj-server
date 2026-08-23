@@ -104,7 +104,7 @@ Or use the declarative environment:
 [source,bash]
 ----
 guix shell -D -f guix.scm    # Guix (primary)
-nix develop                    # Nix (fallback)
+guix develop                    # Guix (fallback)
 ----
 
 === Build steps

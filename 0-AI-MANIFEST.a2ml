@@ -68,7 +68,7 @@
      ├── elixir/                    # Elixir triple adapter (REST+gRPC+GraphQL, Plug/Cowboy)
      ├── cartridges/                # One dir per matrix cell (database-mcp, nesy-mcp, fleet-mcp, ...)
      ├── container/                 # Stapeln container ecosystem
-     ├── panll/src/                 # PanLL panel (ReScript/TEA)
+     ├── panll/src/                 # PanLL panel (AffineScript/TEA)
      ├── docs/                      # ARCHITECTURE, CULTURAL-RESPECT, FEDERATION, DEVELOPERS
      └── .machine_readable/         # State, anchors, policies, bots, contractiles")
 

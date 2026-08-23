@@ -12,9 +12,9 @@ git clone https://github.com/hyperpolymath/boj-server.git
 cd boj-server
 ```
 
-### Using Nix (recommended for reproducibility)
+### Using Guix (recommended for reproducibility)
 ```bash
-nix develop
+guix develop
 ```
 
 ### Or using toolbox/distrobox
@@ -60,7 +60,7 @@ boj-server/
 ├── MAINTAINERS.md
 ├── README.adoc
 ├── SECURITY.md
-├── flake.nix            # Nix flake — fallback (Perimeter 1)
+├── flake.guix            # Guix flake — fallback (Perimeter 1)
 ├── guix.scm             # Guix package — primary (Perimeter 1)
 └── Justfile             # Task runner (Perimeter 1)
 ```

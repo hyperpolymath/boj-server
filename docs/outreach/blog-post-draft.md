@@ -183,7 +183,7 @@ This isn't a product launch. This is a "come look at what I built and tell me wh
 
 ## Try it, host a node, or just tell me what you think
 
-Install: `npm install -g @hyperpolymath/boj-server` or `nix build github:hyperpolymath/boj-server`
+Install: `npm install -g @hyperpolymath/boj-server` or `guix build github:hyperpolymath/boj-server`
 
 The repo is at [github.com/hyperpolymath/boj-server](https://github.com/hyperpolymath/boj-server). The quickstart guide is [docs/quickstarts/DEV.adoc](https://github.com/hyperpolymath/boj-server/blob/main/docs/quickstarts/DEV.adoc).
 
