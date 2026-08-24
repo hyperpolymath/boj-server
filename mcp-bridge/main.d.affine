@@ -1,11 +1,8 @@
 // SPDX-License-Identifier: MPL-2.0
-// Ported via Harvard Engine mechanical processor
+// Ported via Harvard Engine (Semantic pass)
 
 module main.d;
 
-// TODO: Complete semantic implementation
-
-/* === ORIGINAL TYPESCRIPT CONTEXT ===
 // SPDX-License-Identifier: MPL-2.0
 // Copyright (c) Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
 //
@@ -32,6 +29,5 @@ module main.d;
 //   - lib/nickel-validator.js — validateEnvelope(), tryParseEnvelope()
 //   - lib/logger.js     — info(), warn(), error(), setLevel()
 
-export {};
+{};
 
-==================================== */
