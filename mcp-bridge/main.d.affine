@@ -1,4 +1,12 @@
 // SPDX-License-Identifier: MPL-2.0
+// Ported via Harvard Engine mechanical processor
+
+module main.d;
+
+// TODO: Complete semantic implementation
+
+/* === ORIGINAL TYPESCRIPT CONTEXT ===
+// SPDX-License-Identifier: MPL-2.0
 // Copyright (c) Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
 //
 // Type declaration for mcp-bridge/main.js — script entrypoint
@@ -25,3 +33,5 @@
 //   - lib/logger.js     — info(), warn(), error(), setLevel()
 
 export {};
+
+==================================== */
