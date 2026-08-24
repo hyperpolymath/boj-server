@@ -1,0 +1,169 @@
+== 6. Standard `+boj_cartridge_invoke+` Dispatch ABI
+
+Date: 2026-04-18
+
+=== Status
+
+Proposed
+
+=== Context
+
+ADR-0005 picked an OS-process transport (`+boj-invoke+` CLI + Elixir
+`+Invoker+`) for the Elixir REST → Zig cartridge bridge. The skeleton is
+merged and an end-to-end request (`+POST /cartridge/aerie-mcp/invoke+` →
+CLI → `+dlopen+` → classified JSON error → HTTP 501) is verifiably
+working as of 2026-04-18.
+
+What the skeleton *cannot* do is dispatch a tool by name. The Zig loader
+(`+ffi/zig/src/loader.zig+`) currently requires four symbols per
+cartridge:
+
+* `+boj_cartridge_init() -> c_int+`
+* `+boj_cartridge_deinit() -> void+`
+* `+boj_cartridge_name() -> *const c_char+`
+* `+boj_cartridge_version() -> *const c_char+`
+
+None of the 99 cartridge shared libraries today expose these four
+symbols, let alone a fifth dispatch symbol. Each cartridge exports its
+own bespoke per-tool entries (`+aerie_create_env+`, `+aws_*+`, etc.)
+with non-uniform signatures. That is the ABI gap this decision closes.
+
+=== Decision
+
+Adopt a *single fifth standard symbol* per cartridge:
+
+[source,c]
+----
+int32_t boj_cartridge_invoke(
+    const char   *tool_name,     // NUL-terminated, caller-owned
+    const char   *json_args,     // NUL-terminated JSON object, caller-owned
+    char         *out_buf,       // caller-owned output buffer
+    uintptr_t    *in_out_len     // in: buf capacity; out: bytes written (excl. NUL)
+);
+----
+
+==== Return codes
+
+[width="100%",cols="10%,90%",options="header",]
+|===
+|Code |Meaning
+|`+0+` |Success. `+out_buf[0..*in_out_len]+` contains JSON result.
+|`+-1+` |Unknown tool name for this cartridge.
+|`+-2+` |Invalid JSON arguments (parse failure or wrong shape).
+|`+-3+` |Output buffer too small; `+*in_out_len+` set to required size.
+|`+-4+` |Runtime error inside the tool; `+out_buf+` holds error JSON.
+|`+-5+` |Invariant violation / panic (cartridge should be unloaded).
+|`+-6+` |Authorisation denied (cartridge-internal policy — see BJ2).
+|===
+
+Return code semantics are frozen by this ADR. New failure modes must
+compose existing codes via the error-JSON body; the integer surface must
+not grow without a follow-up ADR.
+
+==== Output format
+
+`+out_buf+` on success is a JSON object with at minimum a `+result+`
+key. Cartridges may add cartridge-specific keys but SHOULD NOT emit
+top-level `+error+` on a `+0+` return (that is reserved for the
+error-code path).
+
+On `+-4+` the output buffer carries:
+
+[source,json]
+----
+{"error": "<classification>", "message": "<human>", "details": { ... }}
+----
+
+==== Memory ownership
+
+* Caller allocates `+out_buf+` at a known size (default 64 KiB in the
+`+boj-invoke+` CLI; override via env `+BOJ_INVOKE_BUFLEN+`).
+* Cartridge writes at most `+*in_out_len+` bytes and updates the pointer
+to the actual length.
+* On return, buffer is caller’s to free.
+
+No heap ownership crosses the FFI boundary. This matches the trunk-wide
+"`no allocator leaks`" invariant and keeps the cartridge free to use any
+internal allocator.
+
+==== Relationship to existing four symbols
+
+All five symbols are required once a cartridge adopts this ABI. The
+loader will be updated to look up `+boj_cartridge_invoke+` as a required
+symbol *with a migration window*: existing cartridges without the symbol
+keep loading but are marked `+dispatch=unavailable+` in the catalog. The
+Elixir `+Invoker+` already classifies this as `+missing_symbol+`; that
+classification becomes the migration signal.
+
+=== Consequences
+
+==== Positive
+
+* Unified 5-symbol ABI collapses 99 bespoke surfaces into one.
+* Generic `+Invoker+` GenServer pool can target every cartridge without
+per-cartridge glue.
+* Error classification is an integer enum — cheap to log, easy to
+aggregate, no string parsing on the hot path.
+* Cartridge-internal JSON dispatch is a well-understood pattern
+(standard OTP `+:gen_server+` `+handle_call/3+` shape, sumcheck-style
+tool tables in Zig).
+
+==== Negative
+
+* Every cartridge needs an internal dispatch table (tool name → Zig
+function) and JSON parsing. Smaller cartridges (stubs especially) gain
+maybe 60–120 lines of boilerplate.
+* Cartridge authors must learn the five-symbol contract and the
+seven-code return convention. The boilerplate lives in a shared Zig
+helper (`+ffi/zig/src/cartridge_shim.zig+`, new) to minimise copy-paste.
+
+==== Alternatives rejected
+
+* *Per-tool entries without dispatch.* This is the status quo. Rejected
+because it forces every client (CLI, Elixir Invoker, future gateway) to
+know the exact symbol name + signature of every tool of every cartridge.
+Doesn’t scale.
+* *Dynamic tool registration at init.* Cartridge calls back into the
+loader to register tool handlers. Requires a loader→cartridge callback
+ABI and a per-process registry. More moving parts than the 5-symbol
+table, and harder to reason about statically.
+* *JSON-RPC over stdin/stdout per cartridge.* Turns every cartridge into
+a server process. Dramatically higher process count and fork-overhead
+for an estate with ~100 cartridges.
+
+=== Reference implementation
+
+`+aerie-mcp+` is the canonical reference (smallest non-trivial
+cartridge, four existing bespoke tools). This ADR is accompanied by
+commit `+<pending>+` which:
+
+[arabic]
+. Adds the four existing symbols
+(`+boj_cartridge_init/deinit/name/version+`) to
+`+cartridges/aerie-mcp/ffi/aerie_ffi.zig+`, so the stub-level FFI
+becomes probe-able via `+boj-invoke probe+`.
+. Adds a minimal `+boj_cartridge_invoke+` that dispatches three tools
+(`+create_env+`, `+destroy_env+`, `+get_status+`) against the existing
+bespoke implementations, using a small tool-name string-table.
+. Does *not* touch the other 98 cartridges. Migration is follow-up
+per-cartridge work, blocked on this ADR being accepted.
+
+=== Non-decisions
+
+* Credential isolation (BJ2): unchanged. `+boj_cartridge_invoke+` is a
+per-cartridge entry; the vault partition index is per-cartridge, so
+nothing here weakens isolation.
+* Federation dispatch: still lives at `+Boj.Federation+`. This ADR
+concerns only in-process cartridge dispatch.
+* Tool-level auth: still the cartridge’s responsibility. Return code
+`+-6+` signals auth denial but does not standardise the auth mechanism.
+
+=== References
+
+* ADR-0005 — transport choice (OS-process port).
+* `+ffi/zig/src/loader.zig+` — the four-symbol loader interface this
+extends.
+* `+ffi/zig/src/boj_invoke_cli.zig+` — consumer of this ABI.
+* `+elixir/lib/boj_rest/invoker.ex+` — Elixir caller classification.
+* `+docs/specification/cartridges/README.md+` — cartridge spec
+(narrative).
