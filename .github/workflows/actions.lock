@@ -3,10 +3,15 @@
 # Docs: https://gh.io/actions-lockfile
 version: 'v0.0.2'
 workflows:
+    '.github/workflows/governance.yml': []
+    '.github/workflows/mirror.yml': []
+    '.github/workflows/readme-derive.yml': []
+    '.github/workflows/scorecard.yml': []
+    '.github/workflows/secret-scanner.yml': []
     '.github/workflows/abi-drift.yml':
         - 'actions/cache@v4.2.2'
         - 'actions/checkout@v6.0.2'
-        - 'dtolnay/rust-toolchain@master'
+        - 'dtolnay/rust-toolchain@v1'
     '.github/workflows/backend-assurance.yml':
         - 'actions/cache@v4.2.2'
         - 'actions/checkout@v6.0.2'
@@ -29,7 +34,7 @@ workflows:
         - 'actions/upload-artifact@v4.6.2'
         - 'denoland/setup-deno@v2.0.4'
         - 'erlef/setup-beam@v1.24.0'
-        - 'goto-bus-stop/setup-zig@v2.0.0'
+        - 'mlugg/setup-zig@v2.2.1'
         - 'oven-sh/setup-bun@v2.2.0'
     '.github/workflows/fuzz.yml':
         - 'actions/checkout@v6.0.2'
@@ -46,7 +51,7 @@ workflows:
         - 'peter-evans/repository-dispatch@v3.0.0'
     '.github/workflows/lsp-dap-bsp.yml':
         - 'actions/checkout@v6.0.2'
-        - 'goto-bus-stop/setup-zig@v2.0.0'
+        - 'mlugg/setup-zig@v2.2.1'
     '.github/workflows/pages-deploy.yml':
         - 'actions/checkout@v4.4.0'
     '.github/workflows/pages.yml':
@@ -70,7 +75,7 @@ workflows:
         - 'softprops/action-gh-release@v2.6.2'
     '.github/workflows/truthfulness.yml':
         - 'actions/checkout@v6.0.2'
-        - 'goto-bus-stop/setup-zig@v2.0.0'
+        - 'mlugg/setup-zig@v2.2.1'
     '.github/workflows/zig-test.yml':
         - 'actions/checkout@v6.0.2'
         - 'mlugg/setup-zig@v2.2.1'
@@ -152,7 +157,7 @@ dependencies:
             - 'actions/upload-artifact@v4'
     'dawidd6/action-send-mail@v3.12.0':
         ref: 'v3.12.0'
-        commit: 'sha1-6e502825a508b867ab2954ad6343b68787624c01'
+        commit: 'sha1-2cea9617b09d79a095af21254fbcb7ae95903dde'
         owner_id: 9713907
         repo_id: 222439721
     'denoland/setup-deno@v2.0.4':
@@ -160,9 +165,9 @@ dependencies:
         commit: 'sha1-667a34cdef165d8d2b2e98dde39547c9daac7282'
         owner_id: 42048915
         repo_id: 356423100
-    'dtolnay/rust-toolchain@master':
-        ref: 'master'
-        commit: 'sha1-b3b07ba8b418998c39fb20f53e8b695cdcc8de1b'
+    'dtolnay/rust-toolchain@v1':
+        ref: 'v1'
+        commit: 'sha1-6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772'
         owner_id: 1940490
         repo_id: 260749683
     'erlef/setup-beam@v1.24.0':
@@ -180,11 +185,6 @@ dependencies:
         commit: 'sha1-c6f931105cb2c34c8f901cc885ba1e2e259cf745'
         owner_id: 9919
         repo_id: 259445878
-    'goto-bus-stop/setup-zig@v2.0.0':
-        ref: 'v2.0.0'
-        commit: 'sha1-9566bb3e8749893055694249726756f25e099b30'
-        owner_id: 1006268
-        repo_id: 212984112
     'mlugg/setup-zig@v2.2.1':
         ref: 'v2.2.1'
         commit: 'sha1-d1434d08867e3ee9daa34448df10607b98908d29'
