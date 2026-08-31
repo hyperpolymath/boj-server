@@ -110,7 +110,7 @@ tools/                      Cartridge tooling (provisioner, configurator, harnes
   panel-harness/
 # Note: cartridge-minter (Node.js, banned) removed 2026-04-25. Use launch-scaffolder.
 
-panll/src/                  PanLL panel (ReScript/TEA)
+panll/src/                  PanLL panel (AffineScript/TEA)
 
 .machine_readable/          All machine-readable content
   STATE.a2ml                Project state

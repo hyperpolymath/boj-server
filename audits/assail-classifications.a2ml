@@ -775,11 +775,11 @@
     (rationale "Anti-leak ASPECT test. The placeholder `ghp_xxxxxxxxxxxxxxxxxxxx` is the *needle* the test then asserts MUST NOT appear in response bodies / error detail. Removing it would defeat the test's purpose. Already carries an inline `hypatia-ignore: test-only placeholder, not a real token` annotation; line 132's `my_super_secret_password` is the same pattern."))
 
   (classification
-    (file "flake.nix")
+    (file "flake.guix")
     (category "SupplyChain")
     (classification "legitimate-flake-lock-pinned")
     (audit "boj-server#155 (2026-06-01)")
-    (rationale "Sibling `flake.lock` IS present at repo root and pins each input by `narHash` and `rev`. The panic-attack SupplyChain rule checks for in-file pinning (narHash/rev attrs in flake.nix itself) but does not detect the lockfile, which is the canonical Nix flakes pinning mechanism. Dependabot also bumps the lock weekly (e.g. PR #170 nixpkgs 4100e83 → e9a7635)."))
+    (rationale "Sibling `flake.lock` IS present at repo root and pins each input by `narHash` and `rev`. The panic-attack SupplyChain rule checks for in-file pinning (narHash/rev attrs in flake.guix itself) but does not detect the lockfile, which is the canonical Guix flakes pinning mechanism. Dependabot also bumps the lock weekly (e.g. PR #170 nixpkgs 4100e83 → e9a7635)."))
 
   (classification
     (file "tray/src/server.rs")

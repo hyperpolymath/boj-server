@@ -130,7 +130,7 @@ upcoming MCP specifications, both repos, wikis, and the running network.
 | Deprecated `6a2/` layout in BOTH repos (26+18 file references; estate
   mandate: migrate on sight); boj-server still has `agent_instructions/`
   (mandate: `bot_directives`); cartridges root AI-manifest misnamed
-  (`0.1-` at root); ReScript backlog #67; two mint paths (cartridge-minter
+  (`0.1-` at root); AffineScript backlog #67; two mint paths (cartridge-minter
   vs Foundry).
 | §5 programme E
 

@@ -21,11 +21,11 @@
 const std = @import("std");
 
 // `std.atomic.Mutex` was removed from the standard library; its replacement is
-// `std.Thread.Mutex`, whose lock/unlock surface is identical to the hand-rolled
+// `shim.Mutex`, whose lock/unlock surface is identical to the hand-rolled
 // wrapper this replaces. The wrapper also busy-waited via `spinLoopHint`, burning
-// a core under contention; `std.Thread.Mutex` parks the thread instead. 81 other
+// a core under contention; `shim.Mutex` parks the thread instead. 81 other
 // files in this repo already use this form.
-const Mutex = std.Thread.Mutex;
+const Mutex = shim.Mutex;
 
 extern fn getenv(name: [*:0]const u8) ?[*:0]const u8;
 
@@ -490,7 +490,7 @@ test "coprocessor has_accelerator" {
 
 test "coprocessor env-driven cuda detection" {
     // Save and set env
-    const had_env = std.posix.getenv("BOJ_CUDA_DEVICES") != null;
+    const had_env = shim.getenv("BOJ_CUDA_DEVICES") != null;
     if (!had_env) {
         // Can't easily set env in Zig tests, so just verify init works
         init();
@@ -510,3 +510,5 @@ test "coprocessor deinit resets state" {
     try std.testing.expectEqual(@as(usize, 0), boj_coprocessor_affinity_count());
     try std.testing.expect(!initialised);
 }
+
+const shim = @import("cartridge_shim");

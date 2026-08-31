@@ -18,7 +18,7 @@ Or use the development environment:
 [source,bash]
 ----
 guix shell -D -f guix.scm    # Guix (primary)
-nix develop                    # Nix (fallback)
+guix develop                    # Guix (fallback)
 ----
 
 == Clone and Setup

@@ -1,4 +1,6 @@
 # SPDX-License-Identifier: MPL-2.0
+# This workflow is managed by gh actions-lock.
+# This workflow is managed by gh actions-lock.
 # Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
 #
 # Full test suite for BoJ Server: E2E, aspect tests, and benchmarks.
@@ -32,7 +34,7 @@ jobs:
     outputs:
       run: ${{ steps.detect.outputs.run }}
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@v6.0.2
         with:
           fetch-depth: 0
       - id: detect
@@ -64,15 +66,15 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@v6.0.2
 
       - name: Install Zig
-        uses: goto-bus-stop/setup-zig@9566bb3e8749893055694249726756f25e099b30  # v2
+        uses: mlugg/setup-zig@v2.2.1
         with:
-          version: 0.15.1
+          version: 0.16.0
 
       - name: Install Deno
-        uses: denoland/setup-deno@667a34cdef165d8d2b2e98dde39547c9daac7282  # v2.0.4
+        uses: denoland/setup-deno@v2.0.4
         with:
           deno-version: v2.x
 
@@ -80,7 +82,7 @@ jobs:
         # tests/e2e_full.sh requires `mix` on PATH to start the Elixir
         # backend (elixir/ — `mix run --no-halt`). Pinned to match the
         # estate convention (see hypatia-scan.yml across the org).
-        uses: erlef/setup-beam@fc68ffb90438ef2936bbb3251622353b3dcb2f93  # v1.18.2
+        uses: erlef/setup-beam@v1.24.0
         with:
           elixir-version: '1.18'
           otp-version: '27'
@@ -113,7 +115,7 @@ jobs:
 
       - name: Upload test logs
         if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4
+        uses: actions/upload-artifact@v4.6.2
         with:
           name: e2e-full-logs
           path: /tmp/boj-e2e-test.*
@@ -129,12 +131,12 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@v6.0.2
 
       - name: Install Zig
-        uses: goto-bus-stop/setup-zig@9566bb3e8749893055694249726756f25e099b30  # v2
+        uses: mlugg/setup-zig@v2.2.1
         with:
-          version: 0.15.1
+          version: 0.16.0
 
       - name: Build FFI libraries
         run: cd ffi/zig && zig build
@@ -152,7 +154,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@v6.0.2
 
       - name: Run aspect tests
         run: bash tests/aspect_tests.sh
@@ -167,12 +169,12 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@v6.0.2
 
       - name: Install Zig
-        uses: goto-bus-stop/setup-zig@9566bb3e8749893055694249726756f25e099b30  # v2
+        uses: mlugg/setup-zig@v2.2.1
         with:
-          version: 0.15.1
+          version: 0.16.0
 
       - name: Build FFI libraries
         run: cd ffi/zig && zig build
@@ -182,7 +184,7 @@ jobs:
 
       - name: Upload benchmark results
         if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4
+        uses: actions/upload-artifact@v4.6.2
         with:
           name: benchmark-results
           path: ffi/zig/zig-out/bench*
@@ -221,24 +223,24 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@v6.0.2
 
       - name: Setup Node
         # Node is needed on every leg: it is the subject on the node
         # leg and the boot-smoke orchestrator on all three.
-        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        uses: actions/setup-node@v4.4.0
         with:
           node-version: '22'
 
       - name: Install Deno
         if: matrix.runtime == 'deno'
-        uses: denoland/setup-deno@667a34cdef165d8d2b2e98dde39547c9daac7282  # v2.0.4
+        uses: denoland/setup-deno@v2.0.4
         with:
           deno-version: v2.x
 
       - name: Install Bun
         if: matrix.runtime == 'bun'
-        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        uses: oven-sh/setup-bun@v2.2.0
         with:
           bun-version: '1.x'
 
@@ -267,10 +269,10 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@v6.0.2
 
       - name: Setup Node
-        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        uses: actions/setup-node@v4.4.0
         with:
           node-version: '22'
 
@@ -279,7 +281,7 @@ jobs:
 
       - name: Upload bridge bench artifact
         if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4
+        uses: actions/upload-artifact@v4.6.2
         with:
           name: bench-bridge-results
           path: bench-bridge.txt
@@ -290,7 +292,7 @@ jobs:
         # Advisory — a comment failure must never gate the bench job.
         # Same reasoning as the hypatia-scan PR-comment step.
         continue-on-error: true
-        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v7
+        uses: actions/github-script@v8.0.0
         with:
           script: |
             const fs = require('fs');

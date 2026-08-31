@@ -1,4 +1,6 @@
 # SPDX-License-Identifier: MPL-2.0
+# This workflow is managed by gh actions-lock.
+# This workflow is managed by gh actions-lock.
 # Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
 #
 # Backend-Assurance Harness (epic #87 Tier C)
@@ -18,52 +20,75 @@
 
 name: Backend-Assurance Harness
 
+# Was workflow-level path-filtered: a required check that never ran on PRs
+# touching none of its paths, leaving the check "Expected" and the PR blocked.
+# Now always runs; the `changes` job gates the heavy job, which when skipped
+# reports SUCCESS to required checks.
 on:
   push:
     branches: [main]
-    paths:
-      - 'src/abi/Boj/SafetyLemmas.idr'
-      - 'elixir/test/backend_assurance/**'
-      - 'elixir/mix.exs'
-      - 'elixir/mix.lock'
-      - 'docs/backend-assurance/**'
-      - '.github/workflows/backend-assurance.yml'
   pull_request:
     branches: [main]
-    paths:
-      - 'src/abi/Boj/SafetyLemmas.idr'
-      - 'elixir/test/backend_assurance/**'
-      - 'elixir/mix.exs'
-      - 'elixir/mix.lock'
-      - 'docs/backend-assurance/**'
-      - '.github/workflows/backend-assurance.yml'
+  workflow_dispatch:
 
 concurrency:
   group: backend-assurance-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
+  actions: read
   contents: read
 
 jobs:
+  changes:
+    name: Detect relevant changes
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      run: ${{ steps.detect.outputs.run }}
+    steps:
+      - uses: actions/checkout@v6.0.2
+        with:
+          fetch-depth: 0
+      - id: detect
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE: ${{ github.base_ref }}
+          BEFORE: ${{ github.event.before }}
+        run: |
+          set -uo pipefail
+          run=true
+          if [ "$EVENT" = pull_request ]; then
+            git fetch --no-tags --depth=200 origin "$BASE" 2>/dev/null \
+              && changed=$(git diff --name-only "origin/${BASE}...HEAD" 2>/dev/null) \
+              && { printf '%s\n' "$changed" | grep -qE '^src/abi/Boj/SafetyLemmas\.idr$|^elixir/test/backend_assurance/|^elixir/mix\.(exs|lock)$|^docs/backend-assurance/' && run=true || run=false; }
+          elif [ "$EVENT" = push ] && [ -n "$BEFORE" ] && [ "$BEFORE" != 0000000000000000000000000000000000000000 ]; then
+            changed=$(git diff --name-only "${BEFORE}...${GITHUB_SHA}" 2>/dev/null) \
+              && { printf '%s\n' "$changed" | grep -qE '^src/abi/Boj/SafetyLemmas\.idr$|^elixir/test/backend_assurance/|^elixir/mix\.(exs|lock)$|^docs/backend-assurance/' && run=true || run=false; }
+          fi
+          printf 'run=%s\n' "$run" >> "$GITHUB_OUTPUT"
+          echo "relevant=$run; changed files:"; printf '%s\n' "${changed:-<none computed>}"
+
   property-test:
     name: BEAM property tests
+    needs: changes
+    if: needs.changes.outputs.run == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     defaults:
       run:
         working-directory: elixir
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@v6.0.2
 
       - name: Set up BEAM (Elixir + OTP)
-        uses: erlef/setup-beam@fc68ffb90438ef2936bbb3251622353b3dcb2f93 # v1.24.0
+        uses: erlef/setup-beam@v1.24.0
         with:
           elixir-version: '1.18.4'
           otp-version: '27.0'
 
       - name: Cache deps + _build
-        uses: actions/cache@d4323d4df104b026a6aa633fdb11d772146be0bf # v4.2.2
+        uses: actions/cache@v4.2.2
         with:
           path: |
             elixir/deps

@@ -35,7 +35,7 @@ owns = [
 
 [implementation-policy]
 # Realigned 2026-06-05 to the current language policy (CLAUDE.md / standards):
-# V banned 2026-04-10; ReScript dropped as the migration destination 2026-04-30;
+# V banned 2026-04-10; AffineScript dropped as the migration destination 2026-04-30;
 # AffineScript is the canonical target for new application code; Elixir (REST) and
 # JavaScript-on-Deno (mod.js cartridges) are the established runtime languages.
 allowed = ["Idris2", "Zig", "Elixir", "AffineScript", "JavaScript (Deno)", "Scheme", "Shell", "Just", "AsciiDoc", "Markdown"]

@@ -25,7 +25,7 @@ toc::[]
 | Developer (running BoJ)
 | link:DEV.adoc[DEV.adoc]
 | You want a running BoJ instance for development in 60 seconds.
-  Covers prereqs, clone, dev shell (Guix/Nix), and the smoke
+  Covers prereqs, clone, dev shell (Guix/Guix), and the smoke
   test.
 
 | Developer (building from source)

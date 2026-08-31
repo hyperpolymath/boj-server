@@ -61,7 +61,7 @@ Publication requires B+. Long alpha is discipline, not shame.
 | PRESENT
 | `docs/`
 
-| `guix.scm` + `flake.nix`
+| `guix.scm` + `flake.guix`
 | PRESENT (primary + fallback)
 | Root
 

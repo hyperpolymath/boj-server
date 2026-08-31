@@ -1,4 +1,6 @@
 # SPDX-License-Identifier: MPL-2.0
+# This workflow is managed by gh actions-lock.
+# This workflow is managed by gh actions-lock.
 # Copyright (c) 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
 #
 # Aligned with the documented caller pattern in
@@ -8,18 +10,13 @@
 #   - missing `concurrency:` group (re-pushes piled up superseded runs)
 #   - `branch_protection_rule:` trigger (unused; complicates startup)
 #   - `secrets: inherit` against a reusable with no `secrets:` block
-#   - `permissions:
-  contents: read
-  security-events: write
-  id-token: write  id-token: write` instead of explicit `contents: read`
+#   - `permissions: read-all` instead of explicit `contents: read`
 # Pattern now matches the reusable's header example verbatim. Sister
 # fix landed in hyperpolymath/ephapax#264 (2026-06-01); this PR mirrors
 # it so the two repos stay in sync.
 name: Scorecards supply-chain security
 
 on:
-  push:
-    branches: [main]
   schedule:
     - cron: '23 4 * * 1'
   workflow_dispatch:
@@ -29,9 +26,9 @@ concurrency:
   cancel-in-progress: true
 
 permissions:
+  actions: read
   contents: read
-  security-events: write
-  id-token: write
+
 jobs:
   analysis:
     permissions:
@@ -45,4 +42,4 @@ jobs:
       contents: read
       security-events: write
       id-token: write
-    uses: hyperpolymath/standards/.github/workflows/scorecard-reusable.yml@5b1d00229e5e8c0c0fbfedc7e80f37ea50f49236
+    uses: hyperpolymath/standards/.github/workflows/scorecard-reusable.yml@84355587cb2a1f86e6882de83514a32db2646e7a

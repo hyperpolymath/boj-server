@@ -25,9 +25,9 @@ This document describes the project's RSR compliance posture and structure.
 git clone https://github.com/hyperpolymath/boj-server
 cd boj-server
 
-# Enter development environment (Guix primary, Nix fallback)
+# Enter development environment (Guix primary, Guix fallback)
 guix shell -D -f guix.scm
-# or: nix develop
+# or: guix develop
 
 # Build all FFI layers
 just build
@@ -76,7 +76,7 @@ boj-server/
 ├── ROADMAP.adoc               # Phased roadmap
 ├── Justfile                   # Task runner (build, test, typecheck, verify)
 ├── guix.scm                   # Guix package (primary)
-├── flake.nix                  # Nix flake (fallback)
+├── flake.guix                  # Guix flake (fallback)
 ├── .tool-versions             # asdf toolchain (idris2, zig, just)
 ├── src/abi/                   # Idris2 ABI — formally verified catalogue
 │   ├── Catalogue.idr          # Cartridge registry, IsUnbreakable proof
@@ -145,7 +145,7 @@ boj-server/
 * `.well-known/security.txt`
 * `.well-known/ai.txt`
 * `.well-known/humans.txt`
-* `guix.scm` (primary) + `flake.nix` (fallback)
+* `guix.scm` (primary) + `flake.guix` (fallback)
 
 === Language Stack
 
@@ -156,7 +156,7 @@ boj-server/
 
 === Prohibited (enforced by CI)
 
-* TypeScript/JavaScript (use ReScript)
+* TypeScript/JavaScript (use AffineScript)
 * npm, Bun, pnpm, yarn (use Deno)
 * Python (use Julia/Rust)
 * Go (use Rust/Zig)
@@ -172,7 +172,7 @@ All present in `.github/workflows/`:
 * `quality.yml` — Quality checks (TruffleHog, EditorConfig)
 * `mirror.yml` — GitLab/Bitbucket mirroring
 * `instant-sync.yml` — Forge propagation
-* `guix-nix-policy.yml` — Guix/Nix enforcement
+* `guix-guix-policy.yml` — Guix/Guix enforcement
 * `rsr-antipattern.yml` — RSR validation
 * `security-policy.yml` — Security policy checks
 * `wellknown-enforcement.yml` — .well-known/ validation
