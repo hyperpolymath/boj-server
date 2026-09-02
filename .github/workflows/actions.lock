@@ -3,13 +3,6 @@
 # Docs: https://gh.io/actions-lockfile
 version: 'v0.0.2'
 workflows:
-    '.github/workflows/governance.yml': []
-    '.github/workflows/label-triage.yml': []
-    '.github/workflows/labels.yml': []
-    '.github/workflows/mirror.yml': []
-    '.github/workflows/readme-derive.yml': []
-    '.github/workflows/scorecard.yml': []
-    '.github/workflows/secret-scanner.yml': []
     '.github/workflows/abi-drift.yml':
         - 'actions/cache@v4.2.2'
         - 'actions/checkout@v6.0.2'
@@ -41,6 +34,7 @@ workflows:
     '.github/workflows/fuzz.yml':
         - 'actions/checkout@v6.0.2'
         - 'mlugg/setup-zig@v2.2.1'
+    '.github/workflows/governance.yml': []
     '.github/workflows/hcg-surface-drift.yml':
         - 'actions/checkout@v6.0.2'
     '.github/workflows/hypatia-scan.yml':
@@ -51,9 +45,12 @@ workflows:
         - 'github/codeql-action@v4.32.6'
     '.github/workflows/instant-sync.yml':
         - 'peter-evans/repository-dispatch@v3.0.0'
+    '.github/workflows/label-triage.yml': []
+    '.github/workflows/labels.yml': []
     '.github/workflows/lsp-dap-bsp.yml':
         - 'actions/checkout@v6.0.2'
         - 'mlugg/setup-zig@v2.2.1'
+    '.github/workflows/mirror.yml': []
     '.github/workflows/pages-deploy.yml':
         - 'actions/checkout@v4.4.0'
     '.github/workflows/pages.yml':
@@ -68,13 +65,16 @@ workflows:
         - 'actions/setup-node@v4.4.0'
         - 'denoland/setup-deno@v2.0.4'
     '.github/workflows/push-email-notify.yml':
-        - 'dawidd6/action-send-mail@v3.12.0'
+        - 'hyperpolymath/smtp-notify-action@v0.1.0'
+    '.github/workflows/readme-derive.yml': []
     '.github/workflows/release.yml':
         - 'actions/checkout@v6.0.2'
         - 'actions/download-artifact@v4.2.1'
         - 'actions/upload-artifact@v4.6.2'
         - 'mlugg/setup-zig@v2.2.1'
         - 'softprops/action-gh-release@v2.6.2'
+    '.github/workflows/scorecard.yml': []
+    '.github/workflows/secret-scanner.yml': []
     '.github/workflows/truthfulness.yml':
         - 'actions/checkout@v6.0.2'
         - 'mlugg/setup-zig@v2.2.1'
@@ -157,11 +157,6 @@ dependencies:
         repo_id: 496012378
         uses:
             - 'actions/upload-artifact@v4'
-    'dawidd6/action-send-mail@v3.12.0':
-        ref: 'v3.12.0'
-        commit: 'sha1-2cea9617b09d79a095af21254fbcb7ae95903dde'
-        owner_id: 9713907
-        repo_id: 222439721
     'denoland/setup-deno@v2.0.4':
         ref: 'v2.0.4'
         commit: 'sha1-667a34cdef165d8d2b2e98dde39547c9daac7282'
@@ -187,6 +182,11 @@ dependencies:
         commit: 'sha1-c6f931105cb2c34c8f901cc885ba1e2e259cf745'
         owner_id: 9919
         repo_id: 259445878
+    'hyperpolymath/smtp-notify-action@v0.1.0':
+        ref: 'v0.1.0'
+        commit: 'sha1-1b3b752d39a4fe4c0f28f10905e4608789d3e050'
+        owner_id: 6759885
+        repo_id: 1352485172
     'mlugg/setup-zig@v2.2.1':
         ref: 'v2.2.1'
         commit: 'sha1-d1434d08867e3ee9daa34448df10607b98908d29'
