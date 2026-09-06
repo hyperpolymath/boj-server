@@ -5,7 +5,6 @@
 
 [![License: MPL-2.0](https://img.shields.io/badge/License-MPL_2.0-blue.svg)](LICENSE)
 [![npm](https://img.shields.io/npm/v/@hyperpolymath/boj-server?logo=npm)](https://www.npmjs.com/package/@hyperpolymath/boj-server)
-[![Glama MCP Server](https://glama.ai/mcp/servers/hyperpolymath/boj-server/badge)](https://glama.ai/mcp/servers/hyperpolymath/boj-server)
 [![OpenSSF Best Practices](https://img.shields.io/badge/OpenSSF-Best_Practices-green?logo=opensourcesecurity)](https://www.bestpractices.dev/en/projects/new?repo_url=https://github.com/hyperpolymath/boj-server)
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/hyperpolymath/boj-server/badge)](https://scorecard.dev/viewer/?uri=github.com/hyperpolymath/boj-server)
 [![Software Heritage](https://archive.softwareheritage.org/badge/origin/https://github.com/hyperpolymath/boj-server/)](https://archive.softwareheritage.org/browse/origin/?origin_url=https://github.com/hyperpolymath/boj-server)
