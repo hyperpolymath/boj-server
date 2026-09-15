@@ -281,7 +281,7 @@ validate_a2ml() {
             "Missing required identity field (agent-id, name, or project)"
     fi
 
-    if [[ "$has_version" == "false" && "$is_manifest" == "false" && "$is_contractile_shape" == "false" && "$is_structural_identity" == "false" ]]; then
+    if [[ "$has_version" == "false" && "$is_manifest" == "false" && "$is_contractile_shape" == "false" ]]; then
         report_issue "warning" "$file" 1 \
             "Missing version or schema_version field"
     fi
