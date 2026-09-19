@@ -26,7 +26,7 @@ git clone https://github.com/hyperpolymath/boj-server
 cd boj-server
 
 # Enter development environment (Guix primary, Guix fallback)
-guix shell -D -f guix.scm
+guix shell -D -f build/guix.scm
 # or: guix develop
 
 # Build all FFI layers

@@ -103,7 +103,7 @@ Or use the declarative environment:
 
 [source,bash]
 ----
-guix shell -D -f guix.scm    # Guix (primary)
+guix shell -D -f build/guix.scm    # Guix (primary)
 guix develop                    # Guix (fallback)
 ----
 
