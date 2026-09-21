@@ -61,7 +61,7 @@ contract when it has one) before a single dispatch call into the one Zig ABI
   unified Zig core; adapters bind loopback and sit behind it.
 
 Naming lineage: the fuller 16-protocol-surface pattern is called the
-**Hexadeca-Connector** elsewhere in the estate (`hyperpolymath/hypatia`,
+**UnifiedApiAdapter** elsewhere in the estate (`hyperpolymath/hypatia`,
 `hyperpolymath/proven-servers`) — same Idris2-ABI + Zig-FFI substrate, more
 protocol surfaces. It descends from a now-**retired** V-lang reference
 (`developer-ecosystem/v-ecosystem/v_api_interfaces/v_api_interfaces.v`),
