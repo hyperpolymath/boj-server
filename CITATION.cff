@@ -6,6 +6,7 @@ message: "If you use this software, please cite it using the metadata below."
 type: software
 authors:
   - given-names: Jonathan
+    orcid: "https://orcid.org/0000-0002-3078-6652"
     name-particle: D.A.
     family-names: Jewell
     email: j.d.a.jewell@open.ac.uk
