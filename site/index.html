@@ -164,7 +164,7 @@ boj-server.net — permanent presence + access point for the BoJ MCP server and 
     <h2 id="proven-h">What is proven, witnessed, and trusted</h2>
     <p>"Proven" here means proven about a model. Each claim sits in one of three bins.</p>
     <div class="grid">
-      <div class="card-flat"><strong>Proven</strong><p>An Idris2 model of the safety predicates, catalogue, dispatch and credential isolation, total, with four documented axioms. It does not typecheck at the moment (a duplicate lemma, and a broken CI job); the fix is pending. The model is not yet linked to the running server, and 13 of the runtime checks it binds are not yet implemented.</p></div>
+      <div class="card-flat"><strong>Proven</strong><p>An Idris2 model of the safety predicates, catalogue, dispatch and credential isolation, total, with four documented axioms. It does not typecheck at the moment (a duplicate lemma, and a broken CI job); the fix is tracked in <a href="https://github.com/hyperpolymath/boj-server/issues/343">#343</a>. The model is not yet linked to the running server, and 13 of the runtime checks it binds are not yet implemented.</p></div>
       <div class="card-flat"><strong>Witnessed</strong><p>Property tests on the four axioms, coherence tests between advertised and dispatched tools, npm provenance, SLSA level 3 release tarballs, container attestation.</p></div>
       <div class="card-flat"><strong>Trusted</strong><p>The JavaScript bridge and Zig FFI themselves, hand-written tool annotations, cloud and forge APIs, compilers, runtimes, the OS, and the AI choosing the right tool.</p></div>
     </div>
