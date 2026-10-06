@@ -6,14 +6,16 @@
 
 *One MCP endpoint for the WHOLE toolchain* — GitHub, GitLab, Cloudflare, Vercel, Verpex, Gmail, Calendar, browser automation, research, ML, multi-agent coordination, and a large catalogue of pluggable domain cartridges, all reachable through a single zero-dependency stdio bridge.
 
-image:https://img.shields.io/badge/License-MPL_2.0-blue.svg[License: MPL-2.0, link="LICENSE"]
-image:https://img.shields.io/badge/bun-%3E%3D1.0-black?logo=bun[Bun, link="https://bun.sh"]
-image:https://img.shields.io/npm/v/@hyperpolymath/boj-server?logo=npm[npm, link="https://www.npmjs.com/package/@hyperpolymath/boj-server"]
-image:https://img.shields.io/badge/OpenSSF-Best_Practices-green?logo=opensourcesecurity[OpenSSF Best Practices, link="https://www.bestpractices.dev/en/projects/new?repo_url=https://github.com/hyperpolymath/boj-server"]
-image:https://img.shields.io/sonar/quality_gate/hyperpolymath_boj-server?server=https%3A%2F%2Fsonarcloud.io&logo=sonarcloud[Quality Gate, link="https://sonarcloud.io/summary/new_code?id=hyperpolymath_boj-server"]
-image:https://aiagentslisting.com/boj-server/badge.svg?variant=score[Boj Server MCP score, link="https://aiagentslisting.com/mcp/boj-server"]
-image:https://img.shields.io/badge/SWH-Archived-blue?logo=softwareheritage[Software Heritage, link="https://archive.softwareheritage.org/browse/origin/?origin_url=https://github.com/hyperpolymath/boj-server"]
-image:https://api.scorecard.dev/projects/github.com/hyperpolymath/boj-server/badge[OpenSSF Scorecard, link="https://scorecard.dev/viewer/?uri=github.com/hyperpolymath/boj-server"]
+[cols="1s,4",frame=none,grid=none]
+|===
+| Published | image:https://img.shields.io/npm/v/@hyperpolymath/boj-server?logo=npm[npm, link="https://www.npmjs.com/package/@hyperpolymath/boj-server"] image:https://img.shields.io/badge/SWH-Archived-blue?logo=softwareheritage[Software Heritage, link="https://archive.softwareheritage.org/browse/origin/?origin_url=https://github.com/hyperpolymath/boj-server"] image:https://aiagentslisting.com/boj-server/badge.svg?variant=score[Boj Server MCP score, link="https://aiagentslisting.com/mcp/boj-server"]
+
+| Runtimes | image:https://img.shields.io/badge/bun-%3E%3D1.0-black?logo=bun[Bun, link="https://bun.sh"] image:https://img.shields.io/badge/node-%3E%3D18-brightgreen?logo=node.js[Node, link="https://nodejs.org"] image:https://img.shields.io/badge/deno-compatible-blue?logo=deno[Deno, link="https://deno.land"]
+
+| Security & Health | image:https://img.shields.io/badge/OpenSSF-Best_Practices-green?logo=opensourcesecurity[OpenSSF Best Practices, link="https://www.bestpractices.dev/en/projects/new?repo_url=https://github.com/hyperpolymath/boj-server"] image:https://api.scorecard.dev/projects/github.com/hyperpolymath/boj-server/badge[OpenSSF Scorecard, link="https://scorecard.dev/viewer/?uri=github.com/hyperpolymath/boj-server"] image:https://img.shields.io/sonar/quality_gate/hyperpolymath_boj-server?server=https%3A%2F%2Fsonarcloud.io&logo=sonarcloud[Quality Gate, link="https://sonarcloud.io/summary/new_code?id=hyperpolymath_boj-server"]
+
+| Compliance | image:https://img.shields.io/badge/License-MPL_2.0-blue.svg[License: MPL-2.0, link="LICENSE"] image:https://api.reuse.software/badge/github.com/hyperpolymath/boj-server[REUSE Compliance, link="https://api.reuse.software/info/github.com/hyperpolymath/boj-server"]
+|===
 
 ____
 *What it is, honestly:* BoJ exposes *68 MCP tools* today (45 `boj++_*++` {plus} 23 `coord++_*++`) over stdio with *zero runtime dependencies*. It _catalogues_ 125 domain cartridges, but most of those are an inspectable catalogue, not live services — a cartridge only performs real actions when its backend process is running and you supply the right credentials. The bridge is fully inspectable offline; side-effectful tools return a structured `++{++error, hint}` until their backend is up. See link:#cartridges[Cartridges] for the full story.
