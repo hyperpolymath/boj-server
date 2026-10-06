@@ -38,8 +38,7 @@ import * as pathClaims from "./path-claims.js";
 import { info, warn, error as logError, setLevel as setLogLevel } from "./logger.js";
 import * as otel from "./otel.js";
 
-const SERVER_NAME = "boj-server";
-const SERVER_VERSION = "0.4.7";
+import { SERVER_NAME, SERVER_VERSION } from "./version.js";
 
 const LOCAL_COORD_URL = env.get("COORD_BACKEND_URL") ?? "http://127.0.0.1:7745";
 const ENVELOPE_CARRYING_TOOLS = new Set(["coord_send", "coord_send_gated"]);

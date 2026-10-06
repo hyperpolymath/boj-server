@@ -20,7 +20,11 @@ const GITLAB_BASE = env.get("GITLAB_URL") ?? "https://gitlab.com";
 // BoJ REST API wrappers
 // ===================================================================
 
-/** @returns {Promise<object>} */
+/**
+ * Report backend liveness: the REST /health payload plus per-cartridge status,
+ * or a structured "rest-unavailable" result when the backend cannot be reached.
+ * @returns {Promise<object>}
+ */
 async function fetchHealth() {
   try {
     const res = await fetch(`${BOJ_BASE}/health`);
@@ -52,7 +56,7 @@ async function fetchHealth() {
     return {
       status: "rest-unavailable",
       mode: "stdio-only",
-      message: "BoJ REST API is not currently deployed — pending Elixir rewrite. The systemd unit `boj-server.service` starts the stdio MCP bridge, not a REST server on " + BOJ_BASE + ". Offline-capable tools (menu, cartridges, cartridge-info) still work via static fallbacks; REST-only tools (health, invoke, research, codeseeker) will return this error until the Elixir port ships.",
+      message: "BoJ REST backend is not reachable at " + BOJ_BASE + ". It is the Elixir app in elixir/ (boj_rest): start it with `just run` (cd elixir && mix run --no-halt) or install the `boj-rest.service` user unit with `just install-service`; set BOJ_URL if it listens elsewhere. Offline-capable tools (menu, cartridges, cartridge-info, github, gitlab) still work; backend-only tools (invoke, research, codeseeker, cloud, comms, browser) fail until it is up.",
       base_url_probed: BOJ_BASE,
     };
   }
