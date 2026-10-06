@@ -1,7 +1,13 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="BoJ">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="96" height="96" role="img" aria-label="BoJ Server">
   <!-- SPDX-License-Identifier: MPL-2.0 -->
+  <!-- BoJ mark: JSON-RPC braces holding a stack of cartridges. -->
   <rect width="64" height="64" rx="14" fill="#0d1117"/>
-  <rect x="3" y="3" width="58" height="58" rx="12" fill="none" stroke="#30363d" stroke-width="2"/>
-  <text x="32" y="42" font-family="JetBrains Mono, ui-monospace, monospace" font-size="26"
-        font-weight="700" fill="#58a6ff" text-anchor="middle">BoJ</text>
+  <rect x="1.5" y="1.5" width="61" height="61" rx="12.5" fill="none" stroke="#30363d" stroke-width="2"/>
+  <g transform="translate(7.04 7.04) scale(.78)">
+    <path d="M18 8 Q10 8 10 16 V26 Q10 32 4 32 Q10 32 10 38 V48 Q10 56 18 56" fill="none" stroke="#c9d1d9" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M46 8 Q54 8 54 16 V26 Q54 32 60 32 Q54 32 54 38 V48 Q54 56 46 56" fill="none" stroke="#c9d1d9" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+    <rect x="20" y="17" width="24" height="8" rx="2.5" fill="#58a6ff"/>
+    <rect x="20" y="28" width="24" height="8" rx="2.5" fill="#a78bfa"/>
+    <rect x="20" y="39" width="24" height="8" rx="2.5" fill="#58a6ff" opacity=".7"/>
+  </g>
 </svg>
