@@ -14,7 +14,7 @@
 
 | Security & Health | image:https://img.shields.io/badge/OpenSSF-Best_Practices-green?logo=opensourcesecurity[OpenSSF Best Practices, link="https://www.bestpractices.dev/en/projects/new?repo_url=https://github.com/hyperpolymath/boj-server"] image:https://api.scorecard.dev/projects/github.com/hyperpolymath/boj-server/badge[OpenSSF Scorecard, link="https://scorecard.dev/viewer/?uri=github.com/hyperpolymath/boj-server"] image:https://img.shields.io/sonar/quality_gate/hyperpolymath_boj-server?server=https%3A%2F%2Fsonarcloud.io&logo=sonarcloud[Quality Gate, link="https://sonarcloud.io/summary/new_code?id=hyperpolymath_boj-server"]
 
-| Compliance | image:https://img.shields.io/badge/License-MPL_2.0-blue.svg[License: MPL-2.0, link="LICENSE"] image:https://api.reuse.software/badge/github.com/hyperpolymath/boj-server[REUSE Compliance, link="https://api.reuse.software/info/github.com/hyperpolymath/boj-server"]
+| Compliance | image:https://img.shields.io/badge/License-MPL_2.0-blue.svg[License: MPL-2.0, link="LICENSE"] image:https://api.reuse.software/badge/github.com/hyperpolymath/boj-server[REUSE Compliance, link="https://api.reuse.software/info/github.com/hyperpolymath/boj-server"] image:https://img.shields.io/greenweb/boj-server.net?logo=thegreenwebfoundation[Green Web Hosted, link="https://www.thegreenwebfoundation.org/green-web-check/?url=boj-server.net"]
 |===
 
 ____
