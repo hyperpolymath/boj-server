@@ -63,10 +63,15 @@ ____
 
 === Claude Code (CLI)
 
-[source,bash]
-----
+```bash
 claude mcp add boj-server -- npx -y @hyperpolymath/boj-server@latest
-----
+```
+
+Or run the server directly with npx (any MCP client that launches a stdio command):
+
+```bash
+npx -y @hyperpolymath/boj-server
+```
 
 === Claude Desktop
 
@@ -76,8 +81,7 @@ Edit `claude++_++desktop++_++config.json`:
 * *Windows* — `%APPDATA%++\++Claude++\++claude++_++desktop++_++config.json`
 * *Linux* — `~/.config/Claude/claude++_++desktop++_++config.json`
 
-[source,json]
-----
+```json
 {
   "mcpServers": {
     "boj-server": {
@@ -87,7 +91,7 @@ Edit `claude++_++desktop++_++config.json`:
     }
   }
 }
-----
+```
 
 Restart Claude Desktop after saving.
 
@@ -100,8 +104,7 @@ The minimum stdio spec is `command: npx`, `args: ++[++"-y", "@hyperpolymath/boj-
 
 The bridge entrypoint is `mcp-bridge/main.js` and runs on any of the three runtimes with no install:
 
-[source,bash]
-----
+```bash
 # Deno (no install step; the project's documented runtime)
 deno run -A /path/to/boj-server/mcp-bridge/main.js
 
@@ -110,7 +113,7 @@ bun /path/to/boj-server/mcp-bridge/main.js
 
 # Node (>= 18)
 node /path/to/boj-server/mcp-bridge/main.js
-----
+```
 
 '''''
 
