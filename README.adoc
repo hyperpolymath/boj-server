@@ -14,9 +14,9 @@ image:https://aiagentslisting.com/boj-server/badge.svg?variant=score[Boj Server 
 image:https://archive.softwareheritage.org/badge/origin/https://github.com/hyperpolymath/boj-server/[Software Heritage, link="https://archive.softwareheritage.org/browse/origin/?origin_url=https://github.com/hyperpolymath/boj-server"]
 image:https://api.scorecard.dev/projects/github.com/hyperpolymath/boj-server/badge[OpenSSF Scorecard, link="https://scorecard.dev/viewer/?uri=github.com/hyperpolymath/boj-server"]
 image:https://api.reuse.software/badge/github.com/hyperpolymath/boj-server[REUSE Compliance, link="https://api.reuse.software/info/github.com/hyperpolymath/boj-server"]
-image:https://img.shields.io/badge/node-%3E%3D18-brightgreen?logo=node.js[Node, link="https://nodejs.org"]
+image:https://img.shields.io/badge/bun-%3E%3D1.0-black?logo=bun[Bun, link="https://bun.sh"]
 image:https://img.shields.io/badge/deno-compatible-blue?logo=deno[Deno, link="https://deno.land"]
-
+image:https://img.shields.io/badge/node-%3E%3D18-brightgreen?logo=node.js[Node, link="https://nodejs.org"]
 ____
 *What it is, honestly:* BoJ exposes *68 MCP tools* today (45 `boj++_*++` {plus} 23 `coord++_*++`) over stdio with *zero runtime dependencies*. It _catalogues_ 125 domain cartridges, but most of those are an inspectable catalogue, not live services — a cartridge only performs real actions when its backend process is running and you supply the right credentials. The bridge is fully inspectable offline; side-effectful tools return a structured `++{++error, hint}` until their backend is up. See link:#cartridges[Cartridges] for the full story.
 ____
