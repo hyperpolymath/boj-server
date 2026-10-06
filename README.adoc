@@ -4,6 +4,8 @@
 :idprefix:
 :idseparator: -
 
+image::site/assets/favicon.svg[BoJ Server mark,96,96]
+
 *One MCP endpoint for the WHOLE toolchain* — GitHub, GitLab, Cloudflare, Vercel, Verpex, Gmail, Calendar, browser automation, research, ML, multi-agent coordination, and a large catalogue of pluggable domain cartridges, all reachable through a single zero-dependency stdio bridge.
 
 [cols="1s,4",frame=none,grid=none]

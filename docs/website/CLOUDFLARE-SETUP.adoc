@@ -15,7 +15,7 @@ generated from the canonical registry.
 [cols="1,3"]
 |===
 | `site/index.html`        | The hub: hero, install configurator, catalogue browser, capabilities.
-| `site/assets/`           | `style.css`, `app.js` (vanilla, zero-dependency), `favicon.svg`.
+| `site/assets/`           | `style.css`, `app.js` (vanilla, zero-dependency), `favicon.svg` (the BoJ mark), `social-preview.svg` + `.png` (1280×640 GitHub / Open Graph card).
 | `site/catalog.json`      | Snapshot of the registry (139 cartridges). Regenerate — see below.
 | `site/_headers`          | Strict security headers (HSTS, CSP, etc.) in Pages format.
 | `site/_redirects`        | `www` -> apex canonicalisation + convenience deep-links.

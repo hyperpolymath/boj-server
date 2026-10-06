@@ -1,6 +1,10 @@
 <!-- SPDX-License-Identifier: CC-BY-SA-4.0 -->
 <!-- GENERATED from README.adoc by standards/.github/workflows/readme-derive-reusable.yml — do not edit. -->
 
+<figure>
+<img src="site/assets/favicon.svg" alt="BoJ Server mark" />
+</figure>
+
 **One MCP endpoint for the WHOLE toolchain** — GitHub, GitLab, Cloudflare, Vercel, Verpex, Gmail, Calendar, browser automation, research, ML, multi-agent coordination, and a large catalogue of pluggable domain cartridges, all reachable through a single zero-dependency stdio bridge.
 
 | Published | [![npm](https://img.shields.io/npm/v/@hyperpolymath/boj-server?logo=npm)](https://www.npmjs.com/package/@hyperpolymath/boj-server) [![Software Heritage](https://img.shields.io/badge/SWH-Archived-blue?logo=softwareheritage)](https://archive.softwareheritage.org/browse/origin/?origin_url=https://github.com/hyperpolymath/boj-server) [![Boj Server MCP score](https://aiagentslisting.com/boj-server/badge.svg?variant=score)](https://aiagentslisting.com/mcp/boj-server) |

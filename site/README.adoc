@@ -7,7 +7,7 @@ A no-build static bundle served by Cloudflare Pages from this directory.
 
 * `index.html` — hub: install configurator (base + NeSy / Agentic / Coordination
   bundles) and a browsable catalogue of all 139 cartridges.
-* `assets/` — `style.css`, `app.js` (vanilla, zero-dependency), `favicon.svg`.
+* `assets/` — `style.css`, `app.js` (vanilla, zero-dependency), `favicon.svg` (the BoJ mark), `social-preview.svg` + `.png` (1280×640 GitHub / Open Graph card).
 * `catalog.json` — registry snapshot read by `app.js`. Regenerate with
   `tools/site-catalog/build-catalog.sh`.
 * `_headers`, `_redirects`, `CNAME`, `robots.txt`, `sitemap.xml`, `.well-known/`.
