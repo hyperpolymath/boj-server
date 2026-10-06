@@ -11,9 +11,9 @@ https://www.npmjs.com/package/@hyperpolymath/boj-server[image:https://img.shield
 https://www.bestpractices.dev/en/projects/new?repo_url=https://github.com/hyperpolymath/boj-server[image:https://img.shields.io/badge/OpenSSF-Best_Practices-green?logo=opensourcesecurity[OpenSSF Best Practices]]
 https://sonarcloud.io/summary/new_code?id=hyperpolymath_boj-server[image:https://sonarcloud.io/api/project_badges/quality_gate?project=hyperpolymath_boj-server[Quality gate]]
 image:https://aiagentslisting.com/boj-server/badge.svg?variant=score[Boj Server MCP score on AI Agents Listing, link="https://aiagentslisting.com/mcp/boj-server"]
+image:https://archive.softwareheritage.org/badge/origin/https://github.com/hyperpolymath/boj-server/[Software Heritage, link="https://archive.softwareheritage.org/browse/origin/?origin_url=https://github.com/hyperpolymath/boj-server"]
 https://scorecard.dev/viewer/?uri=github.com/hyperpolymath/boj-server[image:https://api.scorecard.dev/projects/github.com/hyperpolymath/boj-server/badge[OpenSSF Scorecard]]
 
-https://archive.softwareheritage.org/browse/origin/?origin_url=https://github.com/hyperpolymath/boj-server[image:https://archive.softwareheritage.org/badge/origin/https://github.com/hyperpolymath/boj-server/[Software Heritage]]
 ____
 *What it is, honestly:* BoJ exposes *68 MCP tools* today (45 `boj++_*++` {plus} 23 `coord++_*++`) over stdio with *zero runtime dependencies*. It _catalogues_ 125 domain cartridges, but most of those are an inspectable catalogue, not live services — a cartridge only performs real actions when its backend process is running and you supply the right credentials. The bridge is fully inspectable offline; side-effectful tools return a structured `++{++error, hint}` until their backend is up. See link:#cartridges[Cartridges] for the full story.
 ____
