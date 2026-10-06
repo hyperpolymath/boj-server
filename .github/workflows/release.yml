@@ -160,7 +160,6 @@ jobs:
   provenance:
     name: SLSA Provenance
     needs: [build]
-    runs-on: ubuntu-latest
     permissions:
       actions: read
       id-token: write
