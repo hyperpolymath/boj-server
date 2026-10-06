@@ -82,8 +82,6 @@ jobs:
       - name: Install Rust toolchain (stable)
         uses: dtolnay/rust-toolchain@v1
         with:
-          toolchain: v1
-        with:
           toolchain: stable
 
       # Pin to a specific iseriser commit so the cache key changes when
