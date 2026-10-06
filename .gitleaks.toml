@@ -52,6 +52,26 @@ paths = [
   # registry, which trip the generic-api-key entropy heuristic.
   '''(^|/)Project\.toml$''',
   '''(^|/)Manifest\.toml$''',
+
+  # The SCANNER'S OWN STAGED ARTEFACT -- not an exemption for a file that
+  # "is fine", which the DESIGN RULE above forbids, but the one file the
+  # scanner writes into its own scan target.
+  #
+  # The standards secret-scanner reusable copies
+  # `config/gitleaks/estate-baseline.toml` to `.gitleaks-estate.toml` in the
+  # workspace root UNCONDITIONALLY, before the step that decides whether this
+  # repo references it (hyperpolymath/standards#888). That baseline documents
+  # worked examples of credential SHAPES, so `generic-api-key` fires on it and
+  # the required `scan / gitleaks` gate goes red for reasons no commit here
+  # caused (4 findings, all on `.gitleaks-estate.toml`, run 37440882742).
+  #
+  # Anchored `^...$` -- ROOT ONLY. A path regex matches a BASENAME AT ANY
+  # DEPTH unless anchored, so `(^|/)` would also blind the scanner to a real
+  # `src/.gitleaks-estate.toml`. The reusable only ever writes the file at the
+  # root, so root-only is exact. Same cure as boj-server-cartridges#155 and
+  # metadatastician/IDApTIK#127; remove once standards#888 lands and the
+  # caller pin is bumped past it.
+  '''^\.gitleaks-estate\.toml$''',
 ]
 
 regexes = [
