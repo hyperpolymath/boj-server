@@ -34,6 +34,7 @@ ____
 * link:#transports[Transports]
 * link:#configuration[Configuration]
 * link:#security[Security]
+* link:#what-is-proven[What is proven]
 * link:#license[License]
 * link:++#contributing--links++[Contributing & links]
 
@@ -49,7 +50,7 @@ ____
 * *Inspectable offline* — `boj++_++health`, `boj++_++menu`, `boj++_++cartridges`, and `boj++_++cartridge++_++info` answer from an offline manifest so clients can introspect the server without any backend running.
 * *MCP resources & prompts* — 7 `boj://` resources and reusable prompts (`audit-repo`, `convene-cluster`, `deploy-with-dns-ssl`, `summarize-channel`, `triage-issues`, `proof-status`).
 * *Hardened* — per-call rate limiting, size caps, prompt-injection detection with Unicode-confusable normalisation, and error sanitisation (paths, stack traces, and env vars stripped from responses).
-* *Formally verified core* — the coordination ABI is written in Idris2 with discharged proof obligations; remaining axioms are documented, not hidden.
+* *Formally verified ABI model* — an Idris2 safety and dispatch ABI (HTTP, CORS, API keys, WebSocket lifecycle, prompt injection, catalogue, dispatch, credential isolation), `%default total`, with four documented axioms and nothing else unsound. Proofs are about the Idris model; see link:#what-is-proven[What is proven] for where they stop.
 
 '''''
 
@@ -258,7 +259,7 @@ Key environment variables (full schema in link:glama.json[`glama.json`]):
 * *Error sanitisation* — responses strip filesystem paths, stack traces, and environment variables before they reach the client.
 * *HTTP safety* — `BOJ++_++HTTP++_++AUTH=none` is refused on any non-loopback bind; bearer auth is required for remote exposure.
 * *Credential isolation* — cartridge credentials are supplied per-cartridge (env vars or the `vault-mcp` broker), never embedded in tool definitions.
-* *Formal verification* — the coordination ABI safety layer is written in Idris2 with discharged proof obligations; remaining `believe++_++me` sites are isolated, documented axioms over the compiler's opaque `Char`/`String` primitives, tracked in link:PROOF-NEEDS.md[`PROOF-NEEDS.md`].
+* *Formal verification* — the Idris2 ABI safety layer has discharged proof obligations; the only `believe++_++me` sites are four documented axioms over the compiler's opaque `Char`/`String` primitives, tracked in link:PROOF-NEEDS.adoc[`PROOF-NEEDS.adoc`]. See link:#what-is-proven[What is proven] for the Proven / Witnessed / Trusted breakdown.
 * *Supply chain* — SHA-pinned GitHub Actions; coherence tests assert the advertised tool list matches the cartridge manifest so nothing is advertised-but-undispatched.
 
 Run the coherence tests:
@@ -269,6 +270,37 @@ node --test mcp-bridge/tests/
 ----
 
 Report vulnerabilities per link:SECURITY.md[`SECURITY.md`].
+
+'''''
+
+== What is proven
+
+Every safety claim BoJ makes sits in one of three bins. "Proven" always means _proven about a model_, so the claim is only as good as the match between that model and the running code. That is why the Witnessed column matters.
+
+[cols="1,1,1",options="header"]
+|===
+|Proven — the compiler checks it |Witnessed — an artefact backs it |Trusted — relied on from outside
+
+a|
+* *Status (2026-10-06): the core does not currently typecheck.* `SafetyLemmas.idr` defines `allTake` twice, and the CI typecheck job has not completed since at least 2026-09-21 (it fails while installing Idris2, and is path-skipped on most PRs). Tracked in link:https://github.com/hyperpolymath/boj-server/issues/343[#343]. Until that is fixed, read this column as "proven when last green", not "proven now".
+* The Idris2 ABI in `src/abi/Boj/` (17 modules, all `%default total`) covers catalogue and dispatch, HTTP/CORS/API-key/WebSocket/prompt-injection safety predicates, and the credential-isolation model.
+* `believe++_++me` appears only in *four* documented axioms over opaque `Char`/`String` primitives (`SafetyLemmas.idr`); CI (`scripts/check-trusted-base.sh`) pins that count and greps the rest of the Idris tree for `believe++_++me`, `assert++_++total`, `assert++_++smaller` and `idris++_++crash`. The grep has known gaps (a use followed by a `--` comment is skipped; `partial`, `covering` and holes are not scanned) and the job is path-filtered, so it does not run on every PR.
+* *Limit:* these proofs are about the Idris model. The model is only ever typechecked, never compiled or linked into the running server, and 13 of the 17 C safety checks it binds (`libbozsafety`) are not yet implemented.
+a|
+* Property tests (Elixir StreamData, `elixir/test/backend_assurance/`) of the behaviour each of the four axioms assumes, run against Elixir analogues of the Chez primitives (not the compiled Idris code); last executed and green 2026-10-06.
+* Zig FFI enum constants checked at compile time against a hand-kept mirror of the Idris values (the Idris side itself is not compared).
+* TLA+ specs of the JS worker, worker pool and invoker (`specs/elixir-harness/`), model-checked with TLC by hand (results recorded in its README), not in CI.
+* npm package published with provenance; SLSA level 3 provenance on release tarballs; container build attestation.
+* Coherence tests: the advertised tool list matches the dispatch table.
+a|
+* The JavaScript bridge (`mcp-bridge/`) and the Zig FFI: the proofs cover the model, not this code.
+* Tool annotations (`readOnlyHint`, `destructiveHint`, …): hand-written labels, not derived from types and not enforced at dispatch.
+* Postgres, Docker, cloud and forge APIs behaving as documented; cartridge backends you run yourself.
+* The Idris2 compiler, Zig, the Node/Deno/Bun runtime and the operating system.
+* The AI choosing the right tool. Prompt injection is limited by input hardening, not proven away.
+|===
+
+Planned next steps that move items left (Trusted → Witnessed → Proven) are tracked in link:PROOF-NEEDS.adoc[`PROOF-NEEDS.adoc`]: link every bound C symbol and gate CI on it, and derive tool annotations from a typed effect declaration that the dispatcher enforces.
 
 '''''
 

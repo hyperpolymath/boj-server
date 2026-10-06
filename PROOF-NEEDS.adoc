@@ -1,13 +1,13 @@
 == PROOF-NEEDS.md — boj-server
 
 ____
-*See also*: link:docs/proof-debt.md[`+docs/proof-debt.md+`] is the
+*See also*: link:docs/proof-debt.adoc[`+docs/proof-debt.adoc+`] is the
 schema-conformant per-repo index under the estate
 https://github.com/hyperpolymath/standards/blob/main/docs/TRUSTED-BASE-REDUCTION-POLICY.adoc[Trusted-Base
 Reduction Policy] (standards#203, enforcement standards#211).
 PROOF-NEEDS.md is the _strategic-goals_ narrative — full audit table,
 classification rationale, and external-validation pointers.
-`+docs/proof-debt.md+` is the _machine-checked_ index that
+`+docs/proof-debt.adoc+` is the _machine-checked_ index that
 `+scripts/check-trusted-base.sh+` greps. Keep both in sync when the
 marker count in `+src/abi/Boj/SafetyLemmas.idr+` changes.
 ____
@@ -51,7 +51,7 @@ run over nothing.
 *exactly 4* sanctioned class-(J) axioms in `+SafetyLemmas.idr+`, zero
 undocumented unsound constructs. (`+charEqSym+` was discharged
 2026-06-24, taking the count 5 → 4; `+EXPECTED_AXIOMS=4+` in the
-enforcing script is the source of truth, and `+docs/proof-debt.md+`
+enforcing script is the source of truth, and `+docs/proof-debt.adoc+`
 agrees.) Independently corroborated by a `+panic-attack assail+` scan
 (MPL-2.0, built from source), which flags the same `+believe_me+` sites
 as `+ProofDrift+` and nothing else proof-shaped.
@@ -114,7 +114,7 @@ historically.
 are documentation/comment mentions of the word (1 in SafeHTTP.idr line
 15, 1 in SafetyLemmas.idr line 9, 2 in
 cartridges/fleet-mcp/abi/FleetMcp/SafeFleet.idr lines 14 & 34) and are
-*not* axiom uses. The audited true count is 5.
+*not* axiom uses. The audited true count was 5; it is 4 since 2026-06-24.
 * *LOC*: ~5,400 (Elixir + Idris2)
 * *ABI layer*: Comprehensive dependent-type ABI
 
@@ -323,3 +323,26 @@ validating `+prim__eqChar+` / `+prim__strToCharList+` /
 then citing that evidence here. This is a backend-assurance task, not a
 proof obligation — keep it tracked but do not expect a constructive
 proof.
+
+=== Model-to-code obligations (added 2026-10-06)
+
+The proofs above are about the Idris model. These obligations connect the
+model to the running server; README "What is proven" summarises where each
+claim sits today.
+
+. *Restore the proof gate.* `idris2 --typecheck boj.ipkg` fails because
+  `allTake` is defined twice in `SafetyLemmas.idr`; the `proofs.yml`
+  typecheck job fails at `asdf install idris2 ""` and is path-skipped on
+  most PRs. Delete the duplicate, pin the Idris2 version, remove the skip.
+. *Every bound foreign symbol exists (Obligation B).* Each
+  `%foreign "C:<sym>,<lib>"` in `src/abi/Boj/` resolves to a symbol in a
+  library `ffi/zig/build.zig` builds. Today 13 of the 17
+  `boj_safety_*` bindings to `libbozsafety` have no implementation and the
+  library is not a build target. Add a CI check (`nm` over the built
+  artefact, with a planted-positive control) and implement or delete each
+  binding.
+. *Effect-typed tool manifests (Obligation C).* Declare each MCP tool's
+  effect once (`Read | Write | Delete | Exec`) in Idris, generate the
+  `mcp-bridge/lib/tools.js` annotations from it with a CI drift check,
+  have the dispatcher enforce it, and prove that a `Read` tool's dispatch
+  targets contain no mutating action, with no new axioms.

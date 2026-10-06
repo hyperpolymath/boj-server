@@ -105,7 +105,7 @@ just test
 
 == Verification
 
-BoJ requires zero `believe_me` in all Idris2 sources. Run the full verification suite:
+BoJ allows no `believe_me` in Idris2 sources except the four documented axioms in `src/abi/Boj/SafetyLemmas.idr`. Run the full verification suite:
 
 [source,bash]
 ----

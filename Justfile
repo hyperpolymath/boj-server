@@ -415,7 +415,7 @@ fmt-check:
     @echo "Checking Zig formatting..."
     find ffi/ -name '*.zig' -exec zig fmt --check {} +
 
-# Lint — verify zero believe_me + type-check all ABI files
+# Lint — trusted-base audit (only the 4 sanctioned axioms) + type-check all ABI files
 lint: verify-no-believe-me typecheck
     @echo "Lint passed!"
 
@@ -434,7 +434,7 @@ typecheck:
 # Verify the trusted base: no unsound constructs beyond the sanctioned axioms.
 #
 # The estate trusted-base reduction policy (hyperpolymath/standards#203) sanctions
-# EXACTLY the 5 class-(J) axioms in src/abi/Boj/SafetyLemmas.idr — opaque Char/String
+# EXACTLY the 4 class-(J) axioms in src/abi/Boj/SafetyLemmas.idr — opaque Char/String
 # primitives, %unsafe-tagged and externally validated (see PROOF-NEEDS.md and
 # docs/proof-debt.md). Everything else must be a genuine constructive proof.
 # This recipe fails on any believe_me/assert_* outside that module, and also
@@ -442,7 +442,7 @@ typecheck:
 verify-no-believe-me:
     bash scripts/check-trusted-base.sh
 
-# Full verification suite: type-check + zero believe_me + build + test
+# Full verification suite: type-check + trusted-base audit + build + test
 verify: typecheck verify-no-believe-me build test
     @echo "Full verification passed!"
 
@@ -616,7 +616,7 @@ deps-audit:
     echo "Running Zig build + test audit on catalogue..."
     cd ffi/zig && zig build test
     cd "$OLDPWD"
-    # Verify zero believe_me (formal verification soundness audit)
+    # Trusted-base audit (formal verification soundness audit)
     just verify-no-believe-me
     # Supplementary scanners (if available)
     if command -v panic-attack >/dev/null 2>&1; then
@@ -1410,7 +1410,7 @@ tour:
     echo "Quick commands:"
     echo "  just run         Start server (REST 7700, gRPC 7701, GraphQL 7702)"
     echo "  just test        Run all FFI tests"
-    echo "  just verify      Full verification (typecheck + zero believe_me)"
+    echo "  just verify      Full verification (typecheck + trusted-base audit)"
     echo "  just matrix      Show cartridge capability matrix"
     echo "  just test-smoke  Quick smoke test"
     echo ""
@@ -1449,7 +1449,7 @@ help-me:
     echo "  just readiness        Component Readiness Grade tests"
     echo "  just bench            Run benchmarks"
     echo "  just integration      End-to-end integration tests"
-    echo "  just verify           Full verification (typecheck + zero believe_me + build + test)"
+    echo "  just verify           Full verification (typecheck + trusted-base audit + build + test)"
     echo "  just typecheck        Type-check all Idris2 ABIs"
     echo "  just verify-no-believe-me  Scan for unsound constructs"
     echo ""

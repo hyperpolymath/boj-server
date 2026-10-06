@@ -11,8 +11,8 @@ All proofs are written in Idris2 and live in `src/abi/Boj/`.
 [NOTE]
 ====
 *Build status (2026-06-03):* the full package type-checks under the pinned
-toolchain — `cd src/abi && idris2 --typecheck boj.ipkg` builds all 17 modules
-clean on Idris2 0.8.0 (Chez backend), the only `believe_me` being the 5
+toolchain — `cd src/abi && idris2 --typecheck boj.ipkg` builds all 17 modules (as of the last green run; on 2026-10-06 it fails on a duplicate `allTake`, see README "What is proven")
+clean on Idris2 0.8.0 (Chez backend), the only `believe_me` being the 4
 sanctioned class-(J) axioms in `SafetyLemmas.idr`. `CartridgeDispatch` and
 `APIContractCoverage` are now listed in `boj.ipkg` (previously omitted, so the
 package build never checked them). See `PROOF-NEEDS.md` -> _Build Verification_
@@ -27,7 +27,7 @@ for the per-module reconciliation.
 
 |`SafetyLemmas.idr`
 |Foundational lemmas: `allRec`, char equality, string/Nat helpers.
-Five axiomatic `believe_me` primitives (prim__ backend operations).
+Four axiomatic `believe_me` primitives (prim__ backend operations).
 |—
 |✅ Complete
 
@@ -87,10 +87,10 @@ Per-cartridge cross-partition non-interference.
 
 == Axiomatic Surface
 
-Five `believe_me` axioms remain, all declared and justified in `SafetyLemmas.idr`:
+Four `believe_me` axioms remain, all declared and justified in `SafetyLemmas.idr`:
 
 * `charEqSound` — soundness of `prim__eqChar`
-* `charEqSym` — symmetry of `prim__eqChar`
+* (`charEqSym` — discharged to a constructive theorem from `charEqSound` on 2026-06-24)
 * `unpackLength` — `prim__strToCharList` preserves length
 * `appendLengthSum` — `prim__strAppend` length semantics
 * `substrLengthBound` — `prim__strSubstr` length bound

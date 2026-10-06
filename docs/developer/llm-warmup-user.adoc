@@ -12,7 +12,7 @@ formally verified interfaces. License: MPL-2.0. Author: Jonathan D.A. Jewell.
 == Architecture (30-second version)
 
 Every cartridge (except model-router-mcp) is a triple:
-. *Idris2 ABI* — Dependent types proving correctness (zero believe_me)
+. *Idris2 ABI* — Dependent types proving correctness (4 documented axioms, nothing else unsound)
 . *Zig FFI* — C-compatible .so shared library (5-symbol ADR-0006 ABI)
 . *Deno/JS adapter* — mod.js dispatched via JsWorkerPool (persistent pool)
 
@@ -28,7 +28,7 @@ Three-class design: Class 1 (simple CLI), Class 2 (orchestrator), Class 3 (BEAM 
 ----
 just run              # Start server (REST 7700)
 just test             # Run all ExUnit + FFI tests
-just verify           # Full verification (typecheck + zero believe_me + build + test)
+just verify           # Full verification (typecheck + trusted-base audit + build + test)
 just test-smoke       # Quick smoke test
 just matrix           # Show cartridge capability matrix
 just doctor           # Check toolchain
@@ -89,7 +89,7 @@ and many more.
 
 == Invariants
 
-* Zero believe_me in all Idris2 sources (currently 4 axiomatic primitives + logSafeBounded)
+* No believe_me outside the 4 sanctioned axioms in SafetyLemmas.idr (enforced by scripts/check-trusted-base.sh)
 * %default total on all Idris2 files
 * IsUnbreakable: only Ready cartridges pass the proof
 * Chainguard base images, Containerfile not Dockerfile, Podman not Docker

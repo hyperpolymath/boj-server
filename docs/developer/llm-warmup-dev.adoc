@@ -167,7 +167,7 @@ just run:
 == Idris2 ABI Conventions
 
 * *%default total* on all files
-* *Zero believe_me* (enforced by `just verify-no-believe-me`)
+* *No believe_me outside the 4 sanctioned SafetyLemmas axioms* (enforced by `just verify-no-believe-me`)
 * *IsUnbreakable proof*: only Ready cartridges pass
 * Package files: `*.ipkg` in each abi/ directory
 * Type-check: `idris2 --check --package boj boj.ipkg`
@@ -281,7 +281,7 @@ See: `src/abi/Federation.idr`, `docs/FEDERATION.adoc`
 == Critical Invariants
 
 . Three-Layer Stack: every cartridge = Idris2 ABI + Zig FFI + Deno/JS `mod.js`
-. Zero believe_me in all Idris2 sources
+. No believe_me outside the 4 sanctioned SafetyLemmas axioms
 . %default total on all Idris2 files
 . IsUnbreakable: only Ready cartridges pass the proof
 . Hash attestation for community nodes

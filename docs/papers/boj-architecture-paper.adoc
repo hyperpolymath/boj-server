@@ -511,9 +511,11 @@ These are industry-standard algorithms, but the scanner correctly flags
 any cryptographic dependency as requiring ongoing review. The finding is
 expected and documented.
 
-Notably, the codebase contains zero instances of `+believe_me+` (Idris
-2’s escape hatch for admitting unproven propositions). All proofs in the
-ABI layer are constructive.
+The ABI layer’s use of `+believe_me+` (Idris 2’s escape hatch for
+admitting unproven propositions) is confined to four documented axioms in
+`+SafetyLemmas.idr+` over the opaque `+Char+`/`+String+` primitives, each
+backed by property tests; every other proof is constructive. CI fails on
+any other escape hatch or on axiom-count drift.
 
 ==== 5.3 Resource Footprint
 

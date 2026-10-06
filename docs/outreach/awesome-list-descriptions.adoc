@@ -82,7 +82,7 @@ Repository: https://github.com/joaomilho/awesome-idris (or similar)
 
 [source,markdown]
 ----
-- [boj-server](https://github.com/hyperpolymath/boj-server) - Developer tool catalogue using Idris2 dependent types for ABI definitions. The `IsUnbreakable` proof type gates cartridge activation at compile time. 18 cartridge ABI modules with `%default total`, zero `believe_me`. Zig FFI, zig adapter.
+- [boj-server](https://github.com/hyperpolymath/boj-server) - Developer tool catalogue using Idris2 dependent types for ABI definitions. The `IsUnbreakable` proof type gates cartridge activation at compile time. 17 core ABI modules with `%default total`; `believe_me` confined to 4 documented axioms. Zig FFI, zig adapter.
 ----
 
 '''''
