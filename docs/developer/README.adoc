@@ -8,7 +8,7 @@
 
 A cartridge is a swappable, formally verified capability module. It occupies one or more cells in the 2D matrix (protocol x domain) and follows the three-layer stack:
 
-. *Idris2 ABI* — Type-safe interface with `%default total` and zero `believe_me`
+. *Idris2 ABI* — Type-safe interface with `%default total`; `believe_me` only in 4 documented core axioms
 . *Zig FFI* — C-compatible native execution
 . *zig Adapter* — REST + gRPC + GraphQL endpoints
 

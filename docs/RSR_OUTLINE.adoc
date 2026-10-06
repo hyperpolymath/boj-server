@@ -38,7 +38,7 @@ just typecheck
 # Run tests
 just test
 
-# Full verification (zero believe_me + type-check + tests)
+# Full verification (trusted-base audit + type-check + tests)
 just verify
 ----
 
@@ -52,7 +52,7 @@ Every cartridge follows the ABI/FFI universal standard:
 
 |**ABI**
 |Idris2
-|Formal proofs, `%default total`, zero `believe_me`
+|Formal proofs, `%default total`, `believe_me` only in 4 documented axioms
 
 |**FFI**
 |Zig

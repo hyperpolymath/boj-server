@@ -233,8 +233,8 @@ BoJ is Alpha. Grade D on most cartridges. Here’s what’s real:
 (all mutex-protected)
 * MCP stdio bridge working (JSON-RPC 2.0, all 53 cartridges as tools)
 * Umoja federation with real QUIC+UDP networking (22 federation tests)
-* Zero `+believe_me+` in production code (Idris2’s escape hatch – we
-don’t use it)
+* `+believe_me+` (Idris2’s escape hatch) confined to four documented,
+property-tested axioms over opaque `+Char+`/`+String+` primitives
 * Security audit by panic-attack scanner: 1 expected weak point (QUIC
 0-RTT replay window, mitigated at app layer), 0 critical vulnerabilities
 

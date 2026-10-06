@@ -31,6 +31,8 @@
 
 - [Security](#security)
 
+- [What is proven](#what-is-proven)
+
 - [License](#license)
 
 - [Contributing & links](#contributing--links)
@@ -53,7 +55,7 @@
 
 - **Hardened** — per-call rate limiting, size caps, prompt-injection detection with Unicode-confusable normalisation, and error sanitisation (paths, stack traces, and env vars stripped from responses).
 
-- **Formally verified core** — the coordination ABI is written in Idris2 with discharged proof obligations; remaining axioms are documented, not hidden.
+- **Formally verified ABI model** — an Idris2 safety and dispatch ABI (HTTP, CORS, API keys, WebSocket lifecycle, prompt injection, catalogue, dispatch, credential isolation), `%default total`, with four documented axioms and nothing else unsound. Proofs are about the Idris model; see [What is proven](#what-is-proven) for where they stop.
 
 # Install
 
@@ -242,7 +244,7 @@ Key environment variables (full schema in [`glama.json`](glama.json)):
 
 - **Credential isolation** — cartridge credentials are supplied per-cartridge (env vars or the `vault-mcp` broker), never embedded in tool definitions.
 
-- **Formal verification** — the coordination ABI safety layer is written in Idris2 with discharged proof obligations; remaining `believe_me` sites are isolated, documented axioms over the compiler’s opaque `Char`/`String` primitives, tracked in [`PROOF-NEEDS.md`](PROOF-NEEDS.md).
+- **Formal verification** — the Idris2 ABI safety layer has discharged proof obligations; the only `believe_me` sites are four documented axioms over the compiler’s opaque `Char`/`String` primitives, tracked in [`PROOF-NEEDS.adoc`](PROOF-NEEDS.adoc). See [What is proven](#what-is-proven) for the Proven / Witnessed / Trusted breakdown.
 
 - **Supply chain** — SHA-pinned GitHub Actions; coherence tests assert the advertised tool list matches the cartridge manifest so nothing is advertised-but-undispatched.
 
@@ -253,6 +255,51 @@ node --test mcp-bridge/tests/
 ```
 
 Report vulnerabilities per [`SECURITY.md`](SECURITY.md).
+
+# What is proven
+
+Every safety claim BoJ makes sits in one of three bins. "Proven" always means *proven about a model*, so the claim is only as good as the match between that model and the running code. That is why the Witnessed column matters.
+
+<table>
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 33%" />
+<col style="width: 33%" />
+</colgroup>
+<thead>
+<tr>
+<th style="text-align: left;">Proven — the compiler checks it</th>
+<th style="text-align: left;">Witnessed — an artefact backs it</th>
+<th style="text-align: left;">Trusted — relied on from outside</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><ul>
+<li><p><strong>Status (2026-10-06): the core does not currently typecheck.</strong> <code>SafetyLemmas.idr</code> defines <code>allTake</code> twice, and the CI typecheck job has not completed since at least 2026-09-21 (it fails while installing Idris2, and is path-skipped on most PRs). Until that is fixed, read this column as "proven when last green", not "proven now".</p></li>
+<li><p>The Idris2 ABI in <code>src/abi/Boj/</code> (17 modules, all <code>%default total</code>) covers catalogue and dispatch, HTTP/CORS/API-key/WebSocket/prompt-injection safety predicates, and the credential-isolation model.</p></li>
+<li><p><code>believe_me</code> appears only in <strong>four</strong> documented axioms over opaque <code>Char</code>/<code>String</code> primitives (<code>SafetyLemmas.idr</code>); CI (<code>scripts/check-trusted-base.sh</code>) pins that count and greps the rest of the Idris tree for <code>believe_me</code>, <code>assert_total</code>, <code>assert_smaller</code> and <code>idris_crash</code>. The grep has known gaps (a use followed by a <code>--</code> comment is skipped; <code>partial</code>, <code>covering</code> and holes are not scanned) and the job is path-filtered, so it does not run on every PR.</p></li>
+<li><p><strong>Limit:</strong> these proofs are about the Idris model. The model is only ever typechecked, never compiled or linked into the running server, and 13 of the 17 C safety checks it binds (<code>libbozsafety</code>) are not yet implemented.</p></li>
+</ul></td>
+<td style="text-align: left;"><ul>
+<li><p>Property tests (Elixir StreamData, <code>elixir/test/backend_assurance/</code>) of the behaviour each of the four axioms assumes, run against Elixir analogues of the Chez primitives (not the compiled Idris code); last executed and green 2026-10-06.</p></li>
+<li><p>Zig FFI enum constants checked at compile time against a hand-kept mirror of the Idris values (the Idris side itself is not compared).</p></li>
+<li><p>TLA+ specs of the JS worker, worker pool and invoker (<code>specs/elixir-harness/</code>), model-checked with TLC by hand (results recorded in its README), not in CI.</p></li>
+<li><p>npm package published with provenance; SLSA level 3 provenance on release tarballs; container build attestation.</p></li>
+<li><p>Coherence tests: the advertised tool list matches the dispatch table.</p></li>
+</ul></td>
+<td style="text-align: left;"><ul>
+<li><p>The JavaScript bridge (<code>mcp-bridge/</code>) and the Zig FFI: the proofs cover the model, not this code.</p></li>
+<li><p>Tool annotations (<code>readOnlyHint</code>, <code>destructiveHint</code>, …): hand-written labels, not derived from types and not enforced at dispatch.</p></li>
+<li><p>Postgres, Docker, cloud and forge APIs behaving as documented; cartridge backends you run yourself.</p></li>
+<li><p>The Idris2 compiler, Zig, the Node/Deno/Bun runtime and the operating system.</p></li>
+<li><p>The AI choosing the right tool. Prompt injection is limited by input hardening, not proven away.</p></li>
+</ul></td>
+</tr>
+</tbody>
+</table>
+
+Planned next steps that move items left (Trusted → Witnessed → Proven) are tracked in [`PROOF-NEEDS.adoc`](PROOF-NEEDS.adoc): link every bound C symbol and gate CI on it, and derive tool annotations from a typed effect declaration that the dispatcher enforces.
 
 # License
 

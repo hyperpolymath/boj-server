@@ -35,7 +35,7 @@ exceptions:
 
 | Layer | Language | Role |
 |---|---|---|
-| **ABI** | **Idris2** | Formally verified contract — dependent-type proofs, state machine or exposure-gate invariants, `%default total`, zero `believe_me`/`postulate`/`assert_total` in the trusted core. |
+| **ABI** | **Idris2** | Formally verified contract — dependent-type proofs, state machine or exposure-gate invariants, `%default total`, no `postulate`/`assert_total`, and `believe_me` only in the 4 documented `SafetyLemmas` axioms (core) — zero in cartridge ABIs. |
 | **FFI** | **Zig** | C-ABI implementation (ADR-0006 five-symbol pattern: `boj_cartridge_{init,deinit,name,version,invoke}`). |
 | **Adapter** | **Zig** | The base-level API/service surface — see below. |
 

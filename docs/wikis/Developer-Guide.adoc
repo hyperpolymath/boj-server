@@ -25,7 +25,7 @@ Idris2 ABI (formal proofs) --> Zig FFI (native execution) --> Elixir Adapter (ne
 
 | *ABI*
 | Idris2
-| Dependent-type proofs, state machines, `%default total`, zero `believe_me`
+| Dependent-type proofs, state machines, `%default total`, `believe_me` only in the 4 core axioms
 | `src/abi/` (core), `cartridges/*/abi/`
 
 | *FFI*
@@ -135,7 +135,7 @@ With `just`:
 just deps       # Verify toolchain
 just build      # Build all Zig FFI layers
 just typecheck  # Type-check all Idris2 ABI files
-just verify     # Full verification (zero believe_me + typecheck + tests)
+just verify     # Full verification (trusted-base audit + typecheck + tests)
 ----
 
 == Adding a New Cartridge

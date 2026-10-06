@@ -12,7 +12,8 @@
 ||| - Response splitting (newlines in status lines)
 ||| - Host header attacks (non-canonical host values)
 |||
-||| All proofs are constructive. Zero believe_me. Zero postulates.
+||| No believe_me or postulate in this module; it relies on the four
+||| documented SafetyLemmas axioms over opaque Char/String primitives.
 module Boj.SafeHTTP
 
 import Data.List

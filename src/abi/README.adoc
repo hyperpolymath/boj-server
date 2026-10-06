@@ -64,7 +64,7 @@ The 15 modules under `Boj/` fall into four concentric rings.
 
 | `Boj.Safety`               | Top-level formally verified input validation via proven-library patterns.
 | `Boj.SafetyLemmas`         | Foundational lemmas over `List Char`, `Nat`, `String` that the `Safe*` modules reuse.
-| `Boj.SafeHTTP`             | HTTP request/response proofs: valid methods, safe headers, status code ranges, content-type validation. Commentary pins "All proofs are constructive. Zero believe_me. Zero postulates." (line 15).
+| `Boj.SafeHTTP`             | HTTP request/response proofs: valid methods, safe headers, status code ranges, content-type validation. No `believe_me` in the module itself; it imports the 4 `SafetyLemmas` axioms.
 | `Boj.SafeCORS`             | CORS policy enforcement.
 | `Boj.SafeWebSocket`        | WebSocket transport safety.
 | `Boj.SafeAPIKey`           | API key handling.
