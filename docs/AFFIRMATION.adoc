@@ -257,7 +257,11 @@ checks are red, and all seven were already red on the parent commit.
   ** `deploy` (Deploy to Cloudflare Workers): exit 1, cause *not determined*
      in this session.
   ** `Dependabot`: its updater errored on a cargo update in `coord-tui` and
-     `tray`.
+     `tray`. As a result, three open Dependabot alerts stay unpatched:
+     *high* `quinn-proto` (GHSA-4w2j-m93h-cj5j, `tray/Cargo.lock`), and
+     *moderate* `rustls` (GHSA-2mjx-qc3c-rqvc) in both `tray/Cargo.lock` and
+     `coord-tui/Cargo.lock`. These are the Rust companion tools, not the MCP
+     bridge, whose `package.json` has no dependencies.
 * *Skipped on the anchor SHA,* so they were not evidence either way:
   `ABI Specification Check (Idris2)`, `FFI Build & Test (Zig)` and
   `Zig FFI Tests`.
