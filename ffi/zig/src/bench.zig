@@ -23,14 +23,14 @@ fn benchmarkFn(comptime name: []const u8, comptime func: anytype) void {
     }
 
     // Measure (std.time.Timer was removed in Zig 0.16; the monotonic Io
-    // clock is the replacement)
-    const started = std.Io.Clock.Timestamp.now(shim.io(), .monotonic);
+    // clock, `.awake`, is the replacement)
+    const started = std.Io.Clock.Timestamp.now(shim.io(), .awake);
 
     for (0..BENCH_ITERS) |_| {
         func();
     }
 
-    const ended = std.Io.Clock.Timestamp.now(shim.io(), .monotonic);
+    const ended = std.Io.Clock.Timestamp.now(shim.io(), .awake);
     const elapsed_ns: u64 = @intCast(started.durationTo(ended).raw.nanoseconds);
     const per_op_ns = elapsed_ns / BENCH_ITERS;
     const ops_per_sec = if (per_op_ns > 0) @as(u64, 1_000_000_000) / per_op_ns else 0;
