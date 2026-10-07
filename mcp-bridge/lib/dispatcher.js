@@ -53,6 +53,64 @@ function rpcError(id, code, message) {
   return { jsonrpc: "2.0", id, error: { code, message: sanitizeErrorMessage(message) } };
 }
 
+// Tools that share one cartridge and are told apart by a routing key
+// derived from the tool name. The bridge sets the key, never the caller:
+// dispatch writes it last, and the gate refuses any argument the tool's
+// inputSchema does not declare.
+const ROUTED_TOOLS = new Map([
+  ...["verpex", "cloudflare", "vercel"].map((p) => [`boj_cloud_${p}`, { cartridge: "cloud-mcp", key: "provider", value: p }]),
+  ...["gmail", "calendar"].map((p) => [`boj_comms_${p}`, { cartridge: "comms-mcp", key: "provider", value: p }]),
+  ["boj_ml_huggingface", { cartridge: "ml-mcp", key: "provider", value: "huggingface" }],
+  ...["navigate", "click", "type", "read_page", "screenshot", "tabs", "execute_js"].map((a) => [`boj_browser_${a}`, { cartridge: "browser-mcp", key: "action", value: a }]),
+]);
+
+let declaredArgsCache = null;
+
+/**
+ * Return the argument names a tool's inputSchema declares, or null when
+ * the tool is not in the full tool list.
+ *
+ * @param {string} toolName
+ * @returns {Set<string>|null}
+ */
+function declaredArgs(toolName) {
+  if (!declaredArgsCache) {
+    declaredArgsCache = new Map(
+      buildToolList("full").map((t) => [t.name, new Set(Object.keys(t.inputSchema?.properties ?? {}))]),
+    );
+  }
+  return declaredArgsCache.get(toolName) ?? null;
+}
+
+/**
+ * Check a routed tool's arguments against its inputSchema. Other tools
+ * are not checked here.
+ *
+ * @param {string} toolName
+ * @param {Record<string, unknown>} args
+ * @returns {string|null} error message, or null when every argument is declared
+ */
+function validateRoutedArgs(toolName, args) {
+  const route = ROUTED_TOOLS.get(toolName);
+  if (!route) return null;
+  const allowed = declaredArgs(toolName);
+  if (!allowed) return "Unknown tool";
+  for (const name of Object.keys(args)) {
+    if (name === route.key || !allowed.has(name)) {
+      return `Unexpected argument '${name}' for ${toolName}`;
+    }
+  }
+  return null;
+}
+
+/**
+ * Pre-dispatch checks for a tools/call: rate limit, tool-name shape,
+ * argument size, injection scan, and per-tool argument validation.
+ *
+ * @param {string} toolName
+ * @param {Record<string, unknown>} args
+ * @returns {{code: number, message: string}|null} a JSON-RPC error, or null to proceed
+ */
 function hardeningGate(toolName, args) {
   if (!rateLimitAllow()) {
     return { code: -32000, message: "Rate limit exceeded. Max " + RATE_LIMIT + " tool calls per minute." };
@@ -70,6 +128,14 @@ function hardeningGate(toolName, args) {
   }
   if (injectionLevel === "medium") {
     warn("Injection warning", { tool: toolName, confidence: injectionLevel });
+  }
+
+  if (args === null || typeof args !== "object" || Array.isArray(args)) {
+    return { code: -32602, message: "Tool arguments must be an object" };
+  }
+  const routedError = validateRoutedArgs(toolName, args);
+  if (routedError) {
+    return { code: -32602, message: routedError };
   }
 
   let validationError = null;
@@ -103,7 +169,22 @@ function hardeningGate(toolName, args) {
   return null;
 }
 
+/**
+ * Dispatch a gated tools/call to its handler.
+ *
+ * Routed tools (see ROUTED_TOOLS) go to their shared cartridge with the
+ * routing key written after the caller's arguments, so the tool name
+ * alone decides the route. Returns null for an unknown tool.
+ *
+ * @param {string} toolName
+ * @param {Record<string, unknown>} args
+ * @returns {Promise<object|null>}
+ */
 async function dispatchTool(toolName, args) {
+  const route = ROUTED_TOOLS.get(toolName);
+  if (route) {
+    return invokeCartridge(route.cartridge, { ...args, [route.key]: route.value });
+  }
   switch (toolName) {
     case "boj_health":
       return fetchHealth();
@@ -116,26 +197,6 @@ async function dispatchTool(toolName, args) {
     case "boj_cartridge_invoke":
       return invokeCartridge(args.name, args.params);
 
-    case "boj_cloud_verpex":
-    case "boj_cloud_cloudflare":
-    case "boj_cloud_vercel":
-      return invokeCartridge("cloud-mcp", { provider: toolName.replace("boj_cloud_", ""), ...args });
-
-    case "boj_comms_gmail":
-    case "boj_comms_calendar":
-      return invokeCartridge("comms-mcp", { provider: toolName.replace("boj_comms_", ""), ...args });
-
-    case "boj_ml_huggingface":
-      return invokeCartridge("ml-mcp", { provider: "huggingface", ...args });
-
-    case "boj_browser_navigate":
-    case "boj_browser_click":
-    case "boj_browser_type":
-    case "boj_browser_read_page":
-    case "boj_browser_screenshot":
-    case "boj_browser_tabs":
-    case "boj_browser_execute_js":
-      return invokeCartridge("browser-mcp", { action: toolName.replace("boj_browser_", ""), ...args });
 
     case "boj_github_list_repos":
     case "boj_github_get_repo":
