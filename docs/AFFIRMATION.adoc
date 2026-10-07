@@ -1,0 +1,336 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+// SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+= AFFIRMATION — BoJ Server (Bundle of Joy Server), as of 2026-10-07
+:toc: macro
+:toclevels: 2
+:std-docs: https://github.com/hyperpolymath/standards/blob/main/docs
+
+_The No-Bullshit file: what we affirm was true and checkable at this moment._
+
+This file follows *profile A (evidential)* of the
+link:{std-docs}/AFFIRMATION-STANDARD.adoc[AFFIRMATION authoring standard]. It is
+the third file of the README / EXPLAINME / AFFIRMATION trio. The README says
+where the project is going, `docs/EXPLAINME.adoc` says how it is built, and this
+file says what was *true and checkable* at one stamped commit.
+
+A stale affirmation is worse than none. If `main` has moved past the anchor
+below, treat this file as a draft until it is re-run.
+
+toc::[]
+
+== What this is, and how it works
+
+*What it is.* A short, dated, signed record of what can honestly be claimed
+about *boj-server* at one exact commit. It contains no marketing and no
+promises; those belong in the README.
+
+*What the project is.* One MCP stdio endpoint for a whole toolchain (GitHub,
+GitLab, cloud, mail, browser and research tools). It has capability-gated
+dispatch and a machine-checked ABI, and it fetches cartridges on demand from
+`boj-server-cartridges`.
+
+*How it stays trustworthy.*
+
+. Every claim marked *affirmed* below was produced by running a check in the
+  session that wrote this file. Claims marked *CI evidence* are the conclusions
+  GitHub Actions reported for the anchor SHA. They were read, not re-run
+  locally, and the reason is given each time.
+. The anchor names the full commit SHA, the UTC window and the toolchain, so
+  "true" always means "true at this commit".
+. The file lands by a signed git commit. That signature is what makes the
+  affirmation attributable.
+
+*We are fallible.* This is our best honest belief, not a proof of its own
+correctness.
+
+== The epistemic contract
+
+This document records our *best belief* at the timestamp below. The only
+guarantee is *no intentional overclaim*. Where something is proven we say
+proven. Where it was only reported by CI, we say so. Where it is the README's
+aspiration rather than a checked result, we say so.
+
+You may conclude:
+
+* Every *affirmed* row was produced by running the command shown, in this
+  session, against a clean checkout of the anchor SHA.
+* Where a live run and a status document disagreed, the live run won, and the
+  document is named in <<outstanding>>.
+
+You may *not* conclude:
+
+* That anything is true *now*. This file describes the commit in
+  <<verifiable-anchor>> and nothing else.
+* That unlisted things pass. *Silence is not a claim.*
+
+*Standing invitation to refute.* Bring a counter-example, a failing run, or a
+contradicting source.
+
+[#verifiable-anchor]
+== Verifiable anchor
+
+[cols="1,3",options="header"]
+|===
+| Field | Value
+
+| Project
+| BoJ Server (Bundle of Joy Server)
+
+| Repo
+| `hyperpolymath/boj-server`
+
+| Branch
+| `main`
+
+| Commit (HEAD)
+| `14386f3e61cdfd324853cca3a36f5c37192d59d7`
+
+| Permalink
+| https://github.com/hyperpolymath/boj-server/tree/14386f3e61cdfd324853cca3a36f5c37192d59d7
+
+| Verified (UTC)
+| `2026-10-07T10:20:02Z` to `2026-10-07T10:22:34Z`
+
+| Working-tree delta at verification
+| `clean`: `git status --porcelain` printed nothing. The checkout was a fresh
+  worktree at the anchor SHA.
+
+| Toolchain (local runs)
+| Node `v26.5.0`, Bun `1.3.14`, just `1.56.0`. The local Idris2 is `0.7.0`, but
+  `.mise.toml` pins `0.8.0`, so no Idris2 claim here comes from a local run.
+
+| Toolchain (CI evidence)
+| Whatever the anchor's workflows pinned. The Zig jobs used
+  `zig-x86_64-linux-0.16.0`.
+
+| Affirmed by
+| Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+|===
+
+[IMPORTANT]
+====
+*Never anchor to a tag.* If you are reading this at a later commit, re-run
+<<reproduce>> and write a fresh affirmation.
+
+*Squash-merge note.* The template's check is that the anchor SHA must be the
+parent of the commit that introduced this file. That only holds if this PR is
+squash-merged before `main` moves past `14386f3e`. If it lands later, this file
+is a draft until it is re-run.
+====
+
+== Companion documents and repo metadata
+
+* `README.adoc` and its derived `README.md`: the claims this file is measured
+  against.
+* `docs/EXPLAINME.adoc`: the mechanism.
+* `package.json`, `Justfile` and `.mise.toml`: they disagree with each other on
+  version and runtime. See <<outstanding>>.
+* There is *no* `boj-server_chora.deed` yet. The repo still carries
+  `0-AI-MANIFEST.a2ml`, `.machine_readable/CLADE.a2ml` and
+  `.machine_readable/6a2/`. A2ML is retired estate-wide (D308), so none of these
+  is cited here as a source of truth.
+
+== The honest state (one breath)
+
+At this commit the MCP bridge boots under both Node and Bun. It completes a
+clean stdio handshake that prints nothing but JSON-RPC and exposes exactly what
+the README claims: *68 tools* (45 `boj++_*++`, 23 `coord++_*++`), *6 prompts*
+and *7 `boj://` resources*, with serverInfo `0.4.7`. Its 68 unit tests pass and
+`package.json` declares no dependencies. CI's Idris2 type-check and
+trusted-base audit are green. However, the package published as `@latest` on
+npm is behind this commit. The Zig bench target does not compile against Zig
+0.16.0, which takes down both E2E jobs. The `Justfile` does not parse. Seven CI
+checks are red, and all seven were already red on the parent commit.
+
+=== What is solid (and how we checked)
+
+[cols="2,1,3",options="header"]
+|===
+| Claim | Status | Evidence (command, and what it printed)
+
+| The bridge's unit tests pass under Node
+| affirmed
+| `node --test mcp-bridge/tests/dispatch_test.js mcp-bridge/tests/routing_args_test.js`
+  (the `test` script in `package.json`): exit 0, `tests 31`, `pass 31`,
+  `fail 0`.
+
+| The same suites pass under Bun
+| affirmed
+| `bun test mcp-bridge/tests/dispatch_test.js mcp-bridge/tests/routing_args_test.js`:
+  exit 0, `31 pass`, `0 fail`.
+
+| The path-claims and HTTP-transport suites pass
+| affirmed
+| `bun test mcp-bridge/tests/path_claims_test.js`: `11 pass`, `0 fail`.
+  `bun test mcp-bridge/tests/http_transport_test.js`: `26 pass`, `0 fail`.
+
+| The bridge boots under Node and under Bun
+| affirmed
+| `node mcp-bridge/tests/boot_smoke.js node mcp-bridge/main.js` and the same
+  with `bun`: exit 0 for both, each printing `serverInfo.name=boj-server,
+  tools=68`.
+
+| The handshake is clean and the counts match the README
+| affirmed
+| A stdio session with `BOJ_URL` unset, sending `initialize`, `tools/list`,
+  `prompts/list` and `resources/list`, under both Node and Bun. It returned 4
+  response lines, 0 non-JSON lines and serverInfo `{name: boj-server, version:
+  0.4.7}`. The responses held 68 tools (45 `boj++_*++` + 23 `coord++_*++`) and
+  6 prompts (`audit-repo`, `convene-cluster`, `deploy-with-dns-ssl`,
+  `summarize-channel`, `triage-issues`, `proof-status`). They also held 7
+  resources: `boj://cartridges`, `boj://capabilities/matrix`,
+  `boj://capabilities/tools`, `boj://proofs/manifest`, `boj://server/info`,
+  `boj://capabilities/deployment` and `boj://docs/architecture`. This matches
+  README.adoc lines 23, 48, 53, 146 and 211.
+
+| No backend is needed to list the tools
+| affirmed
+| The handshake row above ran with `BOJ_URL` unset and no backend listening.
+
+| The package declares no dependencies
+| affirmed
+| `jq '{dependencies,devDependencies}' package.json` printed `null` for both.
+  This is a manifest fact. The import graph of `mcp-bridge/` was not audited.
+
+| The Idris2 core and every cartridge ABI typecheck
+| CI evidence
+| The check run `Idris2 type-check (core + all cartridge ABIs)` concluded
+  `success` on the anchor SHA. It was not re-run locally because the local
+  `idris2` (0.7.0) is not the pinned 0.8.0.
+
+| No new axioms entered the trusted base
+| CI evidence
+| The check run `Trusted-base audit (no new axioms)` concluded `success` on the
+  anchor SHA.
+
+| README.md is a faithful derivation of README.adoc
+| CI evidence
+| The check run `readme-derive / Derive & verify README.md` concluded `success`
+  on the anchor SHA.
+
+| No secrets were detected
+| CI evidence
+| The check run `scan / gitleaks` concluded `success` on the anchor SHA.
+|===
+
+=== The honest nuance you must not lose
+
+* *"68 tools" describes this commit, not what `npx` installs.* npm's `latest`
+  dist-tag is `0.4.7`, published 2026-05-20. When run on 2026-10-07, that
+  package reported 65 tools, 6 prompts and 6 resources, with serverInfo
+  `0.4.0`. Anyone installing with `npx -y @hyperpolymath/boj-server@latest`
+  gets the older surface. Directory listings that sandbox the npm package
+  (such as aiagentslisting.com) will report the npm numbers, not these.
+* *"Tests pass" means 68 test cases in four files* (31 + 11 + 26), plus two
+  boot smokes. It does not mean the E2E jobs pass; they do not (see below).
+* *"Zero runtime dependencies"* is true of `package.json`. It does not cover
+  the Zig FFI, the Elixir backend, or the cartridges a running backend loads.
+* *Tool count is not capability.* The README says side-effectful tools return
+  a structured `++{++error, hint}` until their backend runs. That was not
+  exercised here. Only listing was affirmed, not invocation.
+
+=== Known-incomplete but honestly fenced
+
+* *The npm package is behind `main`.* The serverInfo version tells them apart:
+  `0.4.0` from the published tarball, `0.4.7` from this commit. The gap shows
+  up at `initialize` rather than staying silent.
+
+[#outstanding]
+=== Outstanding / weak / refuted (no spin)
+
+* *The `Justfile` does not parse.* `just verify-no-believe-me` fails with
+  ``error: recipe `guix-shell` first defined on line 1055 is redefined on line
+  1063``. This error comes before any recipe runs, so *every* `just` recipe
+  (`test`, `verify`, `lint`, `build`, and the rest) is unusable at this commit.
+  The duplicate dates from #327 (`97665d0d`). Nothing here comes from a `just`
+  recipe.
+* *The Zig bench does not compile against Zig 0.16.0.* `ffi/zig/src/bench.zig:27`
+  uses `Io.Clock.monotonic`, which 0.16.0's `std.Io` no longer has. The CI jobs
+  `E2E — Full REST + MCP Bridge`, `E2E — Order Ticket (FFI layer)` and
+  `Bench — FFI Catalogue + Mount/Unmount + Hash` fail on it (13 errors).
+  *No E2E claim is affirmed.*
+* *Red on the anchor SHA, all non-required and all already red on its parent
+  `0e700c9d`:* the three Zig jobs above, plus:
+  ** `governance / UUID v7 conformance`: `.machine_readable/CLADE.a2ml` carries
+     a v5 UUID. Tracked in #338.
+  ** `SonarQube`: tracked in #338.
+  ** `deploy` (Deploy to Cloudflare Workers): exit 1, cause *not determined*
+     in this session.
+  ** `Dependabot`: its updater errored on a cargo update in `coord-tui` and
+     `tray`. As a result, three open Dependabot alerts stay unpatched:
+     *high* `quinn-proto` (GHSA-4w2j-m93h-cj5j, `tray/Cargo.lock`), and
+     *moderate* `rustls` (GHSA-2mjx-qc3c-rqvc) in both `tray/Cargo.lock` and
+     `coord-tui/Cargo.lock`. These are the Rust companion tools, not the MCP
+     bridge, whose `package.json` has no dependencies.
+* *Skipped on the anchor SHA,* so they were not evidence either way:
+  `ABI Specification Check (Idris2)`, `FFI Build & Test (Zig)` and
+  `Zig FFI Tests`.
+* *Version strings disagree.* `package.json` says `0.5.0`, which is not on
+  npm. The `Justfile` says `0.4.6`. The bridge's serverInfo says `0.4.7`. npm
+  `latest` is `0.4.7`, but that tarball reports `0.4.0`.
+* *`package.json` `start` runs `deno run -A`.* Deno is banned estate-wide. The
+  `test` script and the boot smokes run under Node and Bun.
+* *A2ML is still present* (`0-AI-MANIFEST.a2ml`,
+  `.machine_readable/CLADE.a2ml`, `.machine_readable/6a2/`), and there is no
+  `_chora.deed`. Per D313 the conversion belongs to kcX, so it should not be
+  done by hand.
+* *Not checked in this session:* tool *invocation* against a live backend, the
+  Elixir backend, the Zig FFI unit tests, container builds, and the site and
+  docs.
+
+[#reproduce]
+== Reproduce it yourself
+
+[source,bash]
+----
+git clone https://github.com/hyperpolymath/boj-server
+cd boj-server
+git checkout 14386f3e61cdfd324853cca3a36f5c37192d59d7
+git status --porcelain                       # expect: nothing
+
+node --test mcp-bridge/tests/dispatch_test.js mcp-bridge/tests/routing_args_test.js
+                                             # expect: tests 31, pass 31, fail 0
+bun test mcp-bridge/tests/dispatch_test.js mcp-bridge/tests/routing_args_test.js
+                                             # expect: 31 pass, 0 fail
+bun test mcp-bridge/tests/path_claims_test.js     # expect: 11 pass
+bun test mcp-bridge/tests/http_transport_test.js  # expect: 26 pass
+node mcp-bridge/tests/boot_smoke.js node mcp-bridge/main.js   # expect: OK … tools=68
+node mcp-bridge/tests/boot_smoke.js bun  mcp-bridge/main.js   # expect: OK … tools=68
+
+# Handshake counts (expect 68 / 6 / 7, serverInfo 0.4.7, no non-JSON lines):
+printf '%s\n' \
+  '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"aff","version":"0"}}}' \
+  '{"jsonrpc":"2.0","method":"notifications/initialized"}' \
+  '{"jsonrpc":"2.0","id":2,"method":"tools/list"}' \
+  '{"jsonrpc":"2.0","id":3,"method":"prompts/list"}' \
+  '{"jsonrpc":"2.0","id":4,"method":"resources/list"}' \
+  | (cat; sleep 4) | env -u BOJ_URL node mcp-bridge/main.js \
+  | jq -c '.result | {serverInfo, tools: (.tools|length?), prompts: (.prompts|length?), resources: (.resources|length?)}'
+
+just --list                                  # expect (refutation): guix-shell redefined
+----
+
+== One-line characterisation (quote this)
+
+> At `14386f3e`, boj-server's MCP bridge boots under Node and Bun and serves
+> exactly the 68 tools, 6 prompts and 7 resources its README claims, with 68
+> passing unit tests and a green Idris2 gate. Its E2E jobs, its `Justfile` and
+> its published npm package all lag behind.
+
+== Joint attestation
+
+We, the undersigned, assert that *to the best of our joint belief at the
+timestamp above, every claim in this file is true and was checked as described*,
+with no intentional overclaim and with the open gaps stated rather than hidden.
+
+* *Engineering party (AI):* `claude-opus-5-5`, which ran the checks recorded
+  here between `2026-10-07T10:20:02Z` and `2026-10-07T10:22:34Z` and stands
+  behind the wording above as a faithful report of those runs.
+* *Owner / maintainer:* Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>, who
+  _signs by committing this file with `-S`. The git commit signature over this
+  content, at the commit SHA recorded above, is the cryptographic form of this
+  affirmation._
+
+_Landed by a signed git commit. Use `git log --show-signature` to check that
+the anchor SHA above is the parent of the commit that introduced this
+affirmation. If it is not, this file is a *draft* and must be read as one._
