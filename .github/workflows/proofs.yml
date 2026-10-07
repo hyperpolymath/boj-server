@@ -11,29 +11,23 @@
 # ever ran `idris2 --typecheck` on cartridges/**/abi in CI (the Justfile's old
 # `typecheck` recipe covered only 5 of ~50 cartridge ABIs and was never wired
 # into a workflow). This gate type-checks the core ABI package AND every
-# cartridge ABI under the pinned toolchain (.tool-versions → idris2 0.8.0), and
+# cartridge ABI under the pinned toolchain (.mise.toml → idris2), and
 # runs the trusted-base audit so no new believe_me / axiom slips in.
 name: Proofs Gate
 
-# Was workflow-level path-filtered: a required check that never ran on PRs
-# touching none of its paths, leaving the check "Expected" and the PR blocked.
-# Now always runs; the `changes` job gates the heavy jobs, which when skipped
-# report SUCCESS to required checks.
+# Runs on every PR and push to main, with no path filter and no `changes`
+# gate. A path-skipped proof job reports success without checking anything,
+# which is how a duplicate `allTake` in SafetyLemmas.idr sat in main behind a
+# green gate (#343, DEBT P-1). This workflow is not a required check, so always
+# running it blocks nothing.
 on:
   push:
     branches: [main]
   pull_request:
     branches: [main]
   workflow_dispatch:
-  # Weekly baseline re-verification of main. The `changes` path-filter below
-  # skips the heavy type-check on PRs/pushes that don't touch src/abi/** (so an
-  # off-path PR isn't blocked and doesn't pay for a 45-min Idris2 build). The
-  # side effect is that a proof break ALREADY living in main — merged before
-  # this gate existed, or via a path the filter ignores — is otherwise never
-  # re-detected. On a `schedule` event the detect step leaves run=true (its
-  # default), so the full core + every-cartridge type-check runs unconditionally
-  # and catches such drift. (This is exactly how a duplicate `allTake` in
-  # SafetyLemmas.idr sat in main with a green gate — see PR fixing it.)
+  # Weekly re-verification of main, so toolchain or runner drift is caught
+  # even when nothing is merged.
   schedule:
     - cron: '17 6 * * 1'   # Mondays 06:17 UTC
 
@@ -46,40 +40,9 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  changes:
-    name: Detect relevant changes
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    outputs:
-      run: ${{ steps.detect.outputs.run }}
-    steps:
-      - uses: actions/checkout@v6.0.2
-        with:
-          fetch-depth: 0
-      - id: detect
-        env:
-          EVENT: ${{ github.event_name }}
-          BASE: ${{ github.base_ref }}
-          BEFORE: ${{ github.event.before }}
-        run: |
-          set -uo pipefail
-          run=true
-          if [ "$EVENT" = pull_request ]; then
-            git fetch --no-tags --depth=200 origin "$BASE" 2>/dev/null \
-              && changed=$(git diff --name-only "origin/${BASE}...HEAD" 2>/dev/null) \
-              && { printf '%s\n' "$changed" | grep -qE '^src/abi/|^verification/|^scripts/check-trusted-base\.sh$|^scripts/typecheck-proofs\.sh$|^\.tool-versions$' && run=true || run=false; }
-          elif [ "$EVENT" = push ] && [ -n "$BEFORE" ] && [ "$BEFORE" != 0000000000000000000000000000000000000000 ]; then
-            changed=$(git diff --name-only "${BEFORE}...${GITHUB_SHA}" 2>/dev/null) \
-              && { printf '%s\n' "$changed" | grep -qE '^src/abi/|^verification/|^scripts/check-trusted-base\.sh$|^scripts/typecheck-proofs\.sh$|^\.tool-versions$' && run=true || run=false; }
-          fi
-          printf 'run=%s\n' "$run" >> "$GITHUB_OUTPUT"
-          echo "relevant=$run; changed files:"; printf '%s\n' "${changed:-<none computed>}"
-
   # Cheap, dependency-free gate: scan for unsound constructs + axiom-count drift.
   trusted-base:
     name: Trusted-base audit (no new axioms)
-    needs: changes
-    if: needs.changes.outputs.run == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -90,16 +53,24 @@ jobs:
   # Full type-check of the core ABI + every cartridge ABI under the pinned Idris2.
   typecheck:
     name: Idris2 type-check (core + all cartridge ABIs)
-    needs: changes
-    if: needs.changes.outputs.run == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v6.0.2
 
+      # The pin lives in .mise.toml (.tool-versions was converted, 4d1fe0c9).
+      # Fail here on an empty or malformed value rather than asking asdf to
+      # install version "".
       - name: Read pinned Idris2 version
         id: ver
-        run: echo "idris2=$(awk '/^idris2 /{print $2}' .tool-versions)" >> "$GITHUB_OUTPUT"
+        run: |
+          set -euo pipefail
+          v=$(awk -F'"' '/^idris2[[:space:]]*=/{print $2}' .mise.toml)
+          if ! printf '%s' "$v" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "::error file=.mise.toml::no idris2 = \"X.Y.Z\" pin found (got '$v')"
+            exit 1
+          fi
+          echo "idris2=$v" >> "$GITHUB_OUTPUT"
 
       - name: Install build deps (Chez Scheme + GMP)
         run: sudo apt-get update && sudo apt-get install -y chezscheme libgmp-dev build-essential
