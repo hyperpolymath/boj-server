@@ -123,6 +123,6 @@ actually *reported* -- a `skipped` conclusion counts as success. A gate stuck at
 
 * Conventions (authoritative): `docs/AI-CONVENTIONS.adoc` §"CI / Required Status Checks"
 * AI-agent instructions: `.claude/CLAUDE.md` §"CI / Required Status Checks"
-* Operational runbook: `.machine_readable/6a2/PLAYBOOK.a2ml` `[ci-required-gates]`
+* Operational runbook: this page and `docs/AI-CONVENTIONS.adoc`. The old `6a2/PLAYBOOK.a2ml` entry is retired A2ML (D308), pending kcX → chora deed.
 * Reference workflows: every required gate in `.github/workflows/`
 * History: PR #216 (boj-server), PR #45 (boj-server-cartridges)

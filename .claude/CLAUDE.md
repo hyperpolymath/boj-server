@@ -6,7 +6,7 @@ Copyright (c) Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
 
 ## Machine-Readable Artefacts
 
-This repo follows the hyperpolymath standard. See `https://github.com/hyperpolymath/standards` for the canonical 6-file `.machine_readable/` layout (STATE/META/ECOSYSTEM/AGENTIC/NEUROSYM/PLAYBOOK in A2ML format).
+This repo follows the hyperpolymath standard. See `https://github.com/hyperpolymath/standards`. A2ML is retired (D308): do not create or edit `.a2ml` files, and do not treat `.machine_readable/6a2/` as current. Descriptive metadata moves to the repo's chora deed via kcX.
 
 ---
 

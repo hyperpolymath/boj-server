@@ -106,7 +106,7 @@ whole. See the table in §3 for per-component grades.
 
 | Cartridge shared libs built
 | 103/106
-| `.machine_readable/6a2/STATE.a2ml` §quality
+| retired A2ML STATE (D308), pending kcX → chora deed
 
 | Total tests passing
 | *365* (178 core FFI + 113 cartridge FFI + 40 federation + 14 coprocessor + 11 SLA + 11 community + 10 SDP + 28 readiness + 13 E2E + 12 guardian + 7 VeriSimDB + 11 multi-node + 58 MCP bridge + 17 aspect)

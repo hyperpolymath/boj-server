@@ -202,10 +202,8 @@ toc::[]
 * link:../TEST-NEEDS.md[`../TEST-NEEDS.md`] — test-coverage tracker
   (stays at root pending refactor of 5 cross-references)
 * link:../CHANGELOG.md[`../CHANGELOG.md`] — release history
-* link:../.machine_readable/6a2/STATE.a2ml[`../.machine_readable/6a2/STATE.a2ml`]
-  — current machine-readable project state (the canonical
-  STATE/META/ECOSYSTEM/AGENTIC/NEUROSYM/PLAYBOOK 6-file layer per
-  the hyperpolymath standard)
+* `../.machine_readable/6a2/` — retired A2ML state files (D308), kept
+  read-only until kcX converts them into the repo's chora deed. Not current.
 * link:../GEMINI.md[`../GEMINI.md`] — Gemini CLI integration context
   (load-bearing; referenced by `gemini-extension.json` as
   `contextFileName`)

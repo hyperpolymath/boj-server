@@ -120,5 +120,5 @@ cd elixir && mix test
 
 * link:../TEST-NEEDS.md[TEST-NEEDS.md] — Detailed requirement tracking.
 * READINESS.md — CRG Grade evidence.
-* link:../.machine_readable/6a2/STATE.a2ml[.machine_readable/6a2/STATE.a2ml]
-— Latest machine-readable stats.
+* `.machine_readable/6a2/STATE.a2ml` — retired A2ML (D308), pending kcX → chora
+deed; not a current source of stats.
