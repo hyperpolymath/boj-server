@@ -19,7 +19,7 @@ import? "contractile.just"
 
 # Project metadata — customize these
 project := "Bundle of Joy Server"
-version := "0.4.6"
+version := "0.5.0"
 tier := "infrastructure"  # 1 | 2 | infrastructure
 
 # ═══════════════════════════════════════════════════════════════════════════════
