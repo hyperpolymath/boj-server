@@ -181,9 +181,20 @@ menu=$(curl -sf "$BASE_URL/menu" 2>/dev/null || echo "{}")
 check "menu endpoint returns data" '"tier_teranga"' "$menu"
 check "menu contains teranga tier" 'teranga' "$menu"
 
-# Count cartridges in the teranga tier
-teranga_count=$(echo "$menu" | jq '.tier_teranga | length' 2>/dev/null || echo "0")
-check "teranga tier has cartridges" "1" "$([ "$teranga_count" -gt 0 ] && echo 1 || echo 0)"
+# Each tier holds exactly the cartridges whose manifest declares it. This
+# does not assume any tier is non-empty: the fixture catalogue is all Ayo,
+# and tier assignments are being re-audited (trust-tier ADR).
+for tier in teranga shield ayo; do
+    expected=$(jq -s --arg t "$tier" '[.[] | select((.tier // "" | ascii_downcase) == $t)] | length' \
+        "$BOJ_CARTRIDGES_PATH"/*/cartridge.json 2>/dev/null || echo "manifests-unreadable")
+    actual=$(echo "$menu" | jq ".tier_${tier} | length" 2>/dev/null || echo "menu-unreadable")
+    check "${tier} tier matches manifests (${expected})" "^${expected}\$" "$actual"
+done
+
+# No cartridge may fall outside the three tiers.
+tiered=$(echo "$menu" | jq '[.tier_teranga, .tier_shield, .tier_ayo] | map(length) | add' 2>/dev/null || echo "menu-unreadable")
+total=$(echo "$menu" | jq '.summary.total' 2>/dev/null || echo "menu-unreadable")
+check "every cartridge is in a tier (${total})" "^${total}\$" "$tiered"
 echo ""
 
 # ═══════════════════════════════════════════════════════════════════════
