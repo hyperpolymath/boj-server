@@ -35,49 +35,44 @@ fn parseVerb(s: []const u8) ?Verb {
     return null;
 }
 
-fn emitJson(file: std.fs.File, alloc: std.mem.Allocator, comptime fmt: []const u8, args: anytype) !void {
+/// Formats one JSON line from `fmt`/`args` and writes it, newline-terminated, to `file`.
+fn emitJson(file: std.Io.File, io: std.Io, alloc: std.mem.Allocator, comptime fmt: []const u8, args: anytype) !void {
     const line = try std.fmt.allocPrint(alloc, fmt ++ "\n", args);
     defer alloc.free(line);
-    try file.writeAll(line);
+    try file.writeStreamingAll(io, line);
 }
 
-pub fn main() !u8 {
-    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-    defer _ = gpa.deinit();
-    const alloc = gpa.allocator();
+/// Entry point: loads the cartridge at argv[1] and runs the requested verb,
+/// reporting the outcome as JSON on stdout/stderr with a distinct exit code.
+// Zig 0.16 removed GeneralPurposeAllocator and argsAlloc; `std.process.Init`
+// supplies the allocator, the Io runtime and the argument vector instead.
+pub fn main(init: std.process.Init) !u8 {
+    const alloc = init.gpa;
+    const io = init.io;
 
-    const argv = try std.process.argsAlloc(alloc);
-    defer std.process.argsFree(alloc, argv);
+    const argv = try init.minimal.args.toSlice(init.arena.allocator());
 
-    const stderr = std.fs.File.stderr();
-    const stdout = std.fs.File.stdout();
+    const stderr = std.Io.File.stderr();
+    const stdout = std.Io.File.stdout();
 
     if (argv.len < 3) {
-        try emitJson(stderr, alloc,
-            "{{\"ok\":false,\"error\":\"args\",\"expected\":\"<cartridge-so-path> <verb> [args...]\",\"got_argc\":{d}}}",
-            .{argv.len});
+        try emitJson(stderr, io, alloc, "{{\"ok\":false,\"error\":\"args\",\"expected\":\"<cartridge-so-path> <verb> [args...]\",\"got_argc\":{d}}}", .{argv.len});
         return EXIT_ARGS;
     }
 
     const so_path = argv[1];
     const verb = parseVerb(argv[2]) orelse {
-        try emitJson(stderr, alloc,
-            "{{\"ok\":false,\"error\":\"unknown-verb\",\"verb\":\"{s}\"}}",
-            .{argv[2]});
+        try emitJson(stderr, io, alloc, "{{\"ok\":false,\"error\":\"unknown-verb\",\"verb\":\"{s}\"}}", .{argv[2]});
         return EXIT_ARGS;
     };
 
     if (verb == .invoke and argv.len != 5) {
-        try emitJson(stderr, alloc,
-            "{{\"ok\":false,\"error\":\"args\",\"expected\":\"invoke <tool_name> <json_args>\",\"got_argc\":{d}}}",
-            .{argv.len});
+        try emitJson(stderr, io, alloc, "{{\"ok\":false,\"error\":\"args\",\"expected\":\"invoke <tool_name> <json_args>\",\"got_argc\":{d}}}", .{argv.len});
         return EXIT_ARGS;
     }
 
     var lib = std.DynLib.open(so_path) catch |err| {
-        try emitJson(stderr, alloc,
-            "{{\"ok\":false,\"error\":\"open\",\"path\":\"{s}\",\"cause\":\"{s}\"}}",
-            .{ so_path, @errorName(err) });
+        try emitJson(stderr, io, alloc, "{{\"ok\":false,\"error\":\"open\",\"path\":\"{s}\",\"cause\":\"{s}\"}}", .{ so_path, @errorName(err) });
         return EXIT_OPEN;
     };
     defer lib.close();
@@ -96,68 +91,68 @@ pub fn main() !u8 {
     switch (verb) {
         .name => {
             const name_fn = lib.lookup(NameFn, "boj_cartridge_name") orelse {
-                try emitJson(stderr, alloc, "{{\"ok\":false,\"error\":\"missing-symbol\",\"symbol\":\"boj_cartridge_name\"}}", .{});
+                try emitJson(stderr, io, alloc, "{{\"ok\":false,\"error\":\"missing-symbol\",\"symbol\":\"boj_cartridge_name\"}}", .{});
                 return EXIT_SYMBOL;
             };
             const n = std.mem.span(name_fn());
-            try emitJson(stdout, alloc, "{{\"ok\":true,\"name\":\"{s}\"}}", .{n});
+            try emitJson(stdout, io, alloc, "{{\"ok\":true,\"name\":\"{s}\"}}", .{n});
             return EXIT_OK;
         },
         .version => {
             const version_fn = lib.lookup(VersionFn, "boj_cartridge_version") orelse {
-                try emitJson(stderr, alloc, "{{\"ok\":false,\"error\":\"missing-symbol\",\"symbol\":\"boj_cartridge_version\"}}", .{});
+                try emitJson(stderr, io, alloc, "{{\"ok\":false,\"error\":\"missing-symbol\",\"symbol\":\"boj_cartridge_version\"}}", .{});
                 return EXIT_SYMBOL;
             };
             const v = std.mem.span(version_fn());
-            try emitJson(stdout, alloc, "{{\"ok\":true,\"version\":\"{s}\"}}", .{v});
+            try emitJson(stdout, io, alloc, "{{\"ok\":true,\"version\":\"{s}\"}}", .{v});
             return EXIT_OK;
         },
         .probe => {
             const init_fn = lib.lookup(InitFn, "boj_cartridge_init") orelse {
-                try emitJson(stderr, alloc, "{{\"ok\":false,\"error\":\"missing-symbol\",\"symbol\":\"boj_cartridge_init\"}}", .{});
+                try emitJson(stderr, io, alloc, "{{\"ok\":false,\"error\":\"missing-symbol\",\"symbol\":\"boj_cartridge_init\"}}", .{});
                 return EXIT_SYMBOL;
             };
             const deinit_fn = lib.lookup(DeinitFn, "boj_cartridge_deinit") orelse {
-                try emitJson(stderr, alloc, "{{\"ok\":false,\"error\":\"missing-symbol\",\"symbol\":\"boj_cartridge_deinit\"}}", .{});
+                try emitJson(stderr, io, alloc, "{{\"ok\":false,\"error\":\"missing-symbol\",\"symbol\":\"boj_cartridge_deinit\"}}", .{});
                 return EXIT_SYMBOL;
             };
             const name_fn = lib.lookup(NameFn, "boj_cartridge_name") orelse {
-                try emitJson(stderr, alloc, "{{\"ok\":false,\"error\":\"missing-symbol\",\"symbol\":\"boj_cartridge_name\"}}", .{});
+                try emitJson(stderr, io, alloc, "{{\"ok\":false,\"error\":\"missing-symbol\",\"symbol\":\"boj_cartridge_name\"}}", .{});
                 return EXIT_SYMBOL;
             };
             const version_fn = lib.lookup(VersionFn, "boj_cartridge_version") orelse {
-                try emitJson(stderr, alloc, "{{\"ok\":false,\"error\":\"missing-symbol\",\"symbol\":\"boj_cartridge_version\"}}", .{});
+                try emitJson(stderr, io, alloc, "{{\"ok\":false,\"error\":\"missing-symbol\",\"symbol\":\"boj_cartridge_version\"}}", .{});
                 return EXIT_SYMBOL;
             };
 
             const rc = init_fn();
             if (rc != 0) {
-                try emitJson(stderr, alloc, "{{\"ok\":false,\"error\":\"init-returned\",\"rc\":{d}}}", .{rc});
+                try emitJson(stderr, io, alloc, "{{\"ok\":false,\"error\":\"init-returned\",\"rc\":{d}}}", .{rc});
                 return EXIT_INIT;
             }
             defer deinit_fn();
 
             const n = std.mem.span(name_fn());
             const v = std.mem.span(version_fn());
-            try emitJson(stdout, alloc, "{{\"ok\":true,\"name\":\"{s}\",\"version\":\"{s}\"}}", .{ n, v });
+            try emitJson(stdout, io, alloc, "{{\"ok\":true,\"name\":\"{s}\",\"version\":\"{s}\"}}", .{ n, v });
             return EXIT_OK;
         },
         .invoke => {
             const init_fn = lib.lookup(InitFn, "boj_cartridge_init") orelse {
-                try emitJson(stderr, alloc, "{{\"ok\":false,\"error\":\"missing-symbol\",\"symbol\":\"boj_cartridge_init\"}}", .{});
+                try emitJson(stderr, io, alloc, "{{\"ok\":false,\"error\":\"missing-symbol\",\"symbol\":\"boj_cartridge_init\"}}", .{});
                 return EXIT_SYMBOL;
             };
             const deinit_fn = lib.lookup(DeinitFn, "boj_cartridge_deinit") orelse {
-                try emitJson(stderr, alloc, "{{\"ok\":false,\"error\":\"missing-symbol\",\"symbol\":\"boj_cartridge_deinit\"}}", .{});
+                try emitJson(stderr, io, alloc, "{{\"ok\":false,\"error\":\"missing-symbol\",\"symbol\":\"boj_cartridge_deinit\"}}", .{});
                 return EXIT_SYMBOL;
             };
             const invoke_fn = lib.lookup(InvokeFn, "boj_cartridge_invoke") orelse {
-                try emitJson(stderr, alloc, "{{\"ok\":false,\"error\":\"missing-symbol\",\"symbol\":\"boj_cartridge_invoke\"}}", .{});
+                try emitJson(stderr, io, alloc, "{{\"ok\":false,\"error\":\"missing-symbol\",\"symbol\":\"boj_cartridge_invoke\"}}", .{});
                 return EXIT_SYMBOL;
             };
 
             if (init_fn() != 0) {
-                try emitJson(stderr, alloc, "{{\"ok\":false,\"error\":\"init-failed\"}}", .{});
+                try emitJson(stderr, io, alloc, "{{\"ok\":false,\"error\":\"init-failed\"}}", .{});
                 return EXIT_INIT;
             }
             defer deinit_fn();
@@ -177,13 +172,11 @@ pub fn main() !u8 {
             const rc = invoke_fn(tool_z.ptr, args_z.ptr, &out_buf, &out_len);
 
             if (rc == 0) {
-                try stdout.writeAll(out_buf[0..out_len]);
-                try stdout.writeAll("\n");
+                try stdout.writeStreamingAll(io, out_buf[0..out_len]);
+                try stdout.writeStreamingAll(io, "\n");
                 return EXIT_OK;
             } else {
-                try emitJson(stderr, alloc,
-                    "{{\"ok\":false,\"error\":\"invoke-failed\",\"rc\":{d},\"required_len\":{d}}}",
-                    .{ rc, out_len });
+                try emitJson(stderr, io, alloc, "{{\"ok\":false,\"error\":\"invoke-failed\",\"rc\":{d},\"required_len\":{d}}}", .{ rc, out_len });
                 return EXIT_RUNTIME;
             }
         },
