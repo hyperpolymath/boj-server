@@ -94,14 +94,13 @@ Edit `claude_desktop_config.json`:
   "mcpServers": {
     "boj-server": {
       "command": "npx",
-      "args": ["-y", "@hyperpolymath/boj-server@latest"],
-      "env": { "BOJ_URL": "http://localhost:7700" }
+      "args": ["-y", "@hyperpolymath/boj-server@latest"]
     }
   }
 }
 ```
 
-Restart Claude Desktop after saving.
+Restart Claude Desktop after saving. No `env` block is needed: `BOJ_URL` defaults to `http://localhost:7700`. Set it under `env` only if your backend listens elsewhere.
 
 ## npx (any MCP client)
 
