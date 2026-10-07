@@ -26,7 +26,7 @@ import { env } from "./runtime.js";
 
 const ENDPOINT = env.get("OTEL_EXPORTER_OTLP_ENDPOINT") ?? "";
 const SERVICE_NAME = env.get("OTEL_SERVICE_NAME") ?? "boj-server";
-const SERVICE_VERSION = env.get("OTEL_SERVICE_VERSION") ?? "0.4.7";
+const SERVICE_VERSION = env.get("OTEL_SERVICE_VERSION") ?? "0.5.0";
 const BATCH_MS = parseInt(env.get("OTEL_BATCH_MS") ?? "5000", 10) || 5000;
 const HEADERS_RAW = env.get("OTEL_EXPORTER_OTLP_HEADERS") ?? "";
 

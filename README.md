@@ -202,7 +202,7 @@ Most cartridges (GitHub/GitLab, cloud, ML, browser, CodeSeeker, etc.) call the B
 
 2.  **Inspectable mode only** — without the backend, `boj_health`, `boj_menu`, `boj_cartridges`, and `boj_cartridge_info` still respond from the offline manifest, so any MCP client can introspect the server. Side-effectful tools return `{error, hint}` until the backend is up.
 
-> **Note on versions:** when the backend is offline, `boj_health` may report a placeholder backend version (`0.1.0`) from the bundled offline manifest — this is the manifest’s hardcoded value, not the npm package version (`0.4.7`). The MCP bridge itself reports `0.4.7` at `initialize`.
+> **Note on versions:** when the backend is offline, `boj_health` may report a placeholder backend version (`0.1.0`) from the bundled offline manifest — this is the manifest’s hardcoded value, not the npm package version (`0.5.0`). The MCP bridge itself reports `0.5.0` at `initialize`.
 
 The coordination bus (`local-coord-mcp`) is a separate localhost service, default `http://127.0.0.1:7745` (`COORD_BACKEND_URL`).
 
