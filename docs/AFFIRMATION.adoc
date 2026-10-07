@@ -114,10 +114,12 @@ contradicting source.
 *Never anchor to a tag.* If you are reading this at a later commit, re-run
 <<reproduce>> and write a fresh affirmation.
 
-*Squash-merge note.* The template's check is that the anchor SHA must be the
-parent of the commit that introduced this file. That only holds if this PR is
-squash-merged before `main` moves past `14386f3e`. If it lands later, this file
-is a draft until it is re-run.
+*Landing record.* This file was introduced by `3de2f6ff` (#351), whose parent is
+the anchor `14386f3e`, so it passes the template's parent check. The Idris2,
+trusted-base and Zig rows were then upgraded from CI evidence to local runs by a
+later amendment. That amendment's runs were made on the same anchor, and
+`3de2f6ff` changed nothing but this file, so the amendment does not move the
+anchor.
 ====
 
 == Companion documents and repo metadata
