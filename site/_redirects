@@ -1,8 +1,7 @@
 # SPDX-License-Identifier: MPL-2.0
-# Cloudflare Pages redirects for boj-server.net.
-
-# Canonicalise www -> apex
-https://www.boj-server.net/*  https://boj-server.net/:splat  301
+# Workers static-asset redirects for boj-server.net.
+# Sources must be relative paths: Workers assets reject host-based rules
+# (code 100324). www -> apex is a zone Redirect Rule, not a rule here.
 
 # Convenience deep-links into the canonical sources
 /registry   https://github.com/hyperpolymath/boj-server-cartridges  302
