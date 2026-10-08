@@ -28,6 +28,16 @@ Returns / Errors / Usage text on every tool and the per-parameter
 
 === [Unreleased]
 
+==== Changed
+
+* *MCP bridge refuses undeclared tool arguments.* Every tool already
+declares `+additionalProperties: false+`; the bridge now enforces it for
+all tools, not only the routed browser/cloud/comms/ml ones. A call that
+passes an argument its `+inputSchema+` does not list fails with JSON-RPC
+`+-32602+` before dispatch. `+coord_send+`/`+coord_send_gated+` now
+declare `+sender_role+`, and `+coord_register+` declares `+role+` and
+`+capabilities+`, matching the local-coord-mcp manifest.
+
 ==== Added
 
 * *`+k8s/networkpolicy.yaml+`* — defence-in-depth `+NetworkPolicy+`

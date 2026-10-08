@@ -55,8 +55,7 @@ function rpcError(id, code, message) {
 
 // Tools that share one cartridge and are told apart by a routing key
 // derived from the tool name. The bridge sets the key, never the caller:
-// dispatch writes it last, and the gate refuses any argument the tool's
-// inputSchema does not declare.
+// dispatch writes it last, and the gate refuses it as an argument.
 const ROUTED_TOOLS = new Map([
   ...["verpex", "cloudflare", "vercel"].map((p) => [`boj_cloud_${p}`, { cartridge: "cloud-mcp", key: "provider", value: p }]),
   ...["gmail", "calendar"].map((p) => [`boj_comms_${p}`, { cartridge: "comms-mcp", key: "provider", value: p }]),
@@ -64,11 +63,17 @@ const ROUTED_TOOLS = new Map([
   ...["navigate", "click", "type", "read_page", "screenshot", "tabs", "execute_js"].map((a) => [`boj_browser_${a}`, { cartridge: "browser-mcp", key: "action", value: a }]),
 ]);
 
+// Deprecated tool names still dispatched for one release. They take the
+// arguments of the tool they alias.
+const TOOL_ALIASES = new Map([
+  ["coord_promote_to_supervisor", "coord_promote_to_master"],
+]);
+
 let declaredArgsCache = null;
 
 /**
  * Return the argument names a tool's inputSchema declares, or null when
- * the tool is not in the full tool list.
+ * the tool is not in the full tool list. Aliases resolve to their target.
  *
  * @param {string} toolName
  * @returns {Set<string>|null}
@@ -79,24 +84,25 @@ function declaredArgs(toolName) {
       buildToolList("full").map((t) => [t.name, new Set(Object.keys(t.inputSchema?.properties ?? {}))]),
     );
   }
-  return declaredArgsCache.get(toolName) ?? null;
+  return declaredArgsCache.get(TOOL_ALIASES.get(toolName) ?? toolName) ?? null;
 }
 
 /**
- * Check a routed tool's arguments against its inputSchema. Other tools
- * are not checked here.
+ * Check a tool's top-level argument names against its inputSchema: any
+ * argument the schema does not declare is refused, and so is a routed
+ * tool's routing key. Types, required fields and enums are not checked
+ * here.
  *
  * @param {string} toolName
  * @param {Record<string, unknown>} args
  * @returns {string|null} error message, or null when every argument is declared
  */
-function validateRoutedArgs(toolName, args) {
-  const route = ROUTED_TOOLS.get(toolName);
-  if (!route) return null;
+export function validateDeclaredArgs(toolName, args) {
   const allowed = declaredArgs(toolName);
   if (!allowed) return "Unknown tool";
+  const routingKey = ROUTED_TOOLS.get(toolName)?.key;
   for (const name of Object.keys(args)) {
-    if (name === route.key || !allowed.has(name)) {
+    if (name === routingKey || !allowed.has(name)) {
       return `Unexpected argument '${name}' for ${toolName}`;
     }
   }
@@ -133,9 +139,12 @@ function hardeningGate(toolName, args) {
   if (args === null || typeof args !== "object" || Array.isArray(args)) {
     return { code: -32602, message: "Tool arguments must be an object" };
   }
-  const routedError = validateRoutedArgs(toolName, args);
-  if (routedError) {
-    return { code: -32602, message: routedError };
+  if (!declaredArgs(toolName)) {
+    return { code: -32601, message: "Unknown tool" };
+  }
+  const argError = validateDeclaredArgs(toolName, args);
+  if (argError) {
+    return { code: -32602, message: argError };
   }
 
   let validationError = null;
