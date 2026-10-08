@@ -78,8 +78,7 @@ test("routed tools refuse arguments outside their inputSchema", async () => {
   assert.equal(sent.length, 0);
 });
 
-test("non-routed tools keep their existing argument handling", async () => {
-  // coord_send reads `sender_role`, which no inputSchema declares.
-  const { res } = await call("coord_send", { message: "hi", target: "peer", sender_role: "worker" });
+test("coord_send accepts its declared sender_role argument", async () => {
+  const { res } = await call("coord_send", { message: "hi", target: "peer", sender_role: "apprentice" });
   assert.equal(res.error, undefined, JSON.stringify(res.error));
 });
