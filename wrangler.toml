@@ -16,3 +16,13 @@ directory = "site"
 
 [build]
 command = ""
+
+# Serve the site on app.boj-server.net. The apex is left for an outer site that
+# will link to this one (owner decision, 2026-10-09). A fresh hostname has no DNS
+# record, so the deploy creates one. That matters because, in a non-TTY run such
+# as CI, wrangler sets override_existing_dns_record = true without prompting
+# (deploy-helpers/src/triggers/publish-routes.ts). Pointed at the apex, it would
+# silently replace the existing apex record.
+[[routes]]
+pattern = "app.boj-server.net"
+custom_domain = true

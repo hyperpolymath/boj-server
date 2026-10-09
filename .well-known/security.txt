@@ -5,5 +5,5 @@
 Contact: mailto:j.d.a.jewell@open.ac.uk
 Expires: 2027-12-31T23:59:59.000Z
 Preferred-Languages: en
-Canonical: https://boj-server.net/.well-known/security.txt
+Canonical: https://app.boj-server.net/.well-known/security.txt
 Policy: https://github.com/hyperpolymath/boj-server/blob/main/SECURITY.md

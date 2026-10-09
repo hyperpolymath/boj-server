@@ -25,6 +25,23 @@ generated from the canonical registry.
 
 No framework, no Node/npm, no build command. Cloudflare serves `site/` as-is.
 
+== Current deployment — Workers + Assets on `app.boj-server.net` (2026-10-09)
+
+The site now deploys as a Worker with static assets (`wrangler.toml`), pushed by
+`.github/workflows/pages-deploy.yml` on every push to `main`. The hostname is bound in
+`wrangler.toml` as a `[[routes]]` entry with `custom_domain = true`, so no dashboard
+step attaches it. `app.boj-server.net` had no DNS record, so the first deploy creates
+one. The apex `boj-server.net` is deliberately left alone, for an outer site that
+links here.
+
+Do not change that `pattern` to the apex, or to any hostname that already has a DNS
+record, without noting the existing record first. In a non-interactive run (CI),
+wrangler sets `override_existing_dns_record` and `override_existing_origin` to `true`
+without prompting, so the existing record is replaced silently.
+
+The sections below describe the earlier Cloudflare Pages path and are kept for
+reference.
+
 == Go-live path A — Dashboard Git-connect (recommended, chosen)
 
 `boj-server.net` is already a zone in the Cloudflare account, so this is a one-time,
@@ -96,9 +113,9 @@ the dashboard auto-creates the DNS records.
 
 [source,bash]
 ----
-curl -sSI https://boj-server.net | grep -iE 'strict-transport|content-security|x-content-type'
-curl -sS  https://boj-server.net/catalog.json | jq '.cartridges | length'   # -> 139
-curl -sSI https://boj-server.net/.well-known/security.txt
+curl -sSI https://app.boj-server.net | grep -iE 'strict-transport|content-security|x-content-type'
+curl -sS  https://app.boj-server.net/catalog.json | jq '.cartridges | length'   # -> 139
+curl -sSI https://app.boj-server.net/.well-known/security.txt
 ----
 
 == Regenerate the catalogue snapshot
