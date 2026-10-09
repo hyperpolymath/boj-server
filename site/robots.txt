@@ -2,4 +2,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://boj-server.net/sitemap.xml
+Sitemap: https://app.boj-server.net/sitemap.xml
