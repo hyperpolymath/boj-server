@@ -6,7 +6,7 @@ Copyright (c) Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
 
 ## Machine-Readable Artefacts
 
-This repo follows the hyperpolymath standard. See `https://github.com/hyperpolymath/standards`. A2ML is retired (D308): do not create or edit `.a2ml` files, and do not treat `.machine_readable/6a2/` as current. Descriptive metadata moves to the repo's chora deed via kcX.
+This repo follows the hyperpolymath standard. See `https://github.com/hyperpolymath/standards`. A2ML is retired (D308): do not create or edit `.a2ml` files, and do not treat `.machine_readable/6a2/` as current. Descriptive metadata moves to the repo's chora deed via kyX.
 
 ---
 
