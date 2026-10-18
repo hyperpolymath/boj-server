@@ -383,3 +383,39 @@ test("otel enabled-mode produces well-formed span handles", async () => {
     delete process.env.OTEL_EXPORTER_OTLP_ENDPOINT;
   }
 });
+
+// -----------------------------------------------------------------
+// 16. MCP Registry (server.json) and package.json coherence
+// -----------------------------------------------------------------
+test("server.json and package.json satisfy MCP Registry constraints", () => {
+  const repoRoot = join(__dirname, "../..");
+  const pkg = JSON.parse(readFileSync(join(repoRoot, "package.json"), "utf8"));
+  const jsr = JSON.parse(readFileSync(join(repoRoot, "jsr.json"), "utf8"));
+  const srv = JSON.parse(readFileSync(join(repoRoot, "server.json"), "utf8"));
+
+  assert.equal(
+    srv.$schema,
+    "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  );
+  assert.equal(srv.name, "io.github.hyperpolymath/boj-server");
+  assert.equal(pkg.mcpName, srv.name, "package.json mcpName must match server.json name");
+  assert.equal(srv.version, pkg.version, "server.json version must match package.json version");
+  assert.equal(srv.version, jsr.version, "server.json version must match jsr.json version");
+  assert.ok(
+    srv.description && srv.description.length >= 1 && srv.description.length <= 100,
+    `server.json description must be 1..100 chars (got ${srv.description?.length})`,
+  );
+  assert.equal(srv.repository?.source, "github");
+  assert.match(
+    srv.repository?.url ?? "",
+    /^https:\/\/github\.com\/[\w.-]+\/[\w.-]+$/,
+    "repository.url must match MCP Registry githubURLRegex (no .git suffix)",
+  );
+  assert.ok(Array.isArray(srv.packages) && srv.packages.length >= 1);
+  const npmPkg = srv.packages.find((p) => p.registryType === "npm");
+  assert.ok(npmPkg, "server.json must declare an npm package entry");
+  assert.equal(npmPkg.identifier, pkg.name);
+  assert.equal(npmPkg.version, pkg.version);
+  assert.equal(npmPkg.transport?.type, "stdio");
+});
+

@@ -33,14 +33,14 @@ permissions:
 jobs:
   analysis:
     permissions:
-      # `contents: read` is REQUIRED, not redundant. Declaring `permissions:`
-      # at job level sets every unlisted scope to `none`, and a called
-      # workflow can never hold more than the calling job grants it. The
-      # reusable declares top-level `permissions: contents: read` and its
-      # first step is actions/checkout, so omitting `contents` here handed
-      # it `contents: none` and the call died at startup with zero jobs.
-      # The green sibling (boj-server-cartridges) lists all three.
+      # `actions: read` and `contents: read` are REQUIRED, not redundant.
+      # Declaring `permissions:` at job level sets every unlisted scope to
+      # `none`, and a called workflow can never hold more than the calling job
+      # grants it. `scorecard-reusable.yml` requests `actions: read` (for
+      # Scorecard's Packaging check), `contents: read`, `security-events: write`,
+      # and `id-token: write` on its `scorecard` job.
+      actions: read
       contents: read
       security-events: write
       id-token: write
-    uses: hyperpolymath/standards/.github/workflows/scorecard-reusable.yml@84355587cb2a1f86e6882de83514a32db2646e7a
+    uses: hyperpolymath/standards/.github/workflows/scorecard-reusable.yml@e16a23170fa378bf3b1444c3ee94100413ae3ff7

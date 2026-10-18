@@ -76,6 +76,7 @@ jobs:
             --label "org.opencontainers.image.description=Bundle of Joy MCP Server — 112 cartridges (111 Zig FFI + 1 JS)" \
             --label "org.opencontainers.image.licenses=MPL-2.0" \
             --label "org.opencontainers.image.version=${{ steps.meta.outputs.version }}" \
+            --label "io.modelcontextprotocol.server.name=io.github.hyperpolymath/boj-server" \
             .
 
       - name: Push to GitHub Container Registry

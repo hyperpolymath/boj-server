@@ -4,8 +4,8 @@
 # This workflow is managed by gh actions-lock.
 # Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
 #
-# Publish workflow — publishes to npm and JSR on version tag push (v*).
-# Requires NPM_TOKEN and JSR_TOKEN repository secrets.
+# Publish workflow — publishes to npm, the official MCP Server Registry, and JSR on version tag push (v*).
+# Requires NPM_TOKEN and JSR_TOKEN repository secrets; MCP Registry uses GitHub OIDC (zero secrets).
 name: Publish
 
 on:
@@ -19,7 +19,7 @@ permissions:
 
 jobs:
   publish-npm:
-    name: Publish to npm
+    name: Publish to npm & MCP Registry
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
@@ -34,19 +34,58 @@ jobs:
           node-version: '22'
           registry-url: 'https://registry.npmjs.org'
 
-      - name: Verify package version matches tag
+      - name: Verify package and server.json versions match tag
         run: |
           TAG_VERSION="${GITHUB_REF_NAME#v}"
+          PKG_NAME=$(node -p "require('./package.json').name")
           PKG_VERSION=$(node -p "require('./package.json').version")
+          MCP_NAME=$(node -p "require('./package.json').mcpName")
+          SRV_VERSION=$(node -p "require('./server.json').version")
+          SRV_NAME=$(node -p "require('./server.json').name")
+          SRV_PKG_ID=$(node -p "require('./server.json').packages?.[0]?.identifier ?? ''")
+          SRV_PKG_VERSION=$(node -p "require('./server.json').packages?.[0]?.version ?? ''")
           if [ "$TAG_VERSION" != "$PKG_VERSION" ]; then
             echo "::error::Tag version ($TAG_VERSION) does not match package.json version ($PKG_VERSION)"
             exit 1
           fi
+          if [ "$TAG_VERSION" != "$SRV_VERSION" ]; then
+            echo "::error::Tag version ($TAG_VERSION) does not match server.json version ($SRV_VERSION)"
+            exit 1
+          fi
+          if [ "$MCP_NAME" != "$SRV_NAME" ]; then
+            echo "::error::package.json mcpName ($MCP_NAME) does not match server.json name ($SRV_NAME)"
+            exit 1
+          fi
+          if [ "$PKG_NAME" != "$SRV_PKG_ID" ]; then
+            echo "::error::package.json name ($PKG_NAME) does not match server.json packages[0].identifier ($SRV_PKG_ID)"
+            exit 1
+          fi
+          if [ "$TAG_VERSION" != "$SRV_PKG_VERSION" ]; then
+            echo "::error::Tag version ($TAG_VERSION) does not match server.json packages[0].version ($SRV_PKG_VERSION)"
+            exit 1
+          fi
+
+      - name: Install mcp-publisher
+        run: |
+          ARCH=$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/')
+          OS=$(uname -s | tr '[:upper:]' '[:lower:]')
+          curl -fsSL -o /tmp/mcp-publisher.tar.gz \
+            "https://github.com/modelcontextprotocol/registry/releases/latest/download/mcp-publisher_${OS}_${ARCH}.tar.gz"
+          tar -xzf /tmp/mcp-publisher.tar.gz -C /tmp mcp-publisher
+          chmod +x /tmp/mcp-publisher
+
+      - name: Validate MCP manifest
+        run: /tmp/mcp-publisher validate server.json
 
       - name: Publish to npm
         run: npm publish --provenance --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Authenticate and publish to MCP Registry
+        run: |
+          /tmp/mcp-publisher login github-oidc
+          /tmp/mcp-publisher publish
 
   publish-jsr:
     name: Publish to JSR

@@ -16,13 +16,16 @@
 
 FROM cgr.dev/chainguard/node:latest
 
+COPY --from=oven/bun:1.4.2 /usr/local/bin/bun /usr/local/bin/bun
+
 LABEL org.opencontainers.image.title="Bundle of Joy Server (MCP Bridge)" \
       org.opencontainers.image.description="MCP stdio transport for BoJ cartridge toolkit" \
       org.opencontainers.image.url="https://github.com/hyperpolymath/boj-server" \
       org.opencontainers.image.source="https://github.com/hyperpolymath/boj-server" \
       org.opencontainers.image.vendor="hyperpolymath" \
       org.opencontainers.image.licenses="MPL-2.0" \
-      org.opencontainers.image.authors="Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>"
+      org.opencontainers.image.authors="Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>" \
+      io.modelcontextprotocol.server.name="io.github.hyperpolymath/boj-server"
 
 WORKDIR /app
 
