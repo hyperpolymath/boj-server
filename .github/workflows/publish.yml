@@ -54,11 +54,6 @@ jobs:
             exit 1
           fi
 
-      - name: Publish to npm
-        run: npm publish --provenance --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-
       - name: Install mcp-publisher
         run: |
           ARCH=$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/')
@@ -68,10 +63,17 @@ jobs:
           tar -xzf /tmp/mcp-publisher.tar.gz -C /tmp mcp-publisher
           chmod +x /tmp/mcp-publisher
 
+      - name: Validate MCP manifest
+        run: /tmp/mcp-publisher validate server.json
+
+      - name: Publish to npm
+        run: npm publish --provenance --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
       - name: Authenticate and publish to MCP Registry
         run: |
           /tmp/mcp-publisher login github-oidc
-          /tmp/mcp-publisher validate server.json
           /tmp/mcp-publisher publish
 
   publish-jsr:
