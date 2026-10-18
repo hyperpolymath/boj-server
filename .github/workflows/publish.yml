@@ -83,9 +83,9 @@ jobs:
         run: /tmp/mcp-publisher validate server.json
 
       - name: Publish package via Bun
-        run: bun publish --access public
+        run: NPM_CONFIG_TOKEN="$NODE_AUTH_TOKEN" bun publish --access public
         env:
-          NPM_CONFIG_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Authenticate and publish to MCP Registry
         run: |
