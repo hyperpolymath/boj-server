@@ -16,6 +16,8 @@
 
 FROM cgr.dev/chainguard/node:latest
 
+COPY --from=oven/bun:1.4.2 /usr/local/bin/bun /usr/local/bin/bun
+
 LABEL org.opencontainers.image.title="Bundle of Joy Server (MCP Bridge)" \
       org.opencontainers.image.description="MCP stdio transport for BoJ cartridge toolkit" \
       org.opencontainers.image.url="https://github.com/hyperpolymath/boj-server" \
