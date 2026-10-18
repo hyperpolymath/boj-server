@@ -21,7 +21,12 @@ permissions:
 jobs:
   sonarqube:
     name: SonarQube
+    # Opt-in via repository variable SONAR_ENABLED=true (matching
+    # boj-server-cartridges) so missing/unrotated SONAR_TOKEN does not produce
+    # a permanent false-red check on PRs and main.
+    if: github.actor != 'dependabot[bot]' && vars.SONAR_ENABLED == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4.3.1
         with:

@@ -35,4 +35,9 @@ permissions:
 
 jobs:
   governance:
-    uses: hyperpolymath/standards/.github/workflows/governance-reusable.yml@5a0891e9e58b785181a92e141505ca96ca987b42
+    # Previous 5a0891e9 pin predates hyperpolymath/standards#1271 (f335165),
+    # which fixed actions.lock leaf tag refs so runner job setup succeeds,
+    # and hyperpolymath/standards#1260 (UUID v8 conformance).
+    uses: hyperpolymath/standards/.github/workflows/governance-reusable.yml@e16a23170fa378bf3b1444c3ee94100413ae3ff7
+    secrets:
+      HYPATIA_SCAN_PAT: ${{ secrets.HYPATIA_SCAN_PAT }}
