@@ -62,8 +62,8 @@ workflows:
         - 'actions/checkout@v6.0.2'
     '.github/workflows/publish.yml':
         - 'actions/checkout@v6.0.2'
-        - 'actions/setup-node@v4.4.0'
         - 'denoland/setup-deno@v2.0.4'
+        - 'oven-sh/setup-bun@v2.2.0'
     '.github/workflows/push-email-notify.yml':
         - 'hyperpolymath/smtp-notify-action@v0.2.0'
     '.github/workflows/readme-derive.yml': []

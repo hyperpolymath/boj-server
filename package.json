@@ -21,10 +21,17 @@
     "boj-server": "mcp-bridge/main.js"
   },
   "scripts": {
-    "start": "deno run -A mcp-bridge/main.js",
-    "test": "node --test mcp-bridge/tests/dispatch_test.js mcp-bridge/tests/routing_args_test.js mcp-bridge/tests/declared_args_test.js"
+    "start": "if command -v bun >/dev/null 2>&1; then exec bun mcp-bridge/main.js; elif command -v deno >/dev/null 2>&1; then exec deno run --allow-net --allow-env --allow-read mcp-bridge/main.js; else exec node mcp-bridge/main.js; fi",
+    "start:bun": "bun mcp-bridge/main.js",
+    "start:deno": "deno run --allow-net --allow-env --allow-read mcp-bridge/main.js",
+    "start:node": "node mcp-bridge/main.js",
+    "test": "if command -v bun >/dev/null 2>&1; then bun test mcp-bridge/tests/dispatch_test.js mcp-bridge/tests/routing_args_test.js mcp-bridge/tests/declared_args_test.js; elif command -v deno >/dev/null 2>&1; then deno test --allow-read --allow-env --allow-run --allow-net mcp-bridge/tests/dispatch_test.js mcp-bridge/tests/routing_args_test.js mcp-bridge/tests/declared_args_test.js; else node --test mcp-bridge/tests/dispatch_test.js mcp-bridge/tests/routing_args_test.js mcp-bridge/tests/declared_args_test.js; fi",
+    "test:bun": "bun test mcp-bridge/tests/dispatch_test.js mcp-bridge/tests/routing_args_test.js mcp-bridge/tests/declared_args_test.js",
+    "test:deno": "deno test --allow-read --allow-env --allow-run --allow-net mcp-bridge/tests/dispatch_test.js mcp-bridge/tests/routing_args_test.js mcp-bridge/tests/declared_args_test.js",
+    "test:node": "node --test mcp-bridge/tests/dispatch_test.js mcp-bridge/tests/routing_args_test.js mcp-bridge/tests/declared_args_test.js"
   },
   "engines": {
+    "bun": ">=1.0.0",
     "node": ">=18.0.0"
   }
 }

@@ -32,7 +32,7 @@ WORKDIR /app
 COPY package.json /app/
 COPY mcp-bridge/ /app/mcp-bridge/
 
-# No npm install needed — zero dependencies
+# No package install needed — zero dependencies
 USER node
 
-ENTRYPOINT ["node", "mcp-bridge/main.js"]
+ENTRYPOINT ["/usr/local/bin/bun", "mcp-bridge/main.js"]

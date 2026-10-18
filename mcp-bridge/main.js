@@ -12,8 +12,10 @@
 //   BOJ_TRANSPORT=http    listen on BOJ_HTTP_PORT (default 7780)
 //   BOJ_TRANSPORT=both    run both simultaneously
 //
-// Usage:
+// Usage (preferred order: Bun > Deno/pnpm > Node/npm):
+//   bun mcp-bridge/main.js
 //   deno run --allow-net --allow-env --allow-read mcp-bridge/main.js
+//   node mcp-bridge/main.js
 
 import { env, stdout } from "./lib/runtime.js";
 import { sanitizeErrorMessage } from "./lib/security.js";
