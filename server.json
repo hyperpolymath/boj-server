@@ -1,0 +1,103 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.hyperpolymath/boj-server",
+  "title": "Bundle of Joy (BoJ) Server",
+  "description": "Cartridge-based MCP server for DevOps, cloud, database, k8s, and formally verified coordination.",
+  "repository": {
+    "url": "https://github.com/hyperpolymath/boj-server",
+    "source": "github"
+  },
+  "websiteUrl": "https://github.com/hyperpolymath/boj-server",
+  "version": "0.5.0",
+  "packages": [
+    {
+      "registryType": "npm",
+      "registryBaseUrl": "https://registry.npmjs.org",
+      "identifier": "@hyperpolymath/boj-server",
+      "version": "0.5.0",
+      "runtimeHint": "npx",
+      "transport": {
+        "type": "stdio"
+      },
+      "environmentVariables": [
+        {
+          "name": "BOJ_URL",
+          "description": "Base URL for the BoJ REST API backend (loads cartridges from boj-server-cartridges).",
+          "default": "http://localhost:7700",
+          "format": "string",
+          "isRequired": false,
+          "isSecret": false
+        },
+        {
+          "name": "BOJ_TOOL_SCOPE",
+          "description": "Advertised cartridge tool-surface scope ('full', 'core', or CSV of domains like 'core,github,browser').",
+          "default": "full",
+          "format": "string",
+          "isRequired": false,
+          "isSecret": false
+        },
+        {
+          "name": "BOJ_PROTOCOL",
+          "description": "Primary protocol for cartridge communication (rest, grpc, graphql).",
+          "default": "rest",
+          "format": "string",
+          "isRequired": false,
+          "isSecret": false
+        },
+        {
+          "name": "BOJ_RATE_LIMIT",
+          "description": "Maximum number of tool calls permitted per minute.",
+          "default": "60",
+          "format": "string",
+          "isRequired": false,
+          "isSecret": false
+        },
+        {
+          "name": "BOJ_LOG_LEVEL",
+          "description": "Logging verbosity (debug, info, warn, error, silent).",
+          "default": "info",
+          "format": "string",
+          "isRequired": false,
+          "isSecret": false
+        },
+        {
+          "name": "COORD_BACKEND_URL",
+          "description": "URL for the local multi-agent coordination bus backend.",
+          "default": "http://127.0.0.1:7745",
+          "format": "string",
+          "isRequired": false,
+          "isSecret": false
+        },
+        {
+          "name": "GITHUB_TOKEN",
+          "description": "Personal Access Token for GitHub API operations (required for boj_github_* cartridge tools).",
+          "format": "string",
+          "isRequired": false,
+          "isSecret": true
+        },
+        {
+          "name": "GITLAB_TOKEN",
+          "description": "Private Token for GitLab API operations (required for boj_gitlab_* cartridge tools).",
+          "format": "string",
+          "isRequired": false,
+          "isSecret": true
+        },
+        {
+          "name": "GITLAB_URL",
+          "description": "Base URL for the GitLab instance.",
+          "default": "https://gitlab.com",
+          "format": "string",
+          "isRequired": false,
+          "isSecret": false
+        },
+        {
+          "name": "OTEL_EXPORTER_OTLP_ENDPOINT",
+          "description": "Optional OTLP/HTTP collector endpoint (e.g. http://localhost:4318) for tool-call trace export.",
+          "format": "string",
+          "isRequired": false,
+          "isSecret": false
+        }
+      ]
+    }
+  ]
+}
