@@ -37,10 +37,13 @@ jobs:
       - name: Verify package and server.json versions match tag
         run: |
           TAG_VERSION="${GITHUB_REF_NAME#v}"
+          PKG_NAME=$(node -p "require('./package.json').name")
           PKG_VERSION=$(node -p "require('./package.json').version")
           MCP_NAME=$(node -p "require('./package.json').mcpName")
           SRV_VERSION=$(node -p "require('./server.json').version")
           SRV_NAME=$(node -p "require('./server.json').name")
+          SRV_PKG_ID=$(node -p "require('./server.json').packages?.[0]?.identifier ?? ''")
+          SRV_PKG_VERSION=$(node -p "require('./server.json').packages?.[0]?.version ?? ''")
           if [ "$TAG_VERSION" != "$PKG_VERSION" ]; then
             echo "::error::Tag version ($TAG_VERSION) does not match package.json version ($PKG_VERSION)"
             exit 1
@@ -51,6 +54,14 @@ jobs:
           fi
           if [ "$MCP_NAME" != "$SRV_NAME" ]; then
             echo "::error::package.json mcpName ($MCP_NAME) does not match server.json name ($SRV_NAME)"
+            exit 1
+          fi
+          if [ "$PKG_NAME" != "$SRV_PKG_ID" ]; then
+            echo "::error::package.json name ($PKG_NAME) does not match server.json packages[0].identifier ($SRV_PKG_ID)"
+            exit 1
+          fi
+          if [ "$TAG_VERSION" != "$SRV_PKG_VERSION" ]; then
+            echo "::error::Tag version ($TAG_VERSION) does not match server.json packages[0].version ($SRV_PKG_VERSION)"
             exit 1
           fi
 
