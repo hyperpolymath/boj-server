@@ -416,6 +416,7 @@ test("server.json and package.json satisfy MCP Registry constraints", () => {
   assert.ok(npmPkg, "server.json must declare an npm package entry");
   assert.equal(npmPkg.identifier, pkg.name);
   assert.equal(npmPkg.version, pkg.version);
+  assert.equal(npmPkg.runtimeHint, "bunx", "server.json package entry must prefer bunx as runtimeHint");
   assert.equal(npmPkg.transport?.type, "stdio");
 });
 

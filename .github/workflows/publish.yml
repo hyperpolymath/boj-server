@@ -4,7 +4,8 @@
 # This workflow is managed by gh actions-lock.
 # Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
 #
-# Publish workflow — publishes to npm, the official MCP Server Registry, and JSR on version tag push (v*).
+# Publish workflow — publishes via Bun, the official MCP Server Registry, and Deno/JSR on version tag push (v*).
+# Runtime hierarchy: Bun first, followed by Deno/pnpm, and finally npm/yarn.
 # Requires NPM_TOKEN and JSR_TOKEN repository secrets; MCP Registry uses GitHub OIDC (zero secrets).
 name: Publish
 
@@ -18,8 +19,8 @@ permissions:
   contents: read
 
 jobs:
-  publish-npm:
-    name: Publish to npm & MCP Registry
+  publish-bun:
+    name: Publish via Bun & MCP Registry
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
@@ -28,22 +29,22 @@ jobs:
     steps:
       - uses: actions/checkout@v6.0.2
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4.4.0
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2.2.0
         with:
-          node-version: '22'
-          registry-url: 'https://registry.npmjs.org'
+          bun-version: '1.x'
 
       - name: Verify package and server.json versions match tag
         run: |
           TAG_VERSION="${GITHUB_REF_NAME#v}"
-          PKG_NAME=$(node -p "require('./package.json').name")
-          PKG_VERSION=$(node -p "require('./package.json').version")
-          MCP_NAME=$(node -p "require('./package.json').mcpName")
-          SRV_VERSION=$(node -p "require('./server.json').version")
-          SRV_NAME=$(node -p "require('./server.json').name")
-          SRV_PKG_ID=$(node -p "require('./server.json').packages?.[0]?.identifier ?? ''")
-          SRV_PKG_VERSION=$(node -p "require('./server.json').packages?.[0]?.version ?? ''")
+          PKG_NAME=$(bun -e "console.log(require('./package.json').name)")
+          PKG_VERSION=$(bun -e "console.log(require('./package.json').version)")
+          MCP_NAME=$(bun -e "console.log(require('./package.json').mcpName)")
+          SRV_VERSION=$(bun -e "console.log(require('./server.json').version)")
+          SRV_NAME=$(bun -e "console.log(require('./server.json').name)")
+          SRV_PKG_ID=$(bun -e "console.log(require('./server.json').packages?.[0]?.identifier ?? '')")
+          SRV_PKG_VERSION=$(bun -e "console.log(require('./server.json').packages?.[0]?.version ?? '')")
+          SRV_RUNTIME_HINT=$(bun -e "console.log(require('./server.json').packages?.[0]?.runtimeHint ?? '')")
           if [ "$TAG_VERSION" != "$PKG_VERSION" ]; then
             echo "::error::Tag version ($TAG_VERSION) does not match package.json version ($PKG_VERSION)"
             exit 1
@@ -64,6 +65,10 @@ jobs:
             echo "::error::Tag version ($TAG_VERSION) does not match server.json packages[0].version ($SRV_PKG_VERSION)"
             exit 1
           fi
+          if [ "$SRV_RUNTIME_HINT" != "bunx" ]; then
+            echo "::error::server.json packages[0].runtimeHint ($SRV_RUNTIME_HINT) must be 'bunx'"
+            exit 1
+          fi
 
       - name: Install mcp-publisher
         run: |
@@ -77,8 +82,8 @@ jobs:
       - name: Validate MCP manifest
         run: /tmp/mcp-publisher validate server.json
 
-      - name: Publish to npm
-        run: npm publish --provenance --access public
+      - name: Publish package via Bun
+        run: NPM_CONFIG_TOKEN="$NODE_AUTH_TOKEN" bun publish --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 

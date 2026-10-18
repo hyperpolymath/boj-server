@@ -45,4 +45,4 @@ USER appuser
 # Health: just check process alive (stdin bridge has no HTTP endpoint)
 ENV BOJ_URL=http://localhost:7700
 
-ENTRYPOINT ["deno", "run", "--allow-net", "/app/mcp-bridge/main.js"]
+ENTRYPOINT ["bun", "/app/mcp-bridge/main.js"]

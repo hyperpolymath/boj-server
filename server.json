@@ -15,7 +15,7 @@
       "registryBaseUrl": "https://registry.npmjs.org",
       "identifier": "@hyperpolymath/boj-server",
       "version": "0.5.0",
-      "runtimeHint": "npx",
+      "runtimeHint": "bunx",
       "transport": {
         "type": "stdio"
       },
@@ -99,5 +99,19 @@
         }
       ]
     }
-  ]
+  ],
+  "_meta": {
+    "io.modelcontextprotocol.registry/publisher-provided": {
+      "io.github.hyperpolymath": {
+        "runtimePreference": [
+          "bunx",
+          "deno",
+          "pnpm",
+          "npx",
+          "yarn"
+        ],
+        "jsrPackage": "jsr:@hyperpolymath/boj-server"
+      }
+    }
+  }
 }

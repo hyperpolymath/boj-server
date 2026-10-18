@@ -3,12 +3,13 @@
 //
 // BoJ Server — Runtime abstraction layer
 //
-// Provides a unified interface for Deno and Node.js environments.
-// Supports the "Deno > Bun > NPM" hierarchy while maintaining
+// Provides a unified interface for Bun, Deno, and Node.js environments.
+// Supports the "Bun > Deno/pnpm > npm/yarn" hierarchy while maintaining
 // compatibility with Node-only MCP clients like Glama.
 
 import { writeSync as writeFdSync } from "node:fs";
 
+const isBun = typeof globalThis.Bun !== "undefined";
 const isDeno = typeof globalThis.Deno !== "undefined";
 
 /** @type {{ get: (name: string) => string|undefined }} */
@@ -51,4 +52,4 @@ export const stderr = {
   }
 };
 
-export { isDeno };
+export { isBun, isDeno };
