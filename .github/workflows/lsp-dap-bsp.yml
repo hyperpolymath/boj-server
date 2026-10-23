@@ -33,7 +33,7 @@ jobs:
     outputs:
       run: ${{ steps.detect.outputs.run }}
     steps:
-      - uses: actions/checkout@v6.0.2
+      - uses: actions/checkout@v7.0.1
         with:
           fetch-depth: 0
       - id: detect
@@ -59,7 +59,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v6.0.2
+      - uses: actions/checkout@v7.0.1
       - name: Validate ABI modules exist
         run: |
           echo "=== Checking LSP/DAP/BSP ABI modules ==="
@@ -95,7 +95,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v6.0.2
+      - uses: actions/checkout@v7.0.1
       # Use the pinned action + .tool-versions' canonical Zig, matching
       # e2e.yml. (A previous revision curled ziglang.org/builds/... — the
       # nightly dir, not release downloads — and got an error page that
@@ -142,7 +142,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v6.0.2
+      - uses: actions/checkout@v7.0.1
       # jq (pre-installed on ubuntu-latest) — the repo's no-Python policy
       # (dogfood-gate) bans the previous json.tool/json.load approach.
       # Same checks: valid JSON + required fields + panel count.
@@ -176,7 +176,7 @@ jobs:
     needs: [changes, abi-check, ffi-build, panel-validation]
     if: needs.changes.outputs.run == 'true'
     steps:
-      - uses: actions/checkout@v6.0.2
+      - uses: actions/checkout@v7.0.1
       - name: Verify triadic structure
         run: |
           echo "=== LSP/DAP/BSP Triadic Structure Audit ==="

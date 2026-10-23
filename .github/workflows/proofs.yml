@@ -46,7 +46,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v6.0.2
+      - uses: actions/checkout@v7.0.1
       - name: Enforce trusted base
         run: bash scripts/check-trusted-base.sh
 
@@ -56,7 +56,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
-      - uses: actions/checkout@v6.0.2
+      - uses: actions/checkout@v7.0.1
 
       # The pin lives in .mise.toml (.tool-versions was converted, 4d1fe0c9).
       # Fail here on an empty or malformed value rather than asking asdf to
@@ -76,7 +76,7 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y chezscheme libgmp-dev build-essential
 
       - name: Cache asdf + Idris2 toolchain
-        uses: actions/cache@v4.2.2
+        uses: actions/cache@v6.1.0
         with:
           path: ~/.asdf
           key: idris2-asdf-${{ runner.os }}-${{ steps.ver.outputs.idris2 }}

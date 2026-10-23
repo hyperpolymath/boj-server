@@ -35,7 +35,7 @@ jobs:
     outputs:
       run: ${{ steps.detect.outputs.run }}
     steps:
-      - uses: actions/checkout@v6.0.2
+      - uses: actions/checkout@v7.0.1
         with:
           fetch-depth: 0
       - id: detect
@@ -67,7 +67,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v6.0.2
+        uses: actions/checkout@v7.0.1
 
       - name: Install Zig
         uses: mlugg/setup-zig@v2.2.1
@@ -75,7 +75,7 @@ jobs:
           version: 0.16.0
 
       - name: Install Deno
-        uses: denoland/setup-deno@v2.0.4
+        uses: denoland/setup-deno@v2.0.5
         with:
           deno-version: v2.x
 
@@ -83,7 +83,7 @@ jobs:
         # tests/e2e_full.sh requires `mix` on PATH to start the Elixir
         # backend (elixir/ — `mix run --no-halt`). Pinned to match the
         # estate convention (see hypatia-scan.yml across the org).
-        uses: erlef/setup-beam@v1.24.0
+        uses: erlef/setup-beam@v1.24.1
         with:
           elixir-version: '1.18'
           otp-version: '27'
@@ -116,7 +116,7 @@ jobs:
 
       - name: Upload test logs
         if: always()
-        uses: actions/upload-artifact@v4.6.2
+        uses: actions/upload-artifact@v7.0.2
         with:
           name: e2e-full-logs
           path: /tmp/boj-e2e-test.*
@@ -132,7 +132,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v6.0.2
+        uses: actions/checkout@v7.0.1
 
       - name: Install Zig
         uses: mlugg/setup-zig@v2.2.1
@@ -155,7 +155,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v6.0.2
+        uses: actions/checkout@v7.0.1
 
       - name: Run aspect tests
         run: bash tests/aspect_tests.sh
@@ -170,7 +170,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v6.0.2
+        uses: actions/checkout@v7.0.1
 
       - name: Install Zig
         uses: mlugg/setup-zig@v2.2.1
@@ -185,7 +185,7 @@ jobs:
 
       - name: Upload benchmark results
         if: always()
-        uses: actions/upload-artifact@v4.6.2
+        uses: actions/upload-artifact@v7.0.2
         with:
           name: benchmark-results
           path: ffi/zig/zig-out/bench*
@@ -224,18 +224,18 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v6.0.2
+        uses: actions/checkout@v7.0.1
 
       - name: Setup Node
         # Node is needed on every leg: it is the subject on the node
         # leg and the boot-smoke orchestrator on all three.
-        uses: actions/setup-node@v4.4.0
+        uses: actions/setup-node@v7.1.0
         with:
           node-version: '22'
 
       - name: Install Deno
         if: matrix.runtime == 'deno'
-        uses: denoland/setup-deno@v2.0.4
+        uses: denoland/setup-deno@v2.0.5
         with:
           deno-version: v2.x
 
@@ -270,10 +270,10 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v6.0.2
+        uses: actions/checkout@v7.0.1
 
       - name: Setup Node
-        uses: actions/setup-node@v4.4.0
+        uses: actions/setup-node@v7.1.0
         with:
           node-version: '22'
 
@@ -282,7 +282,7 @@ jobs:
 
       - name: Upload bridge bench artifact
         if: always()
-        uses: actions/upload-artifact@v4.6.2
+        uses: actions/upload-artifact@v7.0.2
         with:
           name: bench-bridge-results
           path: bench-bridge.txt
@@ -293,7 +293,7 @@ jobs:
         # Advisory — a comment failure must never gate the bench job.
         # Same reasoning as the hypatia-scan PR-comment step.
         continue-on-error: true
-        uses: actions/github-script@v8.0.0
+        uses: actions/github-script@v9.0.0
         with:
           script: |
             const fs = require('fs');

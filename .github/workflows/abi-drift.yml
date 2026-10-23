@@ -47,7 +47,7 @@ jobs:
     outputs:
       run: ${{ steps.detect.outputs.run }}
     steps:
-      - uses: actions/checkout@v6.0.2
+      - uses: actions/checkout@v7.0.1
         with:
           fetch-depth: 0
       - id: detect
@@ -72,7 +72,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v6.0.2
+      - uses: actions/checkout@v7.0.1
         with:
           # Need at least two commits so `git diff origin/<base>...HEAD`
           # can compute the changed-cartridge set on pull_request events.
@@ -92,7 +92,7 @@ jobs:
       # GADT-skip fix (iseriser#20, merged 2026-05-20) never reached CI.
       # Bumping ISERISER_REV invalidates the cache and forces a rebuild.
       - name: Cache cargo bin (iseriser install)
-        uses: actions/cache@v4.2.2
+        uses: actions/cache@v6.1.0
         env:
           ISERISER_REV: 741a3b63e7619b6e9cfe7f91b04d7ccfb130b1ca
         with:
