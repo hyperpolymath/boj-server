@@ -48,7 +48,7 @@ jobs:
     outputs:
       run: ${{ steps.detect.outputs.run }}
     steps:
-      - uses: actions/checkout@v6.0.2
+      - uses: actions/checkout@v7.0.1
         with:
           fetch-depth: 0
       - id: detect
@@ -80,16 +80,16 @@ jobs:
       run:
         working-directory: elixir
     steps:
-      - uses: actions/checkout@v6.0.2
+      - uses: actions/checkout@v7.0.1
 
       - name: Set up BEAM (Elixir + OTP)
-        uses: erlef/setup-beam@v1.24.0
+        uses: erlef/setup-beam@v1.24.1
         with:
           elixir-version: '1.18.4'
           otp-version: '27.0'
 
       - name: Cache deps + _build
-        uses: actions/cache@v4.2.2
+        uses: actions/cache@v6.1.0
         with:
           path: |
             elixir/deps
