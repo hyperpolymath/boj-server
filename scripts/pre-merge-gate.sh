@@ -319,27 +319,35 @@ fi
 
 if command -v node >/dev/null 2>&1; then
   node mcp-bridge/tests/boot_smoke.js node mcp-bridge/main.js >/dev/null \
-    && pass "MCP bridge stdio boot smoke passed" \
-    || fail "MCP bridge stdio boot smoke failed"
+    && pass "MCP bridge stdio boot smoke passed (node)" \
+    || fail "MCP bridge stdio boot smoke failed (node)"
 elif command -v deno >/dev/null 2>&1; then
   deno run --allow-read --allow-run --allow-env mcp-bridge/tests/boot_smoke.js deno run --allow-net --allow-env --allow-read mcp-bridge/main.js >/dev/null \
     && pass "MCP bridge stdio boot smoke passed (deno)" \
     || fail "MCP bridge stdio boot smoke failed (deno)"
+elif command -v bun >/dev/null 2>&1; then
+  bun mcp-bridge/tests/boot_smoke.js bun mcp-bridge/main.js >/dev/null \
+    && pass "MCP bridge stdio boot smoke passed (bun)" \
+    || fail "MCP bridge stdio boot smoke failed (bun)"
+else
+  fail "No supported JS runtime (node, deno, or bun) found on PATH to run MCP bridge stdio boot smoke"
 fi
 
 audit_single_pr() {
-  local num="$1" pr_json mergeable review_decision bad_checks pending_checks title
+  local num="$1" pr_json mergeable merge_state review_decision bad_checks pending_checks title
   if ! pr_json="$(gh pr view "$num" --json number,title,mergeable,mergeStateStatus,reviewDecision,statusCheckRollup)"; then
     fail "Failed to query PR #$num via gh"
     return
   fi
   title="$(printf '%s' "$pr_json" | jq -r '.title')"
   mergeable="$(printf '%s' "$pr_json" | jq -r '.mergeable')"
-  if [ "$mergeable" = "UNKNOWN" ]; then
+  merge_state="$(printf '%s' "$pr_json" | jq -r '.mergeStateStatus // ""')"
+  if [ "$mergeable" = "UNKNOWN" ] || [ "$merge_state" = "UNKNOWN" ]; then
     sleep 3
     if pr_json_retry="$(gh pr view "$num" --json number,title,mergeable,mergeStateStatus,reviewDecision,statusCheckRollup)"; then
       pr_json="$pr_json_retry"
       mergeable="$(printf '%s' "$pr_json" | jq -r '.mergeable')"
+      merge_state="$(printf '%s' "$pr_json" | jq -r '.mergeStateStatus // ""')"
     fi
   fi
   review_decision="$(printf '%s' "$pr_json" | jq -r '.reviewDecision // ""')"
@@ -365,6 +373,15 @@ audit_single_pr() {
   else
     pass "PR #$num reviewDecision=${review_decision:-NONE}"
   fi
+
+  case "$merge_state" in
+    CLEAN|HAS_HOOKS)
+      pass "PR #$num mergeStateStatus=$merge_state"
+      ;;
+    *)
+      fail "PR #$num ($title) is not eligible to merge (mergeStateStatus=${merge_state:-UNKNOWN})"
+      ;;
+  esac
 
   if [ "$bad_checks" -gt 0 ]; then
     printf '%s' "$pr_json" | jq -r '.statusCheckRollup[] | select(
