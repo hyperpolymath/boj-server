@@ -43,20 +43,22 @@ jobs:
   # Cheap, dependency-free gate: scan for unsound constructs + axiom-count drift.
   trusted-base:
     name: Trusted-base audit (no new axioms)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v6.0.2
+      - uses: actions/checkout@v7.0.1
       - name: Enforce trusted base
         run: bash scripts/check-trusted-base.sh
 
   # Full type-check of the core ABI + every cartridge ABI under the pinned Idris2.
   typecheck:
     name: Idris2 type-check (core + all cartridge ABIs)
-    runs-on: ubuntu-latest
+    # Pin to ubuntu-24.04 and key the cache on ImageOS so Chez Scheme bootfiles
+    # compiled on Ubuntu 24.04 are never restored onto Ubuntu 26.04 (exit 255).
+    runs-on: ubuntu-24.04
     timeout-minutes: 45
     steps:
-      - uses: actions/checkout@v6.0.2
+      - uses: actions/checkout@v7.0.1
 
       # The pin lives in .mise.toml (.tool-versions was converted, 4d1fe0c9).
       # Fail here on an empty or malformed value rather than asking asdf to
@@ -76,10 +78,10 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y chezscheme libgmp-dev build-essential
 
       - name: Cache asdf + Idris2 toolchain
-        uses: actions/cache@v4.2.2
+        uses: actions/cache@v6.1.0
         with:
           path: ~/.asdf
-          key: idris2-asdf-${{ runner.os }}-${{ steps.ver.outputs.idris2 }}
+          key: idris2-asdf-${{ runner.os }}-${{ env.ImageOS || 'ubuntu24' }}-${{ steps.ver.outputs.idris2 }}
 
       - name: Install asdf + Idris2 ${{ steps.ver.outputs.idris2 }}
         env:

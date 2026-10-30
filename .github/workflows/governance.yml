@@ -1,17 +1,10 @@
 # This workflow is managed by gh actions-lock.
 # SPDX-License-Identifier: MPL-2.0
-# This workflow is managed by gh actions-lock.
-# This workflow is managed by gh actions-lock.
-# governance.yml — single wrapper calling the shared estate governance bundle
-# in hyperpolymath/standards instead of carrying per-repo copies.
-#
-# Replaces the per-repo governance scaffolding removed in the same commit:
-#   quality.yml, guix-guix-policy.yml, npm-bun-blocker.yml, ts-blocker.yml,
-#   security-policy.yml, rsr-antipattern.yml, wellknown-enforcement.yml,
-#   workflow-linter.yml
-#
-# Load-bearing build/security workflows stay standalone in the repo
-# (rust-ci, codeql, dependabot, release, scan/mirror/pages plumbing).
+# governance.yml — Estate governance checks ported from
+# metadatastician/standards/.github/workflows/governance-reusable.yml
+# (@1725bebd3773ea25627479f813283abf1c497a85) via actions/checkout while
+# hyperpolymath's Actions allowlist omits metadatastician/standards@* as a
+# reusable workflow owner.
 
 name: Governance
 
@@ -21,10 +14,6 @@ on:
   pull_request:
   workflow_dispatch:
 
-# Estate guardrail: cancel superseded runs so re-pushes / rebased PR
-# updates do not pile up queued runs against the shared account-wide
-# Actions concurrency pool. Applied only to read-only check workflows
-# (no publish/mutation), so cancelling a superseded run is always safe.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -35,9 +24,72 @@ permissions:
 
 jobs:
   governance:
-    # Previous 5a0891e9 pin predates hyperpolymath/standards#1271 (f335165),
-    # which fixed actions.lock leaf tag refs so runner job setup succeeds,
-    # and hyperpolymath/standards#1260 (UUID v8 conformance).
-    uses: hyperpolymath/standards/.github/workflows/governance-reusable.yml@e16a23170fa378bf3b1444c3ee94100413ae3ff7
-    secrets:
-      HYPATIA_SCAN_PAT: ${{ secrets.HYPATIA_SCAN_PAT }}
+    name: governance
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Checkout canonical standards tools
+        uses: actions/checkout@v7.0.1
+        with:
+          repository: metadatastician/standards
+          ref: 1725bebd3773ea25627479f813283abf1c497a85
+          path: .standards-ci
+          persist-credentials: false
+
+      - name: Relocate standards tools outside workspace scan root
+        run: |
+          set -euo pipefail
+          rm -rf "$RUNNER_TEMP/standards-ci"
+          mv "$PWD/.standards-ci" "$RUNNER_TEMP/standards-ci"
+
+      - name: Verify workflow syntax, lockfile sync, and closure
+        run: |
+          set -euo pipefail
+          bash "$RUNNER_TEMP/standards-ci/tools/policy/check-workflows-parse.sh" .
+          bash "$RUNNER_TEMP/standards-ci/scripts/check-lock-sync.sh" .github/workflows
+          bash "$RUNNER_TEMP/standards-ci/scripts/close-lock.sh" --check .github/workflows/actions.lock
+          bash "$RUNNER_TEMP/standards-ci/scripts/check-workflow-duplicate-keys.sh" .github/workflows
+
+      - name: Verify UUID-v8 conformance (ADR-008 / D320)
+        run: |
+          set -euo pipefail
+          chmod +x "$RUNNER_TEMP/standards-ci/scripts/check-uuid-v8.sh"
+          "$RUNNER_TEMP/standards-ci/scripts/check-uuid-v8.sh" --strict .
+
+      - name: Verify licence consistency, language policy, TS allowlist, packaging, and docs
+        run: |
+          set -euo pipefail
+          bash "$RUNNER_TEMP/standards-ci/scripts/check-licence-consistency.sh" .
+          bash "$RUNNER_TEMP/standards-ci/tools/policy/check-language-policy.sh" .
+          bash "$RUNNER_TEMP/standards-ci/scripts/check-ts-allowlist.sh"
+          bash "$RUNNER_TEMP/standards-ci/scripts/check-package-policy.sh" .
+          bash "$RUNNER_TEMP/standards-ci/scripts/check-docs-presence.sh" .
+
+      - name: Verify exemption and debt ratchets against base branch
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          set -euo pipefail
+          TARGET_REF="origin/${BASE_REF:-main}"
+          if git rev-parse --verify "$TARGET_REF" >/dev/null 2>&1; then
+            bash "$RUNNER_TEMP/standards-ci/scripts/check-exemption-ratchet.sh" "$TARGET_REF"
+            bash "$RUNNER_TEMP/standards-ci/scripts/check-debt-ratchet.sh" "$TARGET_REF"
+          else
+            bash "$RUNNER_TEMP/standards-ci/scripts/check-exemption-ratchet.sh" HEAD~1
+            bash "$RUNNER_TEMP/standards-ci/scripts/check-debt-ratchet.sh" HEAD~1
+          fi
+
+      - name: Verify trusted-base reduction, shebangs, and A2ML/K9 repository hooks
+        run: |
+          set -euo pipefail
+          bash "$RUNNER_TEMP/standards-ci/scripts/check-trusted-base.sh" .
+          bash scripts/check-trusted-base.sh
+          bash scripts/check-shebang-first.sh
+          bash .github/hooks/validate-a2ml.sh
+          bash .github/hooks/validate-k9.sh

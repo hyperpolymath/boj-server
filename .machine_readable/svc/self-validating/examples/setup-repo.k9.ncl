@@ -15,6 +15,11 @@ K9!
       allow_filesystem_write = true,
       allow_subprocess = true,
       signature_required = true,
+      capabilities = [
+        "net.fetch",
+        "fs.write",
+        "process.spawn",
+      ],
     },
     metadata = {
       name = "setup-repo",
@@ -28,6 +33,17 @@ K9!
       "Review Just recipes before execution",
       "Use dry-run mode first: ./must --dry-run run setup-repo.k9.ncl",
     ],
+    side_effects = [
+      "creates RSR directory scaffolding and initializes git repository state",
+      "spawns git, just, nickel, and curl subprocesses",
+      "fetches MPL-2.0 license text over HTTPS when add-license runs",
+    ],
+    signature = {
+      algorithm = "Ed25519",
+      key_id = "example-fixture",
+      payload_hash = "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+      signature = "EXAMPLE-UNVERIFIED-SIGNATURE",
+    },
   },
 
   # Configuration with contracts

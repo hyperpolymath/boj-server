@@ -14,7 +14,7 @@ K9!
 #   k9-svc deploy container/deploy.k9.ncl --env production
 
 # Deployment configuration
-let deployment = {
+let deployment_spec = {
   # Target environments (dev / staging / production)
   environments = {
     dev = {
@@ -54,7 +54,7 @@ let deployment = {
 } in
 
 # Deployment scripts (executed at Hunt level)
-let scripts = {
+let deployment_scripts = {
   # Pre-deployment validation
   pre_deploy = m%"
 #!/bin/sh
@@ -121,11 +121,34 @@ echo "K9: Rollback complete."
     # ─────────────────────────────────────────────────────────────
     security = {
       leash = 'Hunt,
-      trust_level = 'Hunt,
+      trust_level = "controlled-execution",
       allow_network = true,
       allow_filesystem_write = true,
       allow_subprocess = true,
-      # In production, replace with a real Ed25519 signature.
+      signature_required = true,
+      capabilities = [
+        "net.fetch",
+        "fs.write",
+        "process.spawn",
+        "container.run",
+        "deploy.apply",
+        "rollback.apply",
+      ],
+    },
+    warnings = [
+      "This component executes container build, deployment, and rollback shell scripts.",
+      "A signature block being present is not cryptographic verification; verify before authorising Hunt.",
+    ],
+    side_effects = [
+      "builds container images via container/ct-build.sh",
+      "spawns selur-compose or podman compose child processes",
+      "applies or rolls back the boj-server container deployment",
+    ],
+    # In production, replace with a verified Ed25519 signature over the payload digest.
+    signature = {
+      algorithm = "Ed25519",
+      key_id = "boj-server-deploy-placeholder",
+      payload_hash = "sha256:0000000000000000000000000000000000000000000000000000000000000000",
       signature = "PLACEHOLDER-SIGNATURE-REQUIRED-FOR-HUNT",
     },
     # ─────────────────────────────────────────────────────────────
@@ -146,8 +169,8 @@ echo "K9: Rollback complete."
       migrate = "just container-build && just container-up",
     },
   },
-  deployment = deployment,
-  scripts = scripts,
+  deployment = deployment_spec,
+  scripts = deployment_scripts,
 
   # Security check: this component requires Hunt level
   required_level = 'Hunt,

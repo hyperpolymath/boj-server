@@ -1,0 +1,84 @@
+;; SPDX-License-Identifier: MPL-2.0
+;; SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+;;
+;; Clauses translated field for field from the legacy descriptiles under the
+;; mapping specs in 1-formats/deed/mappings/:
+;;   CLADE.a2ml -> (identity) (clade) (forges) (lineage) (status)
+;;     per clade-to-repo-deed.adoc (ruled 2026-10-27, standards#1356);
+;;   AGENTIC.a2ml / NEUROSYM.a2ml -> (agentic) (neurosym)
+;;     per agentic-neurosym-playbook-to-repo-deed.adoc.
+;; Untabled sections in META.a2ml, ECOSYSTEM.a2ml, PLAYBOOK.a2ml and STATE.a2ml
+;; stay untranslated pending kyX / state-v1-decision.adoc (D308, D313).
+(repo-deed
+  :schema-version "1.0.0"
+  :canonical-name "boj-server"
+  :repo-uuid #u8"gv-clade-index:github.com/hyperpolymath/boj-server"
+  :beholding-chora #u5"estate/chora"
+  (identity
+    :owner "hyperpolymath"
+    :primary-forge github
+    :prefixed-name "ap-boj-server")
+  (clade
+    :primary ap
+    :secondary (ax)
+    :assigned "2026-03-16"
+    :rationale "Unified MCP and developer-protocol server capability host with formally verified Idris2 ABI + Zig FFI + Elixir REST dispatch and community Umoja federation.")
+  (forges
+    :github "hyperpolymath/boj-server"
+    :gitlab "hyperpolymath/boj-server"
+    :bitbucket "hyperpolymath/boj-server")
+  (lineage
+    :type standalone
+    :parent ""
+    :born "2026-03-16")
+  (front-doors
+    :human "README.adoc"
+    :agent ".claude/CLAUDE.md")
+  (authority
+    :licensing "LICENSE"
+    :agent-policy ".claude/CLAUDE.md"
+    :api-contract "openapi.yaml")
+  (routing
+    :abi "src/abi/"
+    :ffi "ffi/zig/"
+    :rest "elixir/"
+    :mcp-bridge "mcp-bridge/"
+    :contracts ".machine_readable/svc/self-validating/"
+    :enforcement ".github/workflows/")
+  (status
+    :phase active
+    :since "2026-03-16"
+    :present #t
+    :aliases ()
+    :merged-into ""
+    :superseded-by ""
+    :successors ()
+    :ended ""
+    (history
+      (entry :phase active :since "2026-03-16" :note "Active MCP server host; cartridge corpus split to hyperpolymath/boj-server-cartridges"))
+    :evidence-source ".machine_readable/6a2/STATE.a2ml"
+    :interaction-source "boj-server_chora.deed (agentic)"
+    :evidence-status "Lifecycle fields above are the CLADE registry surface. Legacy .a2ml records are frozen under D308 and must not be extended.")
+  (agentic
+    :version "0.2.0"
+    :last-updated "2026-04-25"
+    (permissions
+      :source #t
+      :tests #t
+      :docs #t
+      :config #t
+      :create-files #t)
+    (integrity
+      :fail-closed #t
+      :require-evidence-per-step #t
+      :allow-silent-skip #f
+      :require-rerun-after-fix #t
+      :release-claim-requires-hard-pass #t))
+  (neurosym
+    :version "0.2.0"
+    :last-updated "2026-04-25"
+    (hypatia
+      :scan-enabled #t
+      :scan-depth standard
+      :report-format "json"))
+)

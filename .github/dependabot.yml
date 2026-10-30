@@ -1,48 +1,42 @@
 # SPDX-License-Identifier: MPL-2.0
-# Dependabot configuration for RSR-compliant repositories
-# Covers common ecosystems - remove unused ones for your project
-
+# Dependabot v2 configuration for boj-server.
+# Scoped strictly to directories that actually hold standalone manifests/lockfiles:
+#   - /           -> GitHub Actions (.github/workflows/*.yml) + root JS package.json
+#   - /elixir     -> Mix (elixir/mix.exs + elixir/mix.lock)
+#   - /coord-tui  -> Cargo (coord-tui/Cargo.toml + coord-tui/Cargo.lock)
+# Note: /tray is intentionally omitted because tray/Cargo.toml references the
+# external sibling path `../../gossamer/bindings/rust`, which cannot resolve in
+# Dependabot's repository-only checkout.
 version: 2
 updates:
-  # GitHub Actions - always include
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
-      interval: "daily"
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
     groups:
       actions:
         patterns:
           - "*"
 
-  # Rust/Cargo
-  - package-ecosystem: "cargo"
-    directory: "/"
-    schedule:
-      interval: "daily"
-    ignore:
-      - dependency-name: "*"
-        update-types: ["version-update:semver-patch"]
-
-  # Elixir/Mix
-  - package-ecosystem: "mix"
-    directory: "/"
-    schedule:
-      interval: "daily"
-
-  # Node.js/npm
   - package-ecosystem: "npm"
     directory: "/"
     schedule:
-      interval: "daily"
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
 
-  # Python/pip
-  - package-ecosystem: "pip"
-    directory: "/"
+  - package-ecosystem: "mix"
+    directory: "/elixir"
     schedule:
-      interval: "daily"
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
 
-  # Guix flakes
-  - package-ecosystem: "guix"
-    directory: "/"
+  - package-ecosystem: "cargo"
+    directory: "/coord-tui"
     schedule:
-      interval: "daily"
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5

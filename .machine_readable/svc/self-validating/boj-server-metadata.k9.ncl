@@ -15,13 +15,15 @@ K9!
       allow_network = false,
       allow_filesystem_write = false,
       allow_subprocess = false,
+      capabilities = [],
     },
     metadata = {
       name = "boj-server-metadata",
-      version = "0.3.1",
-      description = "BoJ Server: MCP cartridge host with 96 tools — project invariants",
+      version = "0.5.0",
+      description = "BoJ Server: MCP cartridge host with 125 domain cartridges — project invariants",
       author = "Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>",
     },
+    side_effects = [],
   },
 
   # Project configuration
@@ -29,7 +31,7 @@ K9!
     # MCP server invariants
     mcp = {
       # Minimum cartridge count that must be present
-      min_cartridge_count = 96,
+      min_cartridge_count = 125,
       # All cartridges must be registered in Containerfile
       containerfile_registration_required = true,
       # Port assignment

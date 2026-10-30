@@ -905,15 +905,15 @@ retry_policy = "exponential(100ms, 3)"
 
 [source,bash]
 --
-# Required for production
-export YUBIHSM_PASSWORD="secure-password-here"
+# Required for production (inject via secret manager at runtime)
+export YUBIHSM_PASSWORD
 export HSM_PROVIDER="yubihsm"
 export HSM_KEY_ROKUR="0x1234"
 export HSM_KEY_SVALINN="0x5678"
 
-# For CloudHSM
-export AWS_ACCESS_KEY_ID="AKIA..."
-export AWS_SECRET_ACCESS_KEY="..."
+# For CloudHSM (prefer IAM instance role or secret manager)
+export AWS_ACCESS_KEY_ID
+export AWS_SECRET_ACCESS_KEY
 export HSM_CLOUDHSM_CLUSTER="cluster-12345"
 
 # For development (software HSM)

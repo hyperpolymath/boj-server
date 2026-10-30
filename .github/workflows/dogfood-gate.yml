@@ -29,57 +29,105 @@ permissions:
 
 jobs:
   # ---------------------------------------------------------------------------
-  # Job 1: A2ML manifest validation
+  # Job 1: DEED + legacy A2ML manifest validation
   # ---------------------------------------------------------------------------
   a2ml-validate:
     name: Validate DEED manifests
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6.0.2
+        uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
 
-      - name: Check for A2ML files
+      - name: Checkout canonical DEED validator
+        uses: actions/checkout@v7.0.1
+        with:
+          repository: metadatastician/standards
+          ref: 1725bebd3773ea25627479f813283abf1c497a85
+          path: .standards-deed
+          sparse-checkout: 1-formats/deed
+          sparse-checkout-cone-mode: true
+          persist-credentials: false
+
+      - name: Setup Deno runtime
+        uses: denoland/setup-deno@v2.0.5
+        with:
+          deno-version: v2.x
+
+      - name: Check for DEED and A2ML files
         id: detect
         run: |
-          COUNT=$(find . -type f \( -name '*.a2ml' -o -name '*.deed' \) -not -path './.git/*' | wc -l)
-          echo "count=$COUNT" >> "$GITHUB_OUTPUT"
-          if [ "$COUNT" -eq 0 ]; then
-            echo "::warning::No .a2ml/.deed manifest files found. Every RSR repo should have a repo deed (<reponame>_chora.deed); legacy 0-AI-MANIFEST.a2ml accepted mid-migration — standards #837"
+          set -euo pipefail
+          rm -rf "$RUNNER_TEMP/standards-deed"
+          mv "$PWD/.standards-deed" "$RUNNER_TEMP/standards-deed"
+          DEED_NAME="${GITHUB_REPOSITORY#*/}_chora.deed"
+          if [ ! -f "$DEED_NAME" ]; then
+            echo "::error::Missing required repo deed $DEED_NAME at repository root (standards#837)"
+            exit 1
           fi
+          DEED_COUNT=$(find . -type f -name '*.deed' -not -path './.git/*' | wc -l)
+          COUNT=$(find . -type f \( -name '*.a2ml' -o -name '*.deed' \) -not -path './.git/*' | wc -l)
+          echo "deed_count=$DEED_COUNT" >> "$GITHUB_OUTPUT"
+          echo "count=$COUNT" >> "$GITHUB_OUTPUT"
 
-      - name: Validate A2ML manifests
+      - name: Validate DEED grammar (deed_lint.js)
+        run: |
+          set -euo pipefail
+          mapfile -t deeds < <(git ls-files -- '*.deed' | sort)
+          deno run --allow-read "$RUNNER_TEMP/standards-deed/1-formats/deed/tools/deed_lint.js" "${deeds[@]}"
+
+      - name: Validate manifest structure
         if: steps.detect.outputs.count > 0
         run: bash .github/hooks/validate-a2ml.sh
       - name: Write summary
+        env:
+          A2ML_COUNT: ${{ steps.detect.outputs.count }}
+          DEED_COUNT: ${{ steps.detect.outputs.deed_count }}
         run: |
-          A2ML_COUNT="${{ steps.detect.outputs.count }}"
-          if [ "$A2ML_COUNT" -eq 0 ]; then
-            cat <<'EOF' >> "$GITHUB_STEP_SUMMARY"
-          ## A2ML Validation
-
-          :warning: **No .a2ml/.deed manifest files found.** Every RSR-compliant repo should have a repo deed (`<reponame>_chora.deed`) at its root.
-
-          Copy one from [rsr-template-repo](https://github.com/hyperpolymath/rsr-template-repo).
-          EOF
-          else
-            echo "## A2ML Validation" >> "$GITHUB_STEP_SUMMARY"
-            echo "" >> "$GITHUB_STEP_SUMMARY"
-            echo "Scanned **${A2ML_COUNT}** manifest file(s) (.deed, or legacy .a2ml). See step output for details." >> "$GITHUB_STEP_SUMMARY"
-          fi
+          echo "## DEED & Manifest Validation" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "Validated **${DEED_COUNT}** \`.deed\` file(s) via canonical \`deed_lint.js\` and **${A2ML_COUNT}** total manifest file(s)." >> "$GITHUB_STEP_SUMMARY"
 
   # ---------------------------------------------------------------------------
-  # Job 2: K9 contract validation
+  # Job 2: K9 contract validation (L0 + L1 + L2 Nickel contract check)
   # ---------------------------------------------------------------------------
   k9-validate:
     name: Validate K9 contracts
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      NICKEL_VERSION: '1.18.0'
+      NICKEL_SHA256: '9cba4dd65ae9915ec61f73033aafcff307a377665a83fd8f530df086763318cb'
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6.0.2
+        uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Checkout canonical K9 validator
+        uses: actions/checkout@v7.0.1
+        with:
+          repository: metadatastician/standards
+          ref: 1725bebd3773ea25627479f813283abf1c497a85
+          path: .standards-k9
+          sparse-checkout: 1-formats/k9
+          sparse-checkout-cone-mode: true
+          persist-credentials: false
+
+      - name: Install sha256-verified Nickel CLI
+        run: |
+          set -euo pipefail
+          rm -rf "$RUNNER_TEMP/standards-k9"
+          mv "$PWD/.standards-k9" "$RUNNER_TEMP/standards-k9"
+          URL="https://github.com/tweag/nickel/releases/download/${NICKEL_VERSION}/nickel-x86_64-linux"
+          curl -sSfL --proto '=https' --proto-redir '=https' --tlsv1.2 --retry 3 -o "$RUNNER_TEMP/nickel" "$URL"
+          echo "${NICKEL_SHA256}  ${RUNNER_TEMP}/nickel" | sha256sum -c -
+          chmod +x "$RUNNER_TEMP/nickel"
+          echo "$RUNNER_TEMP" >> "$GITHUB_PATH"
 
       - name: Check for K9 files
         id: detect
@@ -94,25 +142,40 @@ jobs:
             echo "::warning::Found $CONFIG_COUNT config files but no K9 contracts. Run k9iser to generate contracts."
           fi
 
-      - name: Validate K9 contracts
+      - name: Validate K9 contracts (canonical L0+L1+L2 + repo hook)
         if: steps.detect.outputs.k9_count > 0
-        run: bash .github/hooks/validate-k9.sh
-      - name: Write summary
         run: |
-          K9_COUNT="${{ steps.detect.outputs.k9_count }}"
-          CFG_COUNT="${{ steps.detect.outputs.config_count }}"
+          set -euo pipefail
+          mapfile -t k9_files < <(git ls-files -- '*.k9' '*.k9.ncl' | sort)
+          set +e
+          k9_out="$(bash "$RUNNER_TEMP/standards-k9/1-formats/k9/tools/k9-validate.sh" --layer L2 --strict "${k9_files[@]}" 2>&1)"
+          k9_rc=$?
+          set -e
+          printf '%s\n' "$k9_out"
+          if [ "$k9_rc" -ne 0 ]; then
+            while IFS= read -r line; do
+              [ -n "$line" ] && echo "::error::$line"
+            done <<< "$k9_out"
+            exit "$k9_rc"
+          fi
+          bash .github/hooks/validate-k9.sh
+      - name: Write summary
+        env:
+          K9_COUNT: ${{ steps.detect.outputs.k9_count }}
+          CFG_COUNT: ${{ steps.detect.outputs.config_count }}
+        run: |
           if [ "$K9_COUNT" -eq 0 ]; then
             cat <<'EOF' >> "$GITHUB_STEP_SUMMARY"
           ## K9 Contract Validation
 
-          :warning: **No .a2ml/.deed manifest files found.** Every RSR-compliant repo should have a repo deed (`<reponame>_chora.deed`) at its root.
+          :warning: **No K9 contracts found.**
 
           Generate contracts with: `k9iser generate .`
           EOF
           else
             echo "## K9 Contract Validation" >> "$GITHUB_STEP_SUMMARY"
             echo "" >> "$GITHUB_STEP_SUMMARY"
-            echo "Validated **${K9_COUNT}** K9 contract(s) against **${CFG_COUNT}** config file(s)." >> "$GITHUB_STEP_SUMMARY"
+            echo "Validated **${K9_COUNT}** K9 contract(s) (L0+L1+L2 Nickel contract check) against **${CFG_COUNT}** config file(s)." >> "$GITHUB_STEP_SUMMARY"
           fi
 
   # ---------------------------------------------------------------------------
@@ -120,12 +183,14 @@ jobs:
   # ---------------------------------------------------------------------------
   empty-lint:
     name: Empty-linter (invisible characters)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6.0.2
+        uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Scan for invisible characters
         id: lint
@@ -216,12 +281,14 @@ jobs:
   # ---------------------------------------------------------------------------
   groove-check:
     name: Groove manifest check
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 5
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6.0.2
+        uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Check for Groove manifest
         id: groove
@@ -275,12 +342,14 @@ jobs:
   # ---------------------------------------------------------------------------
   eclexiaiser-validate:
     name: Validate eclexiaiser manifest
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 5
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6.0.2
+        uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Check and validate eclexiaiser manifest
         id: eclex
@@ -321,14 +390,16 @@ jobs:
   # ---------------------------------------------------------------------------
   dogfood-summary:
     name: Dogfooding compliance summary
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: [a2ml-validate, k9-validate, empty-lint, groove-check, eclexiaiser-validate]
     if: always()
     timeout-minutes: 5
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6.0.2
+        uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Generate dogfooding scorecard
         run: |

@@ -1,13 +1,9 @@
 # This workflow is managed by gh actions-lock.
 # SPDX-License-Identifier: MPL-2.0
-# This workflow is managed by gh actions-lock.
-# This workflow is managed by gh actions-lock.
 # README single-source derivation (ADR-004): README.adoc is canonical;
 # README.md is derived for the Glama MCP directory (Markdown-only renderer).
-# This caller delegates to the standards reusable, which reads the
-# [publishing.readme] declaration in .machine_readable/*/ECOSYSTEM.a2ml,
-# regenerates README.md behind a vocabulary gate, and fails-and-tells if the
-# committed README.md is stale relative to README.adoc.
+# Inlined from metadatastician/standards@1725bebd3773ea25627479f813283abf1c497a85
+# while hyperpolymath's Actions allowlist omits metadatastician/standards@*.
 name: README Derive
 
 on:
@@ -23,13 +19,172 @@ on:
       - README.md
       - .machine_readable/**/ECOSYSTEM.a2ml
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   actions: read
   contents: read
 
 jobs:
   readme-derive:
-    # Pinned to a hyperpolymath/standards main commit that carries the gem
-    # install fix (asciidoctor:VER syntax) and the anchor-ID convention guard
-    # (standards#476); this repo's README.adoc satisfies both.
-    uses: hyperpolymath/standards/.github/workflows/readme-derive-reusable.yml@5a0891e9e58b785181a92e141505ca96ca987b42
+    name: Derive & verify README.md
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Read publishing declaration
+        id: decl
+        run: |
+          set -euo pipefail
+          ECO=""
+          for c in .machine_readable/descriptiles/ECOSYSTEM.a2ml \
+                   .machine_readable/6a2/ECOSYSTEM.a2ml; do
+            if [ -f "$c" ]; then ECO="$c"; break; fi
+          done
+          if [ -z "$ECO" ]; then
+            echo "No ECOSYSTEM.a2ml found — repo not opted in. Nothing to derive."
+            echo "derive=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          DECL_DERIVE="false"
+          DECL_CANONICAL="README.adoc"
+          DECL_PATH="README.md"
+          DECL_FORMAT="gfm"
+          DECL_CONSUMER="unspecified"
+          while IFS='=' read -r k v; do
+            case "$k" in
+              DERIVE) DECL_DERIVE="$v" ;;
+              CANONICAL) DECL_CANONICAL="$v" ;;
+              PATH) DECL_PATH="$v" ;;
+              FORMAT) DECL_FORMAT="$v" ;;
+              CONSUMER) DECL_CONSUMER="$v" ;;
+            esac
+          done < <(
+            awk '
+              /^[[:space:]]*\[/ { inblk = ($0 ~ /^[[:space:]]*\[publishing\.readme\][[:space:]]*$/) ? 1 : 0; next }
+              inblk && /=/ {
+                key = $0; sub(/=.*/, "", key); gsub(/[[:space:]]/, "", key)
+                val = $0; sub(/^[^=]*=[[:space:]]*/, "", val)
+                sub(/[[:space:]]*(#.*)?$/, "", val)
+                gsub(/^"|"$/, "", val)
+                if (key ~ /^(canonical|derive|format|path|consumer)$/)
+                  printf "%s=%s\n", toupper(key), val
+              }
+            ' "$ECO"
+          )
+          if [ "$DECL_DERIVE" != "true" ]; then
+            echo "[publishing.readme] absent or derive != true — repo not opted in."
+            echo "derive=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          CANONICAL="$DECL_CANONICAL"
+          DERIVED_PATH="$DECL_PATH"
+          FORMAT="$DECL_FORMAT"
+          CONSUMER="$DECL_CONSUMER"
+          for rel_p in "$CANONICAL" "$DERIVED_PATH"; do
+            if ! printf '%s' "$rel_p" | grep -qE '^[A-Za-z0-9_./-]+$' \
+               || printf '%s' "$rel_p" | grep -qE '(^/|\.\.)'; then
+              echo "::error::Invalid relative README path declaration: '$rel_p'"
+              exit 1
+            fi
+          done
+          if [ ! -f "$CANONICAL" ]; then
+            echo "::error::Declared canonical '$CANONICAL' does not exist."
+            exit 1
+          fi
+          if [ "$FORMAT" != "gfm" ]; then
+            echo "::error::Unsupported derived format '$FORMAT' (only 'gfm' is implemented)."
+            exit 1
+          fi
+          {
+            echo "derive=true"
+            echo "canonical=$CANONICAL"
+            echo "derived_path=$DERIVED_PATH"
+            echo "consumer=$CONSUMER"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Checkout canonical vocab-gate script
+        if: steps.decl.outputs.derive == 'true'
+        uses: actions/checkout@v7.0.1
+        with:
+          repository: metadatastician/standards
+          ref: 1725bebd3773ea25627479f813283abf1c497a85
+          path: .standards-readme
+          persist-credentials: false
+
+      - name: Install toolchain
+        if: steps.decl.outputs.derive == 'true'
+        env:
+          PANDOC_VERSION: "3.10"
+          ASCIIDOCTOR_VERSION: "2.0.26"
+          ASCIIDOCTOR_REDUCER_VERSION: "1.1.1"
+        run: |
+          set -euo pipefail
+          curl -fsSL -o "$RUNNER_TEMP/pandoc.deb" \
+            "https://github.com/jgm/pandoc/releases/download/${PANDOC_VERSION}/pandoc-${PANDOC_VERSION}-1-amd64.deb"
+          sudo dpkg -i "$RUNNER_TEMP/pandoc.deb"
+          sudo gem install --no-document \
+            "asciidoctor:${ASCIIDOCTOR_VERSION}" \
+            "asciidoctor-reducer:${ASCIIDOCTOR_REDUCER_VERSION}"
+
+      - name: Anchor-ID convention guard
+        if: steps.decl.outputs.derive == 'true'
+        env:
+          CANONICAL: ${{ steps.decl.outputs.canonical }}
+        run: |
+          set -euo pipefail
+          if grep -qE 'link:#[a-z0-9-]+\[' "$CANONICAL"; then
+            if ! grep -qE '^:idprefix:[[:space:]]*$' "$CANONICAL" \
+               || ! grep -qE '^:idseparator:[[:space:]]+-[[:space:]]*$' "$CANONICAL"; then
+              echo "::error::$CANONICAL has intra-doc anchor links but omits ':idprefix:' or ':idseparator: -'."
+              exit 1
+            fi
+          fi
+
+      - name: Derive Markdown and verify vocabulary + freshness
+        if: steps.decl.outputs.derive == 'true'
+        env:
+          CANONICAL: ${{ steps.decl.outputs.canonical }}
+          DERIVED_PATH: ${{ steps.decl.outputs.derived_path }}
+          THRESHOLD: "98"
+        run: |
+          set -euo pipefail
+          asciidoctor-reducer "$CANONICAL" -o "$RUNNER_TEMP/reduced.adoc" \
+            2>"$RUNNER_TEMP/reducer.err"
+          if [ -s "$RUNNER_TEMP/reducer.err" ]; then
+            cat "$RUNNER_TEMP/reducer.err" >&2
+            exit 1
+          fi
+          asciidoctor --failure-level=WARN -b docbook5 -a attribute-missing=drop \
+            "$RUNNER_TEMP/reduced.adoc" -o "$RUNNER_TEMP/reduced.xml"
+          pandoc -f docbook -t gfm --wrap=preserve \
+            "$RUNNER_TEMP/reduced.xml" -o "$RUNNER_TEMP/body.md"
+          SPDX=""
+          if grep -qE 'SPDX-License-Identifier:[[:space:]]*[^[:space:]]+' "$CANONICAL"; then
+            SPDX="$(grep -m1 -oE 'SPDX-License-Identifier:[[:space:]]*[^[:space:]]+' "$CANONICAL")"
+          fi
+          {
+            [ -n "$SPDX" ] && echo "<!-- $SPDX -->"
+            echo "<!-- GENERATED from $CANONICAL by standards/.github/workflows/readme-derive-reusable.yml — do not edit. -->"
+            echo ""
+            cat "$RUNNER_TEMP/body.md"
+          } > "$RUNNER_TEMP/derived.md"
+          bash .standards-readme/.github/scripts/readme-vocab-gate.sh \
+            "$CANONICAL" "$RUNNER_TEMP/derived.md" "$THRESHOLD"
+          norm() { grep -vE '^<!-- (SPDX-License-Identifier|GENERATED)' "$1" \
+                   | sed 's/[[:space:]]*$//' | cat -s; }
+          if [ ! -f "$DERIVED_PATH" ]; then
+            echo "::error::'$DERIVED_PATH' is missing. Regenerate via asciidoctor-reducer + asciidoctor + pandoc and commit."
+            exit 1
+          elif ! diff -q <(norm "$RUNNER_TEMP/derived.md") <(norm "$DERIVED_PATH") >/dev/null; then
+            echo "::error::'$DERIVED_PATH' is stale relative to '$CANONICAL'. Regenerate via asciidoctor-reducer + asciidoctor + pandoc and commit."
+            diff <(norm "$DERIVED_PATH") <(norm "$RUNNER_TEMP/derived.md") || [ $? -eq 1 ]
+            exit 1
+          fi
+          echo "✓ $DERIVED_PATH is up to date with $CANONICAL"

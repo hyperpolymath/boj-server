@@ -14,6 +14,7 @@ K9!
       allow_network = false,
       allow_filesystem_write = false,
       allow_subprocess = false,
+      capabilities = [],
     },
     metadata = {
       name = "project-metadata",
@@ -21,6 +22,7 @@ K9!
       description = "Pure data configuration for project metadata",
       author = "Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>",
     },
+    side_effects = [],
   },
 
   # Project configuration
