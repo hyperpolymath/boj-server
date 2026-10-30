@@ -232,7 +232,7 @@ mutation {
     input: {
       target: "boj-server"
       cartridgeId: "my-cartridge:1.0.0"
-      config: { env: { API_KEY: "***secret***" } }
+      config: { env: { LOG_LEVEL: "info" } }
       scale: 3
     }
   ) {

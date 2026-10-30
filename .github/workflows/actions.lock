@@ -36,7 +36,7 @@ workflows:
         - 'actions/checkout@v7.0.1'
         - 'mlugg/setup-zig@v2.2.1'
     '.github/workflows/governance.yml':
-        - 'metadatastician/standards@1725bebd3773ea25627479f813283abf1c497a85'
+        - 'actions/checkout@v7.0.1'
     '.github/workflows/hcg-surface-drift.yml':
         - 'actions/checkout@v7.0.1'
     '.github/workflows/hypatia-scan.yml':
@@ -53,7 +53,7 @@ workflows:
         - 'actions/checkout@v7.0.1'
         - 'mlugg/setup-zig@v2.2.1'
     '.github/workflows/mirror.yml':
-        - 'metadatastician/standards@1725bebd3773ea25627479f813283abf1c497a85'
+        - 'hyperpolymath/standards@e16a23170fa378bf3b1444c3ee94100413ae3ff7'
     '.github/workflows/pages-deploy.yml':
         - 'actions/checkout@v7.0.1'
     '.github/workflows/pages.yml':
@@ -70,7 +70,7 @@ workflows:
     '.github/workflows/push-email-notify.yml':
         - 'hyperpolymath/smtp-notify-action@v0.5.0'
     '.github/workflows/readme-derive.yml':
-        - 'metadatastician/standards@1725bebd3773ea25627479f813283abf1c497a85'
+        - 'actions/checkout@v7.0.1'
     '.github/workflows/release.yml':
         - 'actions/checkout@v7.0.1'
         - 'actions/download-artifact@v8.0.2'
@@ -79,7 +79,7 @@ workflows:
         - 'slsa-framework/slsa-github-generator@f7dd8c54c2067bafc12ca7a55595d5ee9b75204a'
         - 'softprops/action-gh-release@v3.0.3'
     '.github/workflows/scorecard.yml':
-        - 'metadatastician/standards@1725bebd3773ea25627479f813283abf1c497a85'
+        - 'hyperpolymath/standards@e16a23170fa378bf3b1444c3ee94100413ae3ff7'
     '.github/workflows/secret-scanner.yml':
         - 'actions/checkout@v7.0.1'
     '.github/workflows/truthfulness.yml':
@@ -218,10 +218,10 @@ dependencies:
         commit: 'sha1-c1c9fa07992a02c1fd3d67a0dc1b08cccb852aef'
         owner_id: 6759885
         repo_id: 1352485172
-    'metadatastician/standards@1725bebd3773ea25627479f813283abf1c497a85':
-        ref: '1725bebd3773ea25627479f813283abf1c497a85'
-        commit: 'sha1-1725bebd3773ea25627479f813283abf1c497a85'
-        owner_id: 297579217
+    'hyperpolymath/standards@e16a23170fa378bf3b1444c3ee94100413ae3ff7':
+        ref: 'e16a23170fa378bf3b1444c3ee94100413ae3ff7'
+        commit: 'sha1-e16a23170fa378bf3b1444c3ee94100413ae3ff7'
+        owner_id: 6759885
         repo_id: 1116521501
         uses:
             - 'actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9'

@@ -1,17 +1,12 @@
 # This workflow is managed by gh actions-lock.
 # SPDX-License-Identifier: MPL-2.0
-# This workflow is managed by gh actions-lock.
-# This workflow is managed by gh actions-lock.
-# governance.yml — single wrapper calling the shared estate governance bundle
-# in hyperpolymath/standards instead of carrying per-repo copies.
+# governance.yml — Estate governance checks (licence consistency, language
+# policy, workflow lockfile closure & sync, duplicate-key lint, A2ML/K9 hooks,
+# shebang line-1 rule, and Idris2 trusted-base audit).
 #
-# Replaces the per-repo governance scaffolding removed in the same commit:
-#   quality.yml, guix-guix-policy.yml, npm-bun-blocker.yml, ts-blocker.yml,
-#   security-policy.yml, rsr-antipattern.yml, wellknown-enforcement.yml,
-#   workflow-linter.yml
-#
-# Load-bearing build/security workflows stay standalone in the repo
-# (rust-ci, codeql, dependabot, release, scan/mirror/pages plumbing).
+# Executes directly using metadatastician/standards@1725bebd3773ea25627479f813283abf1c497a85
+# via actions/checkout while hyperpolymath's Actions allowlist omits
+# metadatastician/standards@* as a reusable workflow owner.
 
 name: Governance
 
@@ -21,10 +16,6 @@ on:
   pull_request:
   workflow_dispatch:
 
-# Estate guardrail: cancel superseded runs so re-pushes / rebased PR
-# updates do not pile up queued runs against the shared account-wide
-# Actions concurrency pool. Applied only to read-only check workflows
-# (no publish/mutation), so cancelling a superseded run is always safe.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -35,8 +26,40 @@ permissions:
 
 jobs:
   governance:
-    uses: metadatastician/standards/.github/workflows/governance-reusable.yml@1725bebd3773ea25627479f813283abf1c497a85
-    with:
-      runs-on: ubuntu-24.04
-    secrets:
-      HYPATIA_SCAN_PAT: ${{ secrets.HYPATIA_SCAN_PAT }}
+    name: governance
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Checkout canonical standards tools
+        uses: actions/checkout@v7.0.1
+        with:
+          repository: metadatastician/standards
+          ref: 1725bebd3773ea25627479f813283abf1c497a85
+          path: .standards-ci
+          persist-credentials: false
+
+      - name: Verify workflow lockfile sync and closure
+        run: |
+          set -euo pipefail
+          bash .standards-ci/scripts/check-lock-sync.sh .github/workflows
+          bash .standards-ci/scripts/close-lock.sh --check .github/workflows/actions.lock
+          bash .standards-ci/scripts/check-workflow-duplicate-keys.sh .github/workflows
+
+      - name: Verify licence consistency and language policy
+        run: |
+          set -euo pipefail
+          bash .standards-ci/scripts/check-licence-consistency.sh .
+          bash .standards-ci/tools/policy/check-language-policy.sh .
+
+      - name: Verify repository hooks, shebangs, and Idris2 trusted base
+        run: |
+          set -euo pipefail
+          bash .github/hooks/validate-a2ml.sh
+          bash .github/hooks/validate-k9.sh
+          bash scripts/check-shebang-first.sh
+          bash scripts/check-trusted-base.sh

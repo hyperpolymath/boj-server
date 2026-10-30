@@ -188,11 +188,8 @@ else
   fail "validate-k9.sh failed"
 fi
 
-STANDARDS_CHECKOUT="${STANDARDS_DIR:-}"
-if [ -z "$STANDARDS_CHECKOUT" ] && [ -d /tmp/standards/1-formats ]; then
-  STANDARDS_CHECKOUT="/tmp/standards"
-fi
-if [ -n "$STANDARDS_CHECKOUT" ]; then
+STANDARDS_CHECKOUT="${STANDARDS_DIR:-${XDG_CACHE_HOME:-$HOME/.cache}/hyperpolymath/standards}"
+if [ -d "$STANDARDS_CHECKOUT/1-formats" ]; then
   DEED_LINT="$STANDARDS_CHECKOUT/1-formats/deed/tools/deed_lint.js"
   K9_VALIDATOR="$STANDARDS_CHECKOUT/1-formats/k9/tools/k9-validate.sh"
   mapfile -t deed_files < <(git ls-files -- '*.deed' | sort)
@@ -239,10 +236,7 @@ while IFS= read -r entry; do
   coord="${entry#*:}"
   reusable_count=$((reusable_count + 1))
   case "$coord" in
-    hyperpolymath/standards/*)
-      fail "$wf_file uses former owner coordinate $coord (must use metadatastician/standards@<40-hex-sha>)"
-      reusable_bad=1
-      ;;
+    hyperpolymath/standards/.github/workflows/*@[0-9a-f][0-9a-f][0-9a-f][0-9a-f]*|\
     metadatastician/standards/.github/workflows/*@[0-9a-f][0-9a-f][0-9a-f][0-9a-f]*|\
     slsa-framework/slsa-github-generator/.github/workflows/*@[0-9a-f][0-9a-f][0-9a-f][0-9a-f]*)
       pin="${coord##*@}"
