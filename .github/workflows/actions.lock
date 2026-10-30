@@ -13,10 +13,10 @@ workflows:
         - 'erlef/setup-beam@v1.24.1'
     '.github/workflows/build.yml':
         - 'actions/checkout@v7.0.1'
-        - 'sonarsource/sonarqube-scan-action@v8.3.0'
+        - 'sonarsource/sonarqube-scan-action@v8.4.0'
     '.github/workflows/codeql.yml':
         - 'actions/checkout@v7.0.1'
-        - 'github/codeql-action@v4.39.0'
+        - 'github/codeql-action@v4.39.1'
     '.github/workflows/container-publish.yml':
         - 'actions/attest-build-provenance@v4.2.2'
         - 'actions/checkout@v7.0.1'
@@ -44,7 +44,7 @@ workflows:
         - 'actions/github-script@v9.0.0'
         - 'actions/upload-artifact@v7.0.2'
         - 'erlef/setup-beam@v1.24.1'
-        - 'github/codeql-action@v4.39.0'
+        - 'github/codeql-action@v4.39.1'
     '.github/workflows/instant-sync.yml':
         - 'peter-evans/repository-dispatch@v4.0.1'
     '.github/workflows/label-triage.yml': []
@@ -68,7 +68,7 @@ workflows:
         - 'denoland/setup-deno@v2.0.5'
         - 'oven-sh/setup-bun@v2.2.0'
     '.github/workflows/push-email-notify.yml':
-        - 'hyperpolymath/smtp-notify-action@v0.5.0'
+        - 'hyperpolymath/smtp-notify-action@v0.5.1'
     '.github/workflows/readme-derive.yml':
         - 'actions/checkout@v7.0.1'
     '.github/workflows/release.yml':
@@ -208,14 +208,14 @@ dependencies:
         commit: 'sha1-b96794f015dfd88f77b49b1c93e0fa7110f94c63'
         owner_id: 9919
         repo_id: 259445878
-    'github/codeql-action@v4.39.0':
-        ref: 'v4.39.0'
-        commit: 'sha1-6f2ac81f5cd81fe351a197ba0b00d91d03cd2aee'
+    'github/codeql-action@v4.39.1':
+        ref: 'v4.39.1'
+        commit: 'sha1-9b3254085494b55a0f7c4c2b3d2d52cc712ce370'
         owner_id: 9919
         repo_id: 259445878
-    'hyperpolymath/smtp-notify-action@v0.5.0':
-        ref: 'v0.5.0'
-        commit: 'sha1-c1c9fa07992a02c1fd3d67a0dc1b08cccb852aef'
+    'hyperpolymath/smtp-notify-action@v0.5.1':
+        ref: 'v0.5.1'
+        commit: 'sha1-e384daf6167a7a7567642d6a62060106244d2413'
         owner_id: 6759885
         repo_id: 1352485172
     'hyperpolymath/standards@e16a23170fa378bf3b1444c3ee94100413ae3ff7':
@@ -284,9 +284,9 @@ dependencies:
         commit: 'sha1-efb35369e0ad2afab669f228072c1b0d510eae64'
         owner_id: 2242
         repo_id: 204253808
-    'sonarsource/sonarqube-scan-action@v8.3.0':
-        ref: 'v8.3.0'
-        commit: 'sha1-d209202bc7d53ff1cc128f7f907dac145c9d6ae9'
+    'sonarsource/sonarqube-scan-action@v8.4.0':
+        ref: 'v8.4.0'
+        commit: 'sha1-4d1dc0c91ee400dcf8a6dddf2f705ac36542e304'
         owner_id: 545988
         repo_id: 366408409
     'webfactory/ssh-agent@e83874834305fe9a4a2997156cb26c5de65a8555':
