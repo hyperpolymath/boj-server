@@ -46,15 +46,17 @@ jobs:
       - name: Verify workflow lockfile sync and closure
         run: |
           set -euo pipefail
-          bash .standards-ci/scripts/check-lock-sync.sh .github/workflows
-          bash .standards-ci/scripts/close-lock.sh --check .github/workflows/actions.lock
-          bash .standards-ci/scripts/check-workflow-duplicate-keys.sh .github/workflows
+          rm -rf "$RUNNER_TEMP/standards-ci"
+          mv "$PWD/.standards-ci" "$RUNNER_TEMP/standards-ci"
+          bash "$RUNNER_TEMP/standards-ci/scripts/check-lock-sync.sh" .github/workflows
+          bash "$RUNNER_TEMP/standards-ci/scripts/close-lock.sh" --check .github/workflows/actions.lock
+          bash "$RUNNER_TEMP/standards-ci/scripts/check-workflow-duplicate-keys.sh" .github/workflows
 
       - name: Verify licence consistency and language policy
         run: |
           set -euo pipefail
-          bash .standards-ci/scripts/check-licence-consistency.sh .
-          bash .standards-ci/tools/policy/check-language-policy.sh .
+          bash "$RUNNER_TEMP/standards-ci/scripts/check-licence-consistency.sh" .
+          bash "$RUNNER_TEMP/standards-ci/tools/policy/check-language-policy.sh" .
 
       - name: Verify repository hooks, shebangs, and Idris2 trusted base
         run: |

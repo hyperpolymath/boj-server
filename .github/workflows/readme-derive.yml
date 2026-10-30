@@ -145,7 +145,10 @@ jobs:
             "$RUNNER_TEMP/reduced.adoc" -o "$RUNNER_TEMP/reduced.xml"
           pandoc -f docbook -t gfm --wrap=preserve \
             "$RUNNER_TEMP/reduced.xml" -o "$RUNNER_TEMP/body.md"
-          SPDX="$(grep -m1 -oE 'SPDX-License-Identifier:[[:space:]]*[^[:space:]]+' "$CANONICAL" || true)"
+          SPDX=""
+          if grep -qE 'SPDX-License-Identifier:[[:space:]]*[^[:space:]]+' "$CANONICAL"; then
+            SPDX="$(grep -m1 -oE 'SPDX-License-Identifier:[[:space:]]*[^[:space:]]+' "$CANONICAL")"
+          fi
           {
             [ -n "$SPDX" ] && echo "<!-- $SPDX -->"
             echo "<!-- GENERATED from $CANONICAL by standards/.github/workflows/readme-derive-reusable.yml — do not edit. -->"
@@ -156,9 +159,12 @@ jobs:
             "$CANONICAL" "$RUNNER_TEMP/derived.md" "$THRESHOLD"
           norm() { grep -vE '^<!-- (SPDX-License-Identifier|GENERATED)' "$1" \
                    | sed 's/[[:space:]]*$//' | cat -s; }
-          if [ ! -f "$DERIVED_PATH" ] || ! diff -q <(norm "$RUNNER_TEMP/derived.md") <(norm "$DERIVED_PATH") >/dev/null; then
-            echo "::error::'$DERIVED_PATH' is missing or stale relative to '$CANONICAL'. Regenerate via asciidoctor-reducer + asciidoctor + pandoc and commit."
-            diff <(norm "$DERIVED_PATH") <(norm "$RUNNER_TEMP/derived.md") || true
+          if [ ! -f "$DERIVED_PATH" ]; then
+            echo "::error::'$DERIVED_PATH' is missing. Regenerate via asciidoctor-reducer + asciidoctor + pandoc and commit."
+            exit 1
+          elif ! diff -q <(norm "$RUNNER_TEMP/derived.md") <(norm "$DERIVED_PATH") >/dev/null; then
+            echo "::error::'$DERIVED_PATH' is stale relative to '$CANONICAL'. Regenerate via asciidoctor-reducer + asciidoctor + pandoc and commit."
+            diff <(norm "$DERIVED_PATH") <(norm "$RUNNER_TEMP/derived.md") || [ $? -eq 1 ]
             exit 1
           fi
           echo "✓ $DERIVED_PATH is up to date with $CANONICAL"
