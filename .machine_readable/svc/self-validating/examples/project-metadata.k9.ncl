@@ -33,7 +33,7 @@ K9!
 
     repository = {
       url = "https://github.com/hyperpolymath/my-project",
-      "type" = "git",
+      type = "git",
     },
 
     author = {

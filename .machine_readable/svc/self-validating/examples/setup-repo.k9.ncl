@@ -81,8 +81,8 @@ K9!
   # Just recipes for execution
   # These run when: ./must run setup-repo.k9.ncl
   recipes = {
-    # Main entry point ("default" quoted because `default` is a Nickel keyword)
-    "default" = {
+    # Main entry point
+    default = {
       recipe = "setup",
       description = "Set up RSR-compliant repository",
     },

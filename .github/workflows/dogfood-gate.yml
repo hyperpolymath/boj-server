@@ -52,10 +52,10 @@ jobs:
           sparse-checkout-cone-mode: true
           persist-credentials: false
 
-      - name: Setup Bun runtime
-        uses: oven-sh/setup-bun@v2.2.0
+      - name: Setup Deno runtime
+        uses: denoland/setup-deno@v2.0.5
         with:
-          bun-version: '1.4.2'
+          deno-version: v2.x
 
       - name: Check for DEED and A2ML files
         id: detect
@@ -77,15 +77,16 @@ jobs:
         run: |
           set -euo pipefail
           mapfile -t deeds < <(git ls-files -- '*.deed' | sort)
-          bun "$RUNNER_TEMP/standards-deed/1-formats/deed/tools/deed_lint.js" "${deeds[@]}"
+          deno run --allow-read "$RUNNER_TEMP/standards-deed/1-formats/deed/tools/deed_lint.js" "${deeds[@]}"
 
       - name: Validate manifest structure
         if: steps.detect.outputs.count > 0
         run: bash .github/hooks/validate-a2ml.sh
       - name: Write summary
+        env:
+          A2ML_COUNT: ${{ steps.detect.outputs.count }}
+          DEED_COUNT: ${{ steps.detect.outputs.deed_count }}
         run: |
-          A2ML_COUNT="${{ steps.detect.outputs.count }}"
-          DEED_COUNT="${{ steps.detect.outputs.deed_count }}"
           echo "## DEED & Manifest Validation" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
           echo "Validated **${DEED_COUNT}** \`.deed\` file(s) via canonical \`deed_lint.js\` and **${A2ML_COUNT}** total manifest file(s)." >> "$GITHUB_STEP_SUMMARY"
@@ -146,12 +147,23 @@ jobs:
         run: |
           set -euo pipefail
           mapfile -t k9_files < <(git ls-files -- '*.k9' '*.k9.ncl' | sort)
-          bash "$RUNNER_TEMP/standards-k9/1-formats/k9/tools/k9-validate.sh" --layer L2 --strict "${k9_files[@]}"
+          set +e
+          k9_out="$(bash "$RUNNER_TEMP/standards-k9/1-formats/k9/tools/k9-validate.sh" --layer L2 --strict "${k9_files[@]}" 2>&1)"
+          k9_rc=$?
+          set -e
+          printf '%s\n' "$k9_out"
+          if [ "$k9_rc" -ne 0 ]; then
+            while IFS= read -r line; do
+              [ -n "$line" ] && echo "::error::$line"
+            done <<< "$k9_out"
+            exit "$k9_rc"
+          fi
           bash .github/hooks/validate-k9.sh
       - name: Write summary
+        env:
+          K9_COUNT: ${{ steps.detect.outputs.k9_count }}
+          CFG_COUNT: ${{ steps.detect.outputs.config_count }}
         run: |
-          K9_COUNT="${{ steps.detect.outputs.k9_count }}"
-          CFG_COUNT="${{ steps.detect.outputs.config_count }}"
           if [ "$K9_COUNT" -eq 0 ]; then
             cat <<'EOF' >> "$GITHUB_STEP_SUMMARY"
           ## K9 Contract Validation
@@ -177,6 +189,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Scan for invisible characters
         id: lint
@@ -273,6 +287,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Check for Groove manifest
         id: groove
@@ -332,6 +348,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Check and validate eclexiaiser manifest
         id: eclex
@@ -380,6 +398,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Generate dogfooding scorecard
         run: |

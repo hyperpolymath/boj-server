@@ -22,7 +22,7 @@ workflows:
         - 'actions/checkout@v7.0.1'
     '.github/workflows/dogfood-gate.yml':
         - 'actions/checkout@v7.0.1'
-        - 'oven-sh/setup-bun@v2.2.0'
+        - 'denoland/setup-deno@v2.0.5'
     '.github/workflows/e2e.yml':
         - 'actions/checkout@v7.0.1'
         - 'actions/github-script@v9.0.0'
@@ -81,7 +81,7 @@ workflows:
     '.github/workflows/scorecard.yml':
         - 'metadatastician/standards@1725bebd3773ea25627479f813283abf1c497a85'
     '.github/workflows/secret-scanner.yml':
-        - 'metadatastician/standards@1725bebd3773ea25627479f813283abf1c497a85'
+        - 'actions/checkout@v7.0.1'
     '.github/workflows/truthfulness.yml':
         - 'actions/checkout@v7.0.1'
         - 'mlugg/setup-zig@v2.2.1'

@@ -71,7 +71,7 @@ K9!
 
     # Build/runtime
     build = {
-      primary_language = "bun",
+      primary_language = "deno",
       containerfile_name = "Containerfile",
       runtime = "podman",
     },

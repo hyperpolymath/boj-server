@@ -396,6 +396,10 @@ jobs:
             const fs = require('fs');
             const findings = JSON.parse(fs.readFileSync('hypatia-findings.json', 'utf8'));
 
+            const rank = { critical: 0, high: 1, medium: 2, low: 3 };
+            const sorted = [...findings].sort(
+              (a, b) => (rank[a.severity] ?? 9) - (rank[b.severity] ?? 9)
+            );
             const critical = findings.filter(f => f.severity === 'critical').length;
             const high = findings.filter(f => f.severity === 'high').length;
 
@@ -410,8 +414,8 @@ jobs:
               comment += `⚠️ **Action Required:** Critical security issues found!\n\n`;
             }
 
-            comment += `<details><summary>View findings</summary>\n\n`;
-            comment += `\`\`\`json\n${JSON.stringify(findings.slice(0, 10), null, 2)}\n\`\`\`\n`;
+            comment += `<details><summary>View findings (sorted by severity)</summary>\n\n`;
+            comment += `\`\`\`json\n${JSON.stringify(sorted.slice(0, 25), null, 2)}\n\`\`\`\n`;
             comment += `</details>\n\n`;
             comment += `*Powered by Hypatia Neurosymbolic CI/CD Intelligence*`;
 

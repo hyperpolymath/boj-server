@@ -14,7 +14,7 @@ K9!
 #   k9-svc deploy container/deploy.k9.ncl --env production
 
 # Deployment configuration
-let deployment = {
+let deployment_spec = {
   # Target environments (dev / staging / production)
   environments = {
     dev = {
@@ -47,14 +47,14 @@ let deployment = {
 
   # Deployment strategy
   strategy = {
-    "type" = "rolling",
+    type = "rolling",
     max_surge = 1,
     max_unavailable = 0,
   },
 } in
 
 # Deployment scripts (executed at Hunt level)
-let scripts = {
+let deployment_scripts = {
   # Pre-deployment validation
   pre_deploy = m%"
 #!/bin/sh
@@ -169,8 +169,8 @@ echo "K9: Rollback complete."
       migrate = "just container-build && just container-up",
     },
   },
-  deployment = deployment,
-  scripts = scripts,
+  deployment = deployment_spec,
+  scripts = deployment_scripts,
 
   # Security check: this component requires Hunt level
   required_level = 'Hunt,

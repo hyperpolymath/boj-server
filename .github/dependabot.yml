@@ -1,44 +1,42 @@
 # SPDX-License-Identifier: MPL-2.0
-# Dependabot configuration for hyperpolymath/boj-server
-# Scoped strictly to directories carrying real manifests (docs/DEPENDABOT-POLICY.adoc).
-
+# Dependabot v2 configuration for boj-server.
+# Scoped strictly to directories that actually hold standalone manifests/lockfiles:
+#   - /           -> GitHub Actions (.github/workflows/*.yml) + root JS package.json
+#   - /elixir     -> Mix (elixir/mix.exs + elixir/mix.lock)
+#   - /coord-tui  -> Cargo (coord-tui/Cargo.toml + coord-tui/Cargo.lock)
+# Note: /tray is intentionally omitted because tray/Cargo.toml references the
+# external sibling path `../../gossamer/bindings/rust`, which cannot resolve in
+# Dependabot's repository-only checkout.
 version: 2
 updates:
-  # GitHub Actions workflows
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
     groups:
       actions:
         patterns:
           - "*"
-    open-pull-requests-limit: 2
 
-  # Root MCP bridge package.json (Bun / Deno / pnpm)
   - package-ecosystem: "npm"
     directory: "/"
     schedule:
       interval: "weekly"
-    open-pull-requests-limit: 2
+      day: "monday"
+    open-pull-requests-limit: 5
 
-  # Elixir REST adapter (elixir/mix.exs)
   - package-ecosystem: "mix"
     directory: "/elixir"
     schedule:
       interval: "weekly"
-    open-pull-requests-limit: 2
+      day: "monday"
+    open-pull-requests-limit: 5
 
-  # Rust coordination TUI (coord-tui/Cargo.toml)
   - package-ecosystem: "cargo"
     directory: "/coord-tui"
     schedule:
       interval: "weekly"
-    open-pull-requests-limit: 2
-
-  # Rust system tray utility (tray/Cargo.toml)
-  - package-ecosystem: "cargo"
-    directory: "/tray"
-    schedule:
-      interval: "weekly"
-    open-pull-requests-limit: 2
+      day: "monday"
+    open-pull-requests-limit: 5
