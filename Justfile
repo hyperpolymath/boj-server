@@ -1486,6 +1486,10 @@ help-me:
     echo "  .machine_readable/STATE.a2ml     Current project state"
 
 
+# Run mandatory pre-merge verification gate (conflicts, apps, Hypatia, K9/DEED, CI/lockfile, tests)
+pre-merge-gate pr="":
+    @if [ -n "{{pr}}" ]; then bash scripts/pre-merge-gate.sh --pr "{{pr}}"; else bash scripts/pre-merge-gate.sh; fi
+
 # Print the current CRG grade (reads from READINESS.md '**Current Grade:** X' line)
 crg-grade:
     @grade=$$(grep -oP '(?<=\*\*Current Grade:\*\* )[A-FX]' READINESS.md 2>/dev/null | head -1); \

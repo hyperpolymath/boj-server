@@ -29,7 +29,6 @@ permissions:
 
 jobs:
   readme-derive:
-    # Pinned to a hyperpolymath/standards main commit that carries the gem
-    # install fix (asciidoctor:VER syntax) and the anchor-ID convention guard
-    # (standards#476); this repo's README.adoc satisfies both.
-    uses: hyperpolymath/standards/.github/workflows/readme-derive-reusable.yml@5a0891e9e58b785181a92e141505ca96ca987b42
+    uses: metadatastician/standards/.github/workflows/readme-derive-reusable.yml@1725bebd3773ea25627479f813283abf1c497a85
+    with:
+      runs-on: ubuntu-24.04

@@ -14,6 +14,7 @@ K9!
       allow_network = false,
       allow_filesystem_write = false,
       allow_subprocess = false,
+      capabilities = [],
     },
     metadata = {
       name = "ci-config",
@@ -21,6 +22,7 @@ K9!
       description = "CI/CD configuration with runtime validation",
       author = "Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>",
     },
+    side_effects = [],
   },
 
   # CI/CD configuration with Nickel contracts

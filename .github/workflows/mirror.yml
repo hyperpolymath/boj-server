@@ -24,7 +24,9 @@ concurrency:
 
 jobs:
   mirror:
-    uses: hyperpolymath/standards/.github/workflows/mirror-reusable.yml@e16a23170fa378bf3b1444c3ee94100413ae3ff7
+    uses: metadatastician/standards/.github/workflows/mirror-reusable.yml@1725bebd3773ea25627479f813283abf1c497a85
+    with:
+      runs-on: ubuntu-24.04
     secrets:
       GITLAB_SSH_KEY: ${{ secrets.GITLAB_SSH_KEY }}
       BITBUCKET_SSH_KEY: ${{ secrets.BITBUCKET_SSH_KEY }}
