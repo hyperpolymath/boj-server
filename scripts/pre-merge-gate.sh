@@ -335,6 +335,13 @@ audit_single_pr() {
   fi
   title="$(printf '%s' "$pr_json" | jq -r '.title')"
   mergeable="$(printf '%s' "$pr_json" | jq -r '.mergeable')"
+  if [ "$mergeable" = "UNKNOWN" ]; then
+    sleep 3
+    if pr_json_retry="$(gh pr view "$num" --json number,title,mergeable,mergeStateStatus,reviewDecision,statusCheckRollup)"; then
+      pr_json="$pr_json_retry"
+      mergeable="$(printf '%s' "$pr_json" | jq -r '.mergeable')"
+    fi
+  fi
   review_decision="$(printf '%s' "$pr_json" | jq -r '.reviewDecision // ""')"
   bad_checks="$(printf '%s' "$pr_json" | jq '[.statusCheckRollup[] | select(
     ((.conclusion // "") != "" and (.conclusion != "SUCCESS" and .conclusion != "SKIPPED" and .conclusion != "NEUTRAL"))
@@ -345,14 +352,16 @@ audit_single_pr() {
     or ((.__typename // "") == "StatusContext" and ((.state // "") == "PENDING" or (.state // "") == "EXPECTED"))
   )] | length')"
 
-  if [ "$mergeable" = "CONFLICTING" ]; then
+  if [ "$mergeable" = "MERGEABLE" ]; then
+    pass "PR #$num mergeable=MERGEABLE"
+  elif [ "$mergeable" = "CONFLICTING" ]; then
     fail "PR #$num ($title) has merge conflicts (mergeable=CONFLICTING)"
   else
-    pass "PR #$num mergeable=$mergeable"
+    fail "PR #$num ($title) mergeability is unresolved (mergeable=$mergeable) — retry once GitHub finishes computing"
   fi
 
-  if [ "$review_decision" = "CHANGES_REQUESTED" ]; then
-    fail "PR #$num ($title) has CHANGES_REQUESTED review state"
+  if [ "$review_decision" = "CHANGES_REQUESTED" ] || [ "$review_decision" = "REVIEW_REQUIRED" ]; then
+    fail "PR #$num ($title) has blocking review state (reviewDecision=$review_decision)"
   else
     pass "PR #$num reviewDecision=${review_decision:-NONE}"
   fi

@@ -52,7 +52,20 @@ jobs:
             echo "derive=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          eval "$(
+          DECL_DERIVE="false"
+          DECL_CANONICAL="README.adoc"
+          DECL_PATH="README.md"
+          DECL_FORMAT="gfm"
+          DECL_CONSUMER="unspecified"
+          while IFS='=' read -r k v; do
+            case "$k" in
+              DERIVE) DECL_DERIVE="$v" ;;
+              CANONICAL) DECL_CANONICAL="$v" ;;
+              PATH) DECL_PATH="$v" ;;
+              FORMAT) DECL_FORMAT="$v" ;;
+              CONSUMER) DECL_CONSUMER="$v" ;;
+            esac
+          done < <(
             awk '
               /^[[:space:]]*\[/ { inblk = ($0 ~ /^[[:space:]]*\[publishing\.readme\][[:space:]]*$/) ? 1 : 0; next }
               inblk && /=/ {
@@ -61,19 +74,26 @@ jobs:
                 sub(/[[:space:]]*(#.*)?$/, "", val)
                 gsub(/^"|"$/, "", val)
                 if (key ~ /^(canonical|derive|format|path|consumer)$/)
-                  printf "DECL_%s=%s\n", toupper(key), val
+                  printf "%s=%s\n", toupper(key), val
               }
             ' "$ECO"
-          )"
-          if [ "${DECL_DERIVE:-false}" != "true" ]; then
+          )
+          if [ "$DECL_DERIVE" != "true" ]; then
             echo "[publishing.readme] absent or derive != true — repo not opted in."
             echo "derive=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          CANONICAL="${DECL_CANONICAL:-README.adoc}"
-          DERIVED_PATH="${DECL_PATH:-README.md}"
-          FORMAT="${DECL_FORMAT:-gfm}"
-          CONSUMER="${DECL_CONSUMER:-unspecified}"
+          CANONICAL="$DECL_CANONICAL"
+          DERIVED_PATH="$DECL_PATH"
+          FORMAT="$DECL_FORMAT"
+          CONSUMER="$DECL_CONSUMER"
+          for rel_p in "$CANONICAL" "$DERIVED_PATH"; do
+            if ! printf '%s' "$rel_p" | grep -qE '^[A-Za-z0-9_./-]+$' \
+               || printf '%s' "$rel_p" | grep -qE '(^/|\.\.)'; then
+              echo "::error::Invalid relative README path declaration: '$rel_p'"
+              exit 1
+            fi
+          done
           if [ ! -f "$CANONICAL" ]; then
             echo "::error::Declared canonical '$CANONICAL' does not exist."
             exit 1
