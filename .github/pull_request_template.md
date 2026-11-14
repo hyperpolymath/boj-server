@@ -29,9 +29,8 @@ Copyright (c) Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
 
 ### As Applicable
 
-- [ ] `.machine_readable/STATE.a2ml` updated (if project state changed)
-- [ ] `.machine_readable/ECOSYSTEM.a2ml` updated (if integrations changed)
-- [ ] `.machine_readable/META.a2ml` updated (if architectural decisions changed)
+- [ ] `boj-server_chora.deed` updated and passing `deed_lint.js` (if lifecycle status, ADRs `(meta)` or the `(anchor)` changed)
+- [ ] `docs/status/ROADMAP.adoc` updated (if project state changed)
 - [ ] Documentation updated for user-facing changes
 - [ ] `TOPOLOGY.md` updated (if architecture changed)
 - [ ] `CHANGELOG` or release notes updated

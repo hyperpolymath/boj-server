@@ -1,7 +1,9 @@
 # SPDX-License-Identifier: MPL-2.0
 # intend.ncl — purpose/scope verification runner for boj-server
 #
-# Pairs with: Intentfile.a2ml (same directory)
+# Pairs with: Intentfile.deed (same directory; A7 8.1). Not yet written: the
+#             legacy Intentfile.a2ml was retired 2026-11-14 with no mapping
+#             spec to translate it (docs/history/A2ML-REMOVED.adoc).
 # Verb:       intend
 # Semantics:  verify the repo matches its declared purpose; detect scope-creep
 #             by checking for anti-purpose violations (banned languages, banned
@@ -26,7 +28,7 @@
       name = "intend-runner",
       version = "1.0.0",
       description = "Verifies repo aligns with declared purpose. Hard-gates on anti-purpose violations.",
-      paired_xfile = "Intentfile.a2ml",
+      paired_xfile = "Intentfile.deed",
       author = "Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>",
     },
   },

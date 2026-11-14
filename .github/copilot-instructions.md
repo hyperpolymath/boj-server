@@ -9,8 +9,8 @@ Copyright (c) Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
 
 ## Before Writing Code
 
-- Read `0-AI-MANIFEST.a2ml` in the repo root for canonical file locations.
-- State files (.a2ml) live in `.machine_readable/` ONLY, never the root.
+- Read `0-AI-MANIFEST.deed` in the repo root: it points to `boj-server_chora.deed` (repo facts) and `.claude/CLAUDE.md` (agent conventions).
+- A2ML is retired: never create a `.a2ml` file (see `docs/history/A2ML-REMOVED.adoc`).
 
 ## License
 
@@ -55,6 +55,6 @@ Copyright (c) Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
 
 ## State Files
 
-Never create these in the repo root:
-STATE.a2ml, META.a2ml, ECOSYSTEM.a2ml, AGENTIC.a2ml, NEUROSYM.a2ml, PLAYBOOK.a2ml.
-They belong in `.machine_readable/` only.
+Repo state and metadata are clauses of `boj-server_chora.deed` (lifecycle `(status)`,
+`(meta)`, `(agentic)`, `(neurosym)`, `(playbook)`, `(anchor)`). Never create STATE, META,
+ECOSYSTEM, AGENTIC, NEUROSYM or PLAYBOOK `.a2ml` files anywhere.
