@@ -1,0 +1,448 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+// SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
+= The A2ML files removed from boj-server on 2026-11-14
+
+The owner approved on 2026-11-14 moving boj-server off A2ML, as
+hyperpolymath/hypatia#1113 did for hypatia. Every `.a2ml` file in boj-server is
+translated into deed form where a mapping spec says it translates, every reader
+in this repository is moved off it, and the file is deleted. The mapping specs
+are in standards `1-formats/deed/mappings/`; a field a spec does not list does
+not translate and was dropped, not re-homed. Files with no mapping spec were
+deleted when nothing reads them (A7 section 11, ruling Q7).
+
+This record lists each removed file, what it was, and where its content went.
+The contents are not copied here. Git history keeps them. To read one, use its
+blob id, or read its path at the last commit that held it:
+
+[source,bash]
+----
+git cat-file -p <blob id>
+git show ad5bcdb6370124980e0fd94e4205f1e6def9a52e:<path>
+----
+
+Size is in bytes. The sha256 is of the file as it was tracked.
+
+The deed carriers are `boj-server_chora.deed` (the one repo deed) and
+`0-AI-MANIFEST.deed` (the pointer-only front door). Both pass
+`deed_lint.js`; the chora deed also passes `deed_lint.js --anchor`.
+
+== Removed
+
+[cols="4,1,3,3,4,5",options="header"]
+|===
+| Path | Size | sha256 | Git blob id | What it was | Where it went
+
+| `.machine_readable/CLADE.a2ml`
+| 1559
+| `1b3aff992a73b9f312c28eed996106e406f45dc97c94fce0930975d56fd84dca`
+| `5db3e8157c0680bd464824fa01c68b99ad18c7e5`
+| Clade declaration (gv-clade-index registry, now chora-registry): identity, clade, forges, lineage, status with one history entry.
+| Already translated into `(identity) (clade) (forges) (lineage) (status)` per `clade-to-repo-deed.adoc`; the legacy file is deleted. Its v5 `uuid` is not carried: the deed's `:repo-uuid` is the profile C UUIDv8 of the birth path (P-1). Its `[lineage] parent` text is the registry's description, not a parent, and its `[clade] rationale` was empty; see "Open points".
+
+| `.machine_readable/6a2/META.a2ml`
+| 5763
+| `b48668d4d387158678fde26a7c7145c28c905f1c9e46bdc3b916da2a8f2ee587`
+| `f205beed7bf0e3369c89593501eb66003e53f79f`
+| META descriptile: version, project info, ADR-001 to ADR-014, development practices, maintenance axes, scoping, axis-2 and axis-3 rules, design rationale.
+| `(meta)` per `meta-ecosystem-to-repo-deed.adoc`: version, last-updated, type, languages, author, build-tool, container-runtime, ci-platform, package-manager, the maintenance axes, `(scoping)`, the axis-2 rules, `(axis-3)` and 14 `(adr)` clauses (id, title, status, date). Not translated: `[project-info] license` (a licence carrier; the spec's open question 2 is unruled and licence facts are the owner's to place) and `[design-rationale]` (populated, so it fails closed pending table rows).
+
+| `.machine_readable/6a2/AGENTIC.a2ml`
+| 1833
+| `2329e46235c6b57fbeb42886ec9667892af3474dd4380b19bed8c22a60a62c20`
+| `11ee7acefee4e3b4f189b29b2f7d4567d590c7a6`
+| AGENTIC descriptile: permissions, comment-carried agent constraints, maintenance-integrity axioms, comment-carried automation hooks.
+| Already translated into `(agentic)` per `agentic-neurosym-playbook-to-repo-deed.adoc`: version, last-updated, permissions, the five integrity axioms. Not translated: `[agent-constraints]` (comment-carried and divergent from template canon, so it fails closed under D4-1; it held the fly.io build cautions) and `[automation-hooks]` (each hook named a retired `.a2ml` file).
+
+| `.machine_readable/6a2/NEUROSYM.a2ml`
+| 749
+| `180fe890c8a4bd0f5a9dec9d067bf2963a57bcea89a09dce70c19efcf28ca7cf`
+| `b1948824fe067bab48dc7adb4568326c63919d35`
+| NEUROSYM descriptile: Hypatia scan config; commented-out symbolic rules and neural config.
+| Already translated into `(neurosym (hypatia …))`. The comment-only sections are dropped.
+
+| `.machine_readable/6a2/PLAYBOOK.a2ml`
+| 4908
+| `1520b2585930a98987115ef6c44b9feb46f17f27e97a789239abb62b187525ec`
+| `6fc257177e8594cf8e14723c03bf202f7841ad04`
+| PLAYBOOK descriptile: deployment, local-dev, container and fly.io seed deployment commands, fly.io notes and domains, incident response, release process, maintenance operations, the CI required-gates rule.
+| `(playbook)` per `agentic-neurosym-playbook-to-repo-deed.adoc`: version, last-updated and the five operational sections kept as positions. Their content has no table rows and did not translate. The required-gates rule is also stated in `.claude/CLAUDE.md`, `docs/AI-CONVENTIONS.adoc` and `docs/wikis/CI-and-Required-Checks.adoc`.
+
+| `.machine_readable/6a2/STATE.a2ml`
+| 38011
+| `5ed5250228cde45fa8f97dd8cb07a3ceb4c82979c61044d42ed5c9f4a0e728d3`
+| `b3d1c23e3cc89c1d3827a81cd6d1a9156d07d173`
+| STATE descriptile v1: status, CRG grade C, completion 65%, stack, milestones (phases 0 to 10), quality counts, open gaps, next actions, blockers, the session history journal, architecture and ecosystem summaries.
+| Option B of `state-v1-decision.adoc`: its `status = "active"` is the `(status)` clause's `:phase active` already; it named no maturity, so there is no `(maturity)`; the rest is journal, archived here by reference and not translated. Current status lives in `docs/status/ROADMAP.adoc`.
+
+| `.machine_readable/6a2/anchor/ANCHOR.a2ml`
+| 2072
+| `b4ded2635e3f8053413ee369296d26f1049b537f1fcfd0b4415482c2b6ff462e`
+| `9b033d6ab4c3bea6fdef69a8a9b5be6eafcd5662`
+| Anchor (`hyperpolymath.anchor/1`): authority, purpose, identity, semantic authority, implementation policy, golden path, satellite policy, semantic-authority files.
+| The `(anchor)` clause of `boj-server_chora.deed`, written as `hyperpolymath.anchor/2`, under A7 section 6.4: version to `(metadata :version)`; authority, `(semantic-authority)`, `(implementation-policy)`, `(golden-path)` and `(satellite-policy)` field for field. Not translated (no 6.4 row): `[metadata] last-updated`, `[anchor] repo` and `purpose`, `[identity]` and `[semantic-authority-files]` (whose paths do not exist in this repo).
+
+| `0-AI-MANIFEST.a2ml`
+| 781
+| `c9e945d66d069efbdee9d9d3c3de451f1f52e924da1fccae131c900fbfe69420`
+| `6bf1f8c7f3805520515a5106f68b8cc8d53ad993`
+| AI manifest (S-expression shape): identity, purpose, context tiers, canonical locations, structure, critical invariants, session lifecycle, format meta.
+| Replaced by the pointer-only `0-AI-MANIFEST.deed` (A7 ruling Q15). Its sections are not the table of `ai-manifest-decision.adoc`, so nothing was translated. Its canonical locations named files now removed.
+
+| `.machine_readable/6a2/0-AI-MANIFEST.a2ml`
+| 781
+| `c9e945d66d069efbdee9d9d3c3de451f1f52e924da1fccae131c900fbfe69420`
+| `6bf1f8c7f3805520515a5106f68b8cc8d53ad993`
+| Directory manifest for `6a2/`: the six files that must exist there and a lock protocol for concurrent writers.
+| Deleted: no mapping spec, no reader. `.machine_readable/6a2/README.adoc` now says what remains.
+
+| `.machine_readable/6a2/anchor/0-AI-MANIFEST.a2ml`
+| 548
+| `fb06417a3bd6d266398a3c7c20288b87a6623df1ff18f7eeb98ef22c37378c48`
+| `0dd6825b17a70c589c0916a48c321f0fecb635a9`
+| Directory manifest for `6a2/anchor/`.
+| Deleted: no mapping spec, no reader. The directory's README went with it.
+
+| `.machine_readable/0.1-AI-MANIFEST.a2ml`
+| 658
+| `0823ff4f0119047b8c2cfbaa4cabbc19c7166adfd687e62313d5cb2d9d1dd2fa`
+| `9d2bc7a077aa84426cacd49d072e14cf7f945301`
+| Level-1 directory manifest for `.machine_readable/`: canonical locations of the A2ML descriptiles; "metadata MUST follow a2ml format".
+| Deleted: no mapping spec, no reader.
+
+| `.github/0.1-AI-MANIFEST.a2ml`
+| 33
+| `4a01e142d7aa5bd591588351050775e02a3421160d6ea2e9ba1fc97dcc40b748`
+| `85b2f0f0a097ea65882ef51128b002576e372198`
+| One-line placeholder heading.
+| Deleted: no content, no reader.
+
+| `.machine_readable/configs/0.2-AI-MANIFEST.a2ml`
+| 191
+| `43e5323c8c189297afebd91ba719e4652139caa511b4dd4037f20d957e98ec53`
+| `6e41e6c25b483cee8c48acf26fb48332fb367dc1`
+| Level-2 directory manifest for `configs/`.
+| Deleted: no mapping spec, no reader.
+
+| `.machine_readable/scripts/0.2-AI-MANIFEST.a2ml`
+| 398
+| `df879a53ce1dbc169a160164a1f161e97dba17e83e60808886abff74b871c54b`
+| `615df84f01893de2968f783c8017f61be7f592d9`
+| Level-2 directory manifest for `scripts/`.
+| Deleted: no mapping spec, no reader.
+
+| `.machine_readable/scripts/forge/0.3-AI-MANIFEST.a2ml`
+| 206
+| `6bd8128d0a4eed6ee42f7355c1fdd687573657cfdd54c8950c8bfb084671f35b`
+| `4bbd6cf394f6417ee141b7f4a65e2e5a2b031a22`
+| Level-3 directory manifest for `scripts/forge/`.
+| Deleted: no mapping spec, no reader.
+
+| `.machine_readable/scripts/lifecycle/0.3-AI-MANIFEST.a2ml`
+| 214
+| `376064428be7f0f23ef5a2d34591422a3165b36c3bab6fa855356f5df6f3d5c0`
+| `3182d1754dfcaf846d6561b73f431d57e7f7d36d`
+| Level-3 directory manifest for `scripts/lifecycle/`.
+| Deleted: no mapping spec, no reader.
+
+| `.machine_readable/scripts/verification/0.3-AI-MANIFEST.a2ml`
+| 220
+| `3c9c71c5c55c35e577b7ed53b07220f1ec8e5fc6691b9214a13a5c60f9e78052`
+| `460e0694090ab32ff28c1a30e31439aa9a490927`
+| Level-3 directory manifest for `scripts/verification/`.
+| Deleted: no mapping spec, no reader.
+
+| `verification/0.1-AI-MANIFEST.a2ml`
+| 740
+| `dcfc7a5a3cf7480ce21a0502a3ba0c699bd5f577eb0e059df39470ad31b61f1f`
+| `3435bdb41bc22273454fc25416ff43f0fe1687f7`
+| Level-1 directory manifest for `verification/`: sub-directories and two invariants.
+| Deleted: no mapping spec, no reader. Each sub-directory keeps its `README.adoc`.
+
+| `verification/benchmarks/0.2-AI-MANIFEST.a2ml`
+| 170
+| `cce3a2380d24b123bfa544e3fd1804ccc65a09787983a0f6e7136fc2eefc0d55`
+| `d922a4c74ecb92d4cf23333a2e3354088ba07324`
+| Level-2 directory manifest.
+| Deleted: no mapping spec, no reader.
+
+| `verification/coverage/0.2-AI-MANIFEST.a2ml`
+| 286
+| `f246a8fc101ffb74858c936b5856043430b7f79b3fb00a8b4d53de451a692485`
+| `32b819e4e0b9737e50c7bb0bd5c94415752633b0`
+| Level-2 directory manifest.
+| Deleted: no mapping spec, no reader.
+
+| `verification/fuzzing/0.2-AI-MANIFEST.a2ml`
+| 194
+| `d13f11a5e4b89c462c62316170cd38479df9fc9bcf91a6eb253a5d8c7fb5f7fd`
+| `5178d400e913379938d4a170dabbbf4f3f582a1e`
+| Level-2 directory manifest.
+| Deleted: no mapping spec, no reader.
+
+| `verification/proofs/0.2-AI-MANIFEST.a2ml`
+| 193
+| `1ca920ad7ee6fd38761c0c4b9c783e8855d66719997c4e8c363de935556355b7`
+| `135e181bdb33ad26c55732e36f4a1731de53f47d`
+| Level-2 directory manifest.
+| Deleted: no mapping spec, no reader.
+
+| `verification/safety_case/0.2-AI-MANIFEST.a2ml`
+| 292
+| `05535208c8fc81dfaa4ac54dd394aafa70d2cbff1f1a9c65a1a661f971e2c53e`
+| `d461915b8a1a93db9749878b4833c2908e28364b`
+| Level-2 directory manifest.
+| Deleted: no mapping spec, no reader.
+
+| `verification/simulations/0.2-AI-MANIFEST.a2ml`
+| 202
+| `121289312bd69584a180208a51c6d3d8b9ed1347d6257a06461b52810acfd357`
+| `f890ecace2b8d193f19902872e8a8b629b02a339`
+| Level-2 directory manifest.
+| Deleted: no mapping spec, no reader.
+
+| `verification/tests/0.2-AI-MANIFEST.a2ml`
+| 31
+| `0f89582da96de1f765583999e8f8020e7ce2f96ba3a66feba6d55190670f48a6`
+| `0008fcfaf28d6f8cf4c65c0f0ca5e2542f166a09`
+| One-line placeholder heading.
+| Deleted: no content, no reader.
+
+| `verification/traceability/0.2-AI-MANIFEST.a2ml`
+| 294
+| `9634abe63221a8c456d10749ee2dd8d559e8e813f3b9aeed34076be683700763`
+| `966776651b42a3fdea4191028eb00770b9f5caf3`
+| Level-2 directory manifest.
+| Deleted: no mapping spec, no reader.
+
+| `container/0-AI-MANIFEST.a2ml`
+| 5227
+| `45b20fa0d1f8db8e250407ef80454e21cff9f1f4aa53d4859dfa346a4e13eef0`
+| `ccb5bc51d49dc343c3e96e924ca8b5e198193219`
+| Directory manifest for `container/`: purpose, canonical locations of the container templates.
+| Deleted: no mapping spec, no reader. Its row in `container/README.adoc` is removed.
+
+| `.machine_readable/ENSAID_CONFIG.a2ml`
+| 5539
+| `0e14bdc701573c93154600126249e0ab5dfa676d9470870185b0e5538504cbc9`
+| `b3863199b6d280d7f40ca79fcba013ed273ae506`
+| eNSAID environment config for PanLL: workspace mode, protection, execution, preferences; panels, workflows, clades and portfolios held only commented examples.
+| Deleted: no mapping spec; nothing in this repository reads it, and the estate copies are template boilerplate.
+
+| `.machine_readable/dev-toolchain.a2ml`
+| 2512
+| `0908d9e5180886e96f7c796df004c155d6f52b448483e3611704fe04690f38e4`
+| `df06945dbf2352a7d5b2c98f59ccfa9667228e61`
+| Local dev-loop toolchain paths (rust-analyzer, cargo, zig, julia, idris2) on the owner's machine, and the owner's standing authorization (2026-05-18) to use the boj dev-loop capabilities on demand.
+| Deleted: no mapping spec, no reader (it says bsp-mcp and dap-mcp "should read" it; neither does). The authorization note is preserved here by reference.
+
+| `.machine_readable/agent_instructions/methodology.a2ml`
+| 4662
+| `eabce56e69c9abda4461ab16800c32ff6204893a38029e979b4df486987a0207`
+| `06221affb49529bb171f5175701256cb7d68f013`
+| Agent methodology: mode, priority weights, budgets, fallback files.
+| Deleted: template methodology with no mapping spec and no machine reader. The directory's README went with it.
+
+| `.machine_readable/agent_instructions/coverage.a2ml`
+| 2233
+| `ce9e1e2124e3a7d7dc86e3704d0bb68cf81eae1185fe6e6ddcf98c505ff1975d`
+| `69796642033856ce09e8282f9dc2479500e07747`
+| Agent session-coverage tracker (template).
+| Deleted: no mapping spec, no reader.
+
+| `.machine_readable/agent_instructions/debt.a2ml`
+| 1879
+| `ae4680c353b887ddc636d5e0002dd79c94e917c69a33cb24d0a58e53e2178e9f`
+| `c0238c5dfa488ecb12ab9e8f45d9fefac2b71f0e`
+| Agent meander-debt list (template).
+| Deleted: no mapping spec, no reader.
+
+| `.machine_readable/contractiles/adjust/Adjustfile.a2ml`
+| 2959
+| `78bb5b021255eb633d53d9bdfa00d0796695867b62bac734659a0f36a0803fbd`
+| `dcdc660f66ca7425668b0f5c911d498a1721fe90`
+| Adjust contractile: WCAG 2.2 AA accessibility invariants.
+| Deleted: no mapping spec (A7 Q7). `adjust.ncl` now names `Adjustfile.deed` (A7 8.1), not yet written.
+
+| `.machine_readable/contractiles/bust/Bustfile.a2ml`
+| 1578
+| `d1500f38c4a3bfdd84249fea9f0b5d9724251a2ed98067f0a0b47a22872277ff`
+| `62af44e6900ff194d5bae54db61f1328b1b55cd7`
+| Bust contractile: meta-repo rollback scenarios and escalation ladder (template residue).
+| Deleted: no mapping spec. `bust.ncl` now names `Bustfile.deed`, not yet written.
+
+| `.machine_readable/contractiles/dust/Dustfile.a2ml`
+| 428
+| `97be661ba2ed968063f8a8dc93bd06d4a3d7f1a9c2a6108c279ffc33cbea59a5`
+| `8c61f268ea08d84b68be9ab1dd31950c6eb716c9`
+| Dust contractile: one source-rollback path.
+| Deleted: no mapping spec. `dust.ncl` now names `Dustfile.deed`; `contractile.just` keeps its generated recipes.
+
+| `.machine_readable/contractiles/intend/Intentfile.a2ml`
+| 2627
+| `c3327b7a86eb1245eb6cd4b3d6df76d2c424fcd600351dba317e220c0df807f6`
+| `fc1e73744cd7688776b5956018b3660b49424243`
+| Intent contractile: purpose, anti-purpose, architectural invariants.
+| Deleted: no mapping spec. `intend.ncl` now names `Intentfile.deed`, not yet written.
+
+| `.machine_readable/contractiles/must/Mustfile.a2ml`
+| 1523
+| `847f9e7f4ae667b1282b2e373aec6ab5e36edb33df3fdac8b44d0a5ee51d7965`
+| `b16f5e0a33fd78f0403d82f3ac0ad7472bc62d43`
+| Must contractile: physical-state checks (licence, README, SECURITY, Justfile, package.json, banned files, env files, SPDX, mcp-bridge).
+| Deleted: no mapping spec. `must.ncl` now names `Mustfile.deed`; `contractile.just` keeps its generated must recipes.
+
+| `.machine_readable/contractiles/trust/Trustfile.a2ml`
+| 43450
+| `abdb3ecb8fae889a5ae4a9e84ffe5dc6d76c55acbe35a7ca47b8c16106671498`
+| `4a684faaf9b80241083987d6ba03ce3d43548b51`
+| Trust contractile: threat model, DNS, email, TLS, Cloudflare edge, headers, container and dependency supply chain, gateway, proofs, verification ladder, signature block.
+| Deleted: no mapping spec, no machine reader. `trust.ncl` now names `Trustfile.deed`, not yet written. Runbook steps that flip a Trustfile status (`docs/integration/hcg-tier2-rollout-runbook.adoc`) have no target until it exists.
+
+| `.machine_readable/integrations/feedback-o-tron.a2ml`
+| 621
+| `4ddac358aa8295640c42cc1685b192677450d9012ce66033a135f69f02566c15`
+| `6841c69b604f21c71f32aaf8b36af5801e74b2e0`
+| Integration note: feedback-o-tron bug-reporter intake.
+| Deleted: no mapping spec, no reader.
+
+| `.machine_readable/integrations/proven.a2ml`
+| 612
+| `11fabb802ac4a0285caa64c4000436c3e1b386b7a6190d735e10be0fb910dbd9`
+| `9af33ffdc7e9faced46b474f2a07df389c9e1631`
+| Integration note: proven safety-library adoption guidance.
+| Deleted: no mapping spec, no reader.
+
+| `.machine_readable/integrations/verisimdb.a2ml`
+| 387
+| `48f716912dbe895d0f4f59a767c22cea517fcb9bc3637b1540558cd3f647cc51`
+| `164c5229a7e2a507cb9f123ccd681159a3376005`
+| Integration note: VeriSimDB data feed config.
+| Deleted: no mapping spec, no reader.
+
+| `.machine_readable/integrations/vexometer.a2ml`
+| 444
+| `3f85155335da36a216049bc4434f976d19580b6bcd49c020117a5c133e3b9145`
+| `238b3d2cdd3a9c59f5e21dcdadba8aaf81d24214`
+| Integration note: vexometer measurement config.
+| Deleted: no mapping spec, no reader.
+
+| `.machine_readable/policies/MAINTENANCE-AXES.a2ml`
+| 1795
+| `dcf30e7273a9767b4a85ef89de87e1b3cc1c17ad0332f4e12910e5b9d7252702`
+| `2428ef74183597a28ef2b97863e3d73f5acedb71`
+| Maintenance governance model: entry points, axes, scoping, axis-2 and axis-3 rules, tooling.
+| Deleted: no mapping spec. Its only reader, the `validate-rsr` recipe, now checks the `(meta)` axes in the chora deed. Its tooling lines (panic-attack, sustainabot) did not translate.
+
+| `.machine_readable/policies/MAINTENANCE-CHECKLIST.a2ml`
+| 3567
+| `24a58123c8c31fdd02fdc2bee7dea7616fa0ea11df052e73b668bce4160bc0cb`
+| `0e065e94fd1165ac1726df58c3b8d6b98dbd77c7`
+| Cross-repo maintenance baseline: must/should/could lists.
+| Deleted: no mapping spec. The human checklist is `docs/maintenance/MAINTENANCE-CHECKLIST.adoc`; `validate-rsr` checks that file instead.
+
+| `.machine_readable/policies/SOFTWARE-DEVELOPMENT-APPROACH.a2ml`
+| 1582
+| `b8840c589be930c7c6a4384485c84afbf0da19d5eb2790cf98a8a6d2b28c8f8f`
+| `093573a07ef2c3cf189dd37cabfb1b40159e0f9b`
+| Machine copy of the software development approach (axes, cleanup, collaboration).
+| Deleted: no mapping spec. The human document is `docs/practice/SOFTWARE-DEVELOPMENT-APPROACH.adoc`.
+
+| `.machine_readable/servers/menu.a2ml`
+| 21992
+| `d6677554f859f612cd64ac35dbc6b13e5a887d2cdb8ef1bc250e201492778a8a`
+| `10602cc985fb727315fa73b852339fd353e7e355`
+| The Teranga menu catalogue: the capability matrix, 45 cartridge entries in three tiers, community nodes and an attestation placeholder.
+| Deleted: no mapping spec, no reader in this repository or found by an estate code search. The live menu is `GET /menu`, built from each `cartridge.json`; the docs that told contributors to edit this file now say so.
+
+| `.machine_readable/servers/order-ticket.a2ml`
+| 4024
+| `675c0e7ea0e6ecc81f0cd7e27490b17b36aa373adcd98dd75f0ed47cee2e7cc7`
+| `5b4534e0e3edde9bfc410896554cbfe0e9df43e7`
+| Order-ticket protocol specification (format, fields, validation flow).
+| Deleted: no mapping spec, no reader. The endpoint stays specified as `/order-ticket` in `docs/specification/openapi.yaml`.
+
+| `docs/examples/extension.a2ml`
+| 1240
+| `b0906a7d02b498dc74b6b9b2e19755f7d4d93e6a97c6df1917ef8817d3c92bb6`
+| `b0ee5eb675de798ac802ef0309de8f4c3b665dfc`
+| Example extension descriptor in A2ML.
+| Deleted: no reader, and it recommended A2ML. `docs/EXTENSIBILITY.adoc` §1 gives the descriptor as a cartridge manifest.
+
+|===
+
+== Retained, with the reason
+
+Four `.a2ml` files stay, each because a live reader still needs exactly that
+input and has no deed form to read yet. None may gain a fact; content may only
+be deleted from them.
+
+[cols="3,1,3,3,5",options="header"]
+|===
+| Path | Size | sha256 | Git blob id | Why it stays
+
+| `.machine_readable/6a2/ECOSYSTEM.a2ml`
+| 735 (was 5066)
+| `015ea9e740037a84d65f17dd41bdf96e2e886692d273d65355badce2a9782a96` (was `bbf95d4c7164ff725bc326a05223af15846fdd1dcfecc3a39790b55000d030d8`)
+| `475736051b755e5dc6a2e1e5d9b2fb41d7ccc014` (was `a9d253082d43f8830c5463f41597c9da50fe0372`)
+| `.github/workflows/readme-derive.yml`, inlined from standards'
+`readme-derive-reusable.yml`, reads its `[publishing.readme]` block to derive
+`README.md` for Glama, and has no deed reader yet (A7 section 10: the
+replacement is `ECOSYSTEM.deed` read with `deed_lint.js --ast-json`). Deleting
+the file would silently turn the derivation and its freshness check off. Every
+other section was deleted, since none translates under
+`meta-ecosystem-to-repo-deed.adoc`: its `[project] name` is not the canonical
+name (P-6), its sections are not the table's rows, and all nine
+related-project relationships (dependency, supersedes, primary-consumer,
+integration, sibling-standard, origin) are outside the closed set. The deleted
+sections are `[metadata]`, `[project]`, `[position-in-ecosystem]`,
+`[related-projects]`, `[integration-points]` and `[distribution-model]` (the
+four fly.io seed nodes and the DNS status). It goes when the reusable reads
+`ECOSYSTEM.deed`.
+
+| `audits/assail-classifications.a2ml`
+| 44450
+| `869fca77110152a0801cebe0687764dac7169f9765fe3ceb6a63d907cfd08d16`
+| `191279d7b61da9d54c910240b53debd45797a139`
+| panic-attack's classifications registry: it flips audited findings to
+suppressed. panic-attack's main branch reads
+`audits/assail-classifications_praxis.deed` first since 2026-11-14, but no
+released binary does, and panicbot and local runs read only this name.
+Deleting it would unsuppress the audited findings. It goes when the deed
+reader ships and the registry is written as that praxis deed.
+
+| `.boj/project-memories.a2ml`
+| 4749 (was 4848)
+| `54574c577980394826b9d3dd776a7660e5ec0751fbcc5139824eab172dbc6df9` (was `2dc552adf90d7958ad4ccf5ff531e361e883ab14ed1498c25b18e8fb1ffdc0d8`)
+| `45c045aaa7a879faaa845efc4e66b85a1f09adf5` (was `63e457ad40043135e31034ff397fe692811b2e73`)
+| The standing worker briefing. The owner's coord-tui hook
+(`~/.config/coord-tui/coord-hooks.sh`, outside this repository) prepends it to
+a worker's system prompt when it exists at this path (recorded in the retired
+STATE journal, 2026-04-27). Deleting it would silently drop the briefing.
+Its on-start step 3 ("Read the plan": `cat .machine_readable/6a2/STATE.a2ml`)
+was deleted, since that file is gone. It goes when that hook reads another
+form.
+
+| `panll/src/Boj.a2ml`
+| 2996
+| `6489ba99ecc58b994b6ac5487c85f6fd1b8fe7bbc3ebbbb8d7b94f16b1646774`
+| `a644193551bced4b7fa0be7505b7c95b2c289e96`
+| The BoJ clade definition for PanLL's panel registry. PanLL's CladeLoader
+reads clade definitions as `.a2ml` (its own `panel-clades/clades/*/*.a2ml`),
+and this file's header names it as that loader's input. It could not be
+verified from this session whether PanLL loads this copy, so it stays until
+PanLL's loader reads a deed form.
+|===
+
+== Open points for the owner
+
+. `[clade] rationale` was empty in `CLADE.a2ml`, and the registry row has no
+  rationale, but the chora deed's `(clade :rationale)` holds a sentence. Its
+  source is not recorded. It is left as it was.
+. META's `license` was not translated: the meta spec's open question 2 (is
+  `(meta :license)` the one machine-checked licence surface?) is unruled.
+. The `(anchor (implementation-policy))` lists are translated verbatim from
+  ANCHOR.a2ml. They predate later rulings (they list "JavaScript (Deno)" and
+  forbid npm, which is now tier 4 and permitted as a last resort). The lists are
+  informative only; correcting them is a content decision.
+. No `<Verb>file.deed` edict exists yet, so the six contractile runners name
+  files that are not written, and each still sets `report_format = "a2ml"`.

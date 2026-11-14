@@ -64,9 +64,6 @@ All files use `{{PLACEHOLDER}}` tokens that are replaced by `just container-init
   (L1--L5), environment configs (dev/staging/prod), container
   configuration, and rolling deployment strategy.
 
-| `0-AI-MANIFEST.a2ml`
-| AI-readable manifest describing the container directory, file
-  interconnections, and the stapeln ecosystem.
 |===
 
 == The stapeln Ecosystem

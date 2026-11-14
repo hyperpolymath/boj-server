@@ -225,4 +225,4 @@ The four canonical seed nodes are declared in `container/seed-nodes.toml`.
 - `docs/FEDERATION.adoc` -- Distributed hosting model
 - `docs/developer/README.adoc` -- Contributing cartridges
 - `docs/CULTURAL-RESPECT.adoc` -- Teranga/Umoja/Ayo terminology
-- `0-AI-MANIFEST.a2ml` -- Machine-readable project manifest
+- `boj-server_chora.deed` -- Machine-readable repo facts (`0-AI-MANIFEST.deed` points to it)
