@@ -33,8 +33,7 @@ schema_version = "1.0.0"
       "curl -sf -X POST http://127.0.0.1:7745/tools/coord_claim_task \
          -H 'Content-Type: application/json' \
          -d '{\"task_id\":\"<your-task-id>\"}'")
-    (step 3 "Read the plan"
-      "cat .machine_readable/6a2/STATE.a2ml  # look for [expansion-roadmap]"))
+      )
 
   ; ===================================================================
   ; COMPLETION CONTRACT — the most important rule
