@@ -64,7 +64,9 @@ gateway treats BoJ as a single backend with opaque cost; the
 gateway-side perf contract isolates gateway-attributable cost only.
 * Cloudflare-edge load shaping (tier 1) and BEAM-supervisor
 back-pressure (tier 3). Both are covered separately in
-`+Trustfile.a2ml [CLOUDFLARE_EDGE_SECURITY]+`.
+the `+[CLOUDFLARE_EDGE_SECURITY]+` section of the retired `+Trustfile.a2ml+`
+(`+docs/history/A2ML-REMOVED.adoc+`; its successor `+Trustfile.deed+` is not
+yet written).
 
 '''''
 

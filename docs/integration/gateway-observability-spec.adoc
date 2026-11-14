@@ -79,7 +79,9 @@ URL, the on-call rota). This spec gives the operator the queries;
 choosing the dashboard tool (Grafana / Cloudflare analytics / something
 else) is owner-driven per the runbook’s existing scoping.
 * Cloudflare-edge metrics (tier 1). Covered separately in
-`+Trustfile.a2ml [CLOUDFLARE_EDGE_SECURITY]+`.
+the `+[CLOUDFLARE_EDGE_SECURITY]+` section of the retired `+Trustfile.a2ml+`
+(`+docs/history/A2ML-REMOVED.adoc+`; its successor `+Trustfile.deed+` is not
+yet written).
 * BoJ-internal cartridge or cartridge-tool metrics. The gateway sees BoJ
 as a single backend; cartridge-level observability is downstream.
 * Long-term storage / retention policy. The spec defines what to scrape;

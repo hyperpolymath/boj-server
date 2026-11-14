@@ -264,9 +264,12 @@ successfully, `+compile/2+` succeeds and `+lookup/3+` never returns
 path+verb denied under trust level T, it is also denied under any T’ < T
 (monotonicity of denial preserved through the full pipeline).
 
-*C3 — Seam declaration in BoJ Trustfile*
+*C3 — Seam declaration in the BoJ trust edict*
 
-Add to `+[SEAMS]+` in `+Trustfile.a2ml+`:
+Declare the seam in `+Trustfile.deed+`, the trust edict paired with
+`+.machine_readable/contractiles/trust/trust.ncl+` (not yet written). The
+entry below stood in `+[SEAMS]+` of the retired `+Trustfile.a2ml+`
+(`+docs/history/A2ML-REMOVED.adoc+`) and is the content to carry over:
 
 [source,yaml]
 ----
@@ -287,7 +290,7 @@ Add to `+[SEAMS]+` in `+Trustfile.a2ml+`:
 * Seam test (C1) exercises the HTTP contract from Phase A: headers set
 correctly, trust level forwarded, response returned to caller.
 * Property tests (C2) pass with at least 200 samples.
-* Seam declared in Trustfile.
+* Seam declared in `+Trustfile.deed+`.
 
 ==== Risks
 
@@ -445,8 +448,8 @@ hours without circuit breaker trips or elevated error rates.
 once in staging before production rollout).
 * Production rollout complete with no SLA regression (latency at p99
 within D2 declared overhead + 20% safety margin).
-* `+[HTTP_CAPABILITY_GATEWAY]+` section in BoJ Trustfile updated to
-`+status: "DEPLOYED"+` with `+deployed_at+` timestamp.
+* The "Tier-2 gateway status" item in `+docs/status/ROADMAP.adoc+` flipped to
+`+DEPLOYED+`, with the date, per the rollout runbook §6.4.
 
 ==== Risks
 

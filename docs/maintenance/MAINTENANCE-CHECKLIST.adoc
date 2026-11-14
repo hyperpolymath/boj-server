@@ -120,7 +120,8 @@ compatibility)
 ** `+bot_directives/+` for bot control files
 * [ ] Keep contractiles/invariants present and wired:
 ** root `+Mustfile+` (or equivalent) with enforceable checks
-** `+Trustfile+` and `+Intentfile+` present
+** the `+trust+` and `+intend+` contractile runners present, with their edicts
+(`+Trustfile.deed+`, `+Intentfile.deed+`) once written
 * [ ] Keep security metadata present:
 ** `+.well-known/security.txt+` and relevant policy metadata
 ** CI security scanning configured and runnable
@@ -478,7 +479,8 @@ to `+docs/+` subtrees).
 * [x] Human-readable docs synchronized (`+README+`, `+QUICK_STATUS+`,
 roadmap, wiki home).
 * [x] `+Mustfile+` invariants present and enforceable in CI.
-* [x] `+Trustfile+` and `+Intentfile+` present and complete.
+* [ ] `+Trustfile.deed+` and `+Intentfile.deed+` present and complete (not yet
+written; the `+.a2ml+` forms were retired 2026-11-14).
 * [x] FFI/ABI purity policy enforced (`+*.zig+` for FFI,
 `+*.idr+`/Idris2 for ABI).
 * [x] `+panic-attack+` findings triaged with explicit severity budget
