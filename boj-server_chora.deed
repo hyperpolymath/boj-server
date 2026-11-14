@@ -13,7 +13,7 @@
   :schema-version "1.0.0"
   :canonical-name "boj-server"
   :repo-uuid #u8"gv-clade-index:github.com/hyperpolymath/boj-server"
-  :beholding-chora #u5"estate/chora"
+  :beholding-chora #u8"chora:estate/github.com/hyperpolymath"
   (identity
     :owner "hyperpolymath"
     :primary-forge github
