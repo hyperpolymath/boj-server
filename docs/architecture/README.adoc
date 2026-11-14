@@ -288,8 +288,8 @@ All 115 cartridges have the scaffold. Status (re-measured 2026-04-30):
 
 == The Teranga Menu
 
-The menu (`.machine_readable/servers/menu.a2ml`) is the public catalogue of available
-capabilities. Three sections:
+The menu (`GET /menu`, built by `BojRest.Router` from each cartridge's `cartridge.json`)
+is the public catalogue of available capabilities. Three sections:
 
 * *Teranga (Core)*: Cartridges maintained by the project
 * *Shield*: Privacy and security cartridges (SDP, DoQ/DoH, oDNS)
@@ -300,7 +300,7 @@ and having the kitchen prepare it.
 
 == The Order-Ticket Protocol
 
-. AI reads the Teranga menu (`menu.a2ml`)
+. AI reads the Teranga menu (`GET /menu`)
 . AI writes an order ticket (`order-ticket.scm`)
 . BoJ validates the order against the catalogue (`IsUnbreakable` check)
 . BoJ routes invoke calls via `BojRest.Router`:

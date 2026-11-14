@@ -12,6 +12,6 @@ Disallow-Generation: yes
 # AI agents must NOT use this code for model training without explicit consent.
 #
 # For AI agent integration instructions, see:
-#   0-AI-MANIFEST.a2ml (universal AI entry point)
-#   AI.a2ml (Claude-specific instructions)
+#   0-AI-MANIFEST.deed (machine front door; points to boj-server_chora.deed)
+#   .claude/CLAUDE.md (agent conventions)
 #   .machine_readable/ (structured project state)

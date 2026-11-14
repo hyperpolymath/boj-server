@@ -122,7 +122,7 @@ If your tool isn't covered by an existing cartridge, you can create a *community
 
 == What is the Teranga menu?
 
-The Teranga menu is the public catalogue of available capabilities, stored at `.machine_readable/servers/menu.a2ml`. It has three tiers:
+The Teranga menu is the public catalogue of available capabilities, served at `GET /menu` and built from the `tier` each cartridge declares in its `cartridge.json`. It has three tiers:
 
 [cols="1,1,1,1",options="header"]
 |===

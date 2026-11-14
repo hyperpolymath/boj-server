@@ -186,7 +186,7 @@ Ensure your cartridge:
 
 === 6. Register in the menu
 
-Add your cartridge to `.machine_readable/servers/menu.a2ml` under the *Ayo* section (community tier). Set status to `Development` initially.
+The menu (`GET /menu`) is built from each cartridge's `cartridge.json`: set `"tier": "Ayo"` there (community tier), and set status to `Development` initially.
 
 === 7. Pass the IsUnbreakable proof
 
@@ -205,7 +205,8 @@ The third axis allows community extensions to specialise a cartridge for a speci
 
 === Write an extension descriptor
 
-Create a `.a2ml` file:
+Write the descriptor as a cartridge manifest (currently `cartridge.json`); see
+link:../EXTENSIBILITY.adoc[EXTENSIBILITY] §1 for the format. The fields are:
 
 [source,toml]
 ----
