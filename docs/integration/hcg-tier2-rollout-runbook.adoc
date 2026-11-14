@@ -73,17 +73,27 @@ HCG-fronted, percentage-by-percentage (§3).
 (§4).
 . *Rollback* — detection, immediate-bypass, and permanent-disable
 procedures (§5).
-. *Post-rollout verification + Trustfile flip* — the final acceptance
+. *Post-rollout verification + status flip* — the final acceptance
 steps that close `+standards#100+` (§6).
+
+*Where the tier-2 status lives.* The legacy Trustfile that held
+`+[CLOUDFLARE_EDGE_SECURITY].rate_limiting.tier_2_gateway.status+` was
+retired on 2026-11-14 with no mapping spec to translate it, and its
+paired `+Trustfile.deed+` is not yet written
+(`+docs/history/A2ML-REMOVED.adoc+` gives the retired file's blob id).
+Until it is, the tier-2 gateway status is the "Tier-2 gateway status"
+item under v1.1.0 "Gateway sidecar" in `+docs/status/ROADMAP.adoc+`.
+§1.4 checks that item, and the status flips in §5.3 and §6.4 edit it.
 
 What is *out of scope*:
 
 * HCG internals (policy DSL, ETS table layout, proxy code paths) —
 covered in `+http-capability-gateway/docs/+`.
-* Cloudflare-edge configuration (tier 1) — covered in
-`+Trustfile.a2ml [CLOUDFLARE_EDGE_SECURITY]+`.
-* BEAM supervisor / cartridge rate-limiting (tier 3/4) — covered
-separately in `+Trustfile.a2ml+`.
+* Cloudflare-edge configuration (tier 1) — was covered in the retired
+Trustfile's `+[CLOUDFLARE_EDGE_SECURITY]+` section (archived in git
+history; see `+docs/history/A2ML-REMOVED.adoc+`).
+* BEAM supervisor / cartridge rate-limiting (tier 3/4) — was covered
+separately in the same retired Trustfile.
 * Horizontal scaling of BoJ behind the gateway (single-backend
 limitation, noted as post-Phase-E in the plan).
 
@@ -144,9 +154,10 @@ Cowboy TLS config (http-capability-gateway#10).
 `+elixir/lib/boj_rest/trust_policy.ex+` line 73
 (`+def satisfies?(_required, _trust, false), do: false+`), merged in
 boj-server#106 (commit `+40e46f6f+`).
-* [x] Phase C `+[SEAMS]+` declaration:
-`+.machine_readable/contractiles/trust/Trustfile.a2ml [SEAMS]+`
-(boj-server#90).
+* [x] Phase C `+[SEAMS]+` declaration: the `+[SEAMS]+` section of the
+then-current Trustfile (boj-server#90; that file was retired on
+2026-11-14 and is archived in git history, see
+`+docs/history/A2ML-REMOVED.adoc+`).
 
 ==== 1.3 Operational prerequisites — `+!OWNER:+` block
 
@@ -203,10 +214,10 @@ BoJ access logs`") and rollback trigger §5.1 row 4 are unobservable via
 Prometheus — the only signal path is BoJ structured logs, which the §4
 dashboards do not currently consume. Spec landed; the wiring PR follows
 the spec’s §7 checklist.
-* [ ]
-`+Trustfile.a2ml [CLOUDFLARE_EDGE_SECURITY].rate_limiting.tier_2_gateway.status+`
-currently `+"PENDING — http-capability-gateway wiring forthcoming"+`
-(line 900). _The flip to a real status is the *last* action; see §6._
+* [ ] Tier-2 gateway status (the "Tier-2 gateway status" item in
+`+docs/status/ROADMAP.adoc+`) currently
+`+"PENDING — http-capability-gateway wiring forthcoming"+`. _The flip
+to a real status is the *last* action; see §6._
 
 ==== 1.5 Gateway-side prerequisites
 
@@ -504,8 +515,8 @@ gateway version`":
 [arabic]
 . Remove the gateway k9-svc deployment per its spec at
 `+container/gateway-deploy.k9.ncl+`.
-. Update
-`+Trustfile.a2ml [CLOUDFLARE_EDGE_SECURITY].rate_limiting.tier_2_gateway.status+`
+. Update the "Tier-2 gateway status" item in
+`+docs/status/ROADMAP.adoc+`
 to `+"DISABLED — see incident <issue-id>"+` (replace the placeholder
 `+"PENDING — http-capability-gateway wiring forthcoming"+` only if it
 was already flipped to `+"DEPLOYED"+` per §6.4; otherwise leave
@@ -540,7 +551,7 @@ the wrong tier-2). Choose (b) for code-regression issues.
 
 '''''
 
-=== 6. Post-rollout verification + Trustfile flip
+=== 6. Post-rollout verification + status flip
 
 The acceptance criteria of `+standards#100+` close out here.
 
@@ -562,24 +573,21 @@ before declaring done.
 drill or otherwise) are recorded with timestamps and outcome. The
 runbook has been exercised, not only written.
 
-==== 6.4 Trustfile flip — final action
+==== 6.4 Status flip — final action
 
-Edit `+.machine_readable/contractiles/trust/Trustfile.a2ml+` line ~900:
+Edit the "Tier-2 gateway status" item under v1.1.0 "Gateway sidecar"
+in `+docs/status/ROADMAP.adoc+`: tick it, and replace its status with
+`+DEPLOYED+`, the `+deployed_at+` ISO-8601 timestamp of the §3.3
+sign-off, and the deployment evidence (the `+standards#100+` close-out
+comment link and the incident links, planned and unplanned). This
+commit is the one §6.5 links.
 
-[source,yaml]
-----
-tier_2_gateway:
-  provider: "http-capability-gateway / svalinn"
-  mechanisms: ["per-IP token-bucket sliding window", "per-capability-token", "per-endpoint"]
-  status: "DEPLOYED"
-  deployed_at: "<ISO-8601 timestamp of §3.3 sign-off>"
-  deployment_evidence:
-    - "standards#100 close-out comment <link>"
-    - "incidents (planned + unplanned) <links>"
-----
-
-Also update `+[HTTP_CAPABILITY_GATEWAY]+` section per plan §E
-acceptance: `+status: "DEPLOYED"+` with `+deployed_at+` timestamp.
+The retired Trustfile also carried an `+[HTTP_CAPABILITY_GATEWAY]+`
+section (`+status: "ACCEPTED-PLANNED"+`) that plan §E acceptance asked
+to flip to `+DEPLOYED+`. It went with the file, so the ROADMAP item is
+the one status record. When `+Trustfile.deed+` is written
+(`+.machine_readable/contractiles/trust/trust.ncl+` names it), the
+status moves there and this step is updated to match.
 
 ==== 6.5 Channel close-out
 
@@ -599,8 +607,9 @@ Elixir/Cowboy/Plug HTTP-governance layer that sits between Cloudflare
 edge (tier 1) and BoJ’s gnosis handler (tier 3).
 * *BoJ* — `+hyperpolymath/boj-server+`, the consumer of HCG.
 * *Tier 2* — the placement of HCG in the four-tier rate-limit
-architecture declared in
-`+Trustfile.a2ml [CLOUDFLARE_EDGE_SECURITY].rate_limiting+`.
+architecture declared in the retired Trustfile's
+`+[CLOUDFLARE_EDGE_SECURITY].rate_limiting+` (archived in git history;
+see `+docs/history/A2ML-REMOVED.adoc+`).
 * *§3 invariant 3* — the Phase A contract requirement that BoJ ignores
 `+X-Trust-Level+` from any non-loopback caller. Enforced both
 gateway-side (header strip) and BoJ-side (`+TrustPolicy.satisfies?/3+`
@@ -627,10 +636,13 @@ signals.
 perf-contract.
 * `+elixir/lib/boj_rest/trust_policy.ex+` — `+satisfies?/3+` Phase C
 enforcement.
-* `+.machine_readable/contractiles/trust/Trustfile.a2ml+` —
-`+[CLOUDFLARE_EDGE_SECURITY].rate_limiting.tier_2_gateway+` (current
-`+PENDING+` site; §6.4 flip target) + `+[SEAMS]+` (Phase C
-gateway↔BoJ-gnosis declaration).
+* `+docs/status/ROADMAP.adoc+` — the "Tier-2 gateway status" item
+under v1.1.0 "Gateway sidecar" (current `+PENDING+` site; §6.4 flip
+target).
+* `+docs/history/A2ML-REMOVED.adoc+` — the ledger row for the retired
+Trustfile, whose `+[CLOUDFLARE_EDGE_SECURITY].rate_limiting+` and
+`+[SEAMS]+` (Phase C gateway↔BoJ-gnosis declaration) sections are
+archived in git history.
 * `+scripts/hcg-policy-smoke.sh+` — §1.5 operator pre-check: deny-path
 smoke (gateway-alone) + optional `+--with-backend+` allow-path smoke
 against the live policy.

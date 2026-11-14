@@ -85,8 +85,11 @@ four kept for a live reader.
 | TypeScript
 | AffineScript
 
-| Node.js / npm / bun
-| Deno
+| Node.js
+| Bun
+
+| yarn
+| Bun
 
 | Go
 | Rust
@@ -95,6 +98,16 @@ four kept for a live reader.
 | Julia / Rust
 
 |===
+
+== JavaScript Runtime
+
+Order: *Bun > Deno > pnpm > npm*. Bun is tier 1 and comes first everywhere;
+Deno is permitted at tier 2; npm is the last resort (permitted, never
+preferred), and `package-lock.json` is never tracked. JS dependencies are
+declared in `package.json` and pinned by `bun.lock`; both are required, and
+`bun install --production` installs production dependencies. A runtime is not
+a language: no TypeScript under any runtime (new application code is
+AffineScript).
 
 == Container Standard
 

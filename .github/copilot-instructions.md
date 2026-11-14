@@ -37,7 +37,8 @@ Copyright (c) Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
 ## Banned Languages
 
 - No TypeScript (use AffineScript)
-- No Node.js / npm / bun (use Deno)
+- No Node.js runtime (use Bun). Runtime order: Bun > Deno > pnpm > npm; Deno is permitted at tier 2, npm only as the last resort, and `package-lock.json` is never tracked.
+- JS dependencies go in `package.json`, pinned by `bun.lock`; both are required.
 - No Go (use Rust)
 - No Python (use Julia or Rust)
 

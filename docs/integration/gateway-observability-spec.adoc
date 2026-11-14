@@ -665,7 +665,7 @@ duration, not a different signal set.
 === 7. References
 
 * Rollout runbook — `+docs/integration/hcg-tier2-rollout-runbook.md+`
-(§4 signal list, §5 rollback triggers, §6 Trustfile flip).
+(§4 signal list, §5 rollback triggers, §6 status flip).
 * Sister spec (BoJ side) —
 `+docs/integration/boj-side-observability-spec.md+` (events, metric
 names, instrumentation sites for the §3 templates above).

@@ -100,6 +100,7 @@ Gateway sidecar (`http-capability-gateway` in front of boj-server):
 * [x] Implement `PolicyLoader.load_from_boj_catalog/1` in `http-capability-gateway` — reads `BOJ_CARTRIDGES_ROOT/*/cartridge.json` at boot, infers per-cartridge invoke exposure from `auth.method` (`none` → `public`, others → `authenticated`). Zero manual policy maintenance thereafter. See `docs/gateway-catalog-integration.adoc`.
 * [x] Update `compose.dev.yaml` with gateway sidecar entry (port 7800 → boj-rest:7700)
 * [x] Retire static `gateway-policy.yaml` — catalog mode live 2026-04-25; file kept as reference only
+* [ ] Tier-2 gateway status: `PENDING — http-capability-gateway wiring forthcoming`. Production rollout under `standards#100` per `docs/integration/hcg-tier2-rollout-runbook.adoc`, whose §6.4 flips this item to `DEPLOYED` (with `deployed_at` and the evidence links) as its last action, and whose §5.3 sets it to `DISABLED` on a permanent disable. This status was `[CLOUDFLARE_EDGE_SECURITY].rate_limiting.tier_2_gateway.status` in the Trustfile retired on 2026-11-14 (`docs/history/A2ML-REMOVED.adoc`); it moves to `Trustfile.deed` when that is written.
 
 == Future Directions
 
