@@ -1,14 +1,36 @@
 ;; SPDX-License-Identifier: MPL-2.0
 ;; SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
 ;;
-;; Clauses translated field for field from the legacy descriptiles under the
-;; mapping specs in 1-formats/deed/mappings/:
-;;   CLADE.a2ml -> (identity) (clade) (forges) (lineage) (status)
-;;     per clade-to-repo-deed.adoc (ruled 2026-10-27, standards#1356);
-;;   AGENTIC.a2ml / NEUROSYM.a2ml -> (agentic) (neurosym)
-;;     per agentic-neurosym-playbook-to-repo-deed.adoc.
-;; Untabled sections in META.a2ml, ECOSYSTEM.a2ml, PLAYBOOK.a2ml and STATE.a2ml
-;; stay untranslated pending kyX / state-v1-decision.adoc (D308, D313).
+;; The repo deed of boj-server (one deed per repo, standards#837).
+;;
+;; Every descriptive clause below is translated field for field from a retired
+;; A2ML file under the mapping spec that governs its family, in standards
+;; 1-formats/deed/mappings/ (the only authority a family translation may cite).
+;; A field a table does not list does not translate: it was dropped, not
+;; re-homed. docs/history/A2ML-REMOVED.adoc records each removed file, its git
+;; blob id and what was dropped from it (owner approval 2026-11-14, after
+;; hyperpolymath/hypatia#1113).
+;;
+;;   CLADE.a2ml      -> (identity) (clade) (forges) (lineage) (status)
+;;                      clade-to-repo-deed.adoc (ruled 2026-10-27,
+;;                      standards#1356). :repo-uuid is the ADR-008 profile C
+;;                      UUIDv8 of the birth path (spec section 5, P-1), not
+;;                      the v5 that CLADE.a2ml held.
+;;   META.a2ml       -> (meta)       meta-ecosystem-to-repo-deed.adoc
+;;   AGENTIC.a2ml    -> (agentic)    agentic-neurosym-playbook-to-repo-deed.adoc
+;;   NEUROSYM.a2ml   -> (neurosym)   agentic-neurosym-playbook-to-repo-deed.adoc
+;;   PLAYBOOK.a2ml   -> (playbook)   agentic-neurosym-playbook-to-repo-deed.adoc
+;;   ANCHOR.a2ml     -> (anchor)     A7 section 6.4 (anchor.abnf v2.0.0)
+;;   STATE.a2ml      -> nothing new. state-v1-decision.adoc option B (ruled
+;;                      2026-11-10): its status "active" is the (status)
+;;                      clause's :phase already, it named no maturity, and the
+;;                      journal is archived by reference, not translated.
+;;   ECOSYSTEM.a2ml  -> nothing. Its sections ([project], [position-in-
+;;                      ecosystem]) are not the rows the table lists, its name
+;;                      is not the canonical name (P-6), and every related-
+;;                      project relationship is outside the closed set. Its
+;;                      [publishing.readme] block stays in the legacy file,
+;;                      which readme-derive.yml still reads (A7 section 10).
 (repo-deed
   :schema-version "1.0.0"
   :canonical-name "boj-server"
@@ -45,6 +67,10 @@
     :mcp-bridge "mcp-bridge/"
     :contracts ".machine_readable/svc/self-validating/"
     :enforcement ".github/workflows/")
+  ; The clade spec's table lists the fields below and no others ("Fields not
+  ; listed do not exist in the deed era for this family"). The three
+  ; :evidence-source, :interaction-source and :evidence-status fields that
+  ; stood here were outside it, and the first named STATE.a2ml, now retired.
   (status
     :phase active
     :since "2026-03-16"
@@ -55,10 +81,59 @@
     :successors ()
     :ended ""
     (history
-      (entry :phase active :since "2026-03-16" :note "Active MCP server host; cartridge corpus split to hyperpolymath/boj-server-cartridges"))
-    :evidence-source ".machine_readable/6a2/STATE.a2ml"
-    :interaction-source "boj-server_chora.deed (agentic)"
-    :evidence-status "Lifecycle fields above are the CLADE registry surface. Legacy .a2ml records are frozen under D308 and must not be extended.")
+      (entry :phase active :since "2026-03-16" :note "Active MCP server host; cartridge corpus split to hyperpolymath/boj-server-cartridges")))
+  ; META.a2ml: the rows the table lists. Not translated: [project-info]
+  ; license (a licence carrier; the spec's open question 2 is unruled, and
+  ; licence facts are the owner's to place), [design-rationale] (populated,
+  ; so it fails closed pending table rows) and the source's comments.
+  (meta
+    :version "0.3.0"
+    :last-updated "2026-04-25"
+    :type service
+    :languages (idris2 zig elixir javascript scheme nickel)
+    :author "Jonathan D.A. Jewell (hyperpolymath)"
+    :build-tool just
+    :container-runtime podman
+    :ci-platform github-actions
+    :package-manager guix
+    :scoping-first #t
+    :execution-order "axis-1 > axis-2 > axis-3"
+    :axis-1 "must > intend > like"
+    :axis-2 "corrective > adaptive > perfective"
+    :axis-3 "systems > compliance > effects"
+    (scoping
+      :sources "README, roadmap, status docs, maintenance checklist, CI/security docs"
+      :marker-scan "TODO/FIXME/XXX/HACK/STUB/PARTIAL"
+      :idris-unsound-scan "believe_me/assert_total")
+    :corrective-first #t
+    :adaptive-second #t
+    :adaptive-focus "scope-change reconciliation, stale-reference removal, obsolete-work culling"
+    :perfective-third #t
+    :perfective-source "axis-1 honest state after corrective/adaptive updates"
+    (axis-3
+      :audit-focus "systems in place, documentation explains actual state, safety/security accounted for, observed effects reviewed"
+      :compliance-focus "seams/compromises/exception register, bounded exceptions, anti-drift checks"
+      :drift-risk-example "single exception broadening into policy violation (e.g. AffineScript->TypeScript spread)"
+      :effects-evidence "benchmark execution/results and maintainer status dialogue/review")
+    (adr :id "ADR-001" :title "Three-layer stack: Idris2 ABI + Zig FFI + Zig Adapter (zig retired 2026-04-10)" :status accepted :date "2026-03-02")
+    (adr :id "ADR-002" :title "2D matrix: protocol types (cols) x capability domains (rows)" :status accepted :date "2026-03-02")
+    (adr :id "ADR-003" :title "Cartridge metaphor — swappable, verified capability modules" :status accepted :date "2026-03-02")
+    (adr :id "ADR-004" :title "IsUnbreakable proof type — only Ready cartridges can be mounted" :status accepted :date "2026-03-02")
+    (adr :id "ADR-005" :title "Umoja federation — gossip protocol, IPv6, hash attestation" :status accepted :date "2026-03-02")
+    (adr :id "ADR-006" :title "Teranga menu — three-tier A2ML (Core/Shield/Ayo)" :status accepted :date "2026-03-02")
+    (adr :id "ADR-007" :title "Order-ticket protocol — AI reads menu, writes order, BoJ mounts cartridges" :status accepted :date "2026-03-02")
+    (adr :id "ADR-008" :title "Zero believe_me policy — all Idris2 code must be total and sound" :status accepted :date "2026-03-02")
+    (adr :id "ADR-009" :title "Align BoJ with unified-zig-api stack (future work)" :status accepted :date "2026-04-17")
+    (adr :id "ADR-010" :title "Elixir REST server (Plug/Cowboy) replaces zig adapter; dual dispatch: boj-invoke CLI for FFI cartridges, JsWorkerPool for JS cartridges" :status accepted :date "2026-04-20")
+    (adr :id "ADR-011" :title "Persistent Deno worker pool (JsWorkerPool) over fork-per-call for JS dispatch — consistent-hash routing, pre-warmed workers" :status accepted :date "2026-04-25")
+    (adr :id "ADR-012" :title "http-capability-gateway sidecar in catalog mode (BOJ_CARTRIDGES_ROOT) replaces static gateway-policy.yaml" :status accepted :date "2026-04-25")
+    (adr :id "ADR-013" :title "Seed node deployment on fly.io — lean build (boj-invoke only, no cartridge .so); seed nodes serve JS path for all cartridges" :status accepted :date "2026-04-25")
+    (adr :id "ADR-014" :title "X-Trust-Level header enforcement for HTTP invoke — loopback bypass, keyed cartridges require authenticated/internal trust from external callers" :status accepted :date "2026-04-25"))
+  ; AGENTIC.a2ml: [metadata], [agent-permissions] and the five
+  ; [maintenance-integrity] axioms. The source has no @profile line, so there
+  ; is no (profile). Not translated: [agent-constraints] (comment-carried and
+  ; divergent from template canon, so it fails closed under D4-1) and
+  ; [automation-hooks] (each hook named a retired .a2ml file).
   (agentic
     :version "0.2.0"
     :last-updated "2026-04-25"
@@ -74,6 +149,8 @@
       :allow-silent-skip #f
       :require-rerun-after-fix #t
       :release-claim-requires-hard-pass #t))
+  ; NEUROSYM.a2ml: [metadata] and [hypatia-config]. [symbolic-rules] and
+  ; [neural-config] held only comments, so they are dropped.
   (neurosym
     :version "0.2.0"
     :last-updated "2026-04-25"
@@ -81,4 +158,42 @@
       :scan-enabled #t
       :scan-depth standard
       :report-format "json"))
+  ; PLAYBOOK.a2ml: [metadata] and the five operational sections kept as
+  ; positions (the family-1 slot doctrine). The content of [deployment] and
+  ; the runbook sections ([local-dev-deployment], [container-deployment],
+  ; [fly-io-*], [ci-required-gates]) has no table rows, so it did not
+  ; translate. The CI rule it carried is in .claude/CLAUDE.md and
+  ; docs/AI-CONVENTIONS.adoc.
+  (playbook
+    :version "0.2.1"
+    :last-updated "2026-06-13"
+    (deployment)
+    (incident-response)
+    (release-process)
+    (docs-format)
+    (maintenance-operations))
+  ; ANCHOR.a2ml under A7 6.4, written as /2. Its version is (metadata
+  ; :version); authority, golden path, semantic-authority, implementation-
+  ; policy and satellite-policy go field for field. Not translated (no row in
+  ; 6.4): [metadata] last-updated, [anchor] repo and purpose, [identity]
+  ; and [semantic-authority-files]. The implementation-policy lists are
+  ; informative and verbatim; the language policy itself is a contractile.
+  (anchor
+    :schema "hyperpolymath.anchor/2"
+    :authority "upstream-canonical"
+    (metadata :version "1.0.0")
+    (semantic-authority
+      :policy "canonical"
+      :owns ("Project semantics and specification" "Invariant definitions and contractiles" "Reference implementation behavior"))
+    (implementation-policy
+      :allowed ("Idris2" "Zig" "Elixir" "AffineScript" "JavaScript (Deno)" "Scheme" "Shell" "Just" "AsciiDoc" "Markdown")
+      :forbidden ("Node.js" "npm" "TypeScript" "Python" "Go"))
+    (golden-path
+      :smoke-test-command ("just test" "just quality")
+      :success-criteria ("Core tests pass" "Quality gates pass" "No unresolved critical security findings"))
+    (satellite-policy
+      :must-pin-upstream #t
+      :must-declare-authority #t
+      :must-have-anchor #t
+      :must-have-golden-path #t))
 )

@@ -56,7 +56,7 @@ Your adapter must:
 
 === 6. Register in the menu
 
-Add your cartridge to `.machine_readable/servers/menu.a2ml` under the Ayo section. Set status to `Development` initially.
+The menu (`GET /menu`) is built from each cartridge's `cartridge.json`: set `"tier": "Ayo"` there, and set status to `Development` initially.
 
 === 7. Pass the IsUnbreakable proof
 

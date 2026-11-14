@@ -172,7 +172,7 @@ See `container/` for:
 
 == Extending
 
-See `docs/EXTENSIBILITY.adoc` and `docs/examples/extension.a2ml` for how to
+See `docs/EXTENSIBILITY.adoc` for how to
 create backend-specific cartridge extensions without modifying core code.
 
 == Submitting feedback

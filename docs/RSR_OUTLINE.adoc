@@ -68,8 +68,8 @@ Every cartridge follows the ABI/FFI universal standard:
 [source]
 ----
 boj-server/
-├── 0-AI-MANIFEST.a2ml         # Universal AI agent entry point
-├── AI.a2ml                    # Claude-specific instructions
+├── 0-AI-MANIFEST.deed         # Machine front door (pointer-only)
+├── boj-server_chora.deed      # Repo facts: identity, status, meta, anchor
 ├── README.adoc                # Project overview
 ├── TOPOLOGY.md                # Architecture diagram + completion dashboard
 ├── READINESS.md               # Component Readiness Grades (CRG)
@@ -114,18 +114,6 @@ boj-server/
 │   ├── DEVELOPERS.md          # Contributing cartridges
 │   └── QUICKSTART.md          # Getting started guide
 ├── .machine_readable/         # ALL machine-readable content
-│   ├── STATE.a2ml             # Project state, progress, blockers
-│   ├── META.a2ml              # Architecture decisions, governance
-│   ├── ECOSYSTEM.a2ml         # Ecosystem position, relationships
-│   ├── AGENTIC.a2ml           # AI agent interaction patterns
-│   ├── NEUROSYM.a2ml          # Neurosymbolic integration config
-│   ├── PLAYBOOK.a2ml          # Operational runbook
-│   ├── servers/
-│   │   ├── menu.a2ml          # Live Teranga menu
-│   │   └── order-ticket.scm   # Order protocol specification
-│   ├── anchors/ANCHOR.a2ml
-│   ├── policies/              # Maintenance axes, checklist, SDA
-│   ├── bot_directives/        # Per-bot rules
 │   └── contractiles/          # Policy enforcement (k9, dust, lust, must, trust)
 ├── .well-known/               # RFC metadata (security.txt, ai.txt, humans.txt)
 ├── .github/workflows/         # 17 mandatory + BoJ-specific
@@ -141,7 +129,7 @@ boj-server/
 * `Justfile`
 * `README.adoc`
 * `LICENSE` (MPL-2.0)
-* `.machine_readable/STATE.a2ml`
+* `boj-server_chora.deed`
 * `.well-known/security.txt`
 * `.well-known/ai.txt`
 * `.well-known/humans.txt`
@@ -152,12 +140,12 @@ boj-server/
 * **ABI**: Idris2 (dependent types, formal verification)
 * **FFI**: Zig (zero-cost C ABI, cross-compilation)
 * **Adapter**: zig (triple API, Phase 3)
-* **Infrastructure**: Just, Guile Scheme (`.a2ml` files), Nickel (k9), Shell
+* **Infrastructure**: Just, deed (`boj-server_chora.deed`), Nickel (k9), Shell
 
 === Prohibited (enforced by CI)
 
 * TypeScript/JavaScript (use AffineScript)
-* npm, Bun, pnpm, yarn (use Deno)
+* Node.js and yarn (use Bun; the JS runtime order is Bun > Deno > pnpm > npm)
 * Python (use Julia/Rust)
 * Go (use Rust/Zig)
 * `Dockerfile` (use `Containerfile`)
@@ -187,7 +175,7 @@ All present in `.github/workflows/`:
 
 * **proven-servers**: Imports MCP type skeletons and connector interfaces
 * **polystack**: BoJ supersedes polystack's 13 components
-* **PanLL**: Primary consumer (reads menu.a2ml for capability discovery)
+* **PanLL**: Primary consumer (capability discovery)
 * **hypatia**: Neurosymbolic CI scanning
 * **gitbot-fleet**: 6-bot release gate policy
 * **stapeln**: Container supply chain for node hosting
