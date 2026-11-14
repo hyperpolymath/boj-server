@@ -143,12 +143,12 @@ Always 10 characters wide. Use full blocks only (no half-blocks).
 
 TOPOLOGY.md complements but does not replace:
 
-- **STATE.a2ml** — machine-readable state (tasks, blockers, next actions)
-- **ECOSYSTEM.a2ml** — position in the wider project ecosystem
-- **META.a2ml** — architecture decisions and design rationale
-- **0-AI-MANIFEST.a2ml** — AI agent entry point and invariants
+- **boj-server_chora.deed** — machine-readable repo facts: lifecycle
+  `(status)`, `(meta)` architecture decisions, `(anchor)` semantic boundary
+- **0-AI-MANIFEST.deed** — AI agent front door (pointer-only)
+- **docs/status/ROADMAP.adoc** — current state, blockers and next actions
 
-TOPOLOGY.md is the _visual summary_ for humans; the a2ml files are the
+TOPOLOGY.md is the _visual summary_ for humans; the deeds are the
 _structured data_ for tooling. Both should agree.
 
 == Copyright

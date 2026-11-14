@@ -1,11 +1,13 @@
 # SPDX-License-Identifier: MPL-2.0
 # dust.ncl — cleanup and hygiene runner for boj-server
 #
-# Pairs with: Dustfile.a2ml (same directory)
+# Pairs with: Dustfile.deed (same directory; A7 8.1). Not yet written: the
+#             legacy Dustfile.a2ml was retired 2026-11-14 with no mapping
+#             spec to translate it (docs/history/A2ML-REMOVED.adoc).
 # Verb:       dust
 # Semantics:  verify cleanup policies are met and all recovery paths are declared.
 #             Runner checks for stale branches, stale artefacts, dead code, and
-#             that each recovery scenario in Dustfile.a2ml has a verified path.
+#             that each recovery scenario in the Dustfile has a verified path.
 # CLI:        `contractile dust check`  → run hygiene checks
 #             `contractile dust sweep`  → execute safe cleanup operations
 #
@@ -26,7 +28,7 @@
       name = "dust-runner",
       version = "1.0.0",
       description = "Verifies cleanup policies and all declared recovery rollback paths. Sweep mode applies only reversible cleanup.",
-      paired_xfile = "Dustfile.a2ml",
+      paired_xfile = "Dustfile.deed",
       author = "Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>",
     },
   },

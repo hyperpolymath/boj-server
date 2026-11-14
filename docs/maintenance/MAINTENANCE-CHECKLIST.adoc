@@ -5,8 +5,8 @@ Use this as a repeatable maintenance runbook for any repo.
 Companion policy:
 
 * `+docs/practice/SOFTWARE-DEVELOPMENT-APPROACH.adoc+` (human-readable)
-* `+.machine_readable/policies/SOFTWARE-DEVELOPMENT-APPROACH.a2ml+`
-(machine-readable)
+* the `+(meta …)+` clause of `+boj-server_chora.deed+` (machine-readable
+maintenance axes)
 
 === Canonical Repo Baseline (Final)
 
@@ -113,8 +113,8 @@ compatibility)
 ** `+.github/CODEOWNERS+`
 * [ ] Keep machine-readable canonical structure under
 `+.machine_readable/+`:
-** state/meta/ecosystem files (`+*.a2ml+` or repo standard)
-** `+anchors/ANCHOR.a2ml+`
+** repo facts in the root chora deed (`+<repo>_chora.deed+`: `+(status)+`,
+`+(meta)+`, `+(anchor)+`), never `+*.a2ml+` (A2ML is retired)
 ** `+contractiles/+` (`+must+`, `+trust+`, `+lust+`, and related)
 ** `+ai/+` for AI guidance files
 ** `+bot_directives/+` for bot control files
