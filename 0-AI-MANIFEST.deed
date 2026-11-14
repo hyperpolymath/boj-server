@@ -3,13 +3,11 @@
 ;;
 ;; The machine front door of boj-server: pointer-only (A7 ruling Q15). It names
 ;; where to read and carries no facts of its own. Repository facts are in
-;; boj-server_chora.deed; agent conventions are in .claude/CLAUDE.md. It
-;; replaces 0-AI-MANIFEST.a2ml, retired 2026-11-14 (docs/history/A2ML-REMOVED.adoc).
+;; boj-server_chora.deed, which carries the identity fields; agent conventions
+;; are in .claude/CLAUDE.md. It replaces 0-AI-MANIFEST.a2ml, retired 2026-11-14
+;; (docs/history/A2ML-REMOVED.adoc).
 (repo-deed
   :schema-version "1.0.0"
-  :canonical-name "boj-server"
-  :repo-uuid #u8"gv-clade-index:github.com/hyperpolymath/boj-server"
-  :beholding-chora #u8"chora:estate/github.com/hyperpolymath"
   (front-doors
     :machine "boj-server_chora.deed"
     :human "README.adoc"

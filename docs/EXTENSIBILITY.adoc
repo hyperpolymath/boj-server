@@ -15,7 +15,7 @@ project itself.
 
 > The capability matrix, lifecycle, proof requirements, HAT model, and cartridge
 > manifest schema are specified normatively in
-> link:specification/cartridges/README.md[`docs/specification/cartridges/README.md`].
+> link:specification/cartridges/README.adoc[`docs/specification/cartridges/README.adoc`].
 > This document covers the optional *backend (third axis)* extension mechanism only.
 
 BoJ organises server capabilities as a sparse matrix:
@@ -41,9 +41,16 @@ BoJ organises server capabilities as a sparse matrix:
 
 == The Third Axis: Backend
 
-Every cartridge has a `backend` field that defaults to `"universal"`.
+Every catalogue entry has a `backend` label that defaults to `"universal"`
+(the `backend` field of the `Cartridge` record in `src/abi/Boj/Catalogue.idr`,
+set by `boj_catalogue_register` in `ffi/zig/src/catalogue.zig`).
 Core BoJ cartridges are all universal — they define the capability
 abstraction without committing to a specific provider.
+
+NOTE: The label lives in the catalogue (Idris2 ABI and Zig FFI), not in
+`cartridge.json`. The manifest schema (`schemas/cartridge-v1.json`) has no
+`backend` property, so a backend is set at registration time with
+`boj_catalogue_set_backend` (see <<register-ffi>>).
 
 Community extensions can *specialise* this axis.  For example:
 
@@ -59,12 +66,12 @@ Community extensions can *specialise* this axis.  For example:
 | universal
 | Generic database operations
 
-| database-mcp-pg
+| database-pg-mcp
 | Database
 | postgresql
 | PostgreSQL-native operations
 
-| database-mcp-sqlite
+| database-sqlite-mcp
 | Database
 | sqlite
 | SQLite-native operations
@@ -74,7 +81,7 @@ Community extensions can *specialise* this axis.  For example:
 | universal
 | Generic container operations
 
-| container-mcp-podman
+| container-podman-mcp
 | Container
 | podman
 | Podman-specific tooling
@@ -95,91 +102,174 @@ and the cartridge behaves exactly as the existing 2D model.
 
 To extend BoJ with a backend-specific cartridge:
 
-=== 1. Write an Extension Descriptor
+=== 1. Write the Cartridge Manifest
 
-> *Manifest format note (2026-04-17):* The closed decision
-> `boj-cartridge-manifest-format-dd.md` establishes *Nickel* (`.ncl`) as the
-> authoritative cartridge manifest format. Current on-disk manifests are
-> `cartridge.json`. Migration from JSON to Nickel is tracked as future work.
-> Until migration is complete, both formats coexist; the JSON schema at
-> `https://boj.dev/schemas/cartridge/v1.json` remains the operative validator.
+> *Manifest format note:* the cartridge specification
+> (link:specification/cartridges/README.adoc[§6, Cartridge Manifest (Nickel)])
+> names *Nickel* (`.ncl`) as the authoritative manifest format; migration is pending. The
+> manifests read today are `cartridge.json`. The Elixir catalog
+> (`elixir/lib/boj_rest/catalog.ex`) validates each one against the bundled
+> schema mirror `schemas/cartridge-v1.json` (see `schemas/SCHEMA-MIRROR.adoc`)
+> and rejects a manifest that fails it.
 
-Create a manifest file describing your extension (currently `cartridge.json`; Nickel
-`.ncl` is the planned authoritative format):
+Create a `cartridge.json` for your extension. Start from
+`templates/cartridge-template/cartridge.json`. The name must end in its role
+suffix (`-mcp`, `-lsp`, `-dap`, …), so a PostgreSQL specialisation of
+`database-mcp` is `database-pg-mcp`, not `database-mcp-pg`. Community
+extensions are always the `Ayo` tier. This example validates against
+`schemas/cartridge-v1.json`:
 
-[source,toml]
+[source,json]
 ----
-# my-extension.cartridge.json — Extension descriptor for BoJ catalogue
-# (Future: migrate to my-extension.ncl in Nickel format)
-[extension]
-name = "database-mcp-pg"
-version = "0.1.0"
-domain = "database"          # Must match a CapabilityDomain
-backend = "postgresql"       # Your specialisation
-tier = "ayo"                 # Community extensions are always Ayo tier
-protocols = ["mcp", "rest"]  # Which protocol columns this fills
-
-[metadata]
-author = "Your Name <you@example.com>"
-description = "PostgreSQL-native database cartridge for BoJ"
-homepage = "https://github.com/you/database-mcp-pg"
-hash = ""                    # SHA-256 of the .so — filled at build time
-
-[capabilities]
-tools = [
-  "pg_query",
-  "pg_schema",
-  "pg_migrate",
-]
+{
+  "$schema": "https://hyperpolymath.dev/standards/cartridges/cartridge-v1.json",
+  "spdx": "MPL-2.0",
+  "copyright": "Copyright (c) 2026 Your Name",
+  "name": "database-pg-mcp",
+  "version": "0.1.0",
+  "description": "PostgreSQL-native database cartridge for BoJ",
+  "domain": "Database",
+  "category": "domain",
+  "tier": "Ayo",
+  "protocols": ["MCP", "REST"],
+  "auth": {
+    "method": "none",
+    "env_var": null,
+    "credential_source": null
+  },
+  "api": {
+    "base_url": "local://database-pg-mcp",
+    "content_type": "application/json"
+  },
+  "tools": [
+    {
+      "name": "pg_query",
+      "description": "Run a read-only SQL query.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "query": { "type": "string", "description": "SQL query string" }
+        },
+        "required": ["query"]
+      }
+    }
+  ]
+}
 ----
 
-=== 2. Build a Shared Library
+=== 2. Build the Cartridge Library
 
-Your extension compiles to a `.so` (or `.dylib` on macOS) that exports
-C-ABI functions matching the BoJ cartridge invoke contract:
+A cartridge is three layers: an *Idris2* ABI (the verified contract), a *Zig*
+FFI and a *Zig* adapter. The FFI compiles to a shared library (`.so`, or
+`.dylib` on macOS) that exports the five C-ABI symbols of ADR-0006
+(`docs/decisions/0006-cartridge-invoke-abi.adoc`). This is the shape of
+`templates/cartridge-template/ffi/cartridge_ffi.zig`, built with that
+directory's `build.zig`:
 
-[source,c]
+[source,zig]
 ----
-// Required export:
-int boj_ext_invoke(const char* tool, const char* params_json,
-                   char* result_buf, size_t result_len);
+const shim = @import("cartridge_shim.zig");
+
+export fn boj_cartridge_init() callconv(.c) c_int {
+    return 0;
+}
+
+export fn boj_cartridge_deinit() callconv(.c) void {}
+
+export fn boj_cartridge_name() callconv(.c) [*:0]const u8 {
+    return "database-pg-mcp";
+}
+
+export fn boj_cartridge_version() callconv(.c) [*:0]const u8 {
+    return "0.1.0";
+}
+
+// Return codes are frozen by ADR-0006: 0 success, -1 unknown tool,
+// -2 bad arguments, -3 buffer too small (*in_out_len set to the size needed).
+export fn boj_cartridge_invoke(
+    tool_name: [*c]const u8,
+    json_args: [*c]const u8,
+    out_buf: [*c]u8,
+    in_out_len: [*c]usize,
+) callconv(.c) i32 {
+    _ = json_args;
+    if (shim.invokeArgsNull(tool_name, out_buf, in_out_len)) return shim.RC_BAD_ARGS;
+    const body: []const u8 = if (shim.toolIs(tool_name, "pg_query"))
+        "{\"result\":{}}"
+    else
+        return shim.RC_UNKNOWN_TOOL;
+    return shim.writeResult(out_buf, in_out_len, body);
+}
 ----
 
-=== 3. Register via the REST API
+`cartridge_shim.zig` is `ffi/zig/src/cartridge_shim.zig`. Cartridges
+themselves live in the `boj-server-cartridges` repository; its
+`cartridges/templates/gossamer-mcp/` is the minting template, and its
+`cartridges/domains/config/k9iser-mcp/adapter/` is the reference unified Zig
+adapter.
 
-Submit your extension to a running BoJ node:
+=== 3. Submit via the REST API
+
+The submission endpoint is specified in `docs/specification/openapi.yaml`
+(`POST /community/submit`, body `CommunitySubmission`), and
+`config/gateway-policy-boj.yaml` exposes it only to authenticated callers.
+
+IMPORTANT: The Elixir REST server (`elixir/lib/boj_rest/router.ex`) does not
+serve this route yet; a request falls through to its `route-not-found` 404.
+The review state machine itself is implemented in `ffi/zig/src/community.zig`.
+
+Once the route is served, a submission looks like this, with `BOJ_URL` the
+node's REST endpoint (see `.env.example`):
 
 [source,bash]
 ----
-curl -X POST http://localhost:7700/community/submit \
+curl -X POST "$BOJ_URL/community/submit" \
   -H 'Content-Type: application/json' \
   -d '{
-    "name": "database-mcp-pg",
+    "name": "database-pg-mcp",
     "author": "Your Name <you@example.com>",
-    "description": "PostgreSQL-native database cartridge",
-    "hash": "a1b2c3...64-char-sha256"
+    "repository": "https://github.com/you/database-pg-mcp"
   }'
 ----
 
-The node operator reviews the submission via the Ayo tier state machine
-(submitted → under_review → approved/rejected).
+The node operator reviews the submission through the Ayo-tier review state
+machine in `ffi/zig/src/community.zig`
+(submitted → under_review → approved / rejected, or suspended).
 
+[[register-ffi]]
 === 4. Register Programmatically (FFI)
 
-If you are building against the BoJ static library:
+If you link against the BoJ catalogue library, call the C ABI that
+`ffi/zig/src/catalogue.zig` exports. From Zig:
 
-[source,c]
+[source,zig]
 ----
-#include "boj_catalogue.h"
+extern fn boj_catalogue_init() c_int;
+extern fn boj_catalogue_register(
+    name_ptr: [*]const u8,
+    name_len: usize,
+    version_ptr: [*]const u8,
+    version_len: usize,
+    status: c_int, // BOJ_STATUS_*: 1 = ready
+    tier: c_int, // BOJ_TIER_*: 2 = ayo
+    domain: c_int, // BOJ_DOMAIN_*: 3 = database
+) c_int;
+extern fn boj_catalogue_set_backend(backend_ptr: [*]const u8, backend_len: usize) c_int;
+extern fn boj_catalogue_add_protocol(protocol: c_int) c_int;
 
-boj_catalogue_register("database-mcp-pg", 15, "0.1.0", 5,
-                        1,  /* ready */
-                        2,  /* ayo tier */
-                        3); /* database domain */
-boj_catalogue_set_backend("postgresql", 10);
-boj_catalogue_add_protocol(1);  /* MCP */
-boj_catalogue_add_protocol(9);  /* REST */
+fn registerPg() bool {
+    if (boj_catalogue_init() != 0) return false;
+    const name = "database-pg-mcp";
+    const version = "0.1.0";
+    const backend = "postgresql";
+    if (boj_catalogue_register(name.ptr, name.len, version.ptr, version.len, 1, 2, 3) != 0) return false;
+    if (boj_catalogue_set_backend(backend.ptr, backend.len) != 0) return false;
+    if (boj_catalogue_add_protocol(1) != 0) return false; // BOJ_PROTO_MCP
+    return boj_catalogue_add_protocol(9) == 0; // BOJ_PROTO_REST
+}
 ----
+
+The constant values are those in `generated/abi/boj_catalogue.h`.
 
 == What This Is Not
 
@@ -187,7 +277,7 @@ This extensibility mechanism is *not*:
 
 * A plugin system with dynamic loading (extensions are static .so files)
 * A marketplace or registry (BoJ does not host or distribute extensions)
-* A scope increase (core BoJ remains the 18 universal cartridges)
+* A scope increase (core BoJ cartridges stay universal)
 * A commitment to support arbitrary backends
 
 It is simply a *designed seam* in the type system that allows the
@@ -198,39 +288,44 @@ on the backend dimension.
 
 == Querying Extensions
 
-The Teranga menu JSON includes the `backend` field:
+The catalogue's menu JSON, written by `boj_menu_json` in
+`ffi/zig/src/catalogue.zig`, carries each entry's `backend` label:
 
 [source,json]
 ----
 {
   "menu": "teranga",
+  "version": "0.1.0",
   "cartridges": [
     {
       "name": "database-mcp",
-      "backend": "universal",
+      "version": "0.1.0",
       "tier": "teranga",
+      "status": "ready",
+      "backend": "universal",
+      "available": true,
       "protocols": ["mcp", "rest"]
     },
     {
-      "name": "database-mcp-pg",
-      "backend": "postgresql",
+      "name": "database-pg-mcp",
+      "version": "0.1.0",
       "tier": "ayo",
+      "status": "ready",
+      "backend": "postgresql",
+      "available": true,
       "protocols": ["mcp", "rest"]
     }
   ]
 }
 ----
 
-The REST API also supports backend queries:
+To read one entry's label, call `boj_menu_backend` (below). In the Idris2 ABI,
+`byBackend` filters a list of cartridges by label.
 
-[source,bash]
-----
-# List all database cartridges (any backend)
-curl http://localhost:7700/cartridges?domain=database
-
-# List only PostgreSQL-specialised cartridges
-curl http://localhost:7700/cartridges?domain=database&backend=postgresql
-----
+NOTE: The REST surface does not expose the backend label yet. `GET /menu` in
+`elixir/lib/boj_rest/router.ex` groups manifests by tier with no `backend`
+field, and `GET /cartridges` returns only the cartridge names and a count; it
+takes no `domain` or `backend` query parameters.
 
 == Idris2 ABI
 
@@ -260,11 +355,16 @@ byBackend : String -> List Cartridge -> List Cartridge
 
 == Zig FFI
 
+The two backend exports of `ffi/zig/src/catalogue.zig`, as a caller declares
+them:
+
 [source,zig]
 ----
-// Set backend for the last registered cartridge (default: "universal")
-pub export fn boj_catalogue_set_backend(ptr: [*]const u8, len: usize) c_int;
+// Set the backend label (at most 32 bytes) of the last registered cartridge.
+// The label is "universal" until this is called. Returns 0, or -1 on error.
+extern fn boj_catalogue_set_backend(backend_ptr: [*]const u8, backend_len: usize) c_int;
 
-// Query backend label for a cartridge by index
-pub export fn boj_menu_backend(index: usize, out_ptr: [*]u8, out_len: usize) usize;
+// Copy the backend label of the cartridge at `index` into out_ptr.
+// Returns the number of bytes copied, or 0 on error.
+extern fn boj_menu_backend(index: usize, out_ptr: [*]u8, out_len: usize) usize;
 ----

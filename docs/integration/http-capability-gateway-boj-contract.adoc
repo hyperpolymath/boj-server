@@ -12,7 +12,8 @@ ____
 (`+http-capability-gateway-policy-authoring.md+`) are kept as `+.md+`,
 not `+.adoc+`, deliberately: the integration plan normatively prescribes
 the path `+docs/integration/http-capability-gateway-boj-contract.md+`,
-the Phase C Trustfile `+[SEAMS]+` entry will reference that exact path,
+the Phase C seam declaration (the `+gateway-boj-gnosis+` entry, planned for
+`+Trustfile.deed+`, not yet written) will reference that exact path,
 and the entire `+docs/integration/+` + `+docs/decisions/+` doc-set is
 Markdown. Faithfulness to the normatively-referenced path outweighs the
 estate `+.adoc+` default here.
@@ -195,7 +196,7 @@ signal.
 verbatim
 
 |BoJ unreachable / connection refused |circuit breaker trips → *503
-Service Unavailable* |fail-closed; matches Trustfile `+[SEAMS]+`
+Service Unavailable* |fail-closed; matches the Phase C seam declaration
 `+failure_mode: "fail-closed (circuit breaker)"+`
 
 |Verb not permitted by policy |*403* (or stealth status, see §6)

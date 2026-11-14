@@ -106,4 +106,6 @@ Configure via env vars:
   *Accepted; production-wiring is a tracked programme — ADR-0004 estimates
   8–12 weeks (mTLS-as-primary, E2E, benchmarks). Until then this core
   stays internal/loopback-bound.*
-. **Phase 4 — mTLS / SDP.** Per `Trustfile.a2ml` `[SDP_RULES]`.
+. **Phase 4 — mTLS / SDP.** Per the `[SDP_RULES]` section of the retired
+  `Trustfile.a2ml` (`docs/history/A2ML-REMOVED.adoc`); its successor,
+  `Trustfile.deed`, is not yet written.

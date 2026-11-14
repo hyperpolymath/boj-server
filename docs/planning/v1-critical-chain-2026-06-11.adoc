@@ -186,7 +186,8 @@ unblocks the entire tier-2 story.
 
 B3. *HCG Phase E rollout* per the existing runbook
 (`docs/integration/hcg-tier2-rollout-runbook.md`) — staging cut-over,
-soak, 10/50/100%, Trustfile flip. The `!OWNER:` markers in §1.3/§4 need
+soak, 10/50/100%, tier-2 status flip (now in `docs/status/ROADMAP.adoc`;
+the Trustfile that held it was retired 2026-11-14). The `!OWNER:` markers in §1.3/§4 need
 owner decisions (on-call rota, cert paths, traffic-shift mechanism).
 
 B4. *Credential forwarding stays Options A+B for v1.* Option C (RGTV
