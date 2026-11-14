@@ -10,13 +10,14 @@ Per-tool config files (.cursorrules, .clinerules, etc.) reference this document.
 
 == Session Startup
 
-. Read `0-AI-MANIFEST.a2ml` FIRST (mandatory gatekeeper).
-. Read `.machine_readable/STATE.a2ml` for current status and blockers.
-. Read `.machine_readable/anchors/ANCHOR.a2ml` for canonical authority boundaries.
-. Read `.machine_readable/policies/MAINTENANCE-AXES.a2ml` for maintenance/audit sequencing.
-. Read `.machine_readable/policies/MAINTENANCE-CHECKLIST.a2ml` for baseline controls.
-. Read `.machine_readable/policies/SOFTWARE-DEVELOPMENT-APPROACH.a2ml` for execution order.
-. Read `.machine_readable/AGENTIC.a2ml` for agent constraints.
+. Read `0-AI-MANIFEST.deed` FIRST (the pointer-only machine front door).
+. Read `boj-server_chora.deed`: lifecycle `(status)`, `(meta)` (ADRs and the
+  maintenance axes), `(agentic)` (agent permissions and integrity axioms) and
+  `(anchor)` (canonical authority boundaries and the golden path).
+. Read `docs/status/ROADMAP.adoc` for current status and blockers.
+. Read `docs/maintenance/MAINTENANCE-CHECKLIST.adoc` and
+  `docs/practice/SOFTWARE-DEVELOPMENT-APPROACH.adoc` for maintenance sequencing
+  and execution order.
 
 == License
 
@@ -34,10 +35,11 @@ Per-tool config files (.cursorrules, .clinerules, etc.) reference this document.
 
 == State Files
 
-State/metadata files, anchors, and policies (.a2ml) belong in `.machine_readable/` ONLY.
-NEVER create STATE.a2ml, META.a2ml, ECOSYSTEM.a2ml, AGENTIC.a2ml,
-NEUROSYM.a2ml, PLAYBOOK.a2ml, ANCHOR.a2ml, MAINTENANCE-AXES.a2ml,
-MAINTENANCE-CHECKLIST.a2ml, or SOFTWARE-DEVELOPMENT-APPROACH.a2ml in the repository root.
+A2ML is retired. Repo state and metadata are clauses of `boj-server_chora.deed`,
+checked with standards' `deed_lint.js`. NEVER create a `.a2ml` file (STATE, META,
+ECOSYSTEM, AGENTIC, NEUROSYM, PLAYBOOK, ANCHOR, policies or any other), anywhere.
+`docs/history/A2ML-REMOVED.adoc` records the files retired on 2026-11-14 and the
+four kept for a live reader.
 
 == Banned Patterns
 
@@ -141,10 +143,9 @@ the link:wikis/CI-and-Required-Checks[CI & Required Checks] wiki page.
 
 == References
 
-* `0-AI-MANIFEST.a2ml` -- universal AI entry point
-* `.machine_readable/AGENTIC.a2ml` -- agent permissions and constraints
-* `.machine_readable/STATE.a2ml` -- current project state
-* `.machine_readable/anchors/ANCHOR.a2ml` -- canonical authority and policy boundary
-* `.machine_readable/policies/MAINTENANCE-AXES.a2ml` -- canonical axis sequencing and audit requirements
-* `.machine_readable/policies/MAINTENANCE-CHECKLIST.a2ml` -- baseline maintenance checklist policy
-* `.machine_readable/policies/SOFTWARE-DEVELOPMENT-APPROACH.a2ml` -- axis execution approach policy
+* `0-AI-MANIFEST.deed` -- machine front door (pointer-only)
+* `boj-server_chora.deed` -- repo facts: `(status)`, `(meta)`, `(agentic)`, `(neurosym)`, `(playbook)`, `(anchor)`
+* `docs/status/ROADMAP.adoc` -- current project state
+* `docs/maintenance/MAINTENANCE-CHECKLIST.adoc` -- baseline maintenance checklist
+* `docs/practice/SOFTWARE-DEVELOPMENT-APPROACH.adoc` -- axis execution approach
+* `docs/history/A2ML-REMOVED.adoc` -- ledger of the retired A2ML files

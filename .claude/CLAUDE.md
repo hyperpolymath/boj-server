@@ -6,7 +6,14 @@ Copyright (c) Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
 
 ## Machine-Readable Artefacts
 
-This repo follows the hyperpolymath standard. See `https://github.com/hyperpolymath/standards`. A2ML is retired (D308): do not create or edit `.a2ml` files, and do not treat `.machine_readable/6a2/` as current. Descriptive metadata moves to the repo's chora deed via kyX.
+This repo follows the hyperpolymath standard. See `https://github.com/hyperpolymath/standards`. A2ML is retired (D99, D312, D313): never create, restore or extend a `.a2ml` file. You may only delete content from one.
+
+Machine-readable repo facts are deeds, checked with `bun <standards>/1-formats/deed/tools/deed_lint.js FILE`:
+
+- `boj-server_chora.deed` — the one repo deed: identity, clade, forges, lineage, lifecycle `(status)`, `(meta)` with the ADRs, `(agentic)`, `(neurosym)`, `(playbook)` and the `(anchor)` (semantic authority and golden path).
+- `0-AI-MANIFEST.deed` — the pointer-only machine front door (A7 ruling Q15). It carries no facts.
+
+`docs/history/A2ML-REMOVED.adoc` is the ledger of the A2ML files retired on 2026-11-14: what each held, where its content went, and the four `.a2ml` files kept because a live reader still needs them. Do not recreate a removed file; the journal that `STATE.a2ml` carried continues in `docs/status/ROADMAP.adoc`.
 
 ---
 
@@ -14,8 +21,8 @@ This repo follows the hyperpolymath standard. See `https://github.com/hyperpolym
 
 The full policy is canonical in `hyperpolymath/standards`. Key points relevant to this repo:
 
-- **No new TypeScript** — convert existing TS to AffineScript (`.affine`) directly; AffineScript is no longer the destination as of 2026-04-30.
-- **Deno** for the runtime, not Node. `deno.json` for imports, no `node_modules` in production.
+- **No new TypeScript or ReScript** — convert existing TS/ReScript to AffineScript (`.affine`) directly; ReScript is no longer the destination as of 2026-04-30.
+- **Bun** for the JS runtime (order Bun > Deno > pnpm > npm; npm only as the last resort), not Node. JS dependencies are declared in `package.json` and pinned by `bun.lock`; both are required. `bun install --production` for production dependencies.
 - **AffineScript** for new application code. Compiles to typed-wasm.
 
 ### TypeScript Exemptions (Approved)

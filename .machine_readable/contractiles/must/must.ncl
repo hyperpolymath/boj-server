@@ -1,7 +1,9 @@
 # SPDX-License-Identifier: MPL-2.0
 # must.ncl — baseline invariant runner for boj-server
 #
-# Pairs with: Mustfile.a2ml (same directory)
+# Pairs with: Mustfile.deed (same directory; A7 8.1). Not yet written: the
+#             legacy Mustfile.a2ml was retired 2026-11-14 with no mapping
+#             spec to translate it (docs/history/A2ML-REMOVED.adoc).
 # Verb:       must
 # Semantics:  every declared invariant must pass. Runner evaluates physical-state
 #             checks (file existence, no banned patterns, SPDX headers, etc.) and
@@ -26,7 +28,7 @@
       name = "must-runner",
       version = "1.0.0",
       description = "Evaluates all declared must-invariants. Blocks merge on critical failure. K9 validator is the authoritative CI enforcement.",
-      paired_xfile = "Mustfile.a2ml",
+      paired_xfile = "Mustfile.deed",
       k9_validator = ".machine_readable/svc/self-validating/boj-server-metadata.k9.ncl",
       author = "Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>",
     },

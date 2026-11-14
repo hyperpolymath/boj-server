@@ -49,7 +49,7 @@ info:
     @echo "Version: {{version}}"
     @echo "RSR Tier: {{tier}}"
     @echo "Recipes: $(just --summary | wc -w)"
-    @[ -f ".machine_readable/STATE.a2ml" ] && grep -oP 'phase\s*=\s*"\K[^"]+' .machine_readable/STATE.a2ml | head -1 | xargs -I{} echo "Phase: {}" || true
+    @[ -f "boj-server_chora.deed" ] && grep -oP '^\s*:phase \K[a-z-]+' boj-server_chora.deed | head -1 | xargs -I{} echo "Phase: {}" || true
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # INIT — Bootstrap a new project from this template
@@ -222,10 +222,6 @@ init:
             sed -i "${SED_ARGS[@]}" "$file"
         fi
     done
-
-    # Also replace [YOUR-REPO-NAME] and [YOUR-NAME/ORG] in AI manifest
-    sed -i "s|\[YOUR-REPO-NAME\]|${PROJECT_NAME}|g" 0-AI-MANIFEST.a2ml 2>/dev/null || true
-    sed -i "s|\[YOUR-NAME/ORG\]|${OWNER}|g" 0-AI-MANIFEST.a2ml 2>/dev/null || true
 
     echo ""
     echo "── Validation ───────────────────────────────────"
@@ -459,7 +455,7 @@ matrix:
     echo "  Core catalogue:    ffi/zig/src/catalogue.zig"
     echo "  Dynamic loader:    ffi/zig/src/loader.zig"
     echo "  REST server:       elixir/ (Plug/Cowboy)"
-    echo "  Menu:              .machine_readable/servers/menu.a2ml"
+    echo "  Menu:              GET /menu (built from each cartridge.json; elixir/lib/boj_rest/router.ex)"
     echo ""
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -928,25 +924,27 @@ validate-rsr:
     for f in .editorconfig .gitignore Justfile README.adoc LICENSE; do
         [ -f "$f" ] || MISSING="$MISSING $f"
     done
-    for f in .machine_readable/STATE.a2ml .machine_readable/META.a2ml .machine_readable/ECOSYSTEM.a2ml .machine_readable/anchors/ANCHOR.a2ml .machine_readable/policies/MAINTENANCE-AXES.a2ml .machine_readable/policies/MAINTENANCE-CHECKLIST.a2ml .machine_readable/policies/SOFTWARE-DEVELOPMENT-APPROACH.a2ml; do
+    # Repo facts are deeds since 2026-11-14 (docs/history/A2ML-REMOVED.adoc):
+    # the chora deed carries (status) (meta) (anchor); 0-AI-MANIFEST.deed is
+    # the pointer-only front door.
+    for f in boj-server_chora.deed 0-AI-MANIFEST.deed; do
         [ -f "$f" ] || MISSING="$MISSING $f"
     done
-    for f in docs/maintenance/MAINTENANCE-CHECKLIST.md docs/practice/SOFTWARE-DEVELOPMENT-APPROACH.adoc; do
+    for f in docs/maintenance/MAINTENANCE-CHECKLIST.adoc docs/practice/SOFTWARE-DEVELOPMENT-APPROACH.adoc; do
         [ -f "$f" ] || MISSING="$MISSING $f"
     done
-    if [ -f ".machine_readable/META.a2ml" ]; then
-        grep -q 'axis-1 = "must > intend > like"' .machine_readable/META.a2ml || MISSING="$MISSING META.a2ml:axis-1"
-        grep -q 'axis-2 = "corrective > adaptive > perfective"' .machine_readable/META.a2ml || MISSING="$MISSING META.a2ml:axis-2"
-        grep -q 'axis-3 = "systems > compliance > effects"' .machine_readable/META.a2ml || MISSING="$MISSING META.a2ml:axis-3"
-        grep -q 'scoping-first = true' .machine_readable/META.a2ml || MISSING="$MISSING META.a2ml:scoping-first"
-        grep -q 'idris-unsound-scan = "believe_me/assert_total"' .machine_readable/META.a2ml || MISSING="$MISSING META.a2ml:idris-unsound-scan"
-        grep -q 'audit-focus = "systems in place, documentation explains actual state, safety/security accounted for, observed effects reviewed"' .machine_readable/META.a2ml || MISSING="$MISSING META.a2ml:audit-focus"
-        grep -q 'compliance-focus = "seams/compromises/exception register, bounded exceptions, anti-drift checks"' .machine_readable/META.a2ml || MISSING="$MISSING META.a2ml:compliance-focus"
-        grep -q 'effects-evidence = "benchmark execution/results and maintainer status dialogue/review"' .machine_readable/META.a2ml || MISSING="$MISSING META.a2ml:effects-evidence"
-        grep -q 'compliance-tooling = "panic-attack"' .machine_readable/policies/MAINTENANCE-AXES.a2ml || MISSING="$MISSING MAINTENANCE-AXES.a2ml:compliance-tooling"
-        grep -q 'effects-tooling = "ecological checking with sustainabot guidance"' .machine_readable/policies/MAINTENANCE-AXES.a2ml || MISSING="$MISSING MAINTENANCE-AXES.a2ml:effects-tooling"
-        grep -q 'source-human = "docs/maintenance/MAINTENANCE-CHECKLIST.md"' .machine_readable/policies/MAINTENANCE-CHECKLIST.a2ml || MISSING="$MISSING MAINTENANCE-CHECKLIST.a2ml:source-human"
-        grep -q 'source-human = "docs/practice/SOFTWARE-DEVELOPMENT-APPROACH.adoc"' .machine_readable/policies/SOFTWARE-DEVELOPMENT-APPROACH.a2ml || MISSING="$MISSING SOFTWARE-DEVELOPMENT-APPROACH.a2ml:source-human"
+    DEED=boj-server_chora.deed
+    if [ -f "$DEED" ]; then
+        grep -qE '^\s*\(status$' "$DEED" || MISSING="$MISSING $DEED:(status)"
+        grep -qE '^\s*\(anchor$' "$DEED" || MISSING="$MISSING $DEED:(anchor)"
+        grep -q ':axis-1 "must > intend > like"' "$DEED" || MISSING="$MISSING $DEED:meta:axis-1"
+        grep -q ':axis-2 "corrective > adaptive > perfective"' "$DEED" || MISSING="$MISSING $DEED:meta:axis-2"
+        grep -q ':axis-3 "systems > compliance > effects"' "$DEED" || MISSING="$MISSING $DEED:meta:axis-3"
+        grep -q ':scoping-first #t' "$DEED" || MISSING="$MISSING $DEED:meta:scoping-first"
+        grep -q ':idris-unsound-scan "believe_me/assert_total"' "$DEED" || MISSING="$MISSING $DEED:meta:idris-unsound-scan"
+        grep -q ':audit-focus "systems in place, documentation explains actual state, safety/security accounted for, observed effects reviewed"' "$DEED" || MISSING="$MISSING $DEED:meta:audit-focus"
+        grep -q ':compliance-focus "seams/compromises/exception register, bounded exceptions, anti-drift checks"' "$DEED" || MISSING="$MISSING $DEED:meta:compliance-focus"
+        grep -q ':effects-evidence "benchmark execution/results and maintainer status dialogue/review"' "$DEED" || MISSING="$MISSING $DEED:meta:effects-evidence"
     fi
     if [ -n "$MISSING" ]; then
         echo "MISSING:$MISSING"
@@ -954,14 +952,14 @@ validate-rsr:
     fi
     echo "RSR compliance: PASS"
 
-# Validate STATE.a2ml syntax
+# Check the lifecycle state: the (status) clause of the chora deed
 validate-state:
-    @if [ -f ".machine_readable/STATE.a2ml" ]; then \
-        grep -q '^\[metadata\]' .machine_readable/STATE.a2ml && \
-        grep -q 'project\s*=' .machine_readable/STATE.a2ml && \
-        echo "STATE.a2ml: valid" || echo "STATE.a2ml: INVALID (missing required sections)"; \
+    @if [ -f "boj-server_chora.deed" ]; then \
+        grep -qE '^\s*\(status$' boj-server_chora.deed && \
+        grep -qE '^\s*:phase [a-z-]+$' boj-server_chora.deed && \
+        echo "boj-server_chora.deed (status): valid" || echo "boj-server_chora.deed (status): INVALID (no (status) clause with a :phase)"; \
     else \
-        echo "No .machine_readable/STATE.a2ml found"; \
+        echo "No boj-server_chora.deed found"; \
     fi
 
 # Validate AI installation guide completeness (finishbot pre-release check)
@@ -1036,16 +1034,15 @@ validate: validate-rsr validate-state validate-ai-install
 # STATE MANAGEMENT
 # ═══════════════════════════════════════════════════════════════════════════════
 
-# Update STATE.a2ml timestamp
+# No state timestamp to touch: STATE.a2ml was retired 2026-11-14. The lifecycle
+# claim is the (status) clause of boj-server_chora.deed, and the journal is
+# docs/status/ROADMAP.adoc (docs/history/A2ML-REMOVED.adoc).
 state-touch:
-    @if [ -f ".machine_readable/STATE.a2ml" ]; then \
-        sed -i 's/last-updated = "[^"]*"/last-updated = "'"$(date +%Y-%m-%d)"'"/' .machine_readable/STATE.a2ml && \
-        echo "STATE.a2ml timestamp updated"; \
-    fi
+    @echo "state-touch: nothing to stamp (state is the (status) clause of boj-server_chora.deed)"
 
-# Show current phase from STATE.a2ml
+# Show current phase from the chora deed's (status) clause
 state-phase:
-    @grep -oP 'phase\s*=\s*"\K[^"]+' .machine_readable/STATE.a2ml 2>/dev/null | head -1 || echo "unknown"
+    @grep -oP '^\s*:phase \K[a-z-]+' boj-server_chora.deed 2>/dev/null | head -1 || echo "unknown"
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # GUIX & GUIX
@@ -1154,15 +1151,6 @@ todos:
 # Open in editor
 edit:
     ${EDITOR:-code} .
-
-# Synchronize A2ML metadata to SCM (Shadow Sync)
-sync-metadata:
-    #!/usr/bin/env bash
-    echo "Synchronizing metadata (A2ML -> SCM)..."
-    if [ -f .machine_readable/STATE.a2ml ]; then
-        # boj-server uses a slightly different A2ML structure, keeping it simple for now
-        echo "✓ Metadata synchronized"
-    fi
 
 # Run panic-attacker pre-commit scan
 assail:
@@ -1483,7 +1471,7 @@ help-me:
     echo "  docs/AI_INSTALLATION_GUIDE.adoc  AI-assisted setup guide"
     echo "  docs/architecture/README.adoc             Architecture overview"
     echo "  docs/quickstarts/USER.adoc       Quick start for users"
-    echo "  .machine_readable/STATE.a2ml     Current project state"
+    echo "  boj-server_chora.deed            Repo facts: identity, status, meta, anchor"
 
 
 # Run mandatory pre-merge verification gate (conflicts, apps, Hypatia, K9/DEED, CI/lockfile, tests)

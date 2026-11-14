@@ -1,7 +1,9 @@
 # SPDX-License-Identifier: MPL-2.0
 # adjust.ncl — accessibility invariant runner for boj-server
 #
-# Pairs with: Adjustfile.a2ml (same directory)
+# Pairs with: Adjustfile.deed (same directory; A7 8.1). Not yet written: the
+#             legacy Adjustfile.a2ml was retired 2026-11-14 with no mapping
+#             spec to translate it (docs/history/A2ML-REMOVED.adoc).
 # Verb:       adjust
 # Semantics:  verify all user-facing interfaces meet WCAG 2.2 AA minimum.
 #             Runner applies automated accessibility probes and hard-gates on
@@ -26,7 +28,7 @@
       name = "adjust-runner",
       version = "1.0.0",
       description = "Verifies WCAG 2.2 AA compliance across all user-facing interfaces. Hard-gates on critical regressions.",
-      paired_xfile = "Adjustfile.a2ml",
+      paired_xfile = "Adjustfile.deed",
       standard = "WCAG-2.2-AA",
       author = "Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>",
     },
