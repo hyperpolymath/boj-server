@@ -112,18 +112,15 @@ tools/                      Cartridge tooling (provisioner, configurator, harnes
 
 panll/src/                  PanLL panel (AffineScript/TEA)
 
-.machine_readable/          All machine-readable content
-  STATE.a2ml                Project state
-  META.a2ml                 Architecture decisions
-  ECOSYSTEM.a2ml            Ecosystem position
-  AGENTIC.a2ml              AI agent patterns
-  NEUROSYM.a2ml             Neurosymbolic config
-  PLAYBOOK.a2ml             Operational runbook
-  servers/menu.a2ml         Teranga menu (cartridge catalogue)
-  anchors/ANCHOR.a2ml       Semantic boundary
-  policies/                 Governance files
-  bot_directives/           Per-bot rules
-  contractiles/             Policy enforcement (k9, dust, lust, must, trust)
+boj-server_chora.deed       Repo facts: identity, (status), (meta) ADRs, (agentic),
+                            (neurosym), (playbook), (anchor) semantic boundary
+0-AI-MANIFEST.deed          Machine front door (pointer-only)
+
+.machine_readable/          Other machine-readable content
+  contractiles/             Policy runners (adjust, bust, dust, intend, must, trust)
+  svc/self-validating/      K9 contracts
+# The A2ML files that lived here were retired 2026-11-14:
+# docs/history/A2ML-REMOVED.adoc. The live cartridge catalogue is GET /menu.
 ----
 
 == Build System
@@ -287,7 +284,7 @@ See: `src/abi/Federation.idr`, `docs/FEDERATION.adoc`
 . Hash attestation for community nodes
 . MPL-2.0 on all code
 . Cultural terms are permanent and sacred
-. A2ML files ONLY in .machine_readable/
+. No `.a2ml` files: A2ML is retired; repo facts are deeds (`boj-server_chora.deed`)
 . Chainguard base images, Containerfile, Podman
 . zig is BANNED (migrated to Zig FFI + Deno/JS, 0 `.v` files as of 2026-04-12)
 

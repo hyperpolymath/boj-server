@@ -1,7 +1,9 @@
 # SPDX-License-Identifier: MPL-2.0
 # trust.ncl — trust boundary verification runner for boj-server
 #
-# Pairs with: Trustfile.a2ml (same directory)
+# Pairs with: Trustfile.deed (same directory; A7 8.1). Not yet written: the
+#             legacy Trustfile.a2ml was retired 2026-11-14 with no mapping
+#             spec to translate it (docs/history/A2ML-REMOVED.adoc).
 # Verb:       trust
 # Semantics:  verify provenance, integrity, and trust-boundary invariants.
 #             Runner evaluates the declared trust checks (licence present,
@@ -27,7 +29,7 @@
       name = "trust-runner",
       version = "1.0.0",
       description = "Evaluates trust-boundary invariants: provenance, integrity, secrets hygiene, signature checks. Hard-gates on critical failures.",
-      paired_xfile = "Trustfile.a2ml",
+      paired_xfile = "Trustfile.deed",
       author = "Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>",
     },
   },
