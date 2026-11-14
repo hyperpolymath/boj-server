@@ -61,8 +61,7 @@ schema_version = "1.0.0"
       "complexity / tier / implementation_time"
       "FromStr impl"
       "auto-detect by extension (if applicable)"
-      "FFI: kind_to_u8 / kind_from_u8"
-      "STATE.a2ml backend count update")
+      "FFI: kind_to_u8 / kind_from_u8")
     (minimum-tests 3 "unit tests per new backend file"))
 
   ; ===================================================================

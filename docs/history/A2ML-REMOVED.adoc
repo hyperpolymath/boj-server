@@ -82,9 +82,9 @@ The deed carriers are `boj-server_chora.deed` (the one repo deed) and
 | The `(anchor)` clause of `boj-server_chora.deed`, written as `hyperpolymath.anchor/2`, under A7 section 6.4: version to `(metadata :version)`; authority, `(semantic-authority)`, `(implementation-policy)`, `(golden-path)` and `(satellite-policy)` field for field. Not translated (no 6.4 row): `[metadata] last-updated`, `[anchor] repo` and `purpose`, `[identity]` and `[semantic-authority-files]` (whose paths do not exist in this repo).
 
 | `0-AI-MANIFEST.a2ml`
-| 781
-| `c9e945d66d069efbdee9d9d3c3de451f1f52e924da1fccae131c900fbfe69420`
-| `6bf1f8c7f3805520515a5106f68b8cc8d53ad993`
+| 5054
+| `147b9d52b16ea780dcdd318ccfeabe4fe0da1bd433ba7020b250d349a2b0bcb4`
+| `e8f6c4b3a23f10a9002a336598e8af403da1aa52`
 | AI manifest (S-expression shape): identity, purpose, context tiers, canonical locations, structure, critical invariants, session lifecycle, format meta.
 | Replaced by the pointer-only `0-AI-MANIFEST.deed` (A7 ruling Q15). Its sections are not the table of `ai-manifest-decision.adoc`, so nothing was translated. Its canonical locations named files now removed.
 
@@ -296,7 +296,7 @@ The deed carriers are `boj-server_chora.deed` (the one repo deed) and
 | `abdb3ecb8fae889a5ae4a9e84ffe5dc6d76c55acbe35a7ca47b8c16106671498`
 | `4a684faaf9b80241083987d6ba03ce3d43548b51`
 | Trust contractile: threat model, DNS, email, TLS, Cloudflare edge, headers, container and dependency supply chain, gateway, proofs, verification ladder, signature block.
-| Deleted: no mapping spec, no machine reader. `trust.ncl` now names `Trustfile.deed`, not yet written. Runbook steps that flip a Trustfile status (`docs/integration/hcg-tier2-rollout-runbook.adoc`) have no target until it exists.
+| Deleted: no mapping spec, no machine reader. `trust.ncl` now names `Trustfile.deed`, not yet written. Its one live status, `[CLOUDFLARE_EDGE_SECURITY].rate_limiting.tier_2_gateway.status` (`PENDING`), now lives in the "Tier-2 gateway status" item under v1.1.0 "Gateway sidecar" in `docs/status/ROADMAP.adoc`; the rollout runbook (`docs/integration/hcg-tier2-rollout-runbook.adoc` §1.4, §5.3, §6.4) records and flips it there. Its `[HTTP_CAPABILITY_GATEWAY]` status (`ACCEPTED-PLANNED`) did not translate; the ROADMAP item is the one record. Both move to `Trustfile.deed` when it is written.
 
 | `.machine_readable/integrations/feedback-o-tron.a2ml`
 | 621
@@ -411,16 +411,20 @@ Deleting it would unsuppress the audited findings. It goes when the deed
 reader ships and the registry is written as that praxis deed.
 
 | `.boj/project-memories.a2ml`
-| 4749 (was 4848)
-| `54574c577980394826b9d3dd776a7660e5ec0751fbcc5139824eab172dbc6df9` (was `2dc552adf90d7958ad4ccf5ff531e361e883ab14ed1498c25b18e8fb1ffdc0d8`)
-| `45c045aaa7a879faaa845efc4e66b85a1f09adf5` (was `63e457ad40043135e31034ff397fe692811b2e73`)
+| 4709 (was 4848)
+| `fd7ee161f277f4f39501a0b92cd9505d5a910bd39fbaf7576318db5f848e9f20` (was `2dc552adf90d7958ad4ccf5ff531e361e883ab14ed1498c25b18e8fb1ffdc0d8`)
+| `8fd15490a7d8824f97ec1c391fa2955fb46d9e84` (was `63e457ad40043135e31034ff397fe692811b2e73`)
 | The standing worker briefing. The owner's coord-tui hook
 (`~/.config/coord-tui/coord-hooks.sh`, outside this repository) prepends it to
 a worker's system prompt when it exists at this path (recorded in the retired
 STATE journal, 2026-04-27). Deleting it would silently drop the briefing.
 Its on-start step 3 ("Read the plan": `cat .machine_readable/6a2/STATE.a2ml`)
-was deleted, since that file is gone. It goes when that hook reads another
-form.
+was deleted, since that file is gone, and so was the backend template's
+`required-wiring` item "STATE.a2ml backend count update". That template
+describes ECHIDNA prover backends (`src/rust/provers/*.rs`, not in this
+repository), so their count is ECHIDNA's status to record, not boj-server's;
+boj-server's own current status is `docs/status/ROADMAP.adoc`. It goes when
+that hook reads another form.
 
 | `panll/src/Boj.a2ml`
 | 2996
